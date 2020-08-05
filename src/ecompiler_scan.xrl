@@ -71,7 +71,7 @@ fixchars([$\\, $t | Rest]) ->
 fixchars([$\\, $" | Rest]) ->
     [$" | fixchars(Rest)];
 fixchars([$\\, Any | _]) ->
-    throw(io_lib:format("unknown escape char ~w", [Any]));
+    [Any | fixchars(Rest)];
 fixchars([C | Rest]) ->
     [C | fixchars(Rest)];
 fixchars([]) ->
@@ -83,9 +83,7 @@ fixchar([$\\, $f]) -> $\f;
 fixchar([$\\, $n]) -> $\n;
 fixchar([$\\, $r]) -> $\r;
 fixchar([$\\, $t]) -> $\t;
-fixchar([$\\, $']) -> $\';
-fixchar([$\\, Any]) ->
-    throw(io_lib:format("unknown escape char ~w", [Any]));
+fixchar([$\\, Any]) -> Any;
 fixchar([Any]) -> Any.
 
 
