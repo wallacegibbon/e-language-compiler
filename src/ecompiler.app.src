@@ -1,0 +1,6 @@
+{application, ecompiler,
+ [{description, "An OTP library"},
+  {vsn, "0.1.0"},
+  {applications, [kernel, stdlib]},
+  {licenses, ["Apache 2.0"]}
+ ]}.
