@@ -4,17 +4,21 @@ StrQuote = "
 StrUnescapedChar = [^\"\\]
 CharQuote = '
 CharUnescapedChar = [^\'\\]
-CommonEscapedChar = (\\\\)|(\\b)|(\\f)|(\\n)|(\\r)|(\\t)|(\\/)
-StrEscapedChar = {CommonEscapedChar}|(\\")
-CharEscapedChar = {CommonEscapedChar}|(\\')
-Delim = ([@^.+\-*/~:,])|(>=)|(<=)|(==)|(>)|(<)|(=)
+CommonEscapedChar = \\\\|\\b|\\f|\\n|\\r|\\t|\\/
+StrEscapedChar = {CommonEscapedChar}|\\"
+CharEscapedChar = {CommonEscapedChar}|\\'
+Delim = [@^.+*/~:,;()]|>=|<=|==|>|<|=|->|-
 BinaryDigit = [01]
 OctallDigit = [0-7]
 DecimalDigit = [0-9]
 HexDigit = [0-9a-f]
-
+CommentStart = %
+Identifier = [_a-zA-Z][_a-zA-Z0-9]*
 
 Rules.
+
+{CommentStart}[^\n]* :
+    {token, {comment, TokenLine, tl(TokenChars)}}.
 
 {StrQuote}{StrQuote} :
     {token, {string, TokenLine, ""}}.
@@ -39,6 +43,9 @@ Rules.
 
 {Delim} :
     {token, {list_to_atom(TokenChars), TokenLine}}.
+
+{Identifier} :
+    {token, {identifier, TokenLine, TokenChars}}.
 
 \n :
     {token, {newline, TokenLine}}.
@@ -70,7 +77,7 @@ fixchars([$\\, $t | Rest]) ->
     [$\t | fixchars(Rest)];
 fixchars([$\\, $" | Rest]) ->
     [$" | fixchars(Rest)];
-fixchars([$\\, Any | _]) ->
+fixchars([$\\, Any | Rest]) ->
     [Any | fixchars(Rest)];
 fixchars([C | Rest]) ->
     [C | fixchars(Rest)];
