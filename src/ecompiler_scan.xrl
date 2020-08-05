@@ -7,7 +7,7 @@ CharUnescapedChar = [^\'\\]
 CommonEscapedChar = \\\\|\\b|\\f|\\n|\\r|\\t|\\/
 StrEscapedChar = {CommonEscapedChar}|\\"
 CharEscapedChar = {CommonEscapedChar}|\\'
-Delim = [@^.+*/~:,;()]|>=|<=|==|>|<|=|->|-
+Delim = [@^.+*/~:,;()]|>=|<=|==|!=|>|<|=|->|-
 BinaryDigit = [01]
 OctallDigit = [0-7]
 DecimalDigit = [0-9]
@@ -41,8 +41,20 @@ Rules.
 {DecimalDigit}+ :
     {token, {integer, TokenLine, list_to_integer(TokenChars)}}.
 
+{DecimalDigit}+.{DecimalDigit}+ :
+    {token, {float, TokenLine, list_to_float(TokenChars)}}.
+
 {Delim} :
     {token, {list_to_atom(TokenChars), TokenLine}}.
+
+struct :
+    {token, {kwstruct, TokenLine}}.
+
+end :
+    {token, {kwend, TokenLine}}.
+
+block :
+    {token, {kwblock, TokenLine}}.
 
 {Identifier} :
     {token, {identifier, TokenLine, TokenChars}}.
