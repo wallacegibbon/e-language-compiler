@@ -1,5 +1,7 @@
 Definitions.
 
+Delim = [@^.+*/~:,;()]|>=|<=|==|!=|>|<|=|->|-
+Identifier = [_a-zA-Z][_a-zA-Z0-9]*
 StrQuote = "
 StrUnescapedChar = [^\"\\]
 CharQuote = '
@@ -7,13 +9,11 @@ CharUnescapedChar = [^\'\\]
 CommonEscapedChar = \\\\|\\b|\\f|\\n|\\r|\\t|\\/
 StrEscapedChar = {CommonEscapedChar}|\\"
 CharEscapedChar = {CommonEscapedChar}|\\'
-Delim = [@^.+*/~:,;()]|>=|<=|==|!=|>|<|=|->|-
 BinaryDigit = [01]
 OctallDigit = [0-7]
 DecimalDigit = [0-9]
 HexDigit = [0-9a-f]
 CommentStart = %
-Identifier = [_a-zA-Z][_a-zA-Z0-9]*
 
 Rules.
 
@@ -47,21 +47,19 @@ Rules.
 {Delim} :
     {token, {list_to_atom(TokenChars), TokenLine}}.
 
-struct :
-    {token, {kwstruct, TokenLine}}.
+struct|end|block :
+    {token, {list_to_atom([$k, $w, $_ | TokenChars]), TokenLine}}.
 
-end :
-    {token, {kwend, TokenLine}}.
-
-block :
-    {token, {kwblock, TokenLine}}.
+u8|i8|u16|i16|u32|i32|u64|i64|usize|isize|float64|float32 :
+    {token, {type, TokenLine, list_to_atom(TokenChars)}}.
 
 {Identifier} :
     {token, {identifier, TokenLine, TokenChars}}.
 
 \n :
     {token, {newline, TokenLine}}.
-[\r\t\s]* :
+
+[\s\r\t\v\f]* :
     skip_token.
 
 
