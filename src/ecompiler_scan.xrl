@@ -51,7 +51,7 @@ Rules.
 defbox|as|end :
     {token, {list_to_atom([$k, $w, $_ | TokenChars]), TokenLine}}.
 
-U8|I8|U16|I16|U32|I32|U64|I64|Float64|Float32 :
+U8|I8|U16|I16|U32|I32|U64|I64|Float64|Float32|Any :
     {token, {single_type, TokenLine, list_to_atom(TokenChars)}}.
 
 {Customtype} :
