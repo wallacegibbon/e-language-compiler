@@ -1,13 +1,13 @@
 Nonterminals
 
-defvars defvar defbox variable expr atomic_literal constant
+deffields deffield defbox variable expr atomic_literal constant
 typeanno type_extra general_type
 .
 
 Terminals
 
 identifier kw_defbox kw_as ',' '.' ':' '=' '^' '<' '>'
-integer float string single_type custom_type
+integer float string single_type
 .
 
 Rootsymbol defbox.
@@ -37,23 +37,23 @@ typeanno -> general_type :
     {single_type, tok_line('$1'), tok_val('$1')}.
 
 general_type -> single_type : '$1'.
-general_type -> custom_type : '$1'.
+general_type -> identifier : '$1'.
 
 %% pointer depth
 type_extra -> '^' type_extra : '$2' + 1.
 type_extra -> '^' : 1.
 
 %% "box" is like "struct" in C language
-defbox -> kw_defbox custom_type kw_as defvars '.' :
+defbox -> kw_defbox identifier kw_as deffields '.' :
     #box{name=tok_val('$2'), fields='$4', line=tok_line('$2')}.
 
-defvars -> defvar ',' defvars : ['$1' | '$3'].
-defvars -> defvar : ['$1'].
+deffields -> deffield ',' deffields : ['$1' | '$3'].
+deffields -> deffield : ['$1'].
 
-defvar -> identifier ':' typeanno '=' expr :
+deffield -> identifier ':' typeanno '=' expr :
     {tok_val('$1'), '$3', '$5'}.
 
-defvar -> identifier ':' typeanno :
+deffield -> identifier ':' typeanno :
     {tok_val('$1'), '$3'}.
 
 

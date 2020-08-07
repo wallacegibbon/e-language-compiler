@@ -1,5 +1,5 @@
--type e_type() :: 'U8' | 'I8' | 'U16' | 'I16' | 'U32' | 'I32' | 'U64' | 'I64'
-    | 'Float64' | 'Float32'.
+-type e_type() :: u8 | i8 | u16 | i16 | u32 | i32 | u64 | i64
+    | float64 | float32.
 
 -type e_kvpair() :: {string(), e_type()}.
 
