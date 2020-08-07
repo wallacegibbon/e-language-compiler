@@ -1,16 +1,15 @@
 %% vim: ft=erlang :
 
-struct User
+defbox User as
     id: u32,
-    description: block<i8, 10>,
-end
+    description: <i8, 10>.
 
 % t: block<i8, 10>,   t@ --> i8^
 
 const TOTOAL_USERCNT = 10
 
 main(argc: isize, argv: i8^^): isize ->
-    users: block<User, TOTOAL_USERCNT> = alloc(size<User> * TOTOAL_USERCNT),
+    users: <User, TOTOAL_USERCNT>,
     init_users(users@, users.len).
 
 init_users(users: User^, size: u8): void ->

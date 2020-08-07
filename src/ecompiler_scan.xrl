@@ -1,7 +1,8 @@
 Definitions.
 
 Delim = [@^.+*/~:,;()]|>=|<=|==|!=|>|<|=|->|-
-Identifier = [_a-zA-Z][_a-zA-Z0-9]*
+Identifier = [_a-z][_a-zA-Z0-9]*
+Customtype = [A-Z][_a-zA-Z0-9]*
 StrQuote = "
 StrUnescapedChar = [^\"\\]
 CharQuote = '
@@ -47,19 +48,19 @@ Rules.
 {Delim} :
     {token, {list_to_atom(TokenChars), TokenLine}}.
 
-struct|end|block :
+defbox|as|end :
     {token, {list_to_atom([$k, $w, $_ | TokenChars]), TokenLine}}.
 
-u8|i8|u16|i16|u32|i32|u64|i64|usize|isize|float64|float32 :
-    {token, {type, TokenLine, list_to_atom(TokenChars)}}.
+U8|I8|U16|I16|U32|I32|U64|I64|Float64|Float32 :
+    {token, {single_type, TokenLine, list_to_atom(TokenChars)}}.
+
+{Customtype} :
+    {token, {custom_type, TokenLine, list_to_atom(TokenChars)}}.
 
 {Identifier} :
     {token, {identifier, TokenLine, TokenChars}}.
 
-\n :
-    {token, {newline, TokenLine}}.
-
-[\s\r\t\v\f]* :
+[\s\r\t\v\f\n]* :
     skip_token.
 
 
@@ -102,5 +103,4 @@ fixchar([$\\, $r]) -> $\r;
 fixchar([$\\, $t]) -> $\t;
 fixchar([$\\, Any]) -> Any;
 fixchar([Any]) -> Any.
-
 
