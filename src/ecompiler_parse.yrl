@@ -1,7 +1,7 @@
 Nonterminals
 
-vardefs vardef variable expr atomic_literal typeanno constant type_extra
-general_type box
+defvars defvar defbox variable expr atomic_literal constant
+typeanno type_extra general_type
 .
 
 Terminals
@@ -10,7 +10,7 @@ identifier kw_defbox kw_as ',' '.' ':' '=' '^' '<' '>'
 integer float string single_type custom_type
 .
 
-Rootsymbol box.
+Rootsymbol defbox.
 
 constant -> atomic_literal : tok_val('$1').
 constant -> identifier : {eval, '$1'}.
@@ -44,16 +44,16 @@ type_extra -> '^' type_extra : '$2' + 1.
 type_extra -> '^' : 1.
 
 %% "box" is like "struct" in C language
-box -> kw_defbox custom_type kw_as vardefs '.' :
+defbox -> kw_defbox custom_type kw_as defvars '.' :
     #box{name=tok_val('$2'), fields='$4', line=tok_line('$2')}.
 
-vardefs -> vardef : ['$1'].
-vardefs -> vardef ',' vardefs : ['$1' | '$3'].
+defvars -> defvar ',' defvars : ['$1' | '$3'].
+defvars -> defvar : ['$1'].
 
-vardef -> identifier ':' typeanno '=' expr :
+defvar -> identifier ':' typeanno '=' expr :
     {tok_val('$1'), '$3', '$5'}.
 
-vardef -> identifier ':' typeanno :
+defvar -> identifier ':' typeanno :
     {tok_val('$1'), '$3'}.
 
 
