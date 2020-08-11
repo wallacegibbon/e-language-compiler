@@ -1,8 +1,7 @@
 Definitions.
 
 Delim = [@^.+*/~:,;()]|>=|<=|==|!=|>|<|=|->|-
-Identifier = [a-z][_a-zA-Z0-9]*
-Variable = [_A-Z][_a-zA-Z0-9]*
+Identifier = [_a-zA-Z][_a-zA-Z0-9]*
 StrQuote = "
 StrUnescapedChar = [^\"\\]
 CharQuote = '
@@ -48,14 +47,11 @@ Rules.
 {Delim} :
     {token, {list_to_atom(TokenChars), TokenLine}}.
 
-defbox|as|end :
+struct|end|fun|if|while :
     {token, {list_to_atom([$k, $w, $_ | TokenChars]), TokenLine}}.
 
-u8|I8|u16|i16|u32|i32|u64|i64|float64|float32|any :
+u8|i8|u16|i16|u32|i32|u64|i64|f32|f64|any :
     {token, {single_type, TokenLine, list_to_atom(TokenChars)}}.
-
-{Variable} :
-    {token, {variable, TokenLine, TokenChars}}.
 
 {Identifier} :
     {token, {identifier, TokenLine, TokenChars}}.

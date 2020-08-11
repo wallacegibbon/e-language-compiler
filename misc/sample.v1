@@ -23,3 +23,5 @@ init_users(Users: user^, Cnt: u8, Size: u8): any when Cnt < Size ->
 init_users(Users: user^, Cnt: u8, Size: u8): any ->
     0.
 
+blah(Num: f64): f64 ->
+    math:pi() + Num.
