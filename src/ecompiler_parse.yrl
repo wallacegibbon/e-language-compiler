@@ -2,13 +2,14 @@ Nonterminals
 
 vardefs vardef defconst defstruct defun variable args arg
 exprs expr call_expr op1 op29 op28 op27 op26
-typeanno type_extra general_type atomic_literal constant
+typeanno pointer_depth general_type atomic_literal constant
 .
 
 Terminals
 
 %% operators
-',' ':' ';' '=' '<' '>' '(' ')' '+' '-' '*' '/' '^' '@' '.' '!=' '==' '~' '!'
+',' ':' ';' '=' '<' '>' '(' ')' '+' '-' '*' '/' '^' '@' '.' '~' '!'
+'!=' '==' '>=' '<='
 %% keywords
 const struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
 %%
@@ -19,7 +20,7 @@ identifier integer float string single_type
 Rootsymbol defun.
 
 defconst -> const identifier '=' expr :
-    {const, tok_line('$2'), tok_val('$2'), '$4'}.
+    #const{name=tok_val('$2'), val='$4', line=tok_line('$2')}.
 
 constant -> atomic_literal : tok_val('$1').
 constant -> identifier : {eval, '$1'}.
@@ -28,13 +29,14 @@ atomic_literal -> integer : '$1'.
 atomic_literal -> float : '$1'.
 atomic_literal -> string : '$1'.
 
-variable -> identifier : {var, tok_line('$1'), tok_val('$1')}.
+variable -> identifier :
+    #var{name=tok_val('$1'), line=tok_line('$1')}.
 
 %% type annotation inside box or function
 typeanno -> '<' typeanno ',' constant '>' :
     {box_type, tok_line('$2'), '$4', element(3, '$2')}.
 
-typeanno -> general_type type_extra :
+typeanno -> general_type pointer_depth :
     {single_type, tok_line('$1'), {tok_val('$1'), '$2'}}.
 
 typeanno -> general_type :
@@ -44,8 +46,8 @@ general_type -> single_type : '$1'.
 general_type -> identifier : '$1'.
 
 %% pointer depth
-type_extra -> '^' type_extra : '$2' + 1.
-type_extra -> '^' : 1.
+pointer_depth -> '^' pointer_depth : '$2' + 1.
+pointer_depth -> '^' : 1.
 
 vardefs -> vardef ',' vardefs : ['$1' | '$3'].
 vardefs -> vardef ',' : ['$1'].
@@ -58,11 +60,11 @@ vardef -> identifier ':' typeanno :
     {tok_val('$1'), '$3'}.
 
 %% struct definition
-defstruct -> struct identifier vardefs end :
+defstruct -> struct identifier vardefs 'end' :
     #struct{name=tok_val('$2'), fields='$3', line=tok_line('$2')}.
 
 %% function definition
-defun -> fun identifier '(' vardefs ')' ':' typeanno exprs end :
+defun -> 'fun' identifier '(' vardefs ')' ':' typeanno exprs 'end' :
     #function{name=tok_val('$2'), args='$4', ret='$7', exprs='$8',
 	      line=tok_line('$2')}.
 
@@ -95,6 +97,10 @@ expr -> expr op26 expr :
     {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
 expr -> expr op1 :
     {op, tok_line('$2'), tok_sym('$2'), '$1'}.
+expr -> expr ':' typeanno '=' expr :
+    {op, tok_line('$4'), vardef, '$1', '$5', '$3'}.
+expr -> expr '=' expr :
+    {op, tok_line('$2'), assign, '$1', '$3'}.
 
 Unary 900 op1.
 op1 -> '^' : '$1'.
@@ -124,7 +130,8 @@ op27 -> 'or' : '$1'.
 Nonassoc 260 op26.
 op26 -> '==' : '$1'.
 op26 -> '!=' : '$1'.
-
+op26 -> '>=' : '$1'.
+op26 -> '<=' : '$1'.
 
 Right 100 '='.
 

@@ -15,7 +15,11 @@
 		 name :: string(),
 		 fields :: [e_kvpair()]}).
 
--record(var, {line :: integer(), name :: string()}).
+-record(const, {line :: integer(),
+		name :: atom(),
+		val :: any()}).
+
+-record(var, {line :: integer(), name :: atom()}).
 
 -record(integer, {line :: integer(), val :: integer()}).
 
