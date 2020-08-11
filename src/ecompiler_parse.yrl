@@ -1,22 +1,24 @@
 Nonterminals
 
 vardefs vardef defconst defstruct defun variable args arg
-exprs expr call_expr op1 op21 op22
+exprs expr call_expr op1 op29 op28 op27 op26
 typeanno type_extra general_type atomic_literal constant
 .
 
 Terminals
 
+%% operators
 ',' ':' ';' '=' '<' '>' '(' ')' '+' '-' '*' '/' '^' '@' '.' '!=' '==' '~' '!'
+%% keywords
+const struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
+%%
 identifier integer float string single_type
-kw_const kw_struct kw_end kw_fun kw_rem kw_and kw_or
-kw_band kw_bor kw_bxor kw_bsl kw_bsr
 .
 
 %Rootsymbol defstruct.
 Rootsymbol defun.
 
-defconst -> kw_const identifier '=' expr :
+defconst -> const identifier '=' expr :
     {const, tok_line('$2'), tok_val('$2'), '$4'}.
 
 constant -> atomic_literal : tok_val('$1').
@@ -56,11 +58,11 @@ vardef -> identifier ':' typeanno :
     {tok_val('$1'), '$3'}.
 
 %% struct definition
-defstruct -> kw_struct identifier vardefs kw_end :
+defstruct -> struct identifier vardefs end :
     #struct{name=tok_val('$2'), fields='$3', line=tok_line('$2')}.
 
 %% function definition
-defun -> kw_fun identifier '(' vardefs ')' ':' typeanno exprs kw_end :
+defun -> fun identifier '(' vardefs ')' ':' typeanno exprs end :
     #function{name=tok_val('$2'), args='$4', ret='$7', exprs='$8',
 	      line=tok_line('$2')}.
 
@@ -83,12 +85,16 @@ expr -> '(' expr ')' : '$2'.
 expr -> atomic_literal : '$1'.
 expr -> variable : '$1'.
 expr -> call_expr : '$1'.
+expr -> expr op29 expr :
+    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
+expr -> expr op28 expr :
+    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
+expr -> expr op27 expr :
+    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
+expr -> expr op26 expr :
+    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
 expr -> expr op1 :
     {op, tok_line('$2'), tok_sym('$2'), '$1'}.
-expr -> expr op21 expr :
-    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
-expr -> expr op22 expr :
-    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
 
 Unary 900 op1.
 op1 -> '^' : '$1'.
@@ -97,16 +103,28 @@ op1 -> '.' : '$1'.
 op1 -> '!' : '$1'.
 op1 -> '~' : '$1'.
 
-Left 300 op21.
-op21 -> '+' : '$1'.
-op21 -> '-' : '$1'.
+Left 290 op29.
+op29 -> '*' : '$1'.
+op29 -> '/' : '$1'.
+op29 -> 'rem' : '$1'.
 
-Left 400 op22.
-op22 -> '*' : '$1'.
-op22 -> '/' : '$1'.
-op22 -> kw_rem : '$1'.
+Left 280 op28.
+op28 -> '+' : '$1'.
+op28 -> '-' : '$1'.
 
-Nonassoc 200 '==' '!='.
+Left 270 op27.
+op27 -> 'bsl' : '$1'.
+op27 -> 'bsr' : '$1'.
+op27 -> 'band' : '$1'.
+op27 -> 'bor' : '$1'.
+op27 -> 'bxor' : '$1'.
+op27 -> 'and' : '$1'.
+op27 -> 'or' : '$1'.
+
+Nonassoc 260 op26.
+op26 -> '==' : '$1'.
+op26 -> '!=' : '$1'.
+
 
 Right 100 '='.
 
