@@ -1,6 +1,6 @@
 Definitions.
 
-Delim = [@^.+*/~:,;()]|>=|<=|==|!=|>|<|=|->|-
+Delim = [@^.+*/~:,;()]|>=|<=|==|!=|!|>|<|=|-
 Identifier = [_a-zA-Z][_a-zA-Z0-9]*
 StrQuote = "
 StrUnescapedChar = [^\"\\]
@@ -47,14 +47,14 @@ Rules.
 {Delim} :
     {token, {list_to_atom(TokenChars), TokenLine}}.
 
-struct|end|fun|if|while :
+const|struct|end|fun|if|while|rem|and|or|band|bor|bxor|bsl|bsr :
     {token, {list_to_atom([$k, $w, $_ | TokenChars]), TokenLine}}.
 
 u8|i8|u16|i16|u32|i32|u64|i64|f32|f64|any :
     {token, {single_type, TokenLine, list_to_atom(TokenChars)}}.
 
 {Identifier} :
-    {token, {identifier, TokenLine, TokenChars}}.
+    {token, {identifier, TokenLine, list_to_atom(TokenChars)}}.
 
 [\s\r\t\v\f\n]* :
     skip_token.
