@@ -1,7 +1,7 @@
 Nonterminals
 
 vardefs vardef defconst defstruct defun variable args arg
-exprs expr call_expr op2 op1
+exprs expr call_expr op1 op21 op22
 typeanno type_extra general_type atomic_literal constant
 .
 
@@ -83,28 +83,32 @@ expr -> '(' expr ')' : '$2'.
 expr -> atomic_literal : '$1'.
 expr -> variable : '$1'.
 expr -> call_expr : '$1'.
-expr -> expr '+' expr :
-    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
-expr -> expr '*' expr :
-    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
 expr -> expr op1 :
     {op, tok_line('$2'), tok_sym('$2'), '$1'}.
+expr -> expr op21 expr :
+    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
+expr -> expr op22 expr :
+    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
 
+Unary 900 op1.
 op1 -> '^' : '$1'.
 op1 -> '@' : '$1'.
 op1 -> '.' : '$1'.
 op1 -> '!' : '$1'.
 op1 -> '~' : '$1'.
 
+Left 300 op21.
+op21 -> '+' : '$1'.
+op21 -> '-' : '$1'.
+
+Left 400 op22.
+op22 -> '*' : '$1'.
+op22 -> '/' : '$1'.
+op22 -> kw_rem : '$1'.
+
 Nonassoc 200 '==' '!='.
-Left 300 '+'.
-Left 400 '*'.
+
 Right 100 '='.
-Unary 900 '^'.
-Unary 900 '@'.
-Unary 900 '.'.
-Unary 900 '!'.
-Unary 900 '~'.
 
 
 Erlang code.
