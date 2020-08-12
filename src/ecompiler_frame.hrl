@@ -11,6 +11,15 @@
 		   ret :: e_type(),
 		   exprs :: [e_expr()]}).
 
+-record(while_expr, {line :: integer(),
+		     condition :: e_expr(),
+		     exprs :: [e_expr()]}).
+
+-record(if_expr, {line :: integer(),
+		  condition :: e_expr(),
+		  then :: [e_expr()],
+		  else :: [e_expr()]}).
+
 -record(struct, {line :: integer(),
 		 name :: string(),
 		 fields :: [e_kvpair()]}).
@@ -19,11 +28,15 @@
 		name :: atom(),
 		val :: any()}).
 
--record(var, {line :: integer(), name :: atom()}).
+-record(var, {line :: integer(),
+	      name :: atom()}).
 
--record(integer, {line :: integer(), val :: integer()}).
+-record(integer, {line :: integer(),
+		  val :: integer()}).
 
--record(float, {line :: integer(), val :: float()}).
+-record(float, {line :: integer(),
+		val :: float()}).
 
--record(string, {line :: integer(), val :: string()}).
+-record(string, {line :: integer(),
+		 val :: string()}).
 
