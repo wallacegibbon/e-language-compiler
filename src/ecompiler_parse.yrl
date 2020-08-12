@@ -82,15 +82,15 @@ arg -> variable : '$1'.
 arg -> atomic_literal : '$1'.
 
 %% while
-while_expr -> while expr exprs 'end' :
-    #while_expr{condition='$2', exprs='$3', line=tok_line('$1')}.
+while_expr -> while '(' expr ')' exprs 'end' :
+    #while_expr{condition='$3', exprs='$5', line=tok_line('$1')}.
 
 %% if
-if_expr -> 'if' expr exprs else_expr :
-    #if_expr{condition='$2', then='$3', else='$4', line=tok_line('$1')}.
+if_expr -> 'if' '(' expr ')' exprs else_expr :
+    #if_expr{condition='$3', then='$5', else='$6', line=tok_line('$1')}.
 
-else_expr -> elif expr exprs else_expr :
-    [#if_expr{condition='$2', then='$3', else='$4', line=tok_line('$1')}].
+else_expr -> elif '(' expr ')' exprs else_expr :
+    [#if_expr{condition='$3', then='$5', else='$6', line=tok_line('$1')}].
 else_expr -> else exprs 'end' :
     '$2'.
 else_expr -> 'end' :
@@ -98,11 +98,11 @@ else_expr -> 'end' :
 
 %% expression
 exprs -> expr ';' exprs : ['$1' | '$3'].
+exprs -> expr ';' : ['$1'].
 exprs -> while_expr exprs : ['$1' | '$2'].
 exprs -> if_expr exprs : ['$1' | '$2'].
 exprs -> while_expr : ['$1'].
 exprs -> if_expr : ['$1'].
-exprs -> expr ';' : ['$1'].
 
 expr -> '(' expr ')' : '$2'.
 expr -> atomic_literal : '$1'.

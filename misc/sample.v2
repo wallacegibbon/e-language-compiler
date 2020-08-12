@@ -15,7 +15,7 @@ end
 
 fun init_users(users: User^^, size: u8): any
     cnt: u32 = 0;
-    while cnt < size
+    while (cnt < size)
 	init_user((users + cnt)^, cnt, "test");
     end
 end
