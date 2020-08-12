@@ -1,8 +1,8 @@
 Nonterminals
 
 vardefs vardef defconst defstruct defun variable args arg
-exprs expr call_expr if_expr else_expr while_expr
-op1 op29 op28 op27 op26
+exprs expr call_expr if_expr else_expr while_expr preminusplus_expr
+op19 op29 op28 op27 op26
 typeanno pointer_depth general_type atomic_literal constant
 .
 
@@ -108,6 +108,7 @@ expr -> '(' expr ')' : '$2'.
 expr -> atomic_literal : '$1'.
 expr -> variable : '$1'.
 expr -> call_expr : '$1'.
+expr -> preminusplus_expr : '$1'.
 expr -> expr op29 expr :
     {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
 expr -> expr op28 expr :
@@ -116,19 +117,25 @@ expr -> expr op27 expr :
     {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
 expr -> expr op26 expr :
     {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
-expr -> expr op1 :
+expr -> expr op19 :
     {op, tok_line('$2'), tok_sym('$2'), '$1'}.
 expr -> expr ':' typeanno '=' expr :
     {op, tok_line('$4'), vardef, '$1', '$5', '$3'}.
 expr -> expr '=' expr :
     {op, tok_line('$2'), assign, '$1', '$3'}.
 
-Unary 900 op1.
-op1 -> '^' : '$1'.
-op1 -> '@' : '$1'.
-op1 -> '.' : '$1'.
-op1 -> '!' : '$1'.
-op1 -> '~' : '$1'.
+Unary 800 preminusplus_expr.
+preminusplus_expr -> '-' expr :
+    {op, tok_line('$1'), tok_sym('$1'), '$2'}.
+preminusplus_expr -> '+' expr :
+    {op, tok_line('$1'), tok_sym('$1'), '$2'}.
+
+Unary 900 op19.
+op19 -> '^' : '$1'.
+op19 -> '@' : '$1'.
+op19 -> '.' : '$1'.
+op19 -> '!' : '$1'.
+op19 -> '~' : '$1'.
 
 Left 290 op29.
 op29 -> '*' : '$1'.

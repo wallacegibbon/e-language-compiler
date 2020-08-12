@@ -5,7 +5,7 @@ end
 
 % t: block<i8, 10>,   t@ --> i8^
 
-const TOTOAL_USERCNT = 10
+const TOTOAL_USERCNT = 10;
 
 fun main(argc: i32, argv: i8^^): i32
     users: <User, TOTOAL_USERCNT>;

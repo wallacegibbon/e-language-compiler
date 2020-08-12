@@ -38,10 +38,10 @@ Rules.
     {token, {integer, TokenLine, str_to_integer(TokenChars, 8)}}.
 0b{BinaryDigit}+ :
     {token, {integer, TokenLine, str_to_integer(TokenChars, 2)}}.
-[+-]?{DecimalDigit}+ :
+{DecimalDigit}+ :
     {token, {integer, TokenLine, list_to_integer(TokenChars)}}.
 
-[+-]?{DecimalDigit}+.{DecimalDigit}+ :
+{DecimalDigit}+.{DecimalDigit}+ :
     {token, {float, TokenLine, list_to_float(TokenChars)}}.
 
 {Delim} :
