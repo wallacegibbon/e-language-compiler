@@ -2,7 +2,7 @@ Nonterminals
 
 vardefs vardef defconst defstruct defun variable args arg
 exprs expr call_expr if_expr else_expr while_expr preminusplus_expr
-op19 op29 op28 op27 op26
+op19 op29 op28 op27 op26 op25
 typeanno pointer_depth general_type atomic_literal constant
 .
 
@@ -117,6 +117,8 @@ expr -> expr op27 expr :
     {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
 expr -> expr op26 expr :
     {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
+expr -> expr op25 expr :
+    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
 expr -> expr op19 :
     {op, tok_line('$2'), tok_sym('$2'), '$1'}.
 expr -> expr ':' typeanno '=' expr :
@@ -152,8 +154,6 @@ op27 -> 'bsr' : '$1'.
 op27 -> 'band' : '$1'.
 op27 -> 'bor' : '$1'.
 op27 -> 'bxor' : '$1'.
-op27 -> 'and' : '$1'.
-op27 -> 'or' : '$1'.
 
 Nonassoc 260 op26.
 op26 -> '==' : '$1'.
@@ -162,6 +162,10 @@ op26 -> '>=' : '$1'.
 op26 -> '<=' : '$1'.
 op26 -> '>' : '$1'.
 op26 -> '<' : '$1'.
+
+Left 250 op25.
+op25 -> 'and' : '$1'.
+op25 -> 'or' : '$1'.
 
 Right 100 '='.
 
