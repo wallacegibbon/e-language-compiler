@@ -6,9 +6,13 @@
 
 
 generate_ccode(Ast, OutputFile) ->
-    Statements = statements_tostr(Ast),
-    FnDeclars = lists:join(";\n", get(functions)),
-    file:write_file(OutputFile, [common_code(), FnDeclars | Statements]).
+    {Fns, Others} = lists:partition(fun(A) -> element(1, A) =:= function end,
+				    Ast),
+    FnDeclars = get_function_declars(Fns),
+    FnStatements = statements_tostr(Fns),
+    OtherStatements = statements_tostr(Others),
+    file:write_file(OutputFile, [common_code(), OtherStatements, FnDeclars
+				 | FnStatements]).
 
 common_code() ->
     "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\n"
@@ -18,13 +22,24 @@ common_code() ->
     "typedef unsigned long u64;\ntypedef long i64;\n"
     "typedef double f64;\ntypedef float f32;\n\n".
 
+get_function_declars(FnAst) ->
+    get_function_declars(FnAst, []).
+
+get_function_declars([#function{name=Name, params=Params, ret=Rettype}
+		      | Rest], Declars) ->
+    Declar = fn_declar_str(Name, Params, Rettype),
+    get_function_declars(Rest, [Declar | Declars]);
+get_function_declars([], Declars) ->
+    lists:flatten(lists:join(";\n", Declars), ";\n\n").
+
+fn_declar_str(Name, Params, Rettype) ->
+    io_lib:format("~s ~s(~s)", [type_tostr(Rettype), Name,
+				defvar_tostr(Params, {",", false})]).
+
 statements_tostr([#function{name=Name, params=Params,
 			    ret=Rettype, exprs=Exprs} | Rest]) ->
-    FnDeclar = io_lib:format("~s ~s(~s)", [type_tostr(Rettype), Name,
-					   defvar_tostr(Params, {",", false})]),
-    Declars = get(functions),
-    put(functions, [FnDeclar | Declars]),
-    [io_lib:format("~s~n{~n~s~n}~n~n", [FnDeclar, exprs_tostr(Exprs)])
+    Declar = fn_declar_str(Name, Params, Rettype),
+    [io_lib:format("~s~n{~n~s~n}~n~n", [Declar, exprs_tostr(Exprs)])
      | statements_tostr(Rest)];
 statements_tostr([#struct{name=Name, fields=Fields} | Rest]) ->
     [io_lib:format("typedef struct {~n~s~n} ~s;~n~n",
@@ -51,7 +66,7 @@ defvar_tostr(Vars) ->
 defvar_tostr([?VARDEF(Name, Type, Initval) | Rest], SplitChar, Defs)
   when Initval =/= none ->
     S = io_lib:format("~s = ~s", [type_tostr_vardef(Type, Name),
-				     expr_tostr(Initval)]),
+				  expr_tostr(Initval)]),
     defvar_tostr(Rest, SplitChar, [S | Defs]);
 defvar_tostr([?VARDEF(Name, Type, _Initval) | Rest], SplitChar, Defs) ->
     defvar_tostr(Rest, SplitChar,
