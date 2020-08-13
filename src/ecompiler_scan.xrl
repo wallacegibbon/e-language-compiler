@@ -18,7 +18,8 @@ CommentStart = %
 Rules.
 
 {CommentStart}[^\n]* :
-    {token, {comment, TokenLine, tl(TokenChars)}}.
+    %{token, {comment, TokenLine, tl(TokenChars)}}.
+    skip_token.
 
 {StrQuote}{StrQuote} :
     {token, {string, TokenLine, ""}}.
@@ -47,7 +48,7 @@ Rules.
 {Delim} :
     {token, {list_to_atom(TokenChars), TokenLine}}.
 
-const|struct|end|fun|if|elif|else|while|rem|and|or|band|bor|bxor|bsl|bsr :
+const|struct|end|fun|return|if|elif|else|while|rem|and|or|band|bor|bxor|bsl|bsr :
     {token, {list_to_atom(TokenChars), TokenLine}}.
 
 u8|i8|u16|i16|u32|i32|u64|i64|f32|f64|any :

@@ -1,8 +1,9 @@
 Nonterminals
 
-vardefs vardef defconst defstruct defun variable args arg
+statements statement defconst defstruct defun vardefs vardef variable args
 exprs expr call_expr if_expr else_expr while_expr preminusplus_expr
-op19 op29 op28 op27 op26 op25
+variable_definition return_expr
+op19 op30 op29 op28 op27 op26 op25
 typeanno pointer_depth general_type atomic_literal constant
 .
 
@@ -13,15 +14,22 @@ Terminals
 '!=' '==' '>=' '<='
 %% keywords
 const struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
-while 'if' elif else
+while 'if' elif else return
 %%
 identifier integer float string single_type
 .
 
-%Rootsymbol defstruct.
-Rootsymbol defun.
+Rootsymbol statements.
 
-defconst -> const identifier '=' expr :
+statements -> statement statements : ['$1' | '$2'].
+statements -> statement : ['$1'].
+
+statement -> defconst : '$1'.
+statement -> defstruct : '$1'.
+statement -> defun : '$1'.
+
+
+defconst -> const identifier '=' expr ';' :
     #const{name=tok_val('$2'), val='$4', line=tok_line('$2')}.
 
 constant -> atomic_literal : tok_val('$1').
@@ -74,12 +82,9 @@ defun -> 'fun' identifier '(' vardefs ')' ':' typeanno exprs 'end' :
 call_expr -> identifier '(' args ')' :
     {call, '$1', '$3'}.
 
-args -> arg ',' args : ['$1' | '$3'].
-args -> arg ',' : ['$1'].
-args -> arg : ['$1'].
-
-arg -> variable : '$1'.
-arg -> atomic_literal : '$1'.
+args -> expr ',' args : ['$1' | '$3'].
+args -> expr ',' : ['$1'].
+args -> expr : ['$1'].
 
 %% while
 while_expr -> while '(' expr ')' exprs 'end' :
@@ -96,6 +101,9 @@ else_expr -> else exprs 'end' :
 else_expr -> 'end' :
     [].
 
+return_expr -> return expr :
+    {return, tok_line('$1'), '$2'}.
+
 %% expression
 exprs -> expr ';' exprs : ['$1' | '$3'].
 exprs -> expr ';' : ['$1'].
@@ -104,11 +112,15 @@ exprs -> if_expr exprs : ['$1' | '$2'].
 exprs -> while_expr : ['$1'].
 exprs -> if_expr : ['$1'].
 
+expr -> variable_definition : '$1'.
+expr -> return_expr : '$1'.
 expr -> '(' expr ')' : '$2'.
 expr -> atomic_literal : '$1'.
 expr -> variable : '$1'.
 expr -> call_expr : '$1'.
 expr -> preminusplus_expr : '$1'.
+expr -> expr op30 expr :
+    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
 expr -> expr op29 expr :
     {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
 expr -> expr op28 expr :
@@ -121,10 +133,11 @@ expr -> expr op25 expr :
     {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
 expr -> expr op19 :
     {op, tok_line('$2'), tok_sym('$2'), '$1'}.
-expr -> expr ':' typeanno '=' expr :
-    {op, tok_line('$4'), vardef, '$1', '$5', '$3'}.
 expr -> expr '=' expr :
-    {op, tok_line('$2'), assign, '$1', '$3'}.
+    {op, tok_line('$1'), assign, '$1', '$3'}.
+
+variable_definition -> vardef :
+    {vardef, tok_line('$1'), '$1'}.
 
 Unary 800 preminusplus_expr.
 preminusplus_expr -> '-' expr :
@@ -135,9 +148,11 @@ preminusplus_expr -> '+' expr :
 Unary 900 op19.
 op19 -> '^' : '$1'.
 op19 -> '@' : '$1'.
-op19 -> '.' : '$1'.
 op19 -> '!' : '$1'.
 op19 -> '~' : '$1'.
+
+Left 300 op30.
+op30 -> '.' : '$1'.
 
 Left 290 op29.
 op29 -> '*' : '$1'.
