@@ -4,6 +4,13 @@ struct User
     description: <i8, 10>,
 end
 
+struct Administrator
+    user: User^,
+    level: u8,
+end
+
+const TOTAL_ADMIN_LIMIT = 10;
+
 % t: block<i8, 10>;   t@ --> i8^
 
 const TOTOAL_USERCNT = 10 + 2 * 10;
@@ -14,14 +21,14 @@ fun main(argc: i32, argv: i8^^): i32
     return 0;
 end
 
-fun init_users(users: User^^, size: u8): any
+fun init_users(users: User^^, size: u8): void
     cnt: u32 = 0;
     while (cnt < size)
 	init_user((users + cnt)^, cnt, "test");
     end
 end
 
-fun init_user(user: User^, id: u8, description: i8^): any
+fun init_user(user: User^, id: u8, description: i8^): void
     user^.id = id;
     memcpy(user^.description@, "hello");
 end

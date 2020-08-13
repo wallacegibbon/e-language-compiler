@@ -7,7 +7,7 @@
 
 -record(function, {line :: integer(),
 		   name :: string(),
-		   args :: [e_kvpair()],
+		   params :: [e_kvpair()],
 		   ret :: e_type(),
 		   exprs :: [e_expr()]}).
 

@@ -1,6 +1,6 @@
 Nonterminals
 
-statements statement defconst defstruct defun defvars defvar varref args
+statements statement defconst defstruct defun defvars defvar varref params
 exprs expr call_expr if_expr else_expr while_expr preminusplus_expr
 return_expr expr_or_defvar
 op19 op30 op29 op28 op27 op26 op25
@@ -75,16 +75,16 @@ defstruct -> struct identifier defvars 'end' :
 
 %% function definition
 defun -> 'fun' identifier '(' defvars ')' ':' typeanno exprs 'end' :
-    #function{name=tok_val('$2'), args='$4', ret='$7', exprs='$8',
+    #function{name=tok_val('$2'), params='$4', ret='$7', exprs='$8',
 	      line=tok_line('$2')}.
 
 %% function invocation
-call_expr -> identifier '(' args ')' :
+call_expr -> identifier '(' params ')' :
     {call, '$1', '$3'}.
 
-args -> expr ',' args : ['$1' | '$3'].
-args -> expr ',' : ['$1'].
-args -> expr : ['$1'].
+params -> expr ',' params : ['$1' | '$3'].
+params -> expr ',' : ['$1'].
+params -> expr : ['$1'].
 
 %% while
 while_expr -> while '(' expr ')' exprs 'end' :
