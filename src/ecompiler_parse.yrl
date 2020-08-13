@@ -80,7 +80,7 @@ defun -> 'fun' identifier '(' defvars ')' ':' typeanno exprs 'end' :
 
 %% function invocation
 call_expr -> identifier '(' params ')' :
-    {call, '$1', '$3'}.
+    {call, tok_line('$1'), tok_val('$1'), '$3'}.
 
 params -> expr ',' params : ['$1' | '$3'].
 params -> expr ',' : ['$1'].
@@ -150,7 +150,7 @@ op19 -> '@' : '$1'.
 op19 -> '!' : '$1'.
 op19 -> '~' : '$1'.
 
-Left 300 op30.
+Left 1000 op30.
 op30 -> '.' : '$1'.
 
 Left 290 op29.
