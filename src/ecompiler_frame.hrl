@@ -21,15 +21,20 @@
 		  else :: [e_expr()]}).
 
 -record(struct, {line :: integer(),
-		 name :: string(),
+		 name :: atom(),
 		 fields :: [e_kvpair()]}).
 
 -record(const, {line :: integer(),
 		name :: atom(),
 		val :: any()}).
 
--record(var, {line :: integer(),
-	      name :: atom()}).
+-record(vardef, {line :: integer(),
+		 name :: atom(),
+		 type :: e_type(),
+		 initval = none :: any()}).
+
+-record(varref, {line :: integer(),
+		 name :: atom()}).
 
 -record(integer, {line :: integer(),
 		  val :: integer()}).

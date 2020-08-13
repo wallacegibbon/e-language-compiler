@@ -52,7 +52,7 @@ const|struct|end|fun|return|if|elif|else|while|rem|and|or|band|bor|bxor|bsl|bsr 
     {token, {list_to_atom(TokenChars), TokenLine}}.
 
 u8|i8|u16|i16|u32|i32|u64|i64|f32|f64|any :
-    {token, {single_type, TokenLine, list_to_atom(TokenChars)}}.
+    {token, {basic_type, TokenLine, list_to_atom(TokenChars)}}.
 
 {Identifier} :
     {token, {identifier, TokenLine, list_to_atom(TokenChars)}}.

@@ -1,8 +1,8 @@
 Nonterminals
 
-statements statement defconst defstruct defun vardefs vardef variable args
+statements statement defconst defstruct defun defvars defvar varref args
 exprs expr call_expr if_expr else_expr while_expr preminusplus_expr
-variable_definition return_expr
+return_expr expr_or_defvar
 op19 op30 op29 op28 op27 op26 op25
 typeanno pointer_depth general_type atomic_literal constant
 .
@@ -16,7 +16,7 @@ Terminals
 const struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
 while 'if' elif else return
 %%
-identifier integer float string single_type
+identifier integer float string basic_type
 .
 
 Rootsymbol statements.
@@ -39,42 +39,42 @@ atomic_literal -> integer : '$1'.
 atomic_literal -> float : '$1'.
 atomic_literal -> string : '$1'.
 
-variable -> identifier :
-    #var{name=tok_val('$1'), line=tok_line('$1')}.
+varref -> identifier :
+    #varref{name=tok_val('$1'), line=tok_line('$1')}.
 
 %% type annotation inside box or function
 typeanno -> '<' typeanno ',' constant '>' :
     {box_type, tok_line('$2'), '$4', element(3, '$2')}.
 
 typeanno -> general_type pointer_depth :
-    {single_type, tok_line('$1'), {tok_val('$1'), '$2'}}.
+    {basic_type, tok_line('$1'), {tok_val('$1'), '$2'}}.
 
 typeanno -> general_type :
-    {single_type, tok_line('$1'), tok_val('$1')}.
+    {basic_type, tok_line('$1'), tok_val('$1')}.
 
-general_type -> single_type : '$1'.
+general_type -> basic_type : '$1'.
 general_type -> identifier : '$1'.
 
 %% pointer depth
 pointer_depth -> '^' pointer_depth : '$2' + 1.
 pointer_depth -> '^' : 1.
 
-vardefs -> vardef ',' vardefs : ['$1' | '$3'].
-vardefs -> vardef ',' : ['$1'].
-vardefs -> vardef : ['$1'].
+defvars -> defvar ',' defvars : ['$1' | '$3'].
+defvars -> defvar ',' : ['$1'].
+defvars -> defvar : ['$1'].
 
-vardef -> identifier ':' typeanno '=' expr :
-    {tok_val('$1'), '$3', '$5'}.
+defvar -> identifier ':' typeanno '=' expr :
+    #vardef{name=tok_val('$1'), type='$3', initval='$5', line=tok_line('$1')}.
 
-vardef -> identifier ':' typeanno :
-    {tok_val('$1'), '$3'}.
+defvar -> identifier ':' typeanno :
+    #vardef{name=tok_val('$1'), type='$3', line=tok_line('$1')}.
 
 %% struct definition
-defstruct -> struct identifier vardefs 'end' :
+defstruct -> struct identifier defvars 'end' :
     #struct{name=tok_val('$2'), fields='$3', line=tok_line('$2')}.
 
 %% function definition
-defun -> 'fun' identifier '(' vardefs ')' ':' typeanno exprs 'end' :
+defun -> 'fun' identifier '(' defvars ')' ':' typeanno exprs 'end' :
     #function{name=tok_val('$2'), args='$4', ret='$7', exprs='$8',
 	      line=tok_line('$2')}.
 
@@ -105,18 +105,20 @@ return_expr -> return expr :
     {return, tok_line('$1'), '$2'}.
 
 %% expression
-exprs -> expr ';' exprs : ['$1' | '$3'].
-exprs -> expr ';' : ['$1'].
+exprs -> expr_or_defvar ';' exprs : ['$1' | '$3'].
+exprs -> expr_or_defvar ';' : ['$1'].
 exprs -> while_expr exprs : ['$1' | '$2'].
 exprs -> if_expr exprs : ['$1' | '$2'].
 exprs -> while_expr : ['$1'].
 exprs -> if_expr : ['$1'].
 
-expr -> variable_definition : '$1'.
+expr_or_defvar -> defvar : '$1'.
+expr_or_defvar -> expr : '$1'.
+
 expr -> return_expr : '$1'.
 expr -> '(' expr ')' : '$2'.
 expr -> atomic_literal : '$1'.
-expr -> variable : '$1'.
+expr -> varref : '$1'.
 expr -> call_expr : '$1'.
 expr -> preminusplus_expr : '$1'.
 expr -> expr op30 expr :
@@ -135,9 +137,6 @@ expr -> expr op19 :
     {op, tok_line('$2'), tok_sym('$2'), '$1'}.
 expr -> expr '=' expr :
     {op, tok_line('$1'), assign, '$1', '$3'}.
-
-variable_definition -> vardef :
-    {vardef, tok_line('$1'), '$1'}.
 
 Unary 800 preminusplus_expr.
 preminusplus_expr -> '-' expr :
