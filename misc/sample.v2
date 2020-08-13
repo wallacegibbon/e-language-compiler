@@ -1,8 +1,8 @@
 struct User
     %id: u32 = 0,
     id: u32,
-    nameref: i8^^,
-    description: <i8, 10>,
+    nameref: i8^,
+    desc: <i8, 10>,
 end
 
 struct Administrator
@@ -12,7 +12,11 @@ end
 
 const TOTAL_ADMIN_LIMIT = 10;
 
-% t: block<i8, 10>;   t@ --> i8^
+% t: <i8, 3> = {0, 1, 2}; % t@^
+% struct {i8 val[8];} t = {{0, 1, 2}}; // *(t.val)
+
+% t: <User, 2> = {User{id=1, desc={"a"}}, User{id=2, desc={"b"}}};
+% struct {User val[2];} t = {{1, 0, {"a"}}, {2, 0, {"b"}}};
 
 const TOTOAL_USERCNT = 10 + 2 * 10;
 
@@ -29,8 +33,8 @@ fun init_users(users: User^^, size: u8): void
     end
 end
 
-fun init_user(user: User^, id: u8, description: i8^): void
+fun init_user(user: User^, id: u8, desc: i8^): void
     user^.id = id;
-    cpy(user^.description@, "hello");
+    cpy(user^.desc@, "hello");
 end
 
