@@ -44,13 +44,13 @@ varref -> identifier :
 
 %% type annotation inside box or function
 typeanno -> '<' typeanno ',' constref '>' :
-    {box_type, tok_line('$1'), '$4', '$2'}.
+    #box_type{elemtype='$2', size='$4', line=tok_line('$1')}.
 
 typeanno -> general_type pointer_depth :
-    {basic_type, tok_line('$1'), {tok_val('$1'), '$2'}}.
+    #basic_type{type={tok_val('$1'), '$2'}, line=tok_line('$1')}.
 
 typeanno -> general_type :
-    {basic_type, tok_line('$1'), tok_val('$1')}.
+    #basic_type{type=tok_val('$1'), line=tok_line('$1')}.
 
 general_type -> basic_type : '$1'.
 general_type -> identifier : '$1'.
@@ -80,7 +80,7 @@ defun -> 'fun' identifier '(' defvars ')' ':' typeanno exprs 'end' :
 
 %% function invocation
 call_expr -> identifier '(' params ')' :
-    {call, tok_line('$1'), tok_val('$1'), '$3'}.
+    #call{name=tok_val('$1'), args='$3', line=tok_line('$1')}.
 
 params -> expr ',' params : ['$1' | '$3'].
 params -> expr ',' : ['$1'].
@@ -102,7 +102,7 @@ else_expr -> 'end' :
     [].
 
 return_expr -> return expr :
-    {return, tok_line('$1'), '$2'}.
+    #return{expr='$2', line=tok_line('$1')}.
 
 %% expression
 exprs -> expr_or_defvar ';' exprs : ['$1' | '$3'].
@@ -122,27 +122,27 @@ expr -> varref : '$1'.
 expr -> call_expr : '$1'.
 expr -> preminusplus_expr : '$1'.
 expr -> expr op30 expr :
-    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
+    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op29 expr :
-    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
+    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op28 expr :
-    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
+    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op27 expr :
-    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
+    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op26 expr :
-    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
+    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op25 expr :
-    {op, tok_line('$2'), tok_sym('$2'), '$1', '$3'}.
+    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op19 :
-    {op, tok_line('$2'), tok_sym('$2'), '$1'}.
+    #op1{operator=tok_sym('$2'), operand='$1', line=tok_line('$2')}.
 expr -> expr '=' expr :
-    {op, tok_line('$1'), assign, '$1', '$3'}.
+    #op2{operator=assign, op1='$1', op2='$3', line=tok_line('$2')}.
 
 Unary 800 preminusplus_expr.
 preminusplus_expr -> '-' expr :
-    {op, tok_line('$1'), tok_sym('$1'), '$2'}.
+    #op1{operator=tok_sym('$1'), operand='$2', line=tok_line('$1')}.
 preminusplus_expr -> '+' expr :
-    {op, tok_line('$1'), tok_sym('$1'), '$2'}.
+    #op1{operator=tok_sym('$1'), operand='$2', line=tok_line('$1')}.
 
 Unary 900 op19.
 op19 -> '^' : '$1'.

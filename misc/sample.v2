@@ -6,7 +6,7 @@ struct User
 end
 
 struct Administrator
-    users: <<User, 10>, 10>,
+    users: <<User, 10>, TOTAL_ADMIN_LIMIT>,
     level: u8,
 end
 
@@ -18,11 +18,14 @@ const TOTAL_ADMIN_LIMIT = 10;
 % t: <User, 2> = {User{id=1, desc={"a"}}, User{id=2, desc={"b"}}};
 % struct {User val[2];} t = {{1, 0, {"a"}}, {2, 0, {"b"}}};
 
-const BASE_MUL = 10;
-const TOTOAL_USERCNT = 10 + 2 * BASE_MUL;
+const BASE_MUL = 12;
+const TOTOAL_USERCNT = 10 + 3 * BASE_MUL - 1;
+const blah1 = 1 bsl 8;
+const blah2 = 1 bsr 8;
 
 fun main(argc: i32, argv: i8^^): i32
     users: <User, TOTOAL_USERCNT>;
+    cnt: u32 = TOTOAL_USERCNT;
     init_users(users@, length(users));
     return 0;
 end
