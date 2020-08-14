@@ -4,7 +4,7 @@ statements statement defconst defstruct defun defvars defvar varref params
 exprs expr call_expr if_expr else_expr while_expr preminusplus_expr
 return_expr expr_or_defvar
 op19 op30 op29 op28 op27 op26 op25
-typeanno pointer_depth general_type atomic_literal constant
+typeanno pointer_depth general_type atomic_literal constref
 .
 
 Terminals
@@ -32,8 +32,8 @@ statement -> defun : '$1'.
 defconst -> const identifier '=' expr ';' :
     #const{name=tok_val('$2'), val='$4', line=tok_line('$2')}.
 
-constant -> atomic_literal : tok_val('$1').
-constant -> identifier : {eval, '$1'}.
+constref -> atomic_literal : tok_val('$1').
+constref -> identifier : {constref, tok_line('$1'), tok_val('$1')}.
 
 atomic_literal -> integer : '$1'.
 atomic_literal -> float : '$1'.
@@ -43,8 +43,8 @@ varref -> identifier :
     #varref{name=tok_val('$1'), line=tok_line('$1')}.
 
 %% type annotation inside box or function
-typeanno -> '<' typeanno ',' constant '>' :
-    {box_type, tok_line('$2'), '$4', element(3, '$2')}.
+typeanno -> '<' typeanno ',' constref '>' :
+    {box_type, tok_line('$1'), '$4', '$2'}.
 
 typeanno -> general_type pointer_depth :
     {basic_type, tok_line('$1'), {tok_val('$1'), '$2'}}.

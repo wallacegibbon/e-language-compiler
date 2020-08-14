@@ -4,7 +4,6 @@
 
 -include("./ecompiler_frame.hrl").
 
-
 generate_ccode(Ast, OutputFile) ->
     {Fns, Others} = lists:partition(fun(A) -> element(1, A) =:= function end,
 				    Ast),
@@ -22,6 +21,10 @@ common_code() ->
     "typedef unsigned long u64;\ntypedef long i64;\n"
     "typedef double f64;\ntypedef float f32;\n\n".
 
+fn_declar_str(Name, Params, Rettype) ->
+    io_lib:format("~s ~s(~s)", [type_tostr(Rettype), Name,
+				defvar_tostr(Params, {",", false})]).
+
 get_function_declars(FnAst) ->
     get_function_declars(FnAst, []).
 
@@ -31,10 +34,6 @@ get_function_declars([#function{name=Name, params=Params, ret=Rettype}
     get_function_declars(Rest, [Declar | Declars]);
 get_function_declars([], Declars) ->
     lists:flatten(lists:join(";\n", Declars), ";\n\n").
-
-fn_declar_str(Name, Params, Rettype) ->
-    io_lib:format("~s ~s(~s)", [type_tostr(Rettype), Name,
-				defvar_tostr(Params, {",", false})]).
 
 statements_tostr([#function{name=Name, params=Params,
 			    ret=Rettype, exprs=Exprs} | Rest]) ->
@@ -65,31 +64,21 @@ defvar_tostr(Vars) ->
 
 defvar_tostr([?VARDEF(Name, Type, Initval) | Rest], SplitChar, Defs)
   when Initval =/= none ->
-    S = io_lib:format("~s = ~s", [type_tostr_vardef(Type, Name),
-				  expr_tostr(Initval)]),
+    S = io_lib:format("~s ~s = ~s", [type_tostr(Type), Name,
+				     expr_tostr(Initval)]),
     defvar_tostr(Rest, SplitChar, [S | Defs]);
 defvar_tostr([?VARDEF(Name, Type, _Initval) | Rest], SplitChar, Defs) ->
-    defvar_tostr(Rest, SplitChar,
-		 [type_tostr_vardef(Type, Name) | Defs]);
+    S = io_lib:format("~s ~s", [type_tostr(Type), Name]),
+    defvar_tostr(Rest, SplitChar, [S | Defs]);
 defvar_tostr([], SplitChar, Defs) ->
     lists:join(SplitChar, lists:reverse(Defs)).
 
-
-%% int[3] a; is not valid in C, you need int a[3];
-type_tostr_vardef({box_type, _, Size, Typeanno}, Name) ->
-    io_lib:format("~s ~s[~w]", [type_anno_tostr(Typeanno), Name, Size]);
-type_tostr_vardef({basic_type, _, Typeanno}, Name) ->
-    io_lib:format("~s ~s", [type_anno_tostr(Typeanno), Name]).
-
-type_tostr({box_type, _, Size, Typeanno}) ->
-    io_lib:format("~s[~w]", [type_anno_tostr(Typeanno), Size]);
+type_tostr({box_type, _, Size, ElementType}) ->
+    io_lib:format("struct {~s val[~w];}", [type_tostr(ElementType), Size]);
+type_tostr({basic_type, _, {Typeanno, Depth}}) ->
+    io_lib:format("~s~s", [Typeanno, lists:duplicate(Depth, "*")]);
 type_tostr({basic_type, _, Typeanno}) ->
-    type_anno_tostr(Typeanno).
-
-type_anno_tostr({T, Depth}) ->
-    io_lib:format("~s~s", [T, lists:duplicate(Depth, "*")]);
-type_anno_tostr(T) ->
-    io_lib:format("~s", [T]).
+    io_lib:format("~s", [Typeanno]).
 
 expr_tostr(#if_expr{condition=Condition, then=Then, else=Else}) ->
     io_lib:format("if (~s) {\n~s\n} else {\n~s}",
@@ -111,10 +100,10 @@ expr_tostr({call, _Line, Name, Args}) ->
 expr_tostr({return, _Line, Expr}) ->
     io_lib:format("return ~s", [expr_tostr(Expr)]);
 expr_tostr({vardef, _Line, Name, Type, none}) ->
-    type_tostr_vardef(Type, Name);
+    io_lib:format("~s ~s", [type_tostr(Type), Name]);
 expr_tostr({vardef, _Line, Name, Type, Initval}) ->
-    io_lib:format("~s = ~s", [type_tostr_vardef(Type, Name),
-			      expr_tostr(Initval)]);
+    io_lib:format("~s ~s = ~s", [type_tostr(Type), Name,
+				 expr_tostr(Initval)]);
 expr_tostr({varref, _Line, Name}) ->
     io_lib:format("~s", [Name]);
 expr_tostr({Any, _Line, Value}) when Any =:= integer; Any =:= float ->
