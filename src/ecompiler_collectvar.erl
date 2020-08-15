@@ -15,13 +15,13 @@ fetch_vars([#vardef{name=Name, type=Type, line=Line, initval=Initval} | Rest],
 	    throw({Line, flat_format("name <~s> conflict", [Name])});
 	error ->
 	    fetch_vars(Rest, NewAst, Vars#{Name => Type},
-		       update_initcode(InitCode, Name, Initval, Line))
+		       append_to_ast(InitCode, Name, Initval, Line))
     end;
 fetch_vars([#function{name=Name, ret=Rettype, params=Params, exprs=Exprs}
 	    | Rest],
 	   NewAst, Vars, InitCode) ->
-    %check params and variable name conflict
-    {NewExprs, FunVars, FunInitCode} = fetch_vars(Exprs),
+    %% @TODO check params and variable name conflict
+    {NewExprs, FunVars, FunInitCode} = fetch_vars_in_fnexprs(Exprs),
     {[], ParamVars, ParamInitCode} = fetch_vars(Params),
     Fn = #function_1{name=Name, ret=Rettype, exprs=FunInitCode ++ NewExprs,
 		     vars=maps:merge(ParamVars, FunVars),
@@ -40,9 +40,29 @@ fetch_vars([Any | Rest], NewAst, Vars, InitCode) ->
 fetch_vars([], NewAst, Vars, InitCode) ->
     {lists:reverse(NewAst), Vars, lists:reverse(InitCode)}.
 
-update_initcode(InitCode, Varname, Initval, Line) when Initval =/= none ->
+%% in function expressions, the init code of defvar can not be simply
+%% fetched out from the code, it should be replaced as assignment in the
+%% same place.
+fetch_vars_in_fnexprs(Ast) -> fetch_vars_in_fnexprs(Ast, [], #{}, []).
+
+fetch_vars_in_fnexprs([#vardef{name=Name, type=Type, line=Line,
+			       initval=Initval} | Rest],
+		      NewAst, Vars, InitCode) ->
+    case maps:find(Name, Vars) of
+	{ok, _} ->
+	    throw({Line, flat_format("name <~s> conflict", [Name])});
+	error ->
+	    fetch_vars(Rest, append_to_ast(NewAst, Name, Initval, Line),
+		       Vars#{Name => Type}, InitCode)
+    end;
+fetch_vars_in_fnexprs([Any | Rest], NewAst, Vars, InitCode) ->
+    fetch_vars_in_fnexprs(Rest, [Any | NewAst], Vars, InitCode);
+fetch_vars_in_fnexprs([], NewAst, Vars, InitCode) ->
+    {lists:reverse(NewAst), Vars, lists:reverse(InitCode)}.
+
+append_to_ast(Ast, Varname, Initval, Line) when Initval =/= none ->
     [#op2{operator=assign, op1=#varref{name=Varname, line=Line},
-	  op2=Initval, line=Line} | InitCode];
-update_initcode(InitCode, _, _, _) ->
-    InitCode.
+	  op2=Initval, line=Line} | Ast];
+append_to_ast(Ast, _, _, _) ->
+    Ast.
 
