@@ -1,6 +1,6 @@
 -module(ecompiler).
 
--export([parse_file/1, compile_to_c/2]).
+-export([parse_file/1, parse_and_compile/1, compile_to_c/2]).
 
 compile_to_c(InputFilename, OutputFilename) ->
     {ok, Ast} = parse_file(InputFilename),
@@ -16,6 +16,10 @@ parse_file(Filename) when is_list(Filename) ->
 	{error, E} ->
 	    parse_error(E)
     end.
+
+parse_and_compile(Filename) ->
+    {ok, Ast} = parse_file(Filename),
+    ecompiler_compile:compile_from_rawast(Ast).
 
 parse_error({Line, _, Errinfo}) ->
     io:format("parse error(line ~w), ~s~n", [Line, Errinfo]).

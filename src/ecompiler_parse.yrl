@@ -27,6 +27,7 @@ statements -> statement : ['$1'].
 statement -> defconst : '$1'.
 statement -> defstruct : '$1'.
 statement -> defun : '$1'.
+statement -> defvar ';' : '$1'.
 
 
 defconst -> const identifier '=' expr ';' :

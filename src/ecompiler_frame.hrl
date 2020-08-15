@@ -2,8 +2,19 @@
 -type e_type() :: any().
 -type e_expr() :: any().
 
+-record(function_1, {name :: atom(),
+		     params :: [atom()],
+		     params_defaultinit :: [e_expr()],
+		     ret :: e_type(),
+		     vars :: #{atom() => e_type()},
+		     exprs :: [e_expr()]}).
+
+-record(struct_1, {name :: atom(),
+		   fields :: [any()],
+		   initcode :: [e_expr()]}).
+
 -record(function, {line :: integer(),
-		   name :: string(),
+		   name :: atom(),
 		   params :: [e_expr()],
 		   ret :: e_type(),
 		   exprs :: [e_expr()]}).

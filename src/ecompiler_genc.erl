@@ -5,10 +5,10 @@
 -include("./ecompiler_frame.hrl").
 
 generate_ccode(Ast, OutputFile) ->
-    AstWithoutConst = ecompiler_fillconst:parse_and_remove_const(Ast),
+    CompiledAst = ecompiler_compile:compile_from_rawast(Ast),
     {Fns, Others} = lists:partition(fun(A) ->
 					    element(1, A) =:= function
-				    end, AstWithoutConst),
+				    end, CompiledAst),
     FnDeclars = get_function_declars(Fns),
     FnStatements = statements_tostr(Fns),
     OtherStatements = statements_tostr(Others),
@@ -23,7 +23,7 @@ common_code() ->
     "typedef unsigned long u64;\ntypedef long i64;\n"
     "typedef double f64;\ntypedef float f32;\n\n".
 
-%% convert statements(function, struct and const definitions) to C string
+%% convert statements(function and struct definitions) to C string
 fn_declar_str(Name, Params, Rettype) ->
     io_lib:format("~s ~s(~s)", [type_tostr(Rettype), Name,
 				defvar_tostr(Params, {",", false})]).
@@ -47,9 +47,6 @@ statements_tostr([#struct{name=Name, fields=Fields} | Rest]) ->
     [io_lib:format("typedef struct {~n~s~n} ~s;~n~n",
 		   [defvar_tostr(Fields), Name])
      | statements_tostr(Rest)];
-statements_tostr([#const{name=Name, val=Expr} | Rest]) ->
-    [io_lib:format("#define ~s (~s)~n~n",
-		   [Name, expr_tostr(Expr)]) | statements_tostr(Rest)];
 statements_tostr([]) ->
     [].
 

@@ -11,6 +11,10 @@ struct Administrator
     level: u8,
 end
 
+% global variable
+mod_info: <i8, 100>;
+blah: u8 = 10;
+
 const TOTAL_ADMIN_LIMIT = 10;
 
 % t: <i8, 3> = {0, 1, 2}; % t@^

@@ -2,6 +2,8 @@
 
 -export([parse_and_remove_const/1]).
 
+-import(ecompiler_utils, [flat_format/2]).
+
 -include("./ecompiler_frame.hrl").
 
 %% find all consts in AST, calculate it and replace all const references.
@@ -63,6 +65,9 @@ replace_constants([#function{params=Params, exprs=Exprs} = Fn | Rest],
      | replace_constants(Rest, Constants)];
 replace_constants([#struct{fields=Fields} = S | Rest], Constants) ->
     [S#struct{fields=replace_constants_inexprs(Fields, Constants)}
+     | replace_constants(Rest, Constants)];
+replace_constants([#vardef{initval=Initval} = V | Rest], Constants) ->
+    [V#vardef{initval=replace_constants_inexpr(Initval, Constants)}
      | replace_constants(Rest, Constants)];
 replace_constants([], _) ->
     [].
@@ -131,7 +136,4 @@ replace_constants_intype(#box_type{elemtype=ElementType, size=Size} = T,
 				   Constants)};
 replace_constants_intype(Any, _) ->
     Any.
-
-flat_format(FmtStr, Args) ->
-    lists:flatten(io_lib:format(FmtStr, Args)).
 
