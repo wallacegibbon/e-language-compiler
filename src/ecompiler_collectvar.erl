@@ -28,23 +28,19 @@ fetch_vars([#vardef{name=Name, type=Type, line=Line, initval=Initval} | Rest],
 			      Vars#{Name => Type}, InitCode, CollectInitCode)
 	    end;
 	{ok, _} ->
-	    throw({Line, flat_format("name <~s> conflict", [Name])})
+	    throw({Line, flat_format("var name conflict: \"~s\"",
+				     [Name])})
     end;
-fetch_vars([#function{name=Name, ret=Rettype, params=Params, exprs=Exprs}
-	    | Rest],
+fetch_vars([#function{name=Name, ret=Ret, params=Params, exprs=Exprs} | Rest],
 	   NewAst, Vars, InitCode, CollectInitCode) ->
-    %% @TODO check params and variable name conflict
-    {NewExprs, FunVars, []} = fetch_vars(Exprs, false),
+    ParamNames = lists:map(fun (#vardef{name=VarName}) -> VarName end, Params),
     {[], ParamVars, ParamInitCode} = fetch_vars(Params),
-    Fn = #function_1{name=Name, ret=Rettype, exprs=NewExprs,
-		     vars=maps:merge(ParamVars, FunVars),
-		     params_defaultinit=ParamInitCode,
-		     params=lists:map(fun (#vardef{name=VarName}) ->
-					      VarName
-				      end, Params)},
+    {NewExprs, FunVars, []} = fetch_vars(Exprs, [], ParamVars, [], false),
+    Fn = #function_1{name=Name, ret=Ret, exprs=NewExprs, vars=FunVars,
+		     params_defaultinit=ParamInitCode, params=ParamNames},
     fetch_vars(Rest, [Fn | NewAst], Vars, InitCode, CollectInitCode);
-fetch_vars([#struct{name=Name, fields=Fields} | Rest],
-	   NewAst, Vars, InitCode, CollectInitCode) ->
+fetch_vars([#struct{name=Name, fields=Fields} | Rest], NewAst, Vars, InitCode,
+	   CollectInitCode) ->
     {[], NewFields, StructInitCode} = fetch_vars(Fields),
     S = #struct_1{name=Name, fields=NewFields, initcode=StructInitCode},
     fetch_vars(Rest, [S | NewAst], Vars, InitCode, CollectInitCode);
@@ -52,6 +48,7 @@ fetch_vars([Any | Rest], NewAst, Vars, InitCode, CollectInitCode) ->
     fetch_vars(Rest, [Any | NewAst], Vars, InitCode, CollectInitCode);
 fetch_vars([], NewAst, Vars, InitCode, _) ->
     {lists:reverse(NewAst), Vars, lists:reverse(InitCode)}.
+
 
 append_to_ast(Ast, Varname, Initval, Line) when Initval =/= none ->
     [#op2{operator=assign, op1=#varref{name=Varname, line=Line},
