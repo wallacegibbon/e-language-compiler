@@ -33,7 +33,7 @@ statements_tostr([#function_1{name=Name, params=Params, vars=Vars,
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n",
 		      [Declar, vars_to_str(maps:without(Params, Vars)),
 		       exprs_tostr(Exprs)]),
-    statements_tostr(Rest, [S | StatementStrs], [Declar ++ ";" | FnDeclars]);
+    statements_tostr(Rest, [S | StatementStrs], [Declar ++ ";\n" | FnDeclars]);
 statements_tostr([#struct_1{name=Name, fields=Fields} | Rest],
 		 StatementStrs, FnDeclars) ->
     S = io_lib:format("typedef struct {~n~s~n} ~s;~n~n",
