@@ -1,18 +1,18 @@
 -module(ecompiler_genc).
 
--export([generate_ccode/2]).
+-export([generate_ccode/4]).
 
 -include("./ecompiler_frame.hrl").
 
-generate_ccode(Ast, OutputFile) ->
-    CompiledAst = ecompiler_compile:compile_from_rawast(Ast),
+generate_ccode(Ast, Vars, _InitCode, OutputFile) ->
     {Fns, Others} = lists:partition(fun(A) ->
-					    element(1, A) =:= function
-				    end, CompiledAst),
-    FnDeclars = get_function_declars(Fns),
-    FnStatements = statements_tostr(Fns),
-    OtherStatements = statements_tostr(Others),
-    Code = [common_code(), OtherStatements, FnDeclars | FnStatements],
+					    element(1, A) =:= function_1
+				    end, Ast),
+    {FnStatements, FnDeclars} = statements_tostr(Fns),
+    {OtherStatements, []} = statements_tostr(Others),
+    VarStatements = vars_to_str(Vars),
+    Code = [common_code(), OtherStatements, "\n\n", VarStatements, "\n\n",
+	    FnDeclars, "\n\n", FnStatements],
     file:write_file(OutputFile, Code).
 
 common_code() ->
@@ -23,47 +23,48 @@ common_code() ->
     "typedef unsigned long u64;\ntypedef long i64;\n"
     "typedef double f64;\ntypedef float f32;\n\n".
 
-%% convert statements(function and struct definitions) to C string
-fn_declar_str(Name, Params, Rettype) ->
+statements_tostr(Statements) ->
+    statements_tostr(Statements, [], []).
+
+statements_tostr([#function_1{name=Name, params=Params, vars=Vars,
+			      ret=Rettype, exprs=Exprs} | Rest],
+		 StatementStrs, FnDeclars) ->
+    Declar = fn_declar_str(Name, Params, Vars, Rettype),
+    S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n",
+		      [Declar, vars_to_str(maps:without(Params, Vars)),
+		       exprs_tostr(Exprs)]),
+    statements_tostr(Rest, [S | StatementStrs], [Declar ++ ";" | FnDeclars]);
+statements_tostr([#struct_1{name=Name, fields=Fields} | Rest],
+		 StatementStrs, FnDeclars) ->
+    S = io_lib:format("typedef struct {~n~s~n} ~s;~n~n",
+		      [vars_to_str(Fields), Name]),
+    statements_tostr(Rest, [S | StatementStrs], FnDeclars);
+statements_tostr([], StatementStrs, FnDeclars) ->
+    {lists:reverse(StatementStrs), lists:reverse(FnDeclars)}.
+
+fn_declar_str(Name, ParamNames, Vars, Rettype) ->
     io_lib:format("~s ~s(~s)", [type_tostr(Rettype), Name,
-				defvar_tostr(Params, {",", false})]).
+				params_to_str(ParamNames, Vars)]).
 
-get_function_declars(FnAst) ->
-    get_function_declars(FnAst, []).
+params_to_str(ParamNames, Vars) ->
+    params_to_str(ParamNames, Vars, []).
 
-get_function_declars([#function{name=Name, params=Params, ret=Rettype}
-		      | Rest], Declars) ->
-    Declar = fn_declar_str(Name, Params, Rettype),
-    get_function_declars(Rest, [Declar | Declars]);
-get_function_declars([], Declars) ->
-    lists:flatten(lists:join(";\n", Declars), ";\n\n").
+params_to_str([ParamName | RestParamNames], Vars, FmtParams) ->
+    Pstr = io_lib:format("~s ~s", [type_tostr(maps:get(ParamName, Vars)),
+				   ParamName]),
+    params_to_str(RestParamNames, Vars, [Pstr | FmtParams]);
+params_to_str([], _, FmtParams) ->
+    lists:join(",", lists:reverse(FmtParams)).
 
-statements_tostr([#function{name=Name, params=Params,
-			    ret=Rettype, exprs=Exprs} | Rest]) ->
-    Declar = fn_declar_str(Name, Params, Rettype),
-    [io_lib:format("~s~n{~n~s~n}~n~n", [Declar, exprs_tostr(Exprs)])
-     | statements_tostr(Rest)];
-statements_tostr([#struct{name=Name, fields=Fields} | Rest]) ->
-    [io_lib:format("typedef struct {~n~s~n} ~s;~n~n",
-		   [defvar_tostr(Fields), Name])
-     | statements_tostr(Rest)];
-statements_tostr([]) ->
-    [].
+vars_to_str(VarsMap) ->
+    lists:flatten(lists:join(";\n", vars_to_str(maps:to_list(VarsMap), [])),
+		  ";").
 
-%% fill ";," of definitions (for function arguments and struct fields)
-defvar_tostr(Vars, {SplitChar, true}) ->
-    [defvar_tostr(Vars, SplitChar, []), SplitChar];
-defvar_tostr(Vars, {SplitChar, false}) ->
-    defvar_tostr(Vars, SplitChar, []).
-
-defvar_tostr(Vars) ->
-    [defvar_tostr(Vars, ";\n", []), ";\n"].
-
-defvar_tostr([Vardef | Rest], SplitChar, Defs)
-  when is_record(Vardef, vardef) ->
-    defvar_tostr(Rest, SplitChar, [expr_tostr(Vardef) | Defs]);
-defvar_tostr([], SplitChar, Defs) ->
-    lists:join(SplitChar, lists:reverse(Defs)).
+vars_to_str([{Name, Type} | Rest], Strs) ->
+    vars_to_str(Rest, [io_lib:format("~s ~s", [type_tostr(Type),
+					       Name]) | Strs]);
+vars_to_str([], Strs) ->
+    lists:reverse(Strs).
 
 %% convert type to C string
 type_tostr(#box_type{size=Size, elemtype=ElementType}) ->
@@ -74,6 +75,14 @@ type_tostr(#basic_type{type=Typeanno}) ->
     io_lib:format("~s", [Typeanno]).
 
 %% convert expression to C string
+exprs_tostr(Exprs) ->
+    [lists:join(";\n", exprs_tostr(Exprs, [])), ";"].
+
+exprs_tostr([Expr | Rest], ExprList) ->
+    exprs_tostr(Rest, [expr_tostr(Expr) | ExprList]);
+exprs_tostr([], ExprList) ->
+    lists:reverse(ExprList).
+
 expr_tostr(#if_expr{condition=Condition, then=Then, else=Else}) ->
     io_lib:format("if (~s) {\n~s\n} else {\n~s}",
 		  [expr_tostr(Condition), exprs_tostr(Then),
@@ -92,10 +101,6 @@ expr_tostr(#call{name=Name, args=Args}) ->
 							     Args))]);
 expr_tostr(#return{expr=Expr}) ->
     io_lib:format("return ~s", [expr_tostr(Expr)]);
-expr_tostr(#vardef{name=Name, type=Type, initval=none}) ->
-    io_lib:format("~s ~s", [type_tostr(Type), Name]);
-expr_tostr(#vardef{name=Name, type=Type, initval=Initval}) ->
-    io_lib:format("~s ~s = ~s", [type_tostr(Type), Name, expr_tostr(Initval)]);
 expr_tostr(#varref{name=Name}) ->
     io_lib:format("~s", [Name]);
 expr_tostr({Any, _Line, Value}) when Any =:= integer; Any =:= float ->
@@ -115,12 +120,4 @@ translate_operator('or') -> "||";
 translate_operator('@') -> "&";
 translate_operator('^') -> "*";
 translate_operator(Any) -> Any.
-
-exprs_tostr(Exprs) ->
-    [lists:join(";\n", exprs_tostr(Exprs, [])), ";"].
-
-exprs_tostr([Expr | Rest], ExprList) ->
-    exprs_tostr(Rest, [expr_tostr(Expr) | ExprList]);
-exprs_tostr([], ExprList) ->
-    lists:reverse(ExprList).
 

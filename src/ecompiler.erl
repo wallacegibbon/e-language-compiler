@@ -4,7 +4,8 @@
 
 compile_to_c(InputFilename, OutputFilename) ->
     {ok, Ast} = parse_file(InputFilename),
-    ecompiler_genc:generate_ccode(Ast, OutputFilename).
+    {Ast2, Vars, InitCode} = ecompiler_compile:compile_from_rawast(Ast),
+    ecompiler_genc:generate_ccode(Ast2, Vars, InitCode, OutputFilename).
 
 
 parse_file(Filename) when is_list(Filename) ->
