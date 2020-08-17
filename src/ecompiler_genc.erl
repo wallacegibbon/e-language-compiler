@@ -67,9 +67,9 @@ vars_to_str([], Strs) ->
 %% convert type to C string
 type_tostr(#box_type{size=Size, elemtype=ElementType}) ->
     io_lib:format("struct {~s val[~w];}", [type_tostr(ElementType), Size]);
-type_tostr(#basic_type{type={Typeanno, Depth}}) ->
+type_tostr(#basic_type{type={Typeanno, Depth}}) when Depth > 0 ->
     io_lib:format("~s ~s", [Typeanno, lists:duplicate(Depth, "*")]);
-type_tostr(#basic_type{type=Typeanno}) ->
+type_tostr(#basic_type{type={Typeanno, 0}}) ->
     io_lib:format("~s", [Typeanno]).
 
 %% convert expression to C string

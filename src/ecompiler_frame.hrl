@@ -1,4 +1,4 @@
-%-type e_type() :: u8 | i8 | u16 | i16 | u32 | i32 | u64 | i64 | f32 | f64 | any.
+%-type e_type() :: u8 | i8 | u16 | i16 | u32 | i32 | u64 | i64 | f64 | f32 | void.
 -type e_type() :: any().
 -type e_expr() :: any().
 

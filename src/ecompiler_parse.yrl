@@ -51,7 +51,7 @@ typeanno -> general_type pointer_depth :
     #basic_type{type={tok_val('$1'), '$2'}, line=tok_line('$1')}.
 
 typeanno -> general_type :
-    #basic_type{type=tok_val('$1'), line=tok_line('$1')}.
+    #basic_type{type={tok_val('$1'), 0}, line=tok_line('$1')}.
 
 general_type -> basic_type : '$1'.
 general_type -> identifier : '$1'.
