@@ -5,13 +5,11 @@
 -include("./ecompiler_frame.hrl").
 
 generate_ccode(Ast, Vars, _InitCode, OutputFile) ->
-    {Fns, Others} = lists:partition(fun(A) ->
-					    element(1, A) =:= function_1
-				    end, Ast),
-    {FnStatements, FnDeclars} = statements_tostr(Fns),
-    {OtherStatements, []} = statements_tostr(Others),
+    {FnMap, StructMap} = Ast,
+    {FnStatements, FnDeclars} = statements_tostr(maps:values(FnMap)),
+    {StructStatements, []} = statements_tostr(maps:values(StructMap)),
     VarStatements = vars_to_str(Vars),
-    Code = [common_code(), OtherStatements, "\n\n", VarStatements, "\n\n",
+    Code = [common_code(), StructStatements, "\n\n", VarStatements, "\n\n",
 	    FnDeclars, "\n\n", FnStatements],
     file:write_file(OutputFile, Code).
 
@@ -26,15 +24,15 @@ common_code() ->
 statements_tostr(Statements) ->
     statements_tostr(Statements, [], []).
 
-statements_tostr([#function_1{name=Name, params=Params, vars=Vars,
-			      ret=Rettype, exprs=Exprs} | Rest],
+statements_tostr([#function{name=Name, params=Params, vars=Vars, ret=Rettype,
+			    exprs=Exprs} | Rest],
 		 StatementStrs, FnDeclars) ->
     Declar = fn_declar_str(Name, Params, Vars, Rettype),
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n",
 		      [Declar, vars_to_str(maps:without(Params, Vars)),
 		       exprs_tostr(Exprs)]),
     statements_tostr(Rest, [S | StatementStrs], [Declar ++ ";\n" | FnDeclars]);
-statements_tostr([#struct_1{name=Name, fields=Fields} | Rest],
+statements_tostr([#struct{name=Name, fields=Fields} | Rest],
 		 StatementStrs, FnDeclars) ->
     S = io_lib:format("typedef struct {~n~s~n} ~s;~n~n",
 		      [vars_to_str(Fields), Name]),

@@ -1,3 +1,4 @@
+%%% this module operates on raw ast with function_raw, struct_raw.
 -module(ecompiler_fillconst).
 
 -export([parse_and_remove_const/1]).
@@ -58,17 +59,17 @@ eval_constexpr({Any, Line, Val}, _) ->
     throw({Line, E}).
 
 %% replace constants in AST
-replace_constants([#function{params=Params, exprs=Exprs} = Fn | Rest],
+replace_constants([#function_raw{params=Params, exprs=Exprs} = Fn | Rest],
 		  Constants) ->
-    [Fn#function{params=replace_constants_inexprs(Params, Constants),
-		 exprs=replace_constants_inexprs(Exprs, Constants)}
-     | replace_constants(Rest, Constants)];
-replace_constants([#struct{fields=Fields} = S | Rest], Constants) ->
-    [S#struct{fields=replace_constants_inexprs(Fields, Constants)}
-     | replace_constants(Rest, Constants)];
+    [Fn#function_raw{params=replace_constants_inexprs(Params, Constants),
+		     exprs=replace_constants_inexprs(Exprs, Constants)} |
+     replace_constants(Rest, Constants)];
+replace_constants([#struct_raw{fields=Fields} = S | Rest], Constants) ->
+    [S#struct_raw{fields=replace_constants_inexprs(Fields, Constants)} |
+     replace_constants(Rest, Constants)];
 replace_constants([#vardef{initval=Initval} = V | Rest], Constants) ->
-    [V#vardef{initval=replace_constants_inexpr(Initval, Constants)}
-     | replace_constants(Rest, Constants)];
+    [V#vardef{initval=replace_constants_inexpr(Initval, Constants)} |
+     replace_constants(Rest, Constants)];
 replace_constants([], _) ->
     [].
 

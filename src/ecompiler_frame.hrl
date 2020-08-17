@@ -2,22 +2,26 @@
 -type e_type() :: any().
 -type e_expr() :: any().
 
--record(function_1, {name :: atom(),
-		     params :: [atom()],
-		     params_defaultinit :: [e_expr()],
-		     ret :: e_type(),
-		     vars :: #{atom() => e_type()},
-		     exprs :: [e_expr()]}).
-
--record(struct_1, {name :: atom(),
-		   fields :: [any()],
-		   initcode :: [e_expr()]}).
-
--record(function, {line :: integer(),
-		   name :: atom(),
-		   params :: [e_expr()],
+-record(function, {name :: atom(),
+		   params :: [atom()],
+		   params_defaultinit :: [e_expr()],
 		   ret :: e_type(),
+		   vars :: #{atom() => e_type()},
 		   exprs :: [e_expr()]}).
+
+-record(struct, {name :: atom(),
+		 fields :: [any()],
+		 initcode :: [e_expr()]}).
+
+-record(function_raw, {line :: integer(),
+		       name :: atom(),
+		       params :: [e_expr()],
+		       ret :: e_type(),
+		       exprs :: [e_expr()]}).
+
+-record(struct_raw, {line :: integer(),
+		     name :: atom(),
+		     fields :: [e_expr()]}).
 
 -record(return, {line :: integer(),
 		 expr :: e_expr()}).
@@ -30,10 +34,6 @@
 		  condition :: e_expr(),
 		  then :: [e_expr()],
 		  else :: [e_expr()]}).
-
--record(struct, {line :: integer(),
-		 name :: atom(),
-		 fields :: [e_expr()]}).
 
 -record(const, {line :: integer(),
 		name :: atom(),

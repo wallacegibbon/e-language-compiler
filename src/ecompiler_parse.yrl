@@ -72,12 +72,12 @@ defvar -> identifier ':' typeanno :
 
 %% struct definition
 defstruct -> struct identifier defvars 'end' :
-    #struct{name=tok_val('$2'), fields='$3', line=tok_line('$2')}.
+    #struct_raw{name=tok_val('$2'), fields='$3', line=tok_line('$2')}.
 
 %% function definition
 defun -> 'fun' identifier '(' defvars ')' ':' typeanno exprs 'end' :
-    #function{name=tok_val('$2'), params='$4', ret='$7', exprs='$8',
-	      line=tok_line('$2')}.
+    #function_raw{name=tok_val('$2'), params='$4', ret='$7', exprs='$8',
+		  line=tok_line('$2')}.
 
 %% function invocation
 call_expr -> identifier '(' params ')' :
