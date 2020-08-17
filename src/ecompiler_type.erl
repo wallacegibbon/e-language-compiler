@@ -40,6 +40,9 @@ typeof_expr(#op2{operator=assign, op1=Op1, op2=Op2, line=Line}, Vars,
 			typeof_structfield(typeof_expr(SubOp1, Vars, Functions,
 						       Structs, FnRetType),
 					   SubOp2, Structs, Line);
+		    #op1{operator='^', operand=SubOperand} ->
+			decr_pdepth(typeof_expr(SubOperand, Vars, Functions,
+						Structs, FnRetType));
 		    #varref{name=_} ->
 			typeof_expr(Op1, Vars, Functions, Structs, FnRetType);
 		    Any ->
@@ -49,7 +52,7 @@ typeof_expr(#op2{operator=assign, op1=Op1, op2=Op2, line=Line}, Vars,
     TypeofOp2 = typeof_expr(Op2, Vars, Functions, Structs, FnRetType),
     case compare_type(TypeofOp1, TypeofOp2) of
 	false ->
-	    throw({Line, flat_format("type mismatch in '=', (~s) / (~s)",
+	    throw({Line, flat_format("type mismatch in '=', ~s = ~s",
 				     [fmt_type(TypeofOp1),
 				      fmt_type(TypeofOp2)])});
 	_ ->
@@ -65,8 +68,8 @@ typeof_expr(#op2{operator=Operator, op1=Op1, op2=Op2, line=Line}, Vars,
     TypeofOp2 = typeof_expr(Op2, Vars, Functions, Structs, FnRetType),
     case compare_type(TypeofOp1, TypeofOp2) of
 	false ->
-	    throw({Line, flat_format("type mismatch in '~s', (~s) / (~s)",
-				     [Operator, fmt_type(TypeofOp1),
+	    throw({Line, flat_format("type mismatch in '~s', ~s ~s ~s",
+				     [Operator, fmt_type(TypeofOp1), Operator,
 				      fmt_type(TypeofOp2)])});
 	_ ->
 	    TypeofOp1

@@ -66,6 +66,7 @@
 	      op2 :: e_expr()}).
 
 -record(call, {line :: integer(),
+	       %fn :: e_expr(),
 	       name :: atom(),
 	       args :: [e_expr()]}).
 
@@ -75,4 +76,8 @@
 -record(box_type, {line :: integer(),
 		   elemtype :: e_type(),
 		   size :: integer()}).
+
+-record(fun_type, {line :: integer(),
+		   params :: [e_type()],
+		   ret :: e_type()}).
 

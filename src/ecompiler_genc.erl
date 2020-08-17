@@ -2,16 +2,47 @@
 
 -export([generate_ccode/4]).
 
+-import(ecompiler_utils, [exprsmap/2]).
+
 -include("./ecompiler_frame.hrl").
 
-generate_ccode(Ast, Vars, _InitCode, OutputFile) ->
+generate_ccode(Ast, GlobalVars, _InitCode, OutputFile) ->
     {FnMap, StructMap} = Ast,
-    {FnStatements, FnDeclars} = statements_tostr(maps:values(FnMap)),
+    FixedFnMap = make_functionmap_for_c(FnMap, StructMap, GlobalVars),
+    {FnStatements, FnDeclars} = statements_tostr(maps:values(FixedFnMap)),
     {StructStatements, []} = statements_tostr(maps:values(StructMap)),
-    VarStatements = vars_to_str(Vars),
+    VarStatements = vars_to_str(GlobalVars),
     Code = [common_code(), StructStatements, "\n\n", VarStatements, "\n\n",
 	    FnDeclars, "\n\n", FnStatements],
     file:write_file(OutputFile, Code).
+
+make_functionmap_for_c(FnMap, StructMap, GlobalVars) ->
+    maps:map(fun(_, #function{exprs=Exprs, vars=Vars} = F) ->
+		     CurrentVars = maps:merge(GlobalVars, Vars),
+		     F#function{exprs=fixexprs_for_c(Exprs, CurrentVars, FnMap,
+						     StructMap)}
+	     end, FnMap).
+
+fixexprs_for_c(Exprs, Vars, Functions, Structs) ->
+    exprsmap(fun (E) -> fixexpr_for_c(E, Vars, Functions, Structs) end,
+	     Exprs).
+
+fixexpr_for_c(#op2{op1=Op1, op2=Op2} = E, Vars, Functions, Structs) ->
+    E#op2{op1=fixexpr_for_c(Op1, Vars, Functions, Structs),
+	  op2=fixexpr_for_c(Op2, Vars, Functions, Structs)};
+fixexpr_for_c(#op1{operator='@', operand=Operand, line=Line} = E,
+	      Vars, Functions, Structs) ->
+    case ecompiler_type:typeof_expr(Operand, Vars, Functions, Structs,
+				    none) of
+	#box_type{elemtype=_} ->
+	    #op2{operator='.', op1=Operand, op2=#varref{name=val, line=Line}};
+	_ ->
+	    E
+    end;
+fixexpr_for_c(#op1{operand=Operand} = E, Vars, Functions, Structs) ->
+    E#op1{operand=fixexpr_for_c(Operand, Vars, Functions, Structs)};
+fixexpr_for_c(Any, _, _, _) ->
+    Any.
 
 common_code() ->
     "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\n"

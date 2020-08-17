@@ -4,7 +4,7 @@ statements statement defconst defstruct defun defvars defvar varref params
 exprs expr call_expr if_expr else_expr while_expr preminusplus_expr
 return_expr expr_or_defvar
 op19 op30 op29 op28 op27 op26 op25
-typeanno pointer_depth general_type atomic_literal constref
+typeanno_list typeanno pointer_depth general_type atomic_literal constref
 .
 
 Terminals
@@ -44,6 +44,12 @@ varref -> identifier :
     #varref{name=tok_val('$1'), line=tok_line('$1')}.
 
 %% type annotation inside box or function
+typeanno_list -> typeanno ',' typeanno_list : ['$1' | '$3'].
+typeanno_list -> typeanno : ['$1'].
+
+typeanno -> 'fun' '(' typeanno_list ')' ':' typeanno :
+    #fun_type{params='$3', ret='$6', line=tok_line('$1')}.
+
 typeanno -> '<' typeanno ',' constref '>' :
     #box_type{elemtype='$2', size='$4', line=tok_line('$1')}.
 
@@ -80,8 +86,10 @@ defun -> 'fun' identifier '(' defvars ')' ':' typeanno exprs 'end' :
 		  line=tok_line('$2')}.
 
 %% function invocation
+%% TODO: replace this identifier with expr
 call_expr -> identifier '(' params ')' :
-    #call{name=tok_val('$1'), args='$3', line=tok_line('$1')}.
+    %#call{fn='$1', args='$3', line=tok_line('$2')}.
+    #call{name=tok_val('$1'), args='$3', line=tok_line('$2')}.
 
 params -> expr ',' params : ['$1' | '$3'].
 params -> expr ',' : ['$1'].
