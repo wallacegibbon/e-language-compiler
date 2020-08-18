@@ -46,6 +46,9 @@ fun main(argc: i64, argv: i64^^): i64
 
     v3: i64^ = v1@;
 
+    f: fun(i64^): void = myfn;
+    f(v1@);
+
     return 0;
 end
 
@@ -71,3 +74,6 @@ fun init_user(user: User^, id: i64, desc: i64^ = "nothing"): void
     end
 end
 
+fun myfn(any: i64^): void
+    any^ = any^ + 1;
+end

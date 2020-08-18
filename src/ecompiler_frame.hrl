@@ -3,9 +3,9 @@
 -type e_expr() :: any().
 
 -record(function, {name :: atom(),
-		   params :: [atom()],
+		   type :: any(),
 		   params_defaultinit :: [e_expr()],
-		   ret :: e_type(),
+		   params :: [atom()],
 		   vars :: #{atom() => e_type()},
 		   exprs :: [e_expr()]}).
 
@@ -66,8 +66,7 @@
 	      op2 :: e_expr()}).
 
 -record(call, {line :: integer(),
-	       %fn :: e_expr(),
-	       name :: atom(),
+	       fn :: e_expr(),
 	       args :: [e_expr()]}).
 
 -record(basic_type, {line :: integer(),

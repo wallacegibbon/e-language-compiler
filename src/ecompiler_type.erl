@@ -2,7 +2,7 @@
 
 -export([checktype_ast/2, typeof_expr/2]).
 
--import(ecompiler_utils, [flat_format/2]).
+-import(ecompiler_utils, [expr2str/1, flat_format/2]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -15,13 +15,13 @@ checktype_ast({FunMap, StructMap}, GlobalVars) ->
 	      end, maps:values(FunMap)),
     ok.
 
-checktype_function(#function{vars=Vars, exprs=Exprs, ret=Rettype},
+checktype_function(#function{vars=Vars, exprs=Exprs, type=Fntype},
 		   Functions, Structs, GlobalVars) ->
     %% TODO: check param default values
     lists:map(fun (T) -> checktype_type(T, Structs) end, maps:values(Vars)),
-    checktype_type(Rettype, Structs),
+    checktype_type(Fntype#fun_type.ret, Structs),
     CurrentVars = maps:merge(GlobalVars, Vars),
-    Ctx = {CurrentVars, Functions, Structs, Rettype},
+    Ctx = {CurrentVars, Functions, Structs, Fntype#fun_type.ret},
     typeof_exprs(Exprs, Ctx).
 
 checktype_struct(#struct{fields=Fields}, Structs) ->
@@ -44,8 +44,8 @@ typeof_expr(#op2{operator=assign, op1=Op1, op2=Op2, line=Line},
 		    #varref{name=_} ->
 			typeof_expr(Op1, Ctx);
 		    Any ->
-			throw({Line, flat_format("invalid left value ~p",
-						 [Any])})
+			throw({Line, flat_format("invalid left value ~s",
+						 [expr2str(Any)])})
 		end,
     TypeofOp2 = typeof_expr(Op2, Ctx),
     case compare_type(TypeofOp1, TypeofOp2) of
@@ -75,8 +75,8 @@ typeof_expr(#op1{operator='^', operand=Operand, line=Line}, Ctx) ->
 	#basic_type{type={_, PDepth}} = T when PDepth > 0 ->
 	    decr_pdepth(T);
 	_ ->
-	    throw({Line, flat_format("invalid operator \"^\" on operand ~p",
-				     [Operand])})
+	    throw({Line, flat_format("invalid operator \"^\" on operand ~s",
+				     [expr2str(Operand)])})
     end;
 typeof_expr(#op1{operator='@', operand=Operand, line=Line},
 	    {_, _, Structs, _} = Ctx) ->
@@ -87,21 +87,19 @@ typeof_expr(#op1{operator='@', operand=Operand, line=Line},
 	#varref{name=_} ->
 	    incr_pdepth(typeof_expr(Operand, Ctx));
 	_ ->
-	    throw({Line, flat_format("invalid operator \"@\" on operand ~p",
-				     [Operand])})
+	    throw({Line, flat_format("invalid operator \"@\" on operand ~s",
+				     [expr2str(Operand)])})
     end;
-typeof_expr(#call{name=FunName, args=Args, line=Line},
-	    {_, Functions, _, _} = Ctx) ->
+typeof_expr(#call{fn=FunExpr, args=Args, line=Line}, Ctx) ->
     ArgsTypes = lists:map(fun (A) -> typeof_expr(A, Ctx) end, Args),
-    {ArgsTypesTrue, CalleeRetType} = typeof_function(FunName, Functions,
-						     Line),
-    case compare_types(ArgsTypes, ArgsTypesTrue) of
+    FnType = typeof_expr(FunExpr, Ctx),
+    case compare_types(ArgsTypes, FnType#fun_type.params) of
 	false ->
 	    throw({Line, flat_format("argument type (~s) should be (~s)",
 				     [fmt_types(ArgsTypes),
-				      fmt_types(ArgsTypesTrue)])});
+				      fmt_types(FnType#fun_type.params)])});
 	true ->
-	    CalleeRetType
+	    FnType#fun_type.ret
     end;
 typeof_expr(#if_expr{condition=Condition, then=Then, else=Else}, Ctx) ->
     typeof_expr(Condition, Ctx),
@@ -124,8 +122,19 @@ typeof_expr(#return{expr=Expr, line=Line}, {_, _, _, FnRetType} = Ctx) ->
 	true ->
 	    RealRet
     end;
-typeof_expr(#varref{name=Name}, {Vars, _, Structs, _}) ->
-    Vartype = maps:get(Name, Vars),
+typeof_expr(#varref{name=Name, line=Line}, {Vars, Functions, Structs, _}) ->
+    Vartype = case maps:find(Name, Vars) of
+		  error ->
+		      case maps:find(Name, Functions) of
+			  error ->
+			      throw({Line, flat_format("~s is undefined",
+						       [Name])});
+			  {ok, T} ->
+			      T#function.type
+		      end;
+		  {ok, T} ->
+		      T
+	      end,
     checktype_type(Vartype, Structs),
     Vartype;
 typeof_expr({float, Line, _}, _) ->
@@ -163,24 +172,8 @@ typeof_structfield(#basic_type{type={StructName, 0}}, #varref{name=FieldName},
 				     [StructName])})
     end;
 typeof_structfield(T, _, _, Line) ->
-    throw({Line, flat_format("op1 for \".\" is not struct ~p",
-			     [T])}).
-
-typeof_function(FunName, Functions, Line) when is_atom(FunName) ->
-    case maps:find(FunName, Functions) of
-	{ok, #function{params=Params, vars=Vars, ret=RetType}} ->
-	    {get_values_frommap(Params, Vars), RetType};
-	error ->
-	    throw({Line, flat_format("function \"~s\" is not found",
-				     [FunName])})
-    end.
-
-get_values_frommap(Fields, Map) -> get_values_frommap(Fields, Map, []).
-
-get_values_frommap([Field | Rest], Map, Result) ->
-    get_values_frommap(Rest, Map, [maps:get(Field, Map) | Result]);
-get_values_frommap([], _, Result) ->
-    lists:reverse(Result).
+    throw({Line, flat_format("op1 for \".\" is not struct ~s",
+			     [fmt_type(T)])}).
 
 compare_types([T1 | Types1], [T2 | Types2]) ->
     case compare_type(T1, T2) of
@@ -194,14 +187,22 @@ compare_types([], []) ->
 compare_types(_, _) ->
     false.
 
-compare_type(#box_type{elemtype=A, size=S1}, #box_type{elemtype=B, size=S2}) ->
-    compare_type(A, B) and (S1 =:= S2);
+compare_type(#fun_type{params=P1, ret=R1}, #fun_type{params=P2, ret=R2}) ->
+    compare_types(P1, P2) and compare_type(R1, R2);
+compare_type(#box_type{elemtype=E1, size=S1},
+	     #box_type{elemtype=E2, size=S2}) ->
+    compare_type(E1, E2) and (S1 =:= S2);
 compare_type(#basic_type{type=A}, #basic_type{type=B}) ->
     A =:= B;
 compare_type(_, _) ->
     false.
 
 %% check type, ensure that all struct used by type exists.
+checktype_type(#fun_type{params=Params, ret=Rettype}, Structs) ->
+    lists:map(fun (P) ->
+		      checktype_type(P, Structs)
+	      end, Params),
+    checktype_type(Rettype, Structs);
 checktype_type(#box_type{elemtype=Elemtype}, Structs) ->
     case Elemtype of
 	#box_type{line=Line} ->
@@ -233,6 +234,9 @@ fmt_types([Type | Rest], Result) ->
 fmt_types([], Result) ->
     lists:reverse(Result).
 
+fmt_type(#fun_type{params=Params, ret=Rettype}) ->
+    io_lib:format("fun(~s): ~s", [lists:join(",", fmt_types(Params)),
+				  fmt_type(Rettype)]);
 fmt_type(#box_type{elemtype=Type, size=N}) ->
     io_lib:format("<~s, ~w>", [Type, N]);
 fmt_type(#basic_type{type={Type, Depth}}) when Depth > 0 ->

@@ -28,8 +28,8 @@ fixexprs_for_c(Exprs, Ctx) ->
 
 fixexpr_for_c(#op1{operator='@', operand=Operand, line=Line} = E,
 	      {Vars, Functions, Structs}) ->
-    case ecompiler_type:typeof_expr(Operand, Vars, Functions, Structs,
-				    none) of
+    case ecompiler_type:typeof_expr(Operand, {Vars, Functions, Structs,
+					      none}) of
 	#box_type{elemtype=_} ->
 	    #op2{operator='.', op1=Operand, op2=#varref{name=val, line=Line}};
 	_ ->
@@ -53,10 +53,10 @@ common_code() ->
 statements_tostr(Statements) ->
     statements_tostr(Statements, [], []).
 
-statements_tostr([#function{name=Name, params=Params, vars=Vars, ret=Rettype,
+statements_tostr([#function{name=Name, params=Params, vars=Vars, type=Fntype,
 			    exprs=Exprs} | Rest],
 		 StatementStrs, FnDeclars) ->
-    Declar = fn_declar_str(Name, Params, Vars, Rettype),
+    Declar = fn_declar_str(Name, Params, Vars, Fntype#fun_type.ret),
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n",
 		      [Declar, vars_to_str(maps:without(Params, Vars)),
 		       exprs_tostr(Exprs)]),
@@ -70,15 +70,14 @@ statements_tostr([], StatementStrs, FnDeclars) ->
     {lists:reverse(StatementStrs), lists:reverse(FnDeclars)}.
 
 fn_declar_str(Name, ParamNames, Vars, Rettype) ->
-    io_lib:format("~s ~s(~s)", [type_tostr(Rettype), Name,
-				params_to_str(ParamNames, Vars)]).
+    io_lib:format("~s(~s)", [type_tostr(Rettype, Name),
+			     params_to_str(ParamNames, Vars)]).
 
 params_to_str(ParamNames, Vars) ->
     params_to_str(ParamNames, Vars, []).
 
 params_to_str([ParamName | RestParamNames], Vars, FmtParams) ->
-    Pstr = io_lib:format("~s ~s", [type_tostr(maps:get(ParamName, Vars)),
-				   ParamName]),
+    Pstr = type_tostr(maps:get(ParamName, Vars), ParamName),
     params_to_str(RestParamNames, Vars, [Pstr | FmtParams]);
 params_to_str([], _, FmtParams) ->
     lists:join(",", lists:reverse(FmtParams)).
@@ -88,18 +87,25 @@ vars_to_str(VarsMap) ->
 		  ";").
 
 vars_to_str([{Name, Type} | Rest], Strs) ->
-    vars_to_str(Rest, [io_lib:format("~s ~s", [type_tostr(Type),
-					       Name]) | Strs]);
+    vars_to_str(Rest, [type_tostr(Type, Name) | Strs]);
 vars_to_str([], Strs) ->
     lists:reverse(Strs).
 
 %% convert type to C string
-type_tostr(#box_type{size=Size, elemtype=ElementType}) ->
-    io_lib:format("struct {~s val[~w];}", [type_tostr(ElementType), Size]);
-type_tostr(#basic_type{type={Typeanno, Depth}}) when Depth > 0 ->
-    io_lib:format("~s ~s", [Typeanno, lists:duplicate(Depth, "*")]);
-type_tostr(#basic_type{type={Typeanno, 0}}) ->
-    io_lib:format("~s", [Typeanno]).
+type_tostr(#fun_type{params=Params, ret=Rettype}, Varname) ->
+    Paramstr = lists:join(",", lists:map(fun (T) ->
+						 type_tostr(T, "")
+					 end, Params)),
+    io_lib:format("~s (*~s)(~s)", [type_tostr(Rettype, ""), Varname,
+				  Paramstr]);
+type_tostr(#box_type{size=Size, elemtype=ElementType}, Varname) ->
+    io_lib:format("struct {~s val[~w];} ~s", [type_tostr(ElementType, ""),
+					      Size, Varname]);
+type_tostr(#basic_type{type={Typeanno, Depth}}, Varname) when Depth > 0 ->
+    io_lib:format("~s~s ~s", [Typeanno, lists:duplicate(Depth, "*"),
+			       Varname]);
+type_tostr(#basic_type{type={Typeanno, 0}}, Varname) ->
+    io_lib:format("~s ~s", [Typeanno, Varname]).
 
 %% convert expression to C string
 exprs_tostr(Exprs) ->
@@ -123,9 +129,10 @@ expr_tostr(#op2{operator=Operator, op1=Op1, op2=Op2}) ->
 expr_tostr(#op1{operator=Operator, operand=Operand}) ->
     io_lib:format("(~s ~s)", [translate_operator(Operator),
 			      expr_tostr(Operand)]);
-expr_tostr(#call{name=Name, args=Args}) ->
-    io_lib:format("~s(~s)", [Name, lists:join(",", lists:map(fun expr_tostr/1,
-							     Args))]);
+expr_tostr(#call{fn=Fn, args=Args}) ->
+    io_lib:format("~s(~s)", [expr_tostr(Fn),
+			     lists:join(",", lists:map(fun expr_tostr/1,
+						       Args))]);
 expr_tostr(#return{expr=Expr}) ->
     io_lib:format("return ~s", [expr_tostr(Expr)]);
 expr_tostr(#varref{name=Name}) ->

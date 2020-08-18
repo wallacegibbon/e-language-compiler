@@ -86,10 +86,9 @@ defun -> 'fun' identifier '(' defvars ')' ':' typeanno exprs 'end' :
 		  line=tok_line('$2')}.
 
 %% function invocation
-%% TODO: replace this identifier with expr
 call_expr -> identifier '(' params ')' :
-    %#call{fn='$1', args='$3', line=tok_line('$2')}.
-    #call{name=tok_val('$1'), args='$3', line=tok_line('$2')}.
+    #call{fn=#varref{name=tok_val('$1'), line=tok_line('$1')},
+	  args='$3', line=tok_line('$2')}.
 
 params -> expr ',' params : ['$1' | '$3'].
 params -> expr ',' : ['$1'].
