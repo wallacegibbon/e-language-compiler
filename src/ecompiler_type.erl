@@ -1,6 +1,6 @@
 -module(ecompiler_type).
 
--export([checktype_ast/2, typeof_expr/5]).
+-export([checktype_ast/2, typeof_expr/2]).
 
 -import(ecompiler_utils, [flat_format/2]).
 
@@ -21,35 +21,33 @@ checktype_function(#function{vars=Vars, exprs=Exprs, ret=Rettype},
     lists:map(fun (T) -> checktype_type(T, Structs) end, maps:values(Vars)),
     checktype_type(Rettype, Structs),
     CurrentVars = maps:merge(GlobalVars, Vars),
-    typeof_exprs(Exprs, CurrentVars, Functions, Structs, Rettype).
+    Ctx = {CurrentVars, Functions, Structs, Rettype},
+    typeof_exprs(Exprs, Ctx).
 
 checktype_struct(#struct{fields=Fields}, Structs) ->
     %% TODO: check init code
     lists:map(fun (T) -> checktype_type(T, Structs) end, maps:values(Fields)).
 
-typeof_exprs([Expr | Rest], Vars, Functions, Structs, FnRetType) ->
-    [typeof_expr(Expr, Vars, Functions, Structs, FnRetType) |
-     typeof_exprs(Rest, Vars, Functions, Structs, FnRetType)];
-typeof_exprs([], _, _, _, _) ->
+typeof_exprs([Expr | Rest], Ctx) ->
+    [typeof_expr(Expr, Ctx) | typeof_exprs(Rest, Ctx)];
+typeof_exprs([], _) ->
     [].
 
-typeof_expr(#op2{operator=assign, op1=Op1, op2=Op2, line=Line}, Vars,
-	    Functions, Structs, FnRetType) ->
+typeof_expr(#op2{operator=assign, op1=Op1, op2=Op2, line=Line},
+	    {_, _, Structs, _} = Ctx) ->
     TypeofOp1 = case Op1 of
 		    #op2{operator='.', op1=SubOp1, op2=SubOp2} ->
-			typeof_structfield(typeof_expr(SubOp1, Vars, Functions,
-						       Structs, FnRetType),
-					   SubOp2, Structs, Line);
+			typeof_structfield(typeof_expr(SubOp1, Ctx), SubOp2,
+					   Structs, Line);
 		    #op1{operator='^', operand=SubOperand} ->
-			decr_pdepth(typeof_expr(SubOperand, Vars, Functions,
-						Structs, FnRetType));
+			decr_pdepth(typeof_expr(SubOperand, Ctx));
 		    #varref{name=_} ->
-			typeof_expr(Op1, Vars, Functions, Structs, FnRetType);
+			typeof_expr(Op1, Ctx);
 		    Any ->
 			throw({Line, flat_format("invalid left value ~p",
 						 [Any])})
 		end,
-    TypeofOp2 = typeof_expr(Op2, Vars, Functions, Structs, FnRetType),
+    TypeofOp2 = typeof_expr(Op2, Ctx),
     case compare_type(TypeofOp1, TypeofOp2) of
 	false ->
 	    throw({Line, flat_format("type mismatch in '=', ~s = ~s",
@@ -58,14 +56,12 @@ typeof_expr(#op2{operator=assign, op1=Op1, op2=Op2, line=Line}, Vars,
 	_ ->
 	    TypeofOp1
     end;
-typeof_expr(#op2{operator='.', op1=Op1, op2=Op2, line=Line}, Vars,
-	    Functions, Structs, FnRetType) ->
-    typeof_structfield(typeof_expr(Op1, Vars, Functions, Structs, FnRetType),
-		       Op2, Structs, Line);
-typeof_expr(#op2{operator=Operator, op1=Op1, op2=Op2, line=Line}, Vars,
-	    Functions, Structs, FnRetType) ->
-    TypeofOp1 = typeof_expr(Op1, Vars, Functions, Structs, FnRetType),
-    TypeofOp2 = typeof_expr(Op2, Vars, Functions, Structs, FnRetType),
+typeof_expr(#op2{operator='.', op1=Op1, op2=Op2, line=Line},
+	    {_, _, Structs, _} = Ctx) ->
+    typeof_structfield(typeof_expr(Op1, Ctx), Op2, Structs, Line);
+typeof_expr(#op2{operator=Operator, op1=Op1, op2=Op2, line=Line}, Ctx) ->
+    TypeofOp1 = typeof_expr(Op1, Ctx),
+    TypeofOp2 = typeof_expr(Op2, Ctx),
     case compare_type(TypeofOp1, TypeofOp2) of
 	false ->
 	    throw({Line, flat_format("type mismatch in '~s', ~s ~s ~s",
@@ -74,36 +70,29 @@ typeof_expr(#op2{operator=Operator, op1=Op1, op2=Op2, line=Line}, Vars,
 	_ ->
 	    TypeofOp1
     end;
-typeof_expr(#op1{operator='^', operand=Operand, line=Line}, Vars, Functions,
-	    Structs, FnRetType) ->
-    case typeof_expr(Operand, Vars, Functions, Structs, FnRetType) of
+typeof_expr(#op1{operator='^', operand=Operand, line=Line}, Ctx) ->
+    case typeof_expr(Operand, Ctx) of
 	#basic_type{type={_, PDepth}} = T when PDepth > 0 ->
 	    decr_pdepth(T);
 	_ ->
 	    throw({Line, flat_format("invalid operator \"^\" on operand ~p",
 				     [Operand])})
     end;
-typeof_expr(#op1{operator='@', operand=Operand, line=Line}, Vars, Functions,
-	    Structs, FnRetType) ->
+typeof_expr(#op1{operator='@', operand=Operand, line=Line},
+	    {_, _, Structs, _} = Ctx) ->
     case Operand of
-	#varref{name=_} ->
-	    T = typeof_expr(Operand, Vars, Functions, Structs, FnRetType),
-	    incr_pdepth(T);
 	#op2{operator='.', op1=Op1, op2=Op2} ->
-	    T = typeof_structfield(typeof_expr(Op1, Vars, Functions, Structs,
-					       FnRetType),
-				   Op2, Structs, Line),
+	    T = typeof_structfield(typeof_expr(Op1, Ctx), Op2, Structs, Line),
 	    incr_pdepth(T);
+	#varref{name=_} ->
+	    incr_pdepth(typeof_expr(Operand, Ctx));
 	_ ->
 	    throw({Line, flat_format("invalid operator \"@\" on operand ~p",
 				     [Operand])})
     end;
-typeof_expr(#call{name=FunName, args=Args, line=Line}, Vars, Functions,
-	    Structs, FnRetType) ->
-    ArgsTypes = lists:map(fun (A) ->
-				  typeof_expr(A, Vars, Functions, Structs,
-					      FnRetType)
-			  end, Args),
+typeof_expr(#call{name=FunName, args=Args, line=Line},
+	    {_, Functions, _, _} = Ctx) ->
+    ArgsTypes = lists:map(fun (A) -> typeof_expr(A, Ctx) end, Args),
     {ArgsTypesTrue, CalleeRetType} = typeof_function(FunName, Functions,
 						     Line),
     case compare_types(ArgsTypes, ArgsTypesTrue) of
@@ -114,22 +103,19 @@ typeof_expr(#call{name=FunName, args=Args, line=Line}, Vars, Functions,
 	true ->
 	    CalleeRetType
     end;
-typeof_expr(#if_expr{condition=Condition, then=Then, else=Else},
-	    Vars, Functions, Structs, FnRetType) ->
-    typeof_expr(Condition, Vars, Functions, Structs, FnRetType),
-    typeof_exprs(Then, Vars, Functions, Structs, FnRetType),
-    typeof_exprs(Else, Vars, Functions, Structs, FnRetType),
+typeof_expr(#if_expr{condition=Condition, then=Then, else=Else}, Ctx) ->
+    typeof_expr(Condition, Ctx),
+    typeof_exprs(Then, Ctx),
+    typeof_exprs(Else, Ctx),
     %% TODO
     none;
-typeof_expr(#while_expr{condition=Condition, exprs=Exprs},
-	    Vars, Functions, Structs, FnRetType) ->
-    typeof_expr(Condition, Vars, Functions, Structs, FnRetType),
-    typeof_exprs(Exprs, Vars, Functions, Structs, FnRetType),
+typeof_expr(#while_expr{condition=Condition, exprs=Exprs}, Ctx) ->
+    typeof_expr(Condition, Ctx),
+    typeof_exprs(Exprs, Ctx),
     %% TODO
     none;
-typeof_expr(#return{expr=Expr, line=Line}, Vars, Functions, Structs,
-	    FnRetType) ->
-    RealRet = typeof_expr(Expr, Vars, Functions, Structs, FnRetType),
+typeof_expr(#return{expr=Expr, line=Line}, {_, _, _, FnRetType} = Ctx) ->
+    RealRet = typeof_expr(Expr, Ctx),
     case compare_type(RealRet, FnRetType) of
 	false ->
 	    throw({Line, flat_format("return type (~s) =/= fn ret type (~s)",
@@ -138,15 +124,15 @@ typeof_expr(#return{expr=Expr, line=Line}, Vars, Functions, Structs,
 	true ->
 	    RealRet
     end;
-typeof_expr(#varref{name=Name}, Vars, _, Structs, _) ->
+typeof_expr(#varref{name=Name}, {Vars, _, Structs, _}) ->
     Vartype = maps:get(Name, Vars),
     checktype_type(Vartype, Structs),
     Vartype;
-typeof_expr({float, Line, _}, _, _, _, _) ->
+typeof_expr({float, Line, _}, _) ->
     #basic_type{type={f64, 0}, line=Line};
-typeof_expr({integer, Line, _}, _, _, _, _) ->
+typeof_expr({integer, Line, _}, _) ->
     #basic_type{type={i64, 0}, line=Line};
-typeof_expr({string, Line, _}, _, _, _, _) ->
+typeof_expr({string, Line, _}, _) ->
     #basic_type{type={i8, 1}, line=Line}.
 
 incr_pdepth(#basic_type{type={Tname, Pdepth}} = Type) ->
