@@ -19,19 +19,15 @@ generate_ccode(Ast, GlobalVars, _InitCode, OutputFile) ->
 make_functionmap_for_c(FnMap, StructMap, GlobalVars) ->
     maps:map(fun(_, #function{exprs=Exprs, vars=Vars} = F) ->
 		     CurrentVars = maps:merge(GlobalVars, Vars),
-		     F#function{exprs=fixexprs_for_c(Exprs, CurrentVars, FnMap,
-						     StructMap)}
+		     Env = {CurrentVars, FnMap, StructMap},
+		     F#function{exprs=fixexprs_for_c(Exprs, Env)}
 	     end, FnMap).
 
-fixexprs_for_c(Exprs, Vars, Functions, Structs) ->
-    exprsmap(fun (E) -> fixexpr_for_c(E, Vars, Functions, Structs) end,
-	     Exprs).
+fixexprs_for_c(Exprs, Env) ->
+    exprsmap(fun (E) -> fixexpr_for_c(E, Env) end, Exprs).
 
-fixexpr_for_c(#op2{op1=Op1, op2=Op2} = E, Vars, Functions, Structs) ->
-    E#op2{op1=fixexpr_for_c(Op1, Vars, Functions, Structs),
-	  op2=fixexpr_for_c(Op2, Vars, Functions, Structs)};
 fixexpr_for_c(#op1{operator='@', operand=Operand, line=Line} = E,
-	      Vars, Functions, Structs) ->
+	      {Vars, Functions, Structs}) ->
     case ecompiler_type:typeof_expr(Operand, Vars, Functions, Structs,
 				    none) of
 	#box_type{elemtype=_} ->
@@ -39,9 +35,11 @@ fixexpr_for_c(#op1{operator='@', operand=Operand, line=Line} = E,
 	_ ->
 	    E
     end;
-fixexpr_for_c(#op1{operand=Operand} = E, Vars, Functions, Structs) ->
-    E#op1{operand=fixexpr_for_c(Operand, Vars, Functions, Structs)};
-fixexpr_for_c(Any, _, _, _) ->
+fixexpr_for_c(#op1{operand=Operand} = E, Env) ->
+    E#op1{operand=fixexpr_for_c(Operand, Env)};
+fixexpr_for_c(#op2{op1=Op1, op2=Op2} = E, Env) ->
+    E#op2{op1=fixexpr_for_c(Op1, Env), op2=fixexpr_for_c(Op2, Env)};
+fixexpr_for_c(Any, _Env) ->
     Any.
 
 common_code() ->
