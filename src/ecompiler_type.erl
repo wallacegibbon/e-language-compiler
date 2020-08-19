@@ -2,7 +2,8 @@
 
 -export([checktype_ast/2, typeof_expr/2]).
 
--import(ecompiler_utils, [is_primitive_type/1, expr2str/1, flat_format/2]).
+-import(ecompiler_utils, [is_primitive_type/1, is_integer_type/1,
+			  expr2str/1, flat_format/2]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -62,7 +63,7 @@ typeof_expr(#op2{operator=assign, op1=Op1, op2=Op2, line=Line},
     TypeofOp2 = typeof_expr(Op2, Ctx),
     case compare_type(TypeofOp1, TypeofOp2) of
 	false ->
-	    throw({Line, flat_format("type mismatch in '=', ~s = ~s",
+	    throw({Line, flat_format("type mismatch in \"~s = ~s\"",
 				     [fmt_type(TypeofOp1),
 				      fmt_type(TypeofOp2)])});
 	_ ->
@@ -74,12 +75,22 @@ typeof_expr(#op2{operator='.', op1=Op1, op2=Op2, line=Line},
 typeof_expr(#op2{operator=Operator, op1=Op1, op2=Op2, line=Line}, Ctx) ->
     TypeofOp1 = typeof_expr(Op1, Ctx),
     TypeofOp2 = typeof_expr(Op2, Ctx),
+    EInfo = flat_format("type mismatch in \"~s ~s ~s\"",
+			[fmt_type(TypeofOp1), Operator, fmt_type(TypeofOp2)]),
+    %% pointer + integer is valid
     case compare_type(TypeofOp1, TypeofOp2) of
 	false ->
-	    throw({Line, flat_format("type mismatch in '~s', ~s ~s ~s",
-				     [Operator, fmt_type(TypeofOp1), Operator,
-				      fmt_type(TypeofOp2)])});
-	_ ->
+	    if Operator =:= '+' ->
+		   case is_pointer_and_int(TypeofOp1, TypeofOp2) of
+		       {true, Ptype} ->
+			   Ptype;
+		       false ->
+			   throw({Line, EInfo})
+		   end;
+	       true ->
+		   throw({Line, EInfo})
+	    end;
+	true ->
 	    TypeofOp1
     end;
 typeof_expr(#op1{operator='^', operand=Operand, line=Line}, Ctx) ->
@@ -204,9 +215,20 @@ compare_type(#fun_type{params=P1, ret=R1}, #fun_type{params=P2, ret=R2}) ->
 compare_type(#box_type{elemtype=E1, size=S1},
 	     #box_type{elemtype=E2, size=S2}) ->
     compare_type(E1, E2) and (S1 =:= S2);
-compare_type(#basic_type{type=A}, #basic_type{type=B}) ->
-    A =:= B;
+compare_type(#basic_type{type={T1, 0}}, #basic_type{type={T2, 0}}) ->
+    (T1 =:= T2) orelse (is_integer_type(T1) and is_integer_type(T2));
+compare_type(#basic_type{type=T1}, #basic_type{type=T2}) ->
+    T1 =:= T2;
 compare_type(_, _) ->
+    false.
+
+is_pointer_and_int(#basic_type{type={_, N}} = O, #basic_type{type={T, 0}})
+  when N > 0 ->
+    {is_integer_type(T), O};
+is_pointer_and_int(#basic_type{type={T, 0}}, #basic_type{type={_, N}} = O)
+  when N > 0 ->
+    {is_integer_type(T), O};
+is_pointer_and_int(_, _) ->
     false.
 
 %% check type, ensure that all struct used by type exists.

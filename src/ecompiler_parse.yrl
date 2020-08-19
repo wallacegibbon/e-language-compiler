@@ -11,7 +11,7 @@ Terminals
 
 %% operators
 ',' ':' ';' '=' '{' '}' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '~' '!'
-'!=' '==' '>=' '<='
+'!=' '==' '>=' '<=' '+=' '-=' '*=' '/='
 %% keywords
 const struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
 while 'if' elif else return
@@ -129,6 +129,24 @@ expr -> atomic_literal : '$1'.
 expr -> varref : '$1'.
 expr -> call_expr : '$1'.
 expr -> preminusplus_expr : '$1'.
+expr -> expr '+=' expr :
+    #op2{operator=assign, op1='$1', op2=#op2{operator='+', op1='$1', op2='$3',
+					     line=tok_line('$2')},
+	 line=tok_line('$2')}.
+expr -> expr '-=' expr :
+    #op2{operator=assign, op1='$1', op2=#op2{operator='-', op1='$1', op2='$3',
+					     line=tok_line('$2')},
+	 line=tok_line('$2')}.
+expr -> expr '*=' expr :
+    #op2{operator=assign, op1='$1', op2=#op2{operator='*', op1='$1', op2='$3',
+					     line=tok_line('$2')},
+	 line=tok_line('$2')}.
+expr -> expr '/=' expr :
+    #op2{operator=assign, op1='$1', op2=#op2{operator='/', op1='$1', op2='$3',
+					     line=tok_line('$2')},
+	 line=tok_line('$2')}.
+expr -> expr '=' expr :
+    #op2{operator=assign, op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op30 expr :
     #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op29 expr :
@@ -143,8 +161,6 @@ expr -> expr op25 expr :
     #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op19 :
     #op1{operator=tok_sym('$2'), operand='$1', line=tok_line('$2')}.
-expr -> expr '=' expr :
-    #op2{operator=assign, op1='$1', op2='$3', line=tok_line('$2')}.
 
 Unary 800 preminusplus_expr.
 preminusplus_expr -> '-' expr :
@@ -190,6 +206,10 @@ op25 -> 'and' : '$1'.
 op25 -> 'or' : '$1'.
 
 Right 100 '='.
+Right 100 '+='.
+Right 100 '-='.
+Right 100 '*='.
+Right 100 '/='.
 
 
 Erlang code.

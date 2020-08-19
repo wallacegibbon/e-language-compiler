@@ -48,7 +48,7 @@ fun main(argc: i64, argv: i64^^): i64
 
     cnt = v1 + 2;
 
-    v2: i64 = 2;
+    v2: u8 = 2;
     v2 = v2 + 1;
 
     v3: i64^ = v1@;

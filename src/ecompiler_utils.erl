@@ -1,7 +1,7 @@
 -module(ecompiler_utils).
 
 -export([exprsmap/2, expr2str/1, flat_format/2, is_primitive_type/1,
-	 getvalues_bykeys/2]).
+	 is_integer_type/1, getvalues_bykeys/2]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -55,15 +55,17 @@ getvalues_bykeys([], _, Result) ->
     lists:reverse(Result).
 
 is_primitive_type(void) -> true;
-is_primitive_type(f64) -> true;
-is_primitive_type(f32) -> true;
-is_primitive_type(u64) -> true;
-is_primitive_type(u32) -> true;
-is_primitive_type(u16) -> true;
-is_primitive_type(u8) -> true;
-is_primitive_type(i64) -> true;
-is_primitive_type(i32) -> true;
-is_primitive_type(i16) -> true;
-is_primitive_type(i8) -> true;
-is_primitive_type(_) -> false.
+is_primitive_type(Any) -> is_integer_type(Any).
+
+is_integer_type(f64) -> true;
+is_integer_type(f32) -> true;
+is_integer_type(u64) -> true;
+is_integer_type(u32) -> true;
+is_integer_type(u16) -> true;
+is_integer_type(u8) -> true;
+is_integer_type(i64) -> true;
+is_integer_type(i32) -> true;
+is_integer_type(i16) -> true;
+is_integer_type(i8) -> true;
+is_integer_type(_) -> false.
 
