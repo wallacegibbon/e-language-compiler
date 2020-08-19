@@ -2,23 +2,26 @@
 
 -export([generate_ccode/4]).
 
--import(ecompiler_utils, [exprsmap/2]).
+-import(ecompiler_utils, [exprsmap/2, is_primitive_type/1,
+			  getvalues_bykeys/2]).
 
 -include("./ecompiler_frame.hrl").
 
-generate_ccode(Ast, GlobalVars, _InitCode, OutputFile) ->
-    {FnMap, StructMap} = Ast,
+generate_ccode({{FnMap, StructMap}, {_, StructList}}, GlobalVars,
+		_InitCode, OutputFile) ->
     FixedFnMap = make_functionmap_for_c(FnMap, StructMap, GlobalVars),
     {FnStatements, FnDeclars} = statements_tostr(maps:values(FixedFnMap)),
-    {StructStatements, []} = statements_tostr(maps:values(StructMap)),
-    VarStatements = vars_to_str(GlobalVars),
+    %% use StructList instead of StructMap, because the order of struct matters
+    %% in C language
+    {StructStatements, []} = statements_tostr(StructList),
+    VarStatements = mapvars_to_str(GlobalVars),
     Code = [common_code(), StructStatements, "\n\n", VarStatements, "\n\n",
 	    FnDeclars, "\n\n", FnStatements],
     file:write_file(OutputFile, Code).
 
 make_functionmap_for_c(FnMap, StructMap, GlobalVars) ->
-    maps:map(fun(_, #function{exprs=Exprs, vars=Vars} = F) ->
-		     CurrentVars = maps:merge(GlobalVars, Vars),
+    maps:map(fun(_, #function{exprs=Exprs, var_types=VarTypes} = F) ->
+		     CurrentVars = maps:merge(GlobalVars, VarTypes),
 		     Ctx = {CurrentVars, FnMap, StructMap},
 		     F#function{exprs=fixexprs_for_c(Exprs, Ctx)}
 	     end, FnMap).
@@ -27,8 +30,8 @@ fixexprs_for_c(Exprs, Ctx) ->
     exprsmap(fun (E) -> fixexpr_for_c(E, Ctx) end, Exprs).
 
 fixexpr_for_c(#op1{operator='@', operand=Operand, line=Line} = E,
-	      {Vars, Functions, Structs}) ->
-    case ecompiler_type:typeof_expr(Operand, {Vars, Functions, Structs,
+	      {VarTypes, Functions, Structs}) ->
+    case ecompiler_type:typeof_expr(Operand, {VarTypes, Functions, Structs,
 					      none}) of
 	#box_type{elemtype=_} ->
 	    #op2{operator='.', op1=Operand, op2=#varref{name=val, line=Line}};
@@ -53,38 +56,43 @@ common_code() ->
 statements_tostr(Statements) ->
     statements_tostr(Statements, [], []).
 
-statements_tostr([#function{name=Name, params=Params, vars=Vars, type=Fntype,
-			    exprs=Exprs} | Rest],
+statements_tostr([#function{name=Name, param_names=ParamNames, type=Fntype,
+			    var_types=VarTypes, exprs=Exprs} | Rest],
 		 StatementStrs, FnDeclars) ->
-    Declar = fn_declar_str(Name, Params, Vars, Fntype#fun_type.ret),
+    Declar = fn_declar_str(Name, ParamNames, VarTypes, Fntype#fun_type.ret),
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n",
-		      [Declar, vars_to_str(maps:without(Params, Vars)),
+		      [Declar, mapvars_to_str(maps:without(ParamNames, VarTypes)),
 		       exprs_tostr(Exprs)]),
     statements_tostr(Rest, [S | StatementStrs], [Declar ++ ";\n" | FnDeclars]);
-statements_tostr([#struct{name=Name, fields=Fields} | Rest],
+statements_tostr([#struct{name=Name, field_types=FieldTypes,
+			  field_names=FieldNames} | Rest],
 		 StatementStrs, FnDeclars) ->
-    S = io_lib:format("typedef struct {~n~s~n} ~s;~n~n",
-		      [vars_to_str(Fields), Name]),
+    FieldList = lists:zip(FieldNames, getvalues_bykeys(FieldNames, FieldTypes)),
+    S = io_lib:format("struct ~s {~n~s~n};~n~n",
+		      [Name, listvars_to_str(FieldList)]),
     statements_tostr(Rest, [S | StatementStrs], FnDeclars);
 statements_tostr([], StatementStrs, FnDeclars) ->
     {lists:reverse(StatementStrs), lists:reverse(FnDeclars)}.
 
-fn_declar_str(Name, ParamNames, Vars, Rettype) ->
+fn_declar_str(Name, ParamNames, VarTypes, Rettype) ->
     io_lib:format("~s(~s)", [type_tostr(Rettype, Name),
-			     params_to_str(ParamNames, Vars)]).
+			     params_to_str(ParamNames, VarTypes)]).
 
-params_to_str(ParamNames, Vars) ->
-    params_to_str(ParamNames, Vars, []).
+params_to_str(ParamNames, VarTypes) ->
+    params_to_str(ParamNames, VarTypes, []).
 
-params_to_str([ParamName | RestParamNames], Vars, FmtParams) ->
-    Pstr = type_tostr(maps:get(ParamName, Vars), ParamName),
-    params_to_str(RestParamNames, Vars, [Pstr | FmtParams]);
+params_to_str([ParamName | RestParamNames], VarTypes, FmtParams) ->
+    Pstr = type_tostr(maps:get(ParamName, VarTypes), ParamName),
+    params_to_str(RestParamNames, VarTypes, [Pstr | FmtParams]);
 params_to_str([], _, FmtParams) ->
     lists:join(",", lists:reverse(FmtParams)).
 
-vars_to_str(VarsMap) ->
+mapvars_to_str(VarsMap) when is_map(VarsMap) ->
     lists:flatten(lists:join(";\n", vars_to_str(maps:to_list(VarsMap), [])),
 		  ";").
+
+listvars_to_str(VarList) when is_list(VarList) ->
+    lists:flatten(lists:join(";\n", vars_to_str(VarList, [])), ";").
 
 vars_to_str([{Name, Type} | Rest], Strs) ->
     vars_to_str(Rest, [type_tostr(Type, Name) | Strs]);
@@ -102,10 +110,18 @@ type_tostr(#box_type{size=Size, elemtype=ElementType}, Varname) ->
     io_lib:format("struct {~s val[~w];} ~s", [type_tostr(ElementType, ""),
 					      Size, Varname]);
 type_tostr(#basic_type{type={Typeanno, Depth}}, Varname) when Depth > 0 ->
-    io_lib:format("~s~s ~s", [Typeanno, lists:duplicate(Depth, "*"),
-			       Varname]);
+    io_lib:format("~s~s ~s", [typeanno_tostr(Typeanno),
+			      lists:duplicate(Depth, "*"), Varname]);
 type_tostr(#basic_type{type={Typeanno, 0}}, Varname) ->
-    io_lib:format("~s ~s", [Typeanno, Varname]).
+    io_lib:format("~s ~s", [typeanno_tostr(Typeanno), Varname]).
+
+typeanno_tostr(Name) when is_atom(Name) ->
+    case is_primitive_type(Name) of
+	false ->
+	    io_lib:format("struct ~s", [Name]);
+	true ->
+	    atom_to_list(Name)
+    end.
 
 %% convert expression to C string
 exprs_tostr(Exprs) ->

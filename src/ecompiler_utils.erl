@@ -1,6 +1,7 @@
 -module(ecompiler_utils).
 
--export([exprsmap/2, expr2str/1, flat_format/2]).
+-export([exprsmap/2, expr2str/1, flat_format/2, is_primitive_type/1,
+	 getvalues_bykeys/2]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -43,4 +44,26 @@ expr2str(Any) ->
 
 flat_format(FmtStr, Args) ->
     lists:flatten(io_lib:format(FmtStr, Args)).
+
+-spec getvalues_bykeys([atom()], #{atom() => any()}) -> [any()].
+getvalues_bykeys(Fields, Map) when is_map(Map) ->
+    getvalues_bykeys(Fields, Map, []).
+
+getvalues_bykeys([Field | Rest], Map, Result) ->
+    getvalues_bykeys(Rest, Map, [maps:get(Field, Map) | Result]);
+getvalues_bykeys([], _, Result) ->
+    lists:reverse(Result).
+
+is_primitive_type(void) -> true;
+is_primitive_type(f64) -> true;
+is_primitive_type(f32) -> true;
+is_primitive_type(u64) -> true;
+is_primitive_type(u32) -> true;
+is_primitive_type(u16) -> true;
+is_primitive_type(u8) -> true;
+is_primitive_type(i64) -> true;
+is_primitive_type(i32) -> true;
+is_primitive_type(i16) -> true;
+is_primitive_type(i8) -> true;
+is_primitive_type(_) -> false.
 

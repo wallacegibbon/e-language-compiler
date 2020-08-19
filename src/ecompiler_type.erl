@@ -2,31 +2,43 @@
 
 -export([checktype_ast/2, typeof_expr/2]).
 
--import(ecompiler_utils, [expr2str/1, flat_format/2]).
+-import(ecompiler_utils, [is_primitive_type/1, expr2str/1, flat_format/2]).
 
 -include("./ecompiler_frame.hrl").
 
-checktype_ast({FunMap, StructMap}, GlobalVars) ->
+checktype_ast({FunMap, StructMap}, GlobalVarTypes) ->
     lists:map(fun (S) ->
 		      checktype_struct(S, StructMap)
 	      end, maps:values(StructMap)),
     lists:map(fun (F) ->
-		      checktype_function(F, FunMap, StructMap, GlobalVars)
+		      checktype_function(F, FunMap, StructMap, GlobalVarTypes)
 	      end, maps:values(FunMap)),
     ok.
 
-checktype_function(#function{vars=Vars, exprs=Exprs, type=Fntype},
-		   Functions, Structs, GlobalVars) ->
-    %% TODO: check param default values
-    lists:map(fun (T) -> checktype_type(T, Structs) end, maps:values(Vars)),
+checktype_function(#function{var_types=VarTypes, exprs=Exprs, type=Fntype},
+		   Functions, Structs, GlobalVarTypes) ->
+    %% TODO: check param default values (only const expressions are allowed)
+    lists:map(fun (T) -> checktype_type(T, Structs) end, maps:values(VarTypes)),
     checktype_type(Fntype#fun_type.ret, Structs),
-    CurrentVars = maps:merge(GlobalVars, Vars),
+    CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
     Ctx = {CurrentVars, Functions, Structs, Fntype#fun_type.ret},
     typeof_exprs(Exprs, Ctx).
 
-checktype_struct(#struct{fields=Fields}, Structs) ->
-    %% TODO: check init code
-    lists:map(fun (T) -> checktype_type(T, Structs) end, maps:values(Fields)).
+checktype_struct(#struct{field_types=FieldTypes, name=Name}, Structs) ->
+    %% TODO: check init code (only const expressions are allowed
+    lists:map(fun (T) -> checktype_type(T, Structs) end,
+	      maps:values(FieldTypes)),
+    Conflicts = lists:filter(fun ({_, #basic_type{type={Tname, 0}}}) ->
+				     Name =:= Tname;
+				 (_) ->
+				     false
+			     end, maps:to_list(FieldTypes)),
+    case Conflicts of
+	[{_, #basic_type{line=Line}} | _] ->
+	    throw({Line, "recursive definition is invalid"});
+	_ ->
+	    ok
+    end.
 
 typeof_exprs([Expr | Rest], Ctx) ->
     [typeof_expr(Expr, Ctx) | typeof_exprs(Rest, Ctx)];
@@ -122,21 +134,21 @@ typeof_expr(#return{expr=Expr, line=Line}, {_, _, _, FnRetType} = Ctx) ->
 	true ->
 	    RealRet
     end;
-typeof_expr(#varref{name=Name, line=Line}, {Vars, Functions, Structs, _}) ->
-    Vartype = case maps:find(Name, Vars) of
-		  error ->
-		      case maps:find(Name, Functions) of
-			  error ->
-			      throw({Line, flat_format("~s is undefined",
-						       [Name])});
-			  {ok, T} ->
-			      T#function.type
-		      end;
-		  {ok, T} ->
-		      T
-	      end,
-    checktype_type(Vartype, Structs),
-    Vartype;
+typeof_expr(#varref{name=Name, line=Line},
+	    {VarTypes, Functions, Structs, _}) ->
+    Type = case maps:find(Name, VarTypes) of
+	       error ->
+		   case maps:find(Name, Functions) of
+		       error -> throw({Line, flat_format("~s is undefined",
+							 [Name])});
+		       {ok, T} ->
+			   T#function.type
+		   end;
+	       {ok, T} ->
+		   T
+	   end,
+    checktype_type(Type, Structs),
+    Type;
 typeof_expr({float, Line, _}, _) ->
     #basic_type{type={f64, 0}, line=Line};
 typeof_expr({integer, Line, _}, _) ->
@@ -159,7 +171,7 @@ typeof_structfield(#basic_type{type={StructName, 0}}, #varref{name=FieldName},
 		   Structs, Line) ->
     case maps:find(StructName, Structs) of
 	{ok, S} ->
-	    case maps:find(FieldName, S#struct.fields) of
+	    case maps:find(FieldName, S#struct.field_types) of
 		{ok, FieldType} ->
 		    checktype_type(FieldType, Structs),
 		    FieldType;
@@ -243,17 +255,4 @@ fmt_type(#basic_type{type={Type, Depth}}) when Depth > 0 ->
     io_lib:format("(~s~s)", [Type, lists:duplicate(Depth, "^")]);
 fmt_type(#basic_type{type={Type, 0}}) ->
     atom_to_list(Type).
-
-is_primitive_type(void) -> true;
-is_primitive_type(f64) -> true;
-is_primitive_type(f32) -> true;
-is_primitive_type(u64) -> true;
-is_primitive_type(u32) -> true;
-is_primitive_type(u16) -> true;
-is_primitive_type(u8) -> true;
-is_primitive_type(i64) -> true;
-is_primitive_type(i32) -> true;
-is_primitive_type(i16) -> true;
-is_primitive_type(i8) -> true;
-is_primitive_type(_) -> false.
 

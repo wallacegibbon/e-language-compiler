@@ -1,5 +1,12 @@
 %% vim: ft=elang :
 
+struct List
+    next: List^,
+    val: void^,
+    ok: User,
+    %invalid: List,
+end
+
 struct User
     %id: i64 = 0,
     id: i64,

@@ -4,7 +4,7 @@
 
 compile_from_rawast(Ast) ->
     Ast1 = ecompiler_fillconst:parse_and_remove_const(Ast),
-    {Ast2, Vars, InitCode} = ecompiler_collectvar:fetch_vars(Ast1),
-    ecompiler_type:checktype_ast(Ast2, Vars),
-    {Ast2, Vars, InitCode}.
+    {{MapAst, ListAst}, Vars, InitCode} = ecompiler_collectvar:fetch_vars(Ast1),
+    ecompiler_type:checktype_ast(MapAst, Vars),
+    {{MapAst, ListAst}, Vars, InitCode}.
 
