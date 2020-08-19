@@ -1,7 +1,7 @@
 %% vim: ft=elang :
 
 fun main(argc: i64, argv: i64^^): i64
-    blah: <i64, 10>;
+    blah: {i64, 10};
     tmp: i64^ = blah@;
     tmp^ = 100;
     myfn: fun(i64^): void = inc;

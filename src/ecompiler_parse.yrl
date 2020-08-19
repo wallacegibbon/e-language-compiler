@@ -10,7 +10,7 @@ typeanno_list typeanno pointer_depth general_type atomic_literal constref
 Terminals
 
 %% operators
-',' ':' ';' '=' '<' '>' '(' ')' '+' '-' '*' '/' '^' '@' '.' '~' '!'
+',' ':' ';' '=' '{' '}' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '~' '!'
 '!=' '==' '>=' '<='
 %% keywords
 const struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
@@ -50,7 +50,7 @@ typeanno_list -> typeanno : ['$1'].
 typeanno -> 'fun' '(' typeanno_list ')' ':' typeanno :
     #fun_type{params='$3', ret='$6', line=tok_line('$1')}.
 
-typeanno -> '<' typeanno ',' constref '>' :
+typeanno -> '{' typeanno ',' constref '}' :
     #box_type{elemtype='$2', size='$4', line=tok_line('$1')}.
 
 typeanno -> general_type pointer_depth :
