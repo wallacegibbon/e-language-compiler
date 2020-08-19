@@ -1,18 +1,18 @@
 %% vim: ft=elang :
 
-struct List
-    next: List^,
-    val: void^,
-    ok: User,
-    %invalid: List,
-end
-
 struct User
     %id: i64 = 0,
     id: i64,
     nameref: i64^,
     desc: {i64, 10},
     desclen : i64,
+end
+
+struct List
+    next: List^,
+    val: void^,
+    ok: User,
+    %invalid: List,
 end
 
 struct Administrator
@@ -82,5 +82,5 @@ fun init_user(user: User^, id: i64, desc: i64^ = "nothing"): void
 end
 
 fun myfn(any: i64^): void
-    any^ = any^ + 1;
+    any^ += 1;
 end
