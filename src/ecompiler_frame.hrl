@@ -73,9 +73,9 @@
 -record(basic_type, {line :: integer(),
 		     type :: {atom(), integer()}}).
 
--record(box_type, {line :: integer(),
-		   elemtype :: e_type(),
-		   size :: integer()}).
+-record(array_type, {line :: integer(),
+		     elemtype :: e_type(),
+		     size :: integer()}).
 
 -record(fun_type, {line :: integer(),
 		   params :: [e_type()],

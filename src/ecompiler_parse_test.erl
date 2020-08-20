@@ -38,14 +38,14 @@ function_pointer_test() ->
 			{varref,1,b}}]),
     ok.
 
-box_test() ->
+array_test() ->
     {ok, Tks, _} = ecompiler_scan:string("a: {u8, 100};"),
     %?debugFmt("~p~n", [Tks]),
     ?assertEqual(Tks, [{identifier,1,a}, {':',1}, {'{',1}, {basic_type,1,u8},
 		       {',',1}, {integer,1,100}, {'}',1}, {';',1}]),
     {ok, Ast} = ecompiler_parse:parse(Tks),
     %?debugFmt("~p~n", [Ast]),
-    ?assertEqual(Ast, [{vardef,1,a,{box_type,1,{basic_type,1,{u8,0}},100},
+    ?assertEqual(Ast, [{vardef,1,a,{array_type,1,{basic_type,1,{u8,0}},100},
 			none}]),
     ok.
 

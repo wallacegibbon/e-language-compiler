@@ -169,13 +169,13 @@ typeof_expr({string, Line, _}, _) ->
 
 incr_pdepth(#basic_type{type={Tname, Pdepth}} = Type) ->
     Type#basic_type{type={Tname, Pdepth + 1}};
-incr_pdepth(#box_type{elemtype=#basic_type{type={Type, N}, line=Line}}) ->
+incr_pdepth(#array_type{elemtype=#basic_type{type={Type, N}, line=Line}}) ->
     #basic_type{type={Type, N + 1}, line=Line}.
 
 decr_pdepth(#basic_type{type={Tname, Pdepth}} = Type) ->
     Type#basic_type{type={Tname, Pdepth - 1}};
-decr_pdepth(#box_type{line=Line} = Type) ->
-    throw({Line, flat_format("pointer - on box type ~s is invalid",
+decr_pdepth(#array_type{line=Line} = Type) ->
+    throw({Line, flat_format("pointer - on array type ~s is invalid",
 			     [fmt_type(Type)])}).
 
 typeof_structfield(#basic_type{type={StructName, 0}}, #varref{name=FieldName},
@@ -212,8 +212,8 @@ compare_types(_, _) ->
 
 compare_type(#fun_type{params=P1, ret=R1}, #fun_type{params=P2, ret=R2}) ->
     compare_types(P1, P2) and compare_type(R1, R2);
-compare_type(#box_type{elemtype=E1, size=S1},
-	     #box_type{elemtype=E2, size=S2}) ->
+compare_type(#array_type{elemtype=E1, size=S1},
+	     #array_type{elemtype=E2, size=S2}) ->
     compare_type(E1, E2) and (S1 =:= S2);
 compare_type(#basic_type{type={T1, 0}}, #basic_type{type={T2, 0}}) ->
     (T1 =:= T2) orelse (is_integer_type(T1) and is_integer_type(T2));
@@ -237,10 +237,10 @@ checktype_type(#fun_type{params=Params, ret=Rettype}, Structs) ->
 		      checktype_type(P, Structs)
 	      end, Params),
     checktype_type(Rettype, Structs);
-checktype_type(#box_type{elemtype=Elemtype}, Structs) ->
+checktype_type(#array_type{elemtype=Elemtype}, Structs) ->
     case Elemtype of
-	#box_type{line=Line} ->
-	    throw({Line, "nested box is not supported"});
+	#array_type{line=Line} ->
+	    throw({Line, "nested array is not supported"});
 	_ ->
 	    checktype_type(Elemtype, Structs)
     end;
@@ -271,7 +271,7 @@ fmt_types([], Result) ->
 fmt_type(#fun_type{params=Params, ret=Rettype}) ->
     io_lib:format("fun(~s): ~s", [lists:join(",", fmt_types(Params)),
 				  fmt_type(Rettype)]);
-fmt_type(#box_type{elemtype=Type, size=N}) ->
+fmt_type(#array_type{elemtype=Type, size=N}) ->
     io_lib:format("<~s, ~w>", [Type, N]);
 fmt_type(#basic_type{type={Type, Depth}}) when Depth > 0 ->
     io_lib:format("(~s~s)", [Type, lists:duplicate(Depth, "^")]);

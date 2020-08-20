@@ -33,7 +33,7 @@ fixexpr_for_c(#op1{operator='@', operand=Operand, line=Line} = E,
 	      {VarTypes, Functions, Structs}) ->
     case ecompiler_type:typeof_expr(Operand, {VarTypes, Functions, Structs,
 					      none}) of
-	#box_type{elemtype=_} ->
+	#array_type{elemtype=_} ->
 	    #op2{operator='.', op1=Operand, op2=#varref{name=val, line=Line}};
 	_ ->
 	    E
@@ -106,7 +106,7 @@ type_tostr(#fun_type{params=Params, ret=Rettype}, Varname) ->
 					 end, Params)),
     io_lib:format("~s (*~s)(~s)", [type_tostr(Rettype, ""), Varname,
 				  Paramstr]);
-type_tostr(#box_type{size=Size, elemtype=ElementType}, Varname) ->
+type_tostr(#array_type{size=Size, elemtype=ElementType}, Varname) ->
     io_lib:format("struct {~s val[~w];} ~s", [type_tostr(ElementType, ""),
 					      Size, Varname]);
 type_tostr(#basic_type{type={Typeanno, Depth}}, Varname) when Depth > 0 ->

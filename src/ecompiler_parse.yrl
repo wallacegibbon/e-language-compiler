@@ -43,7 +43,7 @@ atomic_literal -> string : '$1'.
 varref -> identifier :
     #varref{name=tok_val('$1'), line=tok_line('$1')}.
 
-%% type annotation inside box or function
+%% type annotation inside array or function
 typeanno_list -> typeanno ',' typeanno_list : ['$1' | '$3'].
 typeanno_list -> typeanno : ['$1'].
 
@@ -51,7 +51,7 @@ typeanno -> 'fun' '(' typeanno_list ')' ':' typeanno :
     #fun_type{params='$3', ret='$6', line=tok_line('$1')}.
 
 typeanno -> '{' typeanno ',' constref '}' :
-    #box_type{elemtype='$2', size='$4', line=tok_line('$1')}.
+    #array_type{elemtype='$2', size='$4', line=tok_line('$1')}.
 
 typeanno -> general_type pointer_depth :
     #basic_type{type={tok_val('$1'), '$2'}, line=tok_line('$1')}.
