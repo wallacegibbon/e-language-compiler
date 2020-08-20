@@ -49,4 +49,34 @@ array_test() ->
 			none}]),
     ok.
 
+array_init_test() ->
+    {ok, Tks, _} = ecompiler_scan:string("a: {u8, 2} = {11, 22};"),
+    %?debugFmt("~p~n", [Tks]),
+    ?assertEqual(Tks, [{identifier,1,a}, {':',1}, {'{',1}, {basic_type,1,u8},
+		       {',',1}, {integer,1,2}, {'}',1}, {'=',1}, {'{',1},
+		       {integer,1,11}, {',',1}, {integer,1,22}, {'}',1},
+		       {';',1}]),
+    {ok, Ast} = ecompiler_parse:parse(Tks),
+    %?debugFmt("~p~n", [Ast]),
+    ?assertEqual(Ast, [{vardef,1,a, {array_type,1,{basic_type,1,{u8,0}},2},
+			{array_init,1,[{integer,1,11},{integer,1,22}]}}]),
+    ok.
+
+struct_init_test() ->
+    {ok, Tks, _} = ecompiler_scan:string("a: S = S{name=\"a\", val=2};"),
+    %?debugFmt("~p~n", [Tks]),
+    ?assertEqual(Tks, [{identifier,1,a}, {':',1}, {identifier,1,'S'}, {'=',1},
+		       {identifier,1,'S'}, {'{',1}, {identifier,1,name},
+		       {'=',1}, {string,1,"a"}, {',',1}, {identifier,1,val},
+		       {'=',1}, {integer,1,2}, {'}',1}, {';',1}]),
+    {ok, Ast} = ecompiler_parse:parse(Tks),
+    %?debugFmt("~p~n", [Ast]),
+    ?assertEqual(Ast, [{vardef,1,a, {basic_type,1,{'S',0}},
+			{struct_init,1, {identifier,1,'S'},
+			 [{op2,1,assign, {varref,1,{identifier,1,name}},
+			   {string,1,"a"}},
+			  {op2,1,assign, {varref,1,{identifier,1,val}},
+			   {integer,1,2}}]}}]),
+    ok.
+
 -endif.

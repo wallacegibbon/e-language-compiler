@@ -81,3 +81,9 @@
 		   params :: [e_type()],
 		   ret :: e_type()}).
 
+-record(array_init, {line :: integer(),
+		     elements :: [e_expr()]}).
+
+-record(struct_init, {line :: integer(),
+		      name :: atom(),
+		      fields :: [any()]}).

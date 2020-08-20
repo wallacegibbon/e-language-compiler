@@ -5,6 +5,8 @@ exprs expr call_expr if_expr else_expr while_expr preminusplus_expr
 return_expr expr_or_defvar
 op19 op30 op29 op28 op27 op26 op25
 typeanno_list typeanno pointer_depth general_type atomic_literal constref
+array_init_expr array_init_elements struct_init_expr struct_init_fields
+struct_init_assign
 .
 
 Terminals
@@ -112,6 +114,27 @@ else_expr -> 'end' :
 return_expr -> return expr :
     #return{expr='$2', line=tok_line('$1')}.
 
+Unary 800 array_init_expr.
+array_init_expr -> '{' array_init_elements '}' :
+    #array_init{elements='$2', line=tok_line('$1')}.
+array_init_expr -> '{' string '}' :
+    #array_init{elements='$2', line=tok_line('$1')}.
+
+array_init_elements -> expr ',' array_init_elements : ['$1' | '$3'].
+array_init_elements -> expr : ['$1'].
+
+struct_init_expr -> identifier '{' struct_init_fields '}' :
+    #struct_init{name='$1', fields='$3', line=tok_line('$1')}.
+
+struct_init_fields -> struct_init_assign ',' struct_init_fields :
+    ['$1' | '$3'].
+struct_init_fields -> struct_init_assign :
+    ['$1'].
+
+struct_init_assign -> identifier '=' expr :
+    #op2{operator=assign, op1=#varref{name='$1', line=tok_line('$1')},
+	 op2='$3', line=tok_line('$2')}.
+
 %% expression
 exprs -> expr_or_defvar ';' exprs : ['$1' | '$3'].
 exprs -> expr_or_defvar ';' : ['$1'].
@@ -129,6 +152,8 @@ expr -> atomic_literal : '$1'.
 expr -> varref : '$1'.
 expr -> call_expr : '$1'.
 expr -> preminusplus_expr : '$1'.
+expr -> array_init_expr : '$1'.
+expr -> struct_init_expr : '$1'.
 expr -> expr '+=' expr :
     #op2{operator=assign, op1='$1', op2=#op2{operator='+', op1='$1', op2='$3',
 					     line=tok_line('$2')},
