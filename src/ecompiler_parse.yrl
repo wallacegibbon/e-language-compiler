@@ -159,8 +159,8 @@ expr -> preminusplus_expr : '$1'.
 expr -> array_init_expr : '$1'.
 expr -> struct_init_expr : '$1'.
 expr -> expr op2_forcombine '=' expr :
-    #op2{operator=assign, op1='$1', op2=#op2{operator='$2', op1='$1', op2='$4',
-					     line=tok_line('$2')},
+    #op2{operator=assign, op1='$1', op2=#op2{operator=tok_sym('$2'), op1='$1',
+					     op2='$4', line=tok_line('$2')},
 	 line=tok_line('$2')}.
 expr -> expr '=' expr :
     #op2{operator=assign, op1='$1', op2='$3', line=tok_line('$2')}.
