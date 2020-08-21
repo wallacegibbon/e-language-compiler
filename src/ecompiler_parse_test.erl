@@ -72,11 +72,27 @@ struct_init_test() ->
     {ok, Ast} = ecompiler_parse:parse(Tks),
     %?debugFmt("~p~n", [Ast]),
     ?assertEqual(Ast, [{vardef,1,a, {basic_type,1,{'S',0}},
-			{struct_init,1, {identifier,1,'S'},
+			{struct_init,1,'S',
 			 [{op2,1,assign, {varref,1,{identifier,1,name}},
 			   {string,1,"a"}},
 			  {op2,1,assign, {varref,1,{identifier,1,val}},
 			   {integer,1,2}}]}}]),
+    ok.
+
+assign_test() ->
+    {ok, Tks, _} = ecompiler_scan:string("fun b(): void a * = 3; c bsr = 5; end"),
+    %?debugFmt("~p~n", [Tks]),
+    ?assertEqual(Tks, [{'fun',1}, {identifier,1,b}, {'(',1}, {')',1}, {':',1},
+		       {basic_type,1,void}, {identifier,1,a}, {'*',1},
+		       {'=',1}, {integer,1,3}, {';',1}, {identifier,1,c},
+		       {'bsr',1}, {'=',1}, {integer,1,5}, {';',1}, {'end',1}]),
+    {ok, Ast} = ecompiler_parse:parse(Tks),
+    %?debugFmt("~p~n", [Ast]),
+    ?assertEqual(Ast, [{function_raw,1,b,[], {basic_type,1,{void,0}},
+			[{op2,1,assign, {varref,1,a},
+			  {op2,1,{'*',1},{varref,1,a},{integer,1,3}}},
+			 {op2,1,assign, {varref,1,c},
+			  {op2,1,{'bsr',1},{varref,1,c},{integer,1,5}}}]}]),
     ok.
 
 -endif.

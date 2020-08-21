@@ -3,7 +3,7 @@ Nonterminals
 statements statement defconst defstruct defun defvars defvar varref params
 exprs expr call_expr if_expr else_expr while_expr preminusplus_expr
 return_expr expr_or_defvar
-op19 op30 op29 op28 op27 op26 op25
+op19 op30 op29 op28 op27 op26 op25 op2_forcombine
 typeanno_list typeanno pointer_depth general_type atomic_literal constref
 array_init_expr array_init_elements struct_init_expr struct_init_fields
 struct_init_assign
@@ -13,7 +13,7 @@ Terminals
 
 %% operators
 ',' ':' ';' '=' '{' '}' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '~' '!'
-'!=' '==' '>=' '<=' '+=' '-=' '*=' '/='
+'!=' '==' '>=' '<='
 %% keywords
 const struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
 while 'if' elif else return
@@ -87,6 +87,10 @@ defun -> 'fun' identifier '(' defvars ')' ':' typeanno exprs 'end' :
     #function_raw{name=tok_val('$2'), params='$4', ret='$7', exprs='$8',
 		  line=tok_line('$2')}.
 
+defun -> 'fun' identifier '(' ')' ':' typeanno exprs 'end' :
+    #function_raw{name=tok_val('$2'), params=[], ret='$6', exprs='$7',
+		  line=tok_line('$2')}.
+
 %% function invocation
 call_expr -> identifier '(' params ')' :
     #call{fn=#varref{name=tok_val('$1'), line=tok_line('$1')},
@@ -154,20 +158,8 @@ expr -> call_expr : '$1'.
 expr -> preminusplus_expr : '$1'.
 expr -> array_init_expr : '$1'.
 expr -> struct_init_expr : '$1'.
-expr -> expr '+=' expr :
-    #op2{operator=assign, op1='$1', op2=#op2{operator='+', op1='$1', op2='$3',
-					     line=tok_line('$2')},
-	 line=tok_line('$2')}.
-expr -> expr '-=' expr :
-    #op2{operator=assign, op1='$1', op2=#op2{operator='-', op1='$1', op2='$3',
-					     line=tok_line('$2')},
-	 line=tok_line('$2')}.
-expr -> expr '*=' expr :
-    #op2{operator=assign, op1='$1', op2=#op2{operator='*', op1='$1', op2='$3',
-					     line=tok_line('$2')},
-	 line=tok_line('$2')}.
-expr -> expr '/=' expr :
-    #op2{operator=assign, op1='$1', op2=#op2{operator='/', op1='$1', op2='$3',
+expr -> expr op2_forcombine '=' expr :
+    #op2{operator=assign, op1='$1', op2=#op2{operator='$2', op1='$1', op2='$4',
 					     line=tok_line('$2')},
 	 line=tok_line('$2')}.
 expr -> expr '=' expr :
@@ -192,6 +184,10 @@ preminusplus_expr -> '-' expr :
     #op1{operator=tok_sym('$1'), operand='$2', line=tok_line('$1')}.
 preminusplus_expr -> '+' expr :
     #op1{operator=tok_sym('$1'), operand='$2', line=tok_line('$1')}.
+
+op2_forcombine -> op29 : '$1'.
+op2_forcombine -> op28 : '$1'.
+op2_forcombine -> op27 : '$1'.
 
 Unary 900 op19.
 op19 -> '^' : '$1'.
@@ -231,10 +227,6 @@ op25 -> 'and' : '$1'.
 op25 -> 'or' : '$1'.
 
 Right 100 '='.
-Right 100 '+='.
-Right 100 '-='.
-Right 100 '*='.
-Right 100 '/='.
 
 
 Erlang code.
