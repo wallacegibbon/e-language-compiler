@@ -122,7 +122,7 @@ Unary 800 array_init_expr.
 array_init_expr -> '{' array_init_elements '}' :
     #array_init{elements='$2', line=tok_line('$1')}.
 array_init_expr -> '{' string '}' :
-    #array_init{elements='$2', line=tok_line('$1')}.
+    #array_init{elements=str_to_inttks('$2'), line=tok_line('$1')}.
 
 array_init_elements -> expr ',' array_init_elements : ['$1' | '$3'].
 array_init_elements -> expr : ['$1'].
@@ -136,7 +136,7 @@ struct_init_fields -> struct_init_assign :
     ['$1'].
 
 struct_init_assign -> identifier '=' expr :
-    #op2{operator=assign, op1=#varref{name='$1', line=tok_line('$1')},
+    #op2{operator=assign, op1=#varref{name=tok_val('$1'), line=tok_line('$1')},
 	 op2='$3', line=tok_line('$2')}.
 
 %% expression
@@ -232,6 +232,9 @@ Right 100 '='.
 Erlang code.
 
 -include("./ecompiler_frame.hrl").
+
+str_to_inttks({string, Line, Str}) ->
+    lists:map(fun(Char) -> {integer, Line, Char} end, Str).
 
 tok_val({_, _, Val}) -> Val.
 tok_sym({Sym, _}) -> Sym.

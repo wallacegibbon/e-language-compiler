@@ -4,7 +4,7 @@
 
 compile_to_c(InputFilename, OutputFilename) ->
     {ok, Ast} = parse_file(InputFilename),
-    {Ast2, Vars, InitCode} = ecompiler_compile:compile_from_rawast(Ast),
+    {Ast2, Vars, InitCode} = ecompiler_compile:compile_from_rawast(Ast, #{}),
     ecompiler_genc:generate_ccode(Ast2, Vars, InitCode, OutputFilename).
 
 
@@ -20,7 +20,7 @@ parse_file(Filename) when is_list(Filename) ->
 
 parse_and_compile(Filename) ->
     {ok, Ast} = parse_file(Filename),
-    ecompiler_compile:compile_from_rawast(Ast).
+    ecompiler_compile:compile_from_rawast(Ast, #{}).
 
 parse_error({Line, _, Errinfo}) ->
     io:format("parse error(line ~w), ~s~n", [Line, Errinfo]).

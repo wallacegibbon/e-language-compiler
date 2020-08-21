@@ -73,10 +73,8 @@ struct_init_test() ->
     %?debugFmt("~p~n", [Ast]),
     ?assertEqual(Ast, [{vardef,1,a, {basic_type,1,{'S',0}},
 			{struct_init,1,'S',
-			 [{op2,1,assign, {varref,1,{identifier,1,name}},
-			   {string,1,"a"}},
-			  {op2,1,assign, {varref,1,{identifier,1,val}},
-			   {integer,1,2}}]}}]),
+			 [{op2,1,assign, {varref,1,name}, {string,1,"a"}},
+			  {op2,1,assign, {varref,1,val}, {integer,1,2}}]}}]),
     ok.
 
 assign_test() ->
@@ -90,9 +88,9 @@ assign_test() ->
     %?debugFmt("~p~n", [Ast]),
     ?assertEqual(Ast, [{function_raw,1,b,[], {basic_type,1,{void,0}},
 			[{op2,1,assign, {varref,1,a},
-			  {op2,1,{'*',1},{varref,1,a},{integer,1,3}}},
+			  {op2,1,'*',{varref,1,a},{integer,1,3}}},
 			 {op2,1,assign, {varref,1,c},
-			  {op2,1,{'bsr',1},{varref,1,c},{integer,1,5}}}]}]),
+			  {op2,1,'bsr',{varref,1,c},{integer,1,5}}}]}]),
     ok.
 
 -endif.

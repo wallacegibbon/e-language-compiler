@@ -42,7 +42,7 @@ Rules.
 {DecimalDigit}+ :
     {token, {integer, TokenLine, list_to_integer(TokenChars)}}.
 
-{DecimalDigit}+.{DecimalDigit}+ :
+{DecimalDigit}+\.{DecimalDigit}+ :
     {token, {float, TokenLine, list_to_float(TokenChars)}}.
 
 {Delim} :

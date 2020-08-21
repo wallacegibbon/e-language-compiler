@@ -33,6 +33,12 @@ eval_constexpr(#op2{operator='/', op1=Op1, op2=Op2}, Constants) ->
     eval_constexpr(Op1, Constants) / eval_constexpr(Op2, Constants);
 eval_constexpr(#op2{operator='rem', op1=Op1, op2=Op2}, Constants) ->
     eval_constexpr(Op1, Constants) rem eval_constexpr(Op2, Constants);
+eval_constexpr(#op2{operator='and', op1=Op1, op2=Op2}, Constants) ->
+    ((eval_constexpr(Op1, Constants) =/= 0) and
+     (eval_constexpr(Op2, Constants) =/= 0));
+eval_constexpr(#op2{operator='or', op1=Op1, op2=Op2}, Constants) ->
+    ((eval_constexpr(Op1, Constants) =:= 1) or
+     (eval_constexpr(Op2, Constants) =:= 1));
 eval_constexpr(#op2{operator='band', op1=Op1, op2=Op2}, Constants) ->
     eval_constexpr(Op1, Constants) band eval_constexpr(Op2, Constants);
 eval_constexpr(#op2{operator='bor', op1=Op1, op2=Op2}, Constants) ->
@@ -44,10 +50,11 @@ eval_constexpr(#op2{operator='bsr', op1=Op1, op2=Op2}, Constants) ->
 eval_constexpr(#op2{operator='bsl', op1=Op1, op2=Op2}, Constants) ->
     eval_constexpr(Op1, Constants) bsl eval_constexpr(Op2, Constants);
 eval_constexpr(#varref{name=Name, line=Line}, Constants) ->
-    try maps:get(Name, Constants)
-    catch
-	error:{badkey, _} ->
-	    throw({Line, flat_format("undefined constant ~s", [Name])})
+    case maps:find(Name, Constants) of
+	error ->
+	    throw({Line, flat_format("undefined constant ~s", [Name])});
+	{ok, Val} ->
+	    Val
     end;
 eval_constexpr({ImmiType, _, Val}, _) when ImmiType =:= integer;
 					   ImmiType =:= float ->
@@ -74,7 +81,7 @@ replace_constants([], _) ->
     [].
 
 replace_inexprs(Exprs, Constants) ->
-    exprsmap(fun (E) -> replace_inexpr(E, Constants) end, Exprs).
+    exprsmap(fun(E) -> replace_inexpr(E, Constants) end, Exprs).
 
 replace_inexpr(#vardef{name=Name, initval=Initval, type=Type,
 		       line=Line} = Expr, Constants) ->
@@ -100,6 +107,10 @@ replace_inexpr({constref, Line, Name}, Constants) ->
 	error ->
 	    throw({Line, flat_format("const ~s is not found", [Name])})
     end;
+replace_inexpr(#struct_init{fields=Fields} = Expr, Constants) ->
+    Expr#struct_init{fields=replace_inexprs(Fields, Constants)};
+replace_inexpr(#array_init{elements=Elements} = Expr, Constants) ->
+    Expr#array_init{elements=replace_inexprs(Elements, Constants)};
 replace_inexpr(#op2{op1=Op1, op2=Op2} = Expr, Constants) ->
     Expr#op2{op1=replace_inexpr(Op1, Constants),
 	     op2=replace_inexpr(Op2, Constants)};

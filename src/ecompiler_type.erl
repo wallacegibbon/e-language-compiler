@@ -8,10 +8,10 @@
 -include("./ecompiler_frame.hrl").
 
 checktype_ast({FunMap, StructMap}, GlobalVarTypes) ->
-    lists:map(fun (S) ->
+    lists:map(fun(S) ->
 		      checktype_struct(S, StructMap)
 	      end, maps:values(StructMap)),
-    lists:map(fun (F) ->
+    lists:map(fun(F) ->
 		      checktype_function(F, FunMap, StructMap, GlobalVarTypes)
 	      end, maps:values(FunMap)),
     ok.
@@ -19,7 +19,7 @@ checktype_ast({FunMap, StructMap}, GlobalVarTypes) ->
 checktype_function(#function{var_types=VarTypes, exprs=Exprs, type=Fntype},
 		   Functions, Structs, GlobalVarTypes) ->
     %% TODO: check param default values (only const expressions are allowed)
-    lists:map(fun (T) -> checktype_type(T, Structs) end, maps:values(VarTypes)),
+    lists:map(fun(T) -> checktype_type(T, Structs) end, maps:values(VarTypes)),
     checktype_type(Fntype#fun_type.ret, Structs),
     CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
     Ctx = {CurrentVars, Functions, Structs, Fntype#fun_type.ret},
@@ -27,11 +27,11 @@ checktype_function(#function{var_types=VarTypes, exprs=Exprs, type=Fntype},
 
 checktype_struct(#struct{field_types=FieldTypes, name=Name}, Structs) ->
     %% TODO: check init code (only const expressions are allowed
-    lists:map(fun (T) -> checktype_type(T, Structs) end,
+    lists:map(fun(T) -> checktype_type(T, Structs) end,
 	      maps:values(FieldTypes)),
-    Conflicts = lists:filter(fun ({_, #basic_type{type={Tname, 0}}}) ->
+    Conflicts = lists:filter(fun({_, #basic_type{type={Tname, 0}}}) ->
 				     Name =:= Tname;
-				 (_) ->
+				(_) ->
 				     false
 			     end, maps:to_list(FieldTypes)),
     case Conflicts of
@@ -114,7 +114,7 @@ typeof_expr(#op1{operator='@', operand=Operand, line=Line},
 				     [expr2str(Operand)])})
     end;
 typeof_expr(#call{fn=FunExpr, args=Args, line=Line}, Ctx) ->
-    ArgsTypes = lists:map(fun (A) -> typeof_expr(A, Ctx) end, Args),
+    ArgsTypes = lists:map(fun(A) -> typeof_expr(A, Ctx) end, Args),
     FnType = typeof_expr(FunExpr, Ctx),
     case compare_types(ArgsTypes, FnType#fun_type.params) of
 	false ->
@@ -166,8 +166,9 @@ typeof_expr(#array_init{elements=Elements, line=Line}, Ctx) ->
 	    #array_type{elemtype=hd(ElementTypes), size=length(ElementTypes),
 			line=Line};
 	_ ->
-	    throw({Line, flat_format("array init values type conflict: ~p",
-				     [typeof_exprs(ElementTypes, Ctx)])})
+	    throw({Line,
+		   flat_format("array init values type conflict: {~s}",
+			       [lists:join(",", fmt_types(ElementTypes))])})
     end;
 typeof_expr(#struct_init{name=StructName, fields=_Elements, line=Line},
 	    {_, _, Structs, _}) ->
@@ -259,7 +260,7 @@ is_pointer_and_int(_, _) ->
 
 %% check type, ensure that all struct used by type exists.
 checktype_type(#fun_type{params=Params, ret=Rettype}, Structs) ->
-    lists:map(fun (P) ->
+    lists:map(fun(P) ->
 		      checktype_type(P, Structs)
 	      end, Params),
     checktype_type(Rettype, Structs);

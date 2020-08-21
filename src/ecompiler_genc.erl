@@ -27,7 +27,7 @@ make_functionmap_for_c(FnMap, StructMap, GlobalVars) ->
 	     end, FnMap).
 
 fixexprs_for_c(Exprs, Ctx) ->
-    exprsmap(fun (E) -> fixexpr_for_c(E, Ctx) end, Exprs).
+    exprsmap(fun(E) -> fixexpr_for_c(E, Ctx) end, Exprs).
 
 fixexpr_for_c(#op1{operator='@', operand=Operand, line=Line} = E,
 	      {VarTypes, Functions, Structs}) ->
@@ -101,7 +101,7 @@ vars_to_str([], Strs) ->
 
 %% convert type to C string
 type_tostr(#fun_type{params=Params, ret=Rettype}, Varname) ->
-    Paramstr = lists:join(",", lists:map(fun (T) ->
+    Paramstr = lists:join(",", lists:map(fun(T) ->
 						 type_tostr(T, "")
 					 end, Params)),
     io_lib:format("~s (*~s)(~s)", [type_tostr(Rettype, ""), Varname,

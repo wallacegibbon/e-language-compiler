@@ -34,7 +34,7 @@ expr2str(#varref{name=Name}) ->
 expr2str(#op2{operator=Operator, op1=Op1, op2=Op2}) ->
     io_lib:format("~s ~s ~s", [expr2str(Op1), Operator, expr2str(Op2)]);
 expr2str(#op1{operator=Operator, operand=Operand}) ->
-    io_lib:format("(~s~s)", [expr2str(Operand), Operator]);
+    io_lib:format("~s ~s", [expr2str(Operand), Operator]);
 expr2str({Immi, _, Val}) when Immi =:= integer; Immi =:= float ->
     io_lib:format("~w", [Val]);
 expr2str({Immi, _, Val}) when Immi =:= string ->

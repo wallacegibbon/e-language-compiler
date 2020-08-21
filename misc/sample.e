@@ -1,15 +1,16 @@
 %% vim: ft=elang :
 
 struct User
-    id: i64 = 10 * 20 + 3 * 4,
-    desc: {i64, 10} = {"hello"},
+    id: i64 = 10 * 20 + 3 * 4 + TOTOAL_USERCNT,
+    %desc: {i64, 10} = {"hello"},
+    desc: {i64, 10} = {1,2,3,4,5,6,7,8,9,TOTOAL_USERCNT},
     count: u32,
 end
 
 struct List
     next: List^,
     val: void^,
-    ok: User,
+    ok: User = User{id=1, count=TOTOAL_USERCNT},
     %invalid: List,
 end
 
@@ -22,7 +23,7 @@ end
 mod_info: {i64, 100};
 blah: i64 = 10;
 
-const TOTAL_ADMIN_LIMIT = 10;
+const TOTAL_ADMIN_LIMIT = 10 + 2;
 
 % t: {i64, 3} = {0, 1, 2}; % t@^
 % struct {i64 val[8];} t = {{0, 1, 2}}; // *(t.val)
@@ -46,6 +47,7 @@ fun main(argc: i64, argv: i64^^): i64
     v1 = v1 + 10;
 
     cnt = v1 + 2;
+    cnt = TOTOAL_USERCNT;
 
     v2: u8 = 2;
     v2 = v2 + 1;

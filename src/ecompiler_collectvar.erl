@@ -70,17 +70,17 @@ append_to_ast(Ast, _, _, _) ->
 %% the list version ast is also return for generating C code.
 %% (in C language, the order of definition matters)
 split_functions_and_structs(MixedAst) ->
-    {Fns, Structs} = lists:partition(fun (A) ->
+    {Fns, Structs} = lists:partition(fun(A) ->
 					     element(1, A) =:= function
 				     end, MixedAst),
-    FnMap = maps:from_list(lists:map(fun (#function{name=Name} = Fn) ->
+    FnMap = maps:from_list(lists:map(fun(#function{name=Name} = Fn) ->
 					     {Name, Fn}
 				     end, Fns)),
-    StructMap = maps:from_list(lists:map(fun (#struct{name=Name} = S) ->
+    StructMap = maps:from_list(lists:map(fun(#struct{name=Name} = S) ->
 						 {Name, S}
 					 end, Structs)),
     {{FnMap, StructMap}, {Fns, Structs}}.
 
 names_of_vardefs(Vardefs) ->
-    lists:map(fun (#vardef{name=N}) -> N end, Vardefs).
+    lists:map(fun(#vardef{name=N}) -> N end, Vardefs).
 
