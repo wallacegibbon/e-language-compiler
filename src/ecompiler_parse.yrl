@@ -124,7 +124,7 @@ array_init_elements -> expr ',' array_init_elements : ['$1' | '$3'].
 array_init_elements -> expr : ['$1'].
 
 struct_init_expr -> identifier '{' struct_init_fields '}' :
-    #struct_init{name='$1', fields='$3', line=tok_line('$1')}.
+    #struct_init{name=tok_val('$1'), fields='$3', line=tok_line('$1')}.
 
 struct_init_fields -> struct_init_assign ',' struct_init_fields :
     ['$1' | '$3'].

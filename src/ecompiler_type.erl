@@ -3,7 +3,7 @@
 -export([checktype_ast/2, typeof_expr/2]).
 
 -import(ecompiler_utils, [is_primitive_type/1, is_integer_type/1,
-			  expr2str/1, flat_format/2]).
+			  expr2str/1, flat_format/2, void_type/1]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -124,17 +124,16 @@ typeof_expr(#call{fn=FunExpr, args=Args, line=Line}, Ctx) ->
 	true ->
 	    FnType#fun_type.ret
     end;
-typeof_expr(#if_expr{condition=Condition, then=Then, else=Else}, Ctx) ->
+typeof_expr(#if_expr{condition=Condition, then=Then, else=Else, line=Line},
+	    Ctx) ->
     typeof_expr(Condition, Ctx),
     typeof_exprs(Then, Ctx),
     typeof_exprs(Else, Ctx),
-    %% TODO
-    none;
-typeof_expr(#while_expr{condition=Condition, exprs=Exprs}, Ctx) ->
+    void_type(Line);
+typeof_expr(#while_expr{condition=Condition, exprs=Exprs, line=Line}, Ctx) ->
     typeof_expr(Condition, Ctx),
     typeof_exprs(Exprs, Ctx),
-    %% TODO
-    none;
+    void_type(Line);
 typeof_expr(#return{expr=Expr, line=Line}, {_, _, _, FnRetType} = Ctx) ->
     RealRet = typeof_expr(Expr, Ctx),
     case compare_type(RealRet, FnRetType) of
@@ -160,6 +159,26 @@ typeof_expr(#varref{name=Name, line=Line},
 	   end,
     checktype_type(Type, Structs),
     Type;
+typeof_expr(#array_init{elements=Elements, line=Line}, Ctx) ->
+    ElementTypes = typeof_exprs(Elements, Ctx),
+    case are_sametype(ElementTypes) of
+	true ->
+	    #array_type{elemtype=hd(ElementTypes), size=length(ElementTypes),
+			line=Line};
+	_ ->
+	    throw({Line, flat_format("array init values type conflict: ~p",
+				     [typeof_exprs(ElementTypes, Ctx)])})
+    end;
+typeof_expr(#struct_init{name=StructName, fields=_Elements, line=Line},
+	    {_, _, Structs, _}) ->
+    %% TODO: check field types
+    case maps:find(StructName, Structs) of
+	{ok, _} ->
+	    #basic_type{type={StructName, 0}, line=Line};
+	_ ->
+	    throw({Line, flat_format("struct ~s is not found",
+				     [StructName])})
+    end;
 typeof_expr({float, Line, _}, _) ->
     #basic_type{type={f64, 0}, line=Line};
 typeof_expr({integer, Line, _}, _) ->
@@ -177,6 +196,13 @@ decr_pdepth(#basic_type{type={Tname, Pdepth}} = Type) ->
 decr_pdepth(#array_type{line=Line} = Type) ->
     throw({Line, flat_format("pointer - on array type ~s is invalid",
 			     [fmt_type(Type)])}).
+
+are_sametype([TargetType, TargetType | Rest]) ->
+    are_sametype([TargetType | Rest]);
+are_sametype([_]) ->
+    true;
+are_sametype(_) ->
+    false.
 
 typeof_structfield(#basic_type{type={StructName, 0}}, #varref{name=FieldName},
 		   Structs, Line) ->
@@ -272,7 +298,7 @@ fmt_type(#fun_type{params=Params, ret=Rettype}) ->
     io_lib:format("fun(~s): ~s", [lists:join(",", fmt_types(Params)),
 				  fmt_type(Rettype)]);
 fmt_type(#array_type{elemtype=Type, size=N}) ->
-    io_lib:format("<~s, ~w>", [Type, N]);
+    io_lib:format("{~s, ~w}", [fmt_type(Type), N]);
 fmt_type(#basic_type{type={Type, Depth}}) when Depth > 0 ->
     io_lib:format("(~s~s)", [Type, lists:duplicate(Depth, "^")]);
 fmt_type(#basic_type{type={Type, 0}}) ->

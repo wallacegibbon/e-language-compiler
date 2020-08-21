@@ -1,7 +1,7 @@
 -module(ecompiler_utils).
 
 -export([exprsmap/2, expr2str/1, flat_format/2, is_primitive_type/1,
-	 is_integer_type/1, getvalues_bykeys/2]).
+	 is_integer_type/1, getvalues_bykeys/2, void_type/1]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -68,4 +68,7 @@ is_integer_type(i32) -> true;
 is_integer_type(i16) -> true;
 is_integer_type(i8) -> true;
 is_integer_type(_) -> false.
+
+void_type(Line) ->
+    #basic_type{type=void, line=Line}.
 

@@ -1,11 +1,9 @@
 %% vim: ft=elang :
 
 struct User
-    %id: i64 = 0,
-    id: i64,
-    nameref: i64^,
-    desc: {i64, 10},
-    desclen : i64,
+    id: i64 = 10 * 20 + 3 * 4,
+    desc: {i64, 10} = {"hello"},
+    count: u32,
 end
 
 struct List
@@ -38,7 +36,8 @@ const blah1 = 1 bsl 8;
 const blah2 = 1 bsr 8;
 
 fun main(argc: i64, argv: i64^^): i64
-    users: {User, TOTOAL_USERCNT};
+    %users: {User, TOTOAL_USERCNT} = {User{nameref=1}, User{id=1}};
+    users: {User, 2} = {User{nameref=1}, User{id=1}};
     cnt: i64 = TOTOAL_USERCNT;
     %init_users(users@, sizeof(users)/sizeof(User));
     init_users(users@, TOTOAL_USERCNT);
