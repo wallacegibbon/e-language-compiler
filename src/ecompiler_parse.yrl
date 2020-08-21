@@ -136,7 +136,8 @@ struct_init_fields -> struct_init_assign :
     ['$1'].
 
 struct_init_assign -> identifier '=' expr :
-    #op2{operator=assign, op1=#varref{name=tok_val('$1'), line=tok_line('$1')},
+    #op2{operator=assign, op1=#varref{name=tok_val('$1'),
+				      line=tok_line('$1')},
 	 op2='$3', line=tok_line('$2')}.
 
 %% expression

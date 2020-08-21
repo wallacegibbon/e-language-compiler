@@ -11,6 +11,8 @@ exprsmap(Fn, [#if_expr{condition=Cond, then=Then, else=Else} = If | Rest]) ->
 exprsmap(Fn, [#while_expr{condition=Cond, exprs=Exprs} = While | Rest]) ->
     [While#while_expr{condition=Fn(Cond), exprs=exprsmap(Fn, Exprs)} |
      exprsmap(Fn, Rest)];
+exprsmap(Fn, [#vardef{initval=Initval} = Vardef | Rest]) ->
+    [Vardef#vardef{initval=Fn(Initval)} | exprsmap(Fn, Rest)];
 exprsmap(Fn, [#call{fn=Callee, args=Args} = Fncall | Rest]) ->
     [Fncall#call{fn=Fn(Callee), args=exprsmap(Fn, Args)} | exprsmap(Fn, Rest)];
 exprsmap(Fn, [#return{expr=Retexpr} = Return | Rest]) ->

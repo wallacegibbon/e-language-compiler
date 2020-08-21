@@ -18,8 +18,8 @@ checktype_ast({FunMap, StructMap}, GlobalVarTypes) ->
 
 checktype_function(#function{var_types=VarTypes, exprs=Exprs, type=Fntype},
 		   Functions, Structs, GlobalVarTypes) ->
-    %% TODO: check param default values (only const expressions are allowed)
-    lists:map(fun(T) -> checktype_type(T, Structs) end, maps:values(VarTypes)),
+    lists:map(fun(T) -> checktype_type(T, Structs) end,
+	      maps:values(VarTypes)),
     checktype_type(Fntype#fun_type.ret, Structs),
     CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
     Ctx = {CurrentVars, Functions, Structs, Fntype#fun_type.ret},

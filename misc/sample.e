@@ -60,14 +60,14 @@ fun main(argc: i64, argv: i64^^): i64
     return 0;
 end
 
-fun init_users(users: User^, size: i64 = 10): void
+fun init_users(users: User^, size: i64): void
     cnt: i64 = 30 + 52 * size / 2 + 100 / 10;
 %    while (cnt < size)
 %	init_user((users + cnt)^, cnt, "test");
 %    end
 end
 
-fun init_user(user: User^, id: i64, desc: i64^ = "nothing"): void
+fun init_user(user: User^, id: i64, desc: i64^): void
     if (id < 1)
 	user^.id = 1;
 	user^.id = user^.id + 1;

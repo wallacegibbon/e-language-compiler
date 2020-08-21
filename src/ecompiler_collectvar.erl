@@ -1,14 +1,36 @@
+%%% this is the 2nd pass, variable map will be created after this pass.
+
 -module(ecompiler_collectvar).
 
 -export([fetch_vars/1]).
 
--import(ecompiler_utils, [flat_format/2, getvalues_bykeys/2]).
+-import(ecompiler_utils, [flat_format/2, getvalues_bykeys/2, exprsmap/2]).
 
 -include("./ecompiler_frame.hrl").
 
 fetch_vars(Ast) ->
-    {MixedAst, VarTypes, InitCode} = fetch_vars(Ast, [], {#{}, [], true}),
-    {split_functions_and_structs(MixedAst), VarTypes, InitCode}.
+    Ast2 = fix_struct_init(Ast),
+    {MixedAst, VarTypes, InitCode} = fetch_vars(Ast2, [], {#{}, [], true}),
+    Ast3 = split_functions_and_structs(MixedAst),
+    {Ast3, VarTypes, InitCode}.
+
+%% struct_init's fields were assign expressions, convert it to a map
+fix_struct_init([#function_raw{exprs=Exprs} = F | Rest]) ->
+    [F#function_raw{exprs=exprsmap(fun fix_struct_init_code/1, Exprs)} |
+     fix_struct_init(Rest)];
+fix_struct_init([#struct_raw{fields=Exprs} = S | Rest]) ->
+    [S#struct_raw{fields=exprsmap(fun fix_struct_init_code/1, Exprs)} |
+     fix_struct_init(Rest)];
+fix_struct_init([#vardef{initval=Initval} = V | Rest]) ->
+    [V#vardef{initval=fix_struct_init_code(Initval)} |
+     fix_struct_init(Rest)];
+fix_struct_init([]) ->
+    [].
+
+fix_struct_init_code(#struct_init{fields=Fields} = S) ->
+    S#struct_init{fields=prepare_struct_defaults(Fields, #{})};
+fix_struct_init_code(Any) ->
+    Any.
 
 %% in function expressions, the init code of defvar can not be simply
 %% fetched out from the code, it should be replaced as assignment in the
@@ -38,11 +60,16 @@ fetch_vars([#function_raw{name=Name, ret=Ret, params=Params, exprs=Exprs,
     %% collect function parameter variables, variable can have default value
     {[], ParamVars, ParamInitCode} = fetch_vars(Params, [],
 						{#{}, [], true}),
+    if ParamInitCode =/= [] ->
+	   throw({Line, "function parameters can not have default value"});
+       true ->
+	   ok
+    end,
     %% collect function variables, parameters are variables, too.
     {NewExprs, FunVarTypes, []} = fetch_vars(Exprs, [],
-					 {ParamVars, [], false}),
+					     {ParamVars, [], false}),
     Fn = #function{name=Name, var_types=FunVarTypes, exprs=NewExprs,
-		   param_names=ParamNames, params_defaultinit=ParamInitCode,
+		   param_names=ParamNames,
 		   type=#fun_type{params=getvalues_bykeys(ParamNames,
 							  ParamVars),
 				  ret=Ret, line=Line}},
@@ -53,13 +80,18 @@ fetch_vars([#struct_raw{name=Name, fields=Fields} | Rest], NewAst, Ctx) ->
     {[], FieldTypes, StructInitCode} = fetch_vars(Fields, [],
 						 {#{}, [], true}),
     S = #struct{name=Name, field_types=FieldTypes, field_names=FieldNames,
-		initcode=StructInitCode},
+		field_defaults=prepare_struct_defaults(StructInitCode, #{})},
     fetch_vars(Rest, [S | NewAst], Ctx);
 fetch_vars([Any | Rest], NewAst, Ctx) ->
     fetch_vars(Rest, [Any | NewAst], Ctx);
 fetch_vars([], NewAst, {VarTypes, InitCode, _}) ->
     {lists:reverse(NewAst), VarTypes, lists:reverse(InitCode)}.
 
+prepare_struct_defaults([#op2{operator=assign, op1=#varref{name=Field},
+			      op2=Val} | Rest], Result) ->
+    prepare_struct_defaults(Rest, Result#{Field => Val});
+prepare_struct_defaults([], Result) ->
+    Result.
 
 append_to_ast(Ast, Varname, Initval, Line) when Initval =/= none ->
     [#op2{operator=assign, op1=#varref{name=Varname, line=Line},

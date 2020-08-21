@@ -5,14 +5,13 @@
 -record(function, {name :: atom(),
 		   type :: any(),
 		   param_names :: [atom()],
-		   params_defaultinit :: [e_expr()],
 		   var_types :: #{atom() => e_type()},
 		   exprs :: [e_expr()]}).
 
 -record(struct, {name :: atom(),
 		 field_types :: [any()],
 		 field_names :: [atom()],
-		 initcode :: [e_expr()]}).
+		 field_defaults :: #{atom() => e_expr()}}).
 
 -record(function_raw, {line :: integer(),
 		       name :: atom(),
@@ -86,4 +85,4 @@
 
 -record(struct_init, {line :: integer(),
 		      name :: atom(),
-		      fields :: [any()]}).
+		      fields :: any()}).
