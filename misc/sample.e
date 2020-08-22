@@ -3,7 +3,7 @@
 struct User
     id: i64 = 10 * 20 + 3 * 4 + TOTOAL_USERCNT,
     %desc: {i64, 10} = {"hello"},
-    desc: {i64, 10} = {1,2,3,4,5,6,7,8,9,TOTOAL_USERCNT},
+    desc: {i64, TOTAL_ADMIN_LIMIT} = {1,2,3,4,5,6,7,8,9,TOTOAL_USERCNT},
     count: u32,
 end
 
@@ -15,7 +15,7 @@ struct List
 end
 
 struct Administrator
-    users: {User, TOTAL_ADMIN_LIMIT},
+    users: {User, TOTAL_ADMIN_LIMIT + 1},
     level: i64,
 end
 

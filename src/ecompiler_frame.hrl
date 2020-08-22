@@ -13,6 +13,17 @@
 		 field_names :: [atom()],
 		 field_defaults :: #{atom() => e_expr()}}).
 
+-record(struct_init, {line :: integer(),
+		      name :: atom(),
+		      fields :: #{atom() => e_expr()}}).
+
+-record(array_init, {line :: integer(),
+		     elements :: [e_expr()]}).
+
+-record(struct_init_raw, {line :: integer(),
+			  name :: atom(),
+			  fields :: [e_expr()]}).
+
 -record(function_raw, {line :: integer(),
 		       name :: atom(),
 		       params :: [e_expr()],
@@ -80,9 +91,3 @@
 		   params :: [e_type()],
 		   ret :: e_type()}).
 
--record(array_init, {line :: integer(),
-		     elements :: [e_expr()]}).
-
--record(struct_init, {line :: integer(),
-		      name :: atom(),
-		      fields :: any()}).

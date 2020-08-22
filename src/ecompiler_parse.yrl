@@ -4,7 +4,7 @@ statements statement defconst defstruct defun defvars defvar varref params
 exprs expr call_expr if_expr else_expr while_expr preminusplus_expr
 return_expr expr_or_defvar
 op19 op30 op29 op28 op27 op26 op25 op2_forcombine
-typeanno_list typeanno pointer_depth general_type atomic_literal constref
+typeanno_list typeanno pointer_depth general_type atomic_literal
 array_init_expr array_init_elements struct_init_expr struct_init_fields
 struct_init_assign
 .
@@ -35,9 +35,6 @@ statement -> defvar ';' : '$1'.
 defconst -> const identifier '=' expr ';' :
     #const{name=tok_val('$2'), val='$4', line=tok_line('$2')}.
 
-constref -> atomic_literal : tok_val('$1').
-constref -> identifier : {constref, tok_line('$1'), tok_val('$1')}.
-
 atomic_literal -> integer : '$1'.
 atomic_literal -> float : '$1'.
 atomic_literal -> string : '$1'.
@@ -52,7 +49,7 @@ typeanno_list -> typeanno : ['$1'].
 typeanno -> 'fun' '(' typeanno_list ')' ':' typeanno :
     #fun_type{params='$3', ret='$6', line=tok_line('$1')}.
 
-typeanno -> '{' typeanno ',' constref '}' :
+typeanno -> '{' typeanno ',' expr '}' :
     #array_type{elemtype='$2', size='$4', line=tok_line('$1')}.
 
 typeanno -> general_type pointer_depth :
@@ -128,7 +125,7 @@ array_init_elements -> expr ',' array_init_elements : ['$1' | '$3'].
 array_init_elements -> expr : ['$1'].
 
 struct_init_expr -> identifier '{' struct_init_fields '}' :
-    #struct_init{name=tok_val('$1'), fields='$3', line=tok_line('$1')}.
+    #struct_init_raw{name=tok_val('$1'), fields='$3', line=tok_line('$1')}.
 
 struct_init_fields -> struct_init_assign ',' struct_init_fields :
     ['$1' | '$3'].

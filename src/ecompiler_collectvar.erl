@@ -9,28 +9,42 @@
 -include("./ecompiler_frame.hrl").
 
 fetch_vars(Ast) ->
-    Ast2 = fix_struct_init(Ast),
+    Ast2 = prepare_structinit_expr(Ast),
     {MixedAst, VarTypes, InitCode} = fetch_vars(Ast2, [], {#{}, [], true}),
     Ast3 = split_functions_and_structs(MixedAst),
     {Ast3, VarTypes, InitCode}.
 
 %% struct_init's fields were assign expressions, convert it to a map
-fix_struct_init([#function_raw{exprs=Exprs} = F | Rest]) ->
-    [F#function_raw{exprs=exprsmap(fun fix_struct_init_code/1, Exprs)} |
-     fix_struct_init(Rest)];
-fix_struct_init([#struct_raw{fields=Exprs} = S | Rest]) ->
-    [S#struct_raw{fields=exprsmap(fun fix_struct_init_code/1, Exprs)} |
-     fix_struct_init(Rest)];
-fix_struct_init([#vardef{initval=Initval} = V | Rest]) ->
-    [V#vardef{initval=fix_struct_init_code(Initval)} |
-     fix_struct_init(Rest)];
-fix_struct_init([]) ->
+prepare_structinit_expr([#function_raw{exprs=Exprs} = F | Rest]) ->
+    [F#function_raw{exprs=exprsmap(fun fix_structinit/1, Exprs)} |
+     prepare_structinit_expr(Rest)];
+prepare_structinit_expr([#struct_raw{fields=Exprs} = S | Rest]) ->
+    [S#struct_raw{fields=exprsmap(fun fix_structinit/1, Exprs)} |
+     prepare_structinit_expr(Rest)];
+prepare_structinit_expr([#vardef{initval=Initval} = V | Rest]) ->
+    [V#vardef{initval=hd(exprsmap(fun fix_structinit/1, [Initval]))} |
+     prepare_structinit_expr(Rest)];
+prepare_structinit_expr([]) ->
     [].
 
-fix_struct_init_code(#struct_init{fields=Fields} = S) ->
-    S#struct_init{fields=prepare_struct_defaults(Fields, #{})};
-fix_struct_init_code(Any) ->
+fix_structinit(#struct_init_raw{name=Name, fields=Fields, line=Line}) ->
+    #struct_init{name=Name, fields=structinit_tomap(Fields), line=Line};
+fix_structinit(#array_init{elements=Elements} = A) ->
+    A#array_init{elements=exprsmap(fun fix_structinit/1, Elements)};
+fix_structinit(#vardef{initval=Initval} = V) ->
+    V#vardef{initval=hd(exprsmap(fun fix_structinit/1, [Initval]))};
+fix_structinit(Any) ->
     Any.
+
+structinit_tomap(Exprs) ->
+    structinit_tomap(Exprs, #{}).
+
+structinit_tomap([#op2{operator=assign, op1=#varref{name=Field}, op2=Val} |
+		  Rest], Result) ->
+    structinit_tomap(Rest, Result#{Field => hd(exprsmap(fun fix_structinit/1,
+							[Val]))});
+structinit_tomap([], Result) ->
+    Result.
 
 %% in function expressions, the init code of defvar can not be simply
 %% fetched out from the code, it should be replaced as assignment in the
@@ -80,18 +94,12 @@ fetch_vars([#struct_raw{name=Name, fields=Fields} | Rest], NewAst, Ctx) ->
     {[], FieldTypes, StructInitCode} = fetch_vars(Fields, [],
 						 {#{}, [], true}),
     S = #struct{name=Name, field_types=FieldTypes, field_names=FieldNames,
-		field_defaults=prepare_struct_defaults(StructInitCode, #{})},
+		field_defaults=structinit_tomap(StructInitCode)},
     fetch_vars(Rest, [S | NewAst], Ctx);
 fetch_vars([Any | Rest], NewAst, Ctx) ->
     fetch_vars(Rest, [Any | NewAst], Ctx);
 fetch_vars([], NewAst, {VarTypes, InitCode, _}) ->
     {lists:reverse(NewAst), VarTypes, lists:reverse(InitCode)}.
-
-prepare_struct_defaults([#op2{operator=assign, op1=#varref{name=Field},
-			      op2=Val} | Rest], Result) ->
-    prepare_struct_defaults(Rest, Result#{Field => Val});
-prepare_struct_defaults([], Result) ->
-    Result.
 
 append_to_ast(Ast, Varname, Initval, Line) when Initval =/= none ->
     [#op2{operator=assign, op1=#varref{name=Varname, line=Line},

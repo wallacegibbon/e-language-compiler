@@ -10,8 +10,10 @@
 
 %% find all consts in AST, calculate it and replace all const references.
 parse_and_remove_const(Ast) ->
-    {Constants, NewAst} = fetch_constants(Ast),
-    replace_constants(NewAst, Constants).
+    {Constants, Ast2} = fetch_constants(Ast),
+    Ast3 = replace_constants(Ast2, Constants),
+    %io:format(">>> ~p~n", [Ast3]),
+    Ast3.
 
 %% fetch constants
 fetch_constants(Ast) -> fetch_constants(Ast, [], #{}).
@@ -101,15 +103,8 @@ replace_inexpr(#varref{name=Name, line=Line} = Expr, Constants) ->
 	error ->
 	    Expr
     end;
-replace_inexpr({constref, Line, Name}, Constants) ->
-    case maps:find(Name, Constants) of
-	{ok, Val} ->
-	    constnum_to_token(Val, Line);
-	error ->
-	    throw({Line, flat_format("const ~s is not found", [Name])})
-    end;
-replace_inexpr(#struct_init{fields=Fields} = Expr, Constants) ->
-    Expr#struct_init{fields=replace_inexprs(Fields, Constants)};
+replace_inexpr(#struct_init_raw{fields=Fields} = Expr, Constants) ->
+    Expr#struct_init_raw{fields=replace_inexprs(Fields, Constants)};
 replace_inexpr(#array_init{elements=Elements} = Expr, Constants) ->
     Expr#array_init{elements=replace_inexprs(Elements, Constants)};
 replace_inexpr(#op2{op1=Op1, op2=Op2} = Expr, Constants) ->
@@ -125,8 +120,7 @@ constnum_to_token(Num, Line) when is_float(Num) ->
 constnum_to_token(Num, Line) when is_integer(Num) ->
     #integer{val=Num, line=Line}.
 
-replace_intype(#array_type{elemtype=ElementType, size=Size} = T,
-	       Constants) ->
+replace_intype(#array_type{elemtype=ElementType, size=Size} = T, Constants) ->
     T#array_type{elemtype=replace_intype(ElementType, Constants),
 		 size=eval_constexpr(replace_inexpr(Size, Constants),
 				     Constants)};
