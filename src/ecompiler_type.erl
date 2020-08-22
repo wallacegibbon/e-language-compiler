@@ -16,10 +16,14 @@ checktype_ast([#function{var_types=VarTypes, exprs=Exprs, type=Fntype} | Rest],
     Ctx = {CurrentVars, FunctionMap, StructMap, Fntype#fun_type.ret},
     typeof_exprs(Exprs, Ctx),
     checktype_ast(Rest, GlobalVarTypes, Maps);
-checktype_ast([#struct{field_types=FieldTypes, name=Name} | Rest],
-	      GlobalVarTypes, {_, StructMap} = Maps) ->
+checktype_ast([#struct{name=Name, field_types=FieldTypes,
+		       field_names=FieldNames, field_defaults=FieldDefaults} |
+	       Rest], GlobalVarTypes, {FunctionMap, StructMap} = Maps) ->
     lists:map(fun(T) -> checktype_type(T, StructMap) end,
 	      maps:values(FieldTypes)),
+    Ctx = {GlobalVarTypes, FunctionMap, StructMap, none},
+    %% check the default values for fields
+    check_structfields(FieldNames, FieldTypes, FieldDefaults, Ctx),
     Conflicts = lists:filter(fun({_, #basic_type{type={Tname, 0}}}) ->
 				     Name =:= Tname;
 				(_) ->
@@ -167,11 +171,11 @@ typeof_expr(#array_init{elements=Elements, line=Line}, Ctx) ->
 		   flat_format("array init values type conflict: {~s}",
 			       [lists:join(",", fmt_types(ElementTypes))])})
     end;
-typeof_expr(#struct_init{name=StructName, fields=_Elements, line=Line},
-	    {_, _, StructMap, _}) ->
-    %% TODO: check field types
+typeof_expr(#struct_init{name=StructName, fields=Fields, line=Line},
+	    {_, _, StructMap, _} = Ctx) ->
     case maps:find(StructName, StructMap) of
-	{ok, _} ->
+	{ok, #struct{field_types=FieldTypes, field_names=FieldNames}} ->
+	    check_structfields(FieldNames, FieldTypes, Fields, Ctx),
 	    #basic_type{type={StructName, 0}, line=Line};
 	_ ->
 	    throw({Line, flat_format("struct ~s is not found",
@@ -194,6 +198,29 @@ decr_pdepth(#basic_type{type={Tname, Pdepth}} = Type) ->
 decr_pdepth(#array_type{line=Line} = Type) ->
     throw({Line, flat_format("pointer - on array type ~s is invalid",
 			     [fmt_type(Type)])}).
+
+check_structfields([F | Rest], FieldTypes, InitVals, Ctx) ->
+    io:format("~p ~p ~p~n", [F, InitVals, FieldTypes]),
+    case maps:find(F, InitVals) of
+	{ok, Val} ->
+	    case maps:find(F, FieldTypes) of
+		{ok, T} ->
+		    Texpr = typeof_expr(Val, Ctx),
+		    case compare_type(T, Texpr) of
+			true ->
+			   check_structfields(Rest, FieldTypes, InitVals, Ctx);
+			_ ->
+			   throw({element(2, T),
+				  flat_format("field ~s type error: ~s = ~s",
+					      [F, fmt_type(T),
+					       fmt_type(Texpr)])})
+		    end
+	    end;
+	error ->
+	    ok
+    end;
+check_structfields([], _, _, _) ->
+    ok.
 
 are_sametype([TargetType, TargetType | Rest]) ->
     are_sametype([TargetType | Rest]);
