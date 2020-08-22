@@ -5,6 +5,8 @@
 
 -include("./ecompiler_frame.hrl").
 
+%% when do simple convertions, this function can be used to avoid boilerplate
+%% code for if, while, return, call...,  so you can concentrate on op1, op2...
 exprsmap(Fn, [#if_expr{condition=Cond, then=Then, else=Else} = If | Rest]) ->
     [If#if_expr{condition=Fn(Cond), then=exprsmap(Fn, Then),
 		else=exprsmap(Fn, Else)} | exprsmap(Fn, Rest)];

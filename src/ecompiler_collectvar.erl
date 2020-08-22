@@ -22,7 +22,7 @@ prepare_structinit_expr([#struct_raw{fields=Exprs} = S | Rest]) ->
     [S#struct_raw{fields=exprsmap(fun fix_structinit/1, Exprs)} |
      prepare_structinit_expr(Rest)];
 prepare_structinit_expr([#vardef{initval=Initval} = V | Rest]) ->
-    [V#vardef{initval=hd(exprsmap(fun fix_structinit/1, [Initval]))} |
+    [V#vardef{initval=fix_structinit(Initval)} |
      prepare_structinit_expr(Rest)];
 prepare_structinit_expr([]) ->
     [].
@@ -32,17 +32,18 @@ fix_structinit(#struct_init_raw{name=Name, fields=Fields, line=Line}) ->
 fix_structinit(#array_init{elements=Elements} = A) ->
     A#array_init{elements=exprsmap(fun fix_structinit/1, Elements)};
 fix_structinit(#vardef{initval=Initval} = V) ->
-    V#vardef{initval=hd(exprsmap(fun fix_structinit/1, [Initval]))};
-fix_structinit(Any) ->
-    Any.
+    V#vardef{initval=exprsmap(fun fix_structinit/1, [Initval])};
+fix_structinit(#op2{op1=Op1, op2=Op2} = O) ->
+    O#op2{op1=fix_structinit(Op1), op2=fix_structinit(Op2)};
+fix_structinit(#op1{operand=Operand} = O) ->
+    O#op1{operand=fix_structinit(Operand)}.
 
 structinit_tomap(Exprs) ->
     structinit_tomap(Exprs, #{}).
 
 structinit_tomap([#op2{operator=assign, op1=#varref{name=Field}, op2=Val} |
 		  Rest], Result) ->
-    structinit_tomap(Rest, Result#{Field => hd(exprsmap(fun fix_structinit/1,
-							[Val]))});
+    structinit_tomap(Rest, Result#{Field => fix_structinit(Val)});
 structinit_tomap([], Result) ->
     Result.
 
