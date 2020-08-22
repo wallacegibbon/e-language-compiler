@@ -1,33 +1,24 @@
 -module(ecompiler_type).
 
--export([checktype_ast/2, typeof_expr/2]).
+-export([checktype_ast/3, typeof_expr/2]).
 
 -import(ecompiler_utils, [is_primitive_type/1, is_integer_type/1,
 			  expr2str/1, flat_format/2, void_type/1]).
 
 -include("./ecompiler_frame.hrl").
 
-checktype_ast({FunMap, StructMap}, GlobalVarTypes) ->
-    lists:map(fun(S) ->
-		      checktype_struct(S, StructMap)
-	      end, maps:values(StructMap)),
-    lists:map(fun(F) ->
-		      checktype_function(F, FunMap, StructMap, GlobalVarTypes)
-	      end, maps:values(FunMap)),
-    ok.
-
-checktype_function(#function{var_types=VarTypes, exprs=Exprs, type=Fntype},
-		   Functions, Structs, GlobalVarTypes) ->
-    lists:map(fun(T) -> checktype_type(T, Structs) end,
+checktype_ast([#function{var_types=VarTypes, exprs=Exprs, type=Fntype} | Rest],
+	       GlobalVarTypes, {FunctionMap, StructMap} = Maps) ->
+    lists:map(fun(T) -> checktype_type(T, StructMap) end,
 	      maps:values(VarTypes)),
-    checktype_type(Fntype#fun_type.ret, Structs),
+    checktype_type(Fntype#fun_type.ret, StructMap),
     CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
-    Ctx = {CurrentVars, Functions, Structs, Fntype#fun_type.ret},
-    typeof_exprs(Exprs, Ctx).
-
-checktype_struct(#struct{field_types=FieldTypes, name=Name}, Structs) ->
-    %% TODO: check init code (only const expressions are allowed
-    lists:map(fun(T) -> checktype_type(T, Structs) end,
+    Ctx = {CurrentVars, FunctionMap, StructMap, Fntype#fun_type.ret},
+    typeof_exprs(Exprs, Ctx),
+    checktype_ast(Rest, GlobalVarTypes, Maps);
+checktype_ast([#struct{field_types=FieldTypes, name=Name} | Rest],
+	      GlobalVarTypes, {_, StructMap} = Maps) ->
+    lists:map(fun(T) -> checktype_type(T, StructMap) end,
 	      maps:values(FieldTypes)),
     Conflicts = lists:filter(fun({_, #basic_type{type={Tname, 0}}}) ->
 				     Name =:= Tname;
@@ -39,7 +30,12 @@ checktype_struct(#struct{field_types=FieldTypes, name=Name}, Structs) ->
 	    throw({Line, "recursive definition is invalid"});
 	_ ->
 	    ok
-    end.
+    end,
+    checktype_ast(Rest, GlobalVarTypes, Maps);
+checktype_ast([_ | Rest], GlobalVarTypes, Maps) ->
+    checktype_ast(Rest, GlobalVarTypes, Maps);
+checktype_ast([], _, _) ->
+    ok.
 
 typeof_exprs([Expr | Rest], Ctx) ->
     [typeof_expr(Expr, Ctx) | typeof_exprs(Rest, Ctx)];
@@ -47,11 +43,11 @@ typeof_exprs([], _) ->
     [].
 
 typeof_expr(#op2{operator=assign, op1=Op1, op2=Op2, line=Line},
-	    {_, _, Structs, _} = Ctx) ->
+	    {_, _, StructMap, _} = Ctx) ->
     TypeofOp1 = case Op1 of
 		    #op2{operator='.', op1=SubOp1, op2=SubOp2} ->
 			typeof_structfield(typeof_expr(SubOp1, Ctx), SubOp2,
-					   Structs, Line);
+					   StructMap, Line);
 		    #op1{operator='^', operand=SubOperand} ->
 			decr_pdepth(typeof_expr(SubOperand, Ctx));
 		    #varref{name=_} ->
@@ -70,8 +66,8 @@ typeof_expr(#op2{operator=assign, op1=Op1, op2=Op2, line=Line},
 	    TypeofOp1
     end;
 typeof_expr(#op2{operator='.', op1=Op1, op2=Op2, line=Line},
-	    {_, _, Structs, _} = Ctx) ->
-    typeof_structfield(typeof_expr(Op1, Ctx), Op2, Structs, Line);
+	    {_, _, StructMap, _} = Ctx) ->
+    typeof_structfield(typeof_expr(Op1, Ctx), Op2, StructMap, Line);
 typeof_expr(#op2{operator=Operator, op1=Op1, op2=Op2, line=Line}, Ctx) ->
     TypeofOp1 = typeof_expr(Op1, Ctx),
     TypeofOp2 = typeof_expr(Op2, Ctx),
@@ -102,10 +98,10 @@ typeof_expr(#op1{operator='^', operand=Operand, line=Line}, Ctx) ->
 				     [expr2str(Operand)])})
     end;
 typeof_expr(#op1{operator='@', operand=Operand, line=Line},
-	    {_, _, Structs, _} = Ctx) ->
+	    {_, _, StructMap, _} = Ctx) ->
     case Operand of
 	#op2{operator='.', op1=Op1, op2=Op2} ->
-	    T = typeof_structfield(typeof_expr(Op1, Ctx), Op2, Structs, Line),
+	    T = typeof_structfield(typeof_expr(Op1, Ctx), Op2, StructMap, Line),
 	    incr_pdepth(T);
 	#varref{name=_} ->
 	    incr_pdepth(typeof_expr(Operand, Ctx));
@@ -145,19 +141,20 @@ typeof_expr(#return{expr=Expr, line=Line}, {_, _, _, FnRetType} = Ctx) ->
 	    RealRet
     end;
 typeof_expr(#varref{name=Name, line=Line},
-	    {VarTypes, Functions, Structs, _}) ->
+	    {VarTypes, FunctionMap, StructMap, _}) ->
     Type = case maps:find(Name, VarTypes) of
 	       error ->
-		   case maps:find(Name, Functions) of
-		       error -> throw({Line, flat_format("~s is undefined",
-							 [Name])});
+		   case maps:find(Name, FunctionMap) of
+		       error ->
+			   throw({Line, flat_format("~s is undefined",
+						    [Name])});
 		       {ok, T} ->
-			   T#function.type
+			   T
 		   end;
 	       {ok, T} ->
 		   T
 	   end,
-    checktype_type(Type, Structs),
+    checktype_type(Type, StructMap),
     Type;
 typeof_expr(#array_init{elements=Elements, line=Line}, Ctx) ->
     ElementTypes = typeof_exprs(Elements, Ctx),
@@ -171,9 +168,9 @@ typeof_expr(#array_init{elements=Elements, line=Line}, Ctx) ->
 			       [lists:join(",", fmt_types(ElementTypes))])})
     end;
 typeof_expr(#struct_init{name=StructName, fields=_Elements, line=Line},
-	    {_, _, Structs, _}) ->
+	    {_, _, StructMap, _}) ->
     %% TODO: check field types
-    case maps:find(StructName, Structs) of
+    case maps:find(StructName, StructMap) of
 	{ok, _} ->
 	    #basic_type{type={StructName, 0}, line=Line};
 	_ ->
@@ -206,12 +203,12 @@ are_sametype(_) ->
     false.
 
 typeof_structfield(#basic_type{type={StructName, 0}}, #varref{name=FieldName},
-		   Structs, Line) ->
-    case maps:find(StructName, Structs) of
+		   StructMap, Line) ->
+    case maps:find(StructName, StructMap) of
 	{ok, S} ->
 	    case maps:find(FieldName, S#struct.field_types) of
 		{ok, FieldType} ->
-		    checktype_type(FieldType, Structs),
+		    checktype_type(FieldType, StructMap),
 		    FieldType;
 		error ->
 		    throw({Line, flat_format("\"~s.~s\" does not exist",
@@ -259,25 +256,25 @@ is_pointer_and_int(_, _) ->
     false.
 
 %% check type, ensure that all struct used by type exists.
-checktype_type(#fun_type{params=Params, ret=Rettype}, Structs) ->
+checktype_type(#fun_type{params=Params, ret=Rettype}, StructMap) ->
     lists:map(fun(P) ->
-		      checktype_type(P, Structs)
+		      checktype_type(P, StructMap)
 	      end, Params),
-    checktype_type(Rettype, Structs);
-checktype_type(#array_type{elemtype=Elemtype}, Structs) ->
+    checktype_type(Rettype, StructMap);
+checktype_type(#array_type{elemtype=Elemtype}, StructMap) ->
     case Elemtype of
 	#array_type{line=Line} ->
 	    throw({Line, "nested array is not supported"});
 	_ ->
-	    checktype_type(Elemtype, Structs)
+	    checktype_type(Elemtype, StructMap)
     end;
-checktype_type(#basic_type{type={TypeName, _}, line=Line}, Structs) ->
-    checktype_typename(TypeName, Structs, Line).
+checktype_type(#basic_type{type={TypeName, _}, line=Line}, StructMap) ->
+    checktype_typename(TypeName, StructMap, Line).
 
-checktype_typename(Type, Structs, Line) when is_atom(Type) ->
+checktype_typename(Type, StructMap, Line) when is_atom(Type) ->
     case is_primitive_type(Type) of
 	false ->
-	    case maps:find(Type, Structs) of
+	    case maps:find(Type, StructMap) of
 		error ->
 		    throw({Line, flat_format("struct \"~s\" is not found",
 					     [Type])});

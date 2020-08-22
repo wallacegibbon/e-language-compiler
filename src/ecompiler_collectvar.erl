@@ -10,8 +10,7 @@
 
 fetch_vars(Ast) ->
     Ast2 = prepare_structinit_expr(Ast),
-    {MixedAst, VarTypes, InitCode} = fetch_vars(Ast2, [], {#{}, [], true}),
-    Ast3 = split_functions_and_structs(MixedAst),
+    {Ast3, VarTypes, InitCode} = fetch_vars(Ast2, [], {#{}, [], true}),
     {Ast3, VarTypes, InitCode}.
 
 %% struct_init's fields were assign expressions, convert it to a map
@@ -32,11 +31,13 @@ fix_structinit(#struct_init_raw{name=Name, fields=Fields, line=Line}) ->
 fix_structinit(#array_init{elements=Elements} = A) ->
     A#array_init{elements=exprsmap(fun fix_structinit/1, Elements)};
 fix_structinit(#vardef{initval=Initval} = V) ->
-    V#vardef{initval=exprsmap(fun fix_structinit/1, [Initval])};
+    V#vardef{initval=fix_structinit(Initval)};
 fix_structinit(#op2{op1=Op1, op2=Op2} = O) ->
     O#op2{op1=fix_structinit(Op1), op2=fix_structinit(Op2)};
 fix_structinit(#op1{operand=Operand} = O) ->
-    O#op1{operand=fix_structinit(Operand)}.
+    O#op1{operand=fix_structinit(Operand)};
+fix_structinit(Any) ->
+    Any.
 
 structinit_tomap(Exprs) ->
     structinit_tomap(Exprs, #{}).
@@ -107,20 +108,6 @@ append_to_ast(Ast, Varname, Initval, Line) when Initval =/= none ->
 	  op2=Initval, line=Line} | Ast];
 append_to_ast(Ast, _, _, _) ->
     Ast.
-
-%% the list version ast is also return for generating C code.
-%% (in C language, the order of definition matters)
-split_functions_and_structs(MixedAst) ->
-    {Fns, Structs} = lists:partition(fun(A) ->
-					     element(1, A) =:= function
-				     end, MixedAst),
-    FnMap = maps:from_list(lists:map(fun(#function{name=Name} = Fn) ->
-					     {Name, Fn}
-				     end, Fns)),
-    StructMap = maps:from_list(lists:map(fun(#struct{name=Name} = S) ->
-						 {Name, S}
-					 end, Structs)),
-    {{FnMap, StructMap}, {Fns, Structs}}.
 
 names_of_vardefs(Vardefs) ->
     lists:map(fun(#vardef{name=N}) -> N end, Vardefs).
