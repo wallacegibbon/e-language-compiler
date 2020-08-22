@@ -38,7 +38,8 @@ const blah2 = 1 bsr 8;
 
 fun main(argc: i64, argv: i64^^): i64
     %users: {User, TOTOAL_USERCNT} = {User{nameref=1}, User{id=1}};
-    users: {User, 2} = {User{nameref=1}, User{id=1}};
+    %users: {User, 2} = {User{blah=1}, User{id=1}};
+    users: {User, 2} = {User{id=0}, User{id=1}};
     cnt: i64 = TOTOAL_USERCNT;
     %init_users(users@, sizeof(users)/sizeof(User));
     init_users(users@, TOTOAL_USERCNT);

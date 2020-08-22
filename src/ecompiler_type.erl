@@ -171,11 +171,13 @@ typeof_expr(#array_init{elements=Elements, line=Line}, Ctx) ->
 		   flat_format("array init values type conflict: {~s}",
 			       [lists:join(",", fmt_types(ElementTypes))])})
     end;
-typeof_expr(#struct_init{name=StructName, fields=Fields, line=Line},
+typeof_expr(#struct_init{name=StructName, field_names=InitFieldNames,
+			 field_values=InitFieldValues, line=Line},
 	    {_, _, StructMap, _} = Ctx) ->
     case maps:find(StructName, StructMap) of
-	{ok, #struct{field_types=FieldTypes, field_names=FieldNames}} ->
-	    check_structfields(FieldNames, FieldTypes, Fields, Ctx),
+	{ok, #struct{field_types=FieldTypes}} ->
+	    check_structfields(InitFieldNames, FieldTypes, InitFieldValues,
+			       Ctx),
 	    #basic_type{type={StructName, 0}, line=Line};
 	_ ->
 	    throw({Line, flat_format("struct ~s is not found",
@@ -199,25 +201,28 @@ decr_pdepth(#array_type{line=Line} = Type) ->
     throw({Line, flat_format("pointer - on array type ~s is invalid",
 			     [fmt_type(Type)])}).
 
-check_structfields([F | Rest], FieldTypes, InitVals, Ctx) ->
-    io:format("~p ~p ~p~n", [F, InitVals, FieldTypes]),
-    case maps:find(F, InitVals) of
+check_structfields([#varref{name=F, line=Line} | Rest], FieldTypes, ValMap,
+		   Ctx) ->
+    case maps:find(F, ValMap) of
 	{ok, Val} ->
+	    T1 = typeof_expr(Val, Ctx),
 	    case maps:find(F, FieldTypes) of
 		{ok, T} ->
-		    Texpr = typeof_expr(Val, Ctx),
-		    case compare_type(T, Texpr) of
+		    case compare_type(T, T1) of
 			true ->
-			   check_structfields(Rest, FieldTypes, InitVals, Ctx);
+			    check_structfields(Rest, FieldTypes, ValMap, Ctx);
 			_ ->
-			   throw({element(2, T),
-				  flat_format("field ~s type error: ~s = ~s",
-					      [F, fmt_type(T),
-					       fmt_type(Texpr)])})
-		    end
+			    throw({Line,
+				   flat_format("field ~s type error: ~s = ~s",
+					       [F,
+						fmt_type(T), fmt_type(T1)])})
+		    end;
+		error ->
+		    throw({Line, flat_format("field ~s does not exist",
+					     [F])})
 	    end;
 	error ->
-	    ok
+	    check_structfields(Rest, FieldTypes, ValMap, Ctx)
     end;
 check_structfields([], _, _, _) ->
     ok.

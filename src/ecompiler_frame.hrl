@@ -10,12 +10,13 @@
 
 -record(struct, {name :: atom(),
 		 field_types :: [any()],
-		 field_names :: [atom()],
+		 field_names :: [any()],
 		 field_defaults :: #{atom() => e_expr()}}).
 
 -record(struct_init, {line :: integer(),
 		      name :: atom(),
-		      fields :: #{atom() => e_expr()}}).
+		      field_names :: [any()],
+		      field_values :: #{atom() => e_expr()}}).
 
 -record(array_init, {line :: integer(),
 		     elements :: [e_expr()]}).
