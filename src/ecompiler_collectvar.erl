@@ -89,17 +89,18 @@ fetch_vars([#function_raw{name=Name, ret=Ret, params=Params, exprs=Exprs,
 					     {ParamVars, [], false}),
     ParamsForType = getvalues_bykeys(names_of_vardefs(Params), ParamVars),
     Fn = #function{name=Name, var_types=FunVarTypes, exprs=NewExprs,
-		   param_names=varrefs_from_vardefs(Params),
+		   param_names=varrefs_from_vardefs(Params), line=Line,
 		   type=#fun_type{params=ParamsForType, ret=Ret, line=Line}},
     fetch_vars(Rest, [Fn | NewAst], Ctx);
-fetch_vars([#struct_raw{name=Name, fields=Fields} | Rest], NewAst, Ctx) ->
+fetch_vars([#struct_raw{name=Name, fields=Fields, line=Line} | Rest],
+	   NewAst, Ctx) ->
     %% struct can have default value
     {[], FieldTypes, StructInitCode} = fetch_vars(Fields, [],
 						 {#{}, [], true}),
     {_, FieldInitMap} = structinit_tomap(StructInitCode),
     FieldNames = varrefs_from_vardefs(Fields),
     S = #struct{name=Name, field_types=FieldTypes, field_names=FieldNames,
-		field_defaults=FieldInitMap},
+		field_defaults=FieldInitMap, line=Line},
     fetch_vars(Rest, [S | NewAst], Ctx);
 fetch_vars([Any | Rest], NewAst, Ctx) ->
     fetch_vars(Rest, [Any | NewAst], Ctx);

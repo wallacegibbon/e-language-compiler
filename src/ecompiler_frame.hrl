@@ -2,13 +2,15 @@
 -type e_type() :: any().
 -type e_expr() :: any().
 
--record(function, {name :: atom(),
+-record(function, {line :: integer(),
+		   name :: atom(),
 		   type :: any(),
 		   param_names :: [atom()],
 		   var_types :: #{atom() => e_type()},
 		   exprs :: [e_expr()]}).
 
--record(struct, {name :: atom(),
+-record(struct, {line :: integer(),
+		 name :: atom(),
 		 field_types :: [any()],
 		 field_names :: [any()],
 		 field_defaults :: #{atom() => e_expr()}}).

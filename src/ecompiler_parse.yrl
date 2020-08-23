@@ -2,7 +2,7 @@ Nonterminals
 
 statements statement defconst defstruct defun defvars defvar varref params
 exprs expr call_expr if_expr else_expr while_expr preminusplus_expr
-return_expr expr_or_defvar defvar_initval
+return_expr expr_or_defvar assignable_initval
 op19 op30 op29 op28 op27 op26 op25 op2_forcombine
 typeanno_list typeanno pointer_depth general_type atomic_literal
 array_init_expr array_init_elements struct_init_expr struct_init_fields
@@ -69,15 +69,15 @@ defvars -> defvar ',' defvars : ['$1' | '$3'].
 defvars -> defvar ',' : ['$1'].
 defvars -> defvar : ['$1'].
 
-defvar -> identifier ':' typeanno '=' defvar_initval :
+defvar -> identifier ':' typeanno '=' assignable_initval :
     #vardef{name=tok_val('$1'), type='$3', initval='$5', line=tok_line('$1')}.
 
 defvar -> identifier ':' typeanno :
     #vardef{name=tok_val('$1'), type='$3', line=tok_line('$1')}.
 
-defvar_initval -> expr : '$1'.
-defvar_initval -> array_init_expr : '$1'.
-defvar_initval -> struct_init_expr : '$1'.
+assignable_initval -> expr : '$1'.
+assignable_initval -> array_init_expr : '$1'.
+assignable_initval -> struct_init_expr : '$1'.
 
 %% struct definition
 defstruct -> struct identifier defvars 'end' :
@@ -125,9 +125,9 @@ array_init_expr -> '{' array_init_elements '}' :
 array_init_expr -> '{' string '}' :
     #array_init{elements=str_to_inttks('$2'), line=tok_line('$1')}.
 
-array_init_elements -> defvar_initval ',' array_init_elements :
+array_init_elements -> assignable_initval ',' array_init_elements :
     ['$1' | '$3'].
-array_init_elements -> defvar_initval :
+array_init_elements -> assignable_initval :
     ['$1'].
 
 struct_init_expr -> identifier '{' struct_init_fields '}' :
@@ -138,7 +138,7 @@ struct_init_fields -> struct_init_assign ',' struct_init_fields :
 struct_init_fields -> struct_init_assign :
     ['$1'].
 
-struct_init_assign -> identifier '=' defvar_initval :
+struct_init_assign -> identifier '=' assignable_initval :
     #op2{operator=assign, op1=#varref{name=tok_val('$1'),
 				      line=tok_line('$1')},
 	 op2='$3', line=tok_line('$2')}.
@@ -164,7 +164,7 @@ expr -> expr op2_forcombine '=' expr :
     #op2{operator=assign, op1='$1', op2=#op2{operator=tok_sym('$2'), op1='$1',
 					     op2='$4', line=tok_line('$2')},
 	 line=tok_line('$2')}.
-expr -> expr '=' expr :
+expr -> expr '=' assignable_initval :
     #op2{operator=assign, op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op30 expr :
     #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.

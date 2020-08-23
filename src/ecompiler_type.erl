@@ -23,7 +23,7 @@ checktype_ast([#struct{name=Name, field_types=FieldTypes,
 	      maps:values(FieldTypes)),
     Ctx = {GlobalVarTypes, FunctionMap, StructMap, none},
     %% check the default values for fields
-    check_structfields(FieldNames, FieldTypes, FieldDefaults, Ctx),
+    check_structfields(FieldNames, FieldTypes, FieldDefaults, Name, Ctx),
     Conflicts = lists:filter(fun({_, #basic_type{type={Tname, 0}}}) ->
 				     Name =:= Tname;
 				(_) ->
@@ -113,6 +113,8 @@ typeof_expr(#op1{operator='@', operand=Operand, line=Line},
 	    throw({Line, flat_format("invalid operator \"@\" on operand ~s",
 				     [expr2str(Operand)])})
     end;
+typeof_expr(#op1{operand=Operand}, Ctx) ->
+    typeof_expr(Operand, Ctx);
 typeof_expr(#call{fn=FunExpr, args=Args, line=Line}, Ctx) ->
     ArgsTypes = lists:map(fun(A) -> typeof_expr(A, Ctx) end, Args),
     FnType = typeof_expr(FunExpr, Ctx),
@@ -177,7 +179,7 @@ typeof_expr(#struct_init{name=StructName, field_names=InitFieldNames,
     case maps:find(StructName, StructMap) of
 	{ok, #struct{field_types=FieldTypes}} ->
 	    check_structfields(InitFieldNames, FieldTypes, InitFieldValues,
-			       Ctx),
+			       StructName, Ctx),
 	    #basic_type{type={StructName, 0}, line=Line};
 	_ ->
 	    throw({Line, flat_format("struct ~s is not found",
@@ -202,7 +204,7 @@ decr_pdepth(#array_type{line=Line} = Type) ->
 			     [fmt_type(Type)])}).
 
 check_structfields([#varref{name=F, line=Line} | Rest], FieldTypes, ValMap,
-		   Ctx) ->
+		   StructName, Ctx) ->
     case maps:find(F, ValMap) of
 	{ok, Val} ->
 	    T1 = typeof_expr(Val, Ctx),
@@ -210,11 +212,12 @@ check_structfields([#varref{name=F, line=Line} | Rest], FieldTypes, ValMap,
 		{ok, T} ->
 		    case compare_type(T, T1) of
 			true ->
-			    check_structfields(Rest, FieldTypes, ValMap, Ctx);
+			    check_structfields(Rest, FieldTypes, ValMap,
+					       StructName, Ctx);
 			_ ->
 			    throw({Line,
-				   flat_format("field ~s type error: ~s = ~s",
-					       [F,
+				   flat_format("~s.~s type error: ~s = ~s",
+					       [StructName, F,
 						fmt_type(T), fmt_type(T1)])})
 		    end;
 		error ->
@@ -222,9 +225,9 @@ check_structfields([#varref{name=F, line=Line} | Rest], FieldTypes, ValMap,
 					     [F])})
 	    end;
 	error ->
-	    check_structfields(Rest, FieldTypes, ValMap, Ctx)
+	    check_structfields(Rest, FieldTypes, ValMap, StructName, Ctx)
     end;
-check_structfields([], _, _, _) ->
+check_structfields([], _, _, _, _) ->
     ok.
 
 are_sametype([TargetType, TargetType | Rest]) ->
