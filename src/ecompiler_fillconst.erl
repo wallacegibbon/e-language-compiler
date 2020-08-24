@@ -64,9 +64,8 @@ eval_constexpr({ImmiType, _, Val}, _) when ImmiType =:= integer;
     Val;
 eval_constexpr(Num, _) when is_integer(Num); is_float(Num) ->
     Num;
-eval_constexpr({Any, Line, Val}, _) ->
-    E = flat_format("invalid const expression: ~s, ~p", [Any, Val]),
-    throw({Line, E}).
+eval_constexpr(Any, _) ->
+    throw(flat_format("invalid const expression: ~p", [Any])).
 
 %% replace constants in AST
 replace_constants([#function_raw{params=Params, exprs=Exprs} = Fn | Rest],
@@ -77,8 +76,10 @@ replace_constants([#function_raw{params=Params, exprs=Exprs} = Fn | Rest],
 replace_constants([#struct_raw{fields=Fields} = S | Rest], Constants) ->
     [S#struct_raw{fields=replace_inexprs(Fields, Constants)} |
      replace_constants(Rest, Constants)];
-replace_constants([#vardef{initval=Initval} = V | Rest], Constants) ->
-    [V#vardef{initval=replace_inexpr(Initval, Constants)} |
+replace_constants([#vardef{type=Type, initval=Initval} = V | Rest],
+		  Constants) ->
+    [V#vardef{type=replace_intype(Type, Constants),
+	      initval=replace_inexpr(Initval, Constants)} |
      replace_constants(Rest, Constants)];
 replace_constants([], _) ->
     [].

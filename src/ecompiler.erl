@@ -5,6 +5,7 @@
 compile_to_c(InputFilename, OutputFilename) ->
     {ok, Ast} = parse_file(InputFilename),
     {Ast2, Vars, InitCode} = ecompiler_compile:compile_from_rawast(Ast, #{}),
+    %io:format(">> ~p~n~n", [Ast2]),
     ecompiler_genc:generate_ccode(Ast2, Vars, InitCode, OutputFilename).
 
 
