@@ -2,7 +2,7 @@
 
 -export([expand_initexpr_infun/2]).
 
--import(ecompiler_utils, [flat_format/2]).
+-import(ecompiler_utils, [flat_format/2, is_primitive_type/1]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -35,10 +35,11 @@ expand_init([], NewAst, _) ->
 replace_init_ops(?ASSIGN(Op1, #struct_init{name=Name, field_values=FieldValues,
 					   line=Line}), {Structs} = Ctx) ->
     case maps:find(Name, Structs) of
-	{ok, #struct{field_names=FieldNames,
+	{ok, #struct{field_names=FieldNames, field_types=FieldTypes,
 		     field_defaults=FieldDefaults}} ->
 	    FieldValueMap = maps:merge(FieldDefaults, FieldValues),
-	    structinit_to_op(Op1, FieldNames, FieldValueMap, [], Ctx);
+	    structinit_to_op(Op1, FieldNames, FieldValueMap, FieldTypes,
+			     [], Ctx);
 	error ->
 	    throw({Line, flat_format("struct ~s is not found", [Name])})
     end;
@@ -49,19 +50,35 @@ replace_init_ops(Any, _) ->
     [Any].
 
 structinit_to_op(Target, [#varref{line=Line, name=Fname} = Field | Rest],
-		 FieldInitMap, Newcode, Ctx) ->
-    InitCode = case maps:find(Fname, FieldInitMap) of
-		   {ok, InitOp} ->
-		       InitOp;
-		   error ->
-		       {integer, Line, 0}
-	       end,
-    NewAssign = #op2{operator=assign, op2=InitCode, line=Line,
+		 FieldInitMap, FieldTypes, Newcode, Ctx) ->
+    Op2 = case maps:find(Fname, FieldInitMap) of
+	      error ->
+		  default_initof(maps:get(Fname, FieldTypes), Line);
+	      {ok, InitOp} ->
+		  InitOp
+	  end,
+    NewAssign = #op2{operator=assign, op2=Op2, line=Line,
 		     op1=#op2{operator='.', op1=Target, op2=Field, line=Line}},
     Ops = replace_init_ops(NewAssign, Ctx),
-    structinit_to_op(Target, Rest, FieldInitMap, Ops ++ Newcode, Ctx);
-structinit_to_op(_, [], _, Newcode, _) ->
+    structinit_to_op(Target, Rest, FieldInitMap, FieldTypes, Ops ++ Newcode,
+		     Ctx);
+structinit_to_op(_, [], _, _, Newcode, _) ->
     Newcode.
+
+default_initof(#array_type{elemtype=Etype, size=Size}, Line) ->
+    lists:duplicate(Size, default_initof(Etype, Line));
+default_initof(#basic_type{type={Tname, 0}}, Line) ->
+    IsStruct = not is_primitive_type(Tname),
+    io:format(">>> ~p is ~p~n", [Tname, IsStruct]),
+    case IsStruct of
+	true ->
+	    #struct_init{name=Tname, line=Line, field_values=#{},
+			 field_names=[]};
+	_ ->
+	    {integer, Line, 0}
+    end;
+default_initof(_, Line) ->
+    {integer, Line, 0}.
 
 arrayinit_to_op(Target, [E | Rest], Cnt, Line, Newcode, Ctx) ->
     Offset = {integer, Line, Cnt},
