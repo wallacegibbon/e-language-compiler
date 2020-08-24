@@ -10,6 +10,7 @@ struct User
     desc: {i64, 10} = {1,2,3,4,5,6,7,8,9,TOTOAL_USERCNT},
     count: u32,
     blah: Blah,
+    b2: {Blah,3},
 end
 
 struct List

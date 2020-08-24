@@ -66,10 +66,10 @@ structinit_to_op(_, [], _, _, Newcode, _) ->
     Newcode.
 
 default_initof(#array_type{elemtype=Etype, size=Size}, Line) ->
-    lists:duplicate(Size, default_initof(Etype, Line));
+    #array_init{elements=lists:duplicate(Size, default_initof(Etype, Line)),
+		line=Line};
 default_initof(#basic_type{type={Tname, 0}}, Line) ->
     IsStruct = not is_primitive_type(Tname),
-    io:format(">>> ~p is ~p~n", [Tname, IsStruct]),
     case IsStruct of
 	true ->
 	    #struct_init{name=Tname, line=Line, field_values=#{},
