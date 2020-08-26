@@ -4,7 +4,8 @@
 
 -export([fetch_vars/1]).
 
--import(ecompiler_utils, [flat_format/2, getvalues_bykeys/2, exprsmap/2]).
+-import(ecompiler_utils, [flat_format/2, getvalues_bykeys/2, exprsmap/2,
+			 names_of_vardefs/1]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -87,7 +88,7 @@ fetch_vars([#function_raw{name=Name, ret=Ret, params=Params, exprs=Exprs,
     end,
     {NewExprs, FunVarTypes, []} = fetch_vars(Exprs, [],
 					     {ParamVars, [], false}),
-    ParamsForType = getvalues_bykeys(names_of_vardefs(Params), ParamVars),
+    ParamsForType = getvalues_bydefs(Params, ParamVars),
     Fn = #function{name=Name, var_types=FunVarTypes, exprs=NewExprs,
 		   param_names=varrefs_from_vardefs(Params), line=Line,
 		   type=#fun_type{params=ParamsForType, ret=Ret, line=Line}},
@@ -96,7 +97,7 @@ fetch_vars([#struct_raw{name=Name, fields=Fields, line=Line} | Rest],
 	   NewAst, Ctx) ->
     %% struct can have default value
     {[], FieldTypes, StructInitCode} = fetch_vars(Fields, [],
-						 {#{}, [], true}),
+						  {#{}, [], true}),
     {_, FieldInitMap} = structinit_tomap(StructInitCode),
     FieldNames = varrefs_from_vardefs(Fields),
     S = #struct{name=Name, field_types=FieldTypes, field_names=FieldNames,
@@ -113,8 +114,8 @@ append_to_ast(Ast, Varname, Initval, Line) when Initval =/= none ->
 append_to_ast(Ast, _, _, _) ->
     Ast.
 
-names_of_vardefs(Vardefs) ->
-    lists:map(fun(#vardef{name=N}) -> N end, Vardefs).
+getvalues_bydefs(DefList, Map) ->
+    getvalues_bykeys(names_of_vardefs(DefList), Map).
 
 varrefs_from_vardefs(Vardefs) ->
     lists:map(fun(#vardef{name=N, line=Line}) ->

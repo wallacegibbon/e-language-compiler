@@ -24,17 +24,6 @@ checktype_ast([#struct{name=Name, field_types=FieldTypes,
     Ctx = {GlobalVarTypes, FunctionMap, StructMap, none},
     %% check the default values for fields
     check_structfields(FieldNames, FieldTypes, FieldDefaults, Name, Ctx),
-    Conflicts = lists:filter(fun({_, #basic_type{type={Tname, 0}}}) ->
-				     Name =:= Tname;
-				(_) ->
-				     false
-			     end, maps:to_list(FieldTypes)),
-    case Conflicts of
-	[{_, #basic_type{line=Line}} | _] ->
-	    throw({Line, "recursive definition is invalid"});
-	_ ->
-	    ok
-    end,
     checktype_ast(Rest, GlobalVarTypes, Maps);
 checktype_ast([_ | Rest], GlobalVarTypes, Maps) ->
     checktype_ast(Rest, GlobalVarTypes, Maps);
@@ -84,7 +73,7 @@ typeof_expr(#op2{operator=Operator, op1=Op1, op2=Op2, line=Line}, Ctx) ->
 		   case is_pointer_and_int(TypeofOp1, TypeofOp2) of
 		       {true, Ptype} ->
 			   Ptype;
-		       false ->
+		       {false, _} ->
 			   throw({Line, EInfo})
 		   end;
 	       true ->
@@ -308,7 +297,7 @@ is_pointer_and_int(#basic_type{type={T, 0}}, #basic_type{type={_, N}} = O)
   when N > 0 ->
     {is_integer_type(T), O};
 is_pointer_and_int(_, _) ->
-    false.
+    {false, none}.
 
 %% check type, ensure that all struct used by type exists.
 checktype_type(#fun_type{params=Params, ret=Rettype}, StructMap) ->

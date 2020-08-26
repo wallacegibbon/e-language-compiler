@@ -1,7 +1,7 @@
 Nonterminals
 
 statements statement defconst defstruct defun defvars defvar varref params
-exprs expr call_expr if_expr else_expr while_expr preminusplus_expr
+exprs expr call_expr if_expr else_expr while_expr preminusplus_expr mod_name
 return_expr expr_or_defvar assignable_initval
 op19 op30 op29 op28 op27 op26 op25 op2_forcombine
 typeanno_list typeanno pointer_depth general_type atomic_literal
@@ -93,23 +93,19 @@ defun -> 'fun' identifier '(' ')' ':' typeanno exprs 'end' :
 		  line=tok_line('$2')}.
 
 %% function invocation
-call_expr -> identifier '::' identifier '(' params ')' :
-    #call{fn=#varref{name=tok_val('$3'), line=tok_line('$3')},
-	  module=#varref{name=tok_val('$1'), line=tok_line('$1')},
-	  args='$5', line=tok_line('$4')}.
-call_expr -> identifier '::' identifier '(' ')' :
-    #call{fn=#varref{name=tok_val('$3'), line=tok_line('$3')},
-	  module=#varref{name=tok_val('$1'), line=tok_line('$1')},
-	  args=[], line=tok_line('$4')}.
+call_expr -> mod_name '(' params ')' :
+    #call{module=element(1, '$1'), fn=element(2, '$1'), args='$3',
+	  line=tok_line('$2')}.
+call_expr -> mod_name '(' ')' :
+    #call{module=element(1, '$1'), fn=element(2, '$1'), args=[],
+	  line=tok_line('$2')}.
 
-call_expr -> identifier '(' params ')' :
-    #call{fn=#varref{name=tok_val('$1'), line=tok_line('$1')},
-	  module=#varref{name=self, line=tok_line('$1')},
-	  args='$3', line=tok_line('$2')}.
-call_expr -> identifier '(' ')' :
-    #call{fn=#varref{name=tok_val('$1'), line=tok_line('$1')},
-	  module=#varref{name=self, line=tok_line('$1')},
-	  args=[], line=tok_line('$2')}.
+mod_name -> identifier '::' identifier :
+    {#varref{name=tok_val('$1'), line=tok_line('$1')},
+     #varref{name=tok_val('$3'), line=tok_line('$3')}}.
+mod_name -> identifier :
+    {#varref{name=self, line=tok_line('$1')},
+     #varref{name=tok_val('$1'), line=tok_line('$1')}}.
 
 params -> expr ',' params : ['$1' | '$3'].
 params -> expr ',' : ['$1'].

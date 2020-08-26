@@ -14,7 +14,8 @@
 		 size :: integer(),
 		 field_types :: [any()],
 		 field_names :: [any()],
-		 field_defaults :: #{atom() => e_expr()}}).
+		 field_defaults :: #{atom() => e_expr()},
+		 field_offsets :: #{atom() => integer()}}).
 
 -record(basic_type, {line :: integer(),
 		     type :: {atom(), integer()}}).
