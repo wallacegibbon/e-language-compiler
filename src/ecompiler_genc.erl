@@ -170,7 +170,21 @@ expr_tostr(#varref{name=Name}) ->
 expr_tostr({Any, _Line, Value}) when Any =:= integer; Any =:= float ->
     io_lib:format("~w", [Value]);
 expr_tostr({Any, _Line, S}) when Any =:= string ->
-    io_lib:format("\"~s\"", [S]).
+    io_lib:format("\"~s\"", [handle_special_char_instr(S, special_chars())]).
+
+special_chars() ->
+    #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}.
+
+handle_special_char_instr([Char | Str], CharMap) ->
+    C = case maps:find(Char, CharMap) of
+	    {ok, MappedChar} ->
+		MappedChar;
+	    error ->
+		Char
+	end,
+    [C | handle_special_char_instr(Str, CharMap)];
+handle_special_char_instr([], _) ->
+    [].
 
 translate_operator('assign') -> "=";
 translate_operator('rem') -> "%";

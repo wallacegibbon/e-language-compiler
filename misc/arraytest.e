@@ -1,20 +1,38 @@
 %% vim: ft=elang :
 
-const TOTAL_NUM = 100;
+const TOTAL_NUM = 10;
 
 fun main(argc: i64, argv: i64^^): i64
-    blah: {i64, TOTAL_NUM};
-    tmp: i64^ = blah@;
+    blah: {u8, TOTAL_NUM};
+    tmp: u8^ = blah@;
     tmp^ = TOTAL_NUM;
-    myfn: fun(i64^): void = inc;
+
+    print(tmp);
+
+    myfn: fun(u8^): void = inc;
     myfn(tmp);
+
+    print(tmp);
+
     return (tmp + 11)^;
 end
 
-fun inc(val: i64^): void
+fun inc(val: u8^): void
     cnt: u8 = 0;
     while (cnt < TOTAL_NUM)
 	(val + cnt)^ = cnt * 2;
 	cnt += 1;
     end
 end
+
+fun print(val: u8^): void
+    cnt: u8 = 0;
+
+    c::printf(">>>");
+    while (cnt < TOTAL_NUM)
+	c::printf(" %d", (val + cnt)^);
+	cnt += 1;
+    end
+    c::printf(".\n");
+end
+

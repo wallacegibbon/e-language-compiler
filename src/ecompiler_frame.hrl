@@ -11,9 +11,21 @@
 
 -record(struct, {line :: integer(),
 		 name :: atom(),
+		 size :: integer(),
 		 field_types :: [any()],
 		 field_names :: [any()],
 		 field_defaults :: #{atom() => e_expr()}}).
+
+-record(basic_type, {line :: integer(),
+		     type :: {atom(), integer()}}).
+
+-record(array_type, {line :: integer(),
+		     elemtype :: e_type(),
+		     size :: integer()}).
+
+-record(fun_type, {line :: integer(),
+		   params :: [e_type()],
+		   ret :: e_type()}).
 
 -record(struct_init, {line :: integer(),
 		      name :: atom(),
@@ -80,17 +92,7 @@
 	      op2 :: e_expr()}).
 
 -record(call, {line :: integer(),
+	       module :: e_expr(),
 	       fn :: e_expr(),
 	       args :: [e_expr()]}).
-
--record(basic_type, {line :: integer(),
-		     type :: {atom(), integer()}}).
-
--record(array_type, {line :: integer(),
-		     elemtype :: e_type(),
-		     size :: integer()}).
-
--record(fun_type, {line :: integer(),
-		   params :: [e_type()],
-		   ret :: e_type()}).
 

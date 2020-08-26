@@ -1,7 +1,7 @@
 -module(ecompiler_utils).
 
 -export([exprsmap/2, expr2str/1, flat_format/2, is_primitive_type/1,
-	 is_integer_type/1, getvalues_bykeys/2, void_type/1]).
+	 is_integer_type/1, getvalues_bykeys/2, void_type/1, any_type/1]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -57,7 +57,8 @@ getvalues_bykeys([], _, Result) ->
     lists:reverse(Result).
 
 is_primitive_type(void) -> true;
-is_primitive_type(Any) -> is_integer_type(Any).
+is_primitive_type(any) -> true;
+is_primitive_type(T) -> is_integer_type(T).
 
 is_integer_type(f64) -> true;
 is_integer_type(f32) -> true;
@@ -72,5 +73,8 @@ is_integer_type(i8) -> true;
 is_integer_type(_) -> false.
 
 void_type(Line) ->
-    #basic_type{type=void, line=Line}.
+    #basic_type{type={void, 0}, line=Line}.
+
+any_type(Line) ->
+    #basic_type{type={any, 0}, line=Line}.
 

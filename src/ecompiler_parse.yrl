@@ -12,8 +12,8 @@ struct_init_assign
 Terminals
 
 %% operators
-',' ':' ';' '=' '{' '}' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '~' '!'
-'!=' '==' '>=' '<='
+',' '::' ':' ';' '=' '{' '}' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '~'
+'!' '!=' '==' '>=' '<='
 %% keywords
 const struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
 while 'if' elif else return
@@ -93,9 +93,23 @@ defun -> 'fun' identifier '(' ')' ':' typeanno exprs 'end' :
 		  line=tok_line('$2')}.
 
 %% function invocation
+call_expr -> identifier '::' identifier '(' params ')' :
+    #call{fn=#varref{name=tok_val('$3'), line=tok_line('$3')},
+	  module=#varref{name=tok_val('$1'), line=tok_line('$1')},
+	  args='$5', line=tok_line('$4')}.
+call_expr -> identifier '::' identifier '(' ')' :
+    #call{fn=#varref{name=tok_val('$3'), line=tok_line('$3')},
+	  module=#varref{name=tok_val('$1'), line=tok_line('$1')},
+	  args=[], line=tok_line('$4')}.
+
 call_expr -> identifier '(' params ')' :
     #call{fn=#varref{name=tok_val('$1'), line=tok_line('$1')},
+	  module=#varref{name=self, line=tok_line('$1')},
 	  args='$3', line=tok_line('$2')}.
+call_expr -> identifier '(' ')' :
+    #call{fn=#varref{name=tok_val('$1'), line=tok_line('$1')},
+	  module=#varref{name=self, line=tok_line('$1')},
+	  args=[], line=tok_line('$2')}.
 
 params -> expr ',' params : ['$1' | '$3'].
 params -> expr ',' : ['$1'].

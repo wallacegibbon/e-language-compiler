@@ -38,6 +38,18 @@ function_pointer_test() ->
 			{varref,1,b}}]),
     ok.
 
+function_call_test() ->
+    {ok, Tks, _} = ecompiler_scan:string("b: u8 = a::b(13);"),
+    %?debugFmt("~p~n", [Tks]),
+    ?assertEqual(Tks, [{identifier,1,b}, {':',1}, {basic_type,1,u8}, {'=',1},
+		       {identifier,1,a}, {'::',1}, {identifier,1,b}, {'(',1},
+		       {integer,1,13}, {')',1}, {';',1}]),
+    {ok, Ast} = ecompiler_parse:parse(Tks),
+    %?debugFmt("~p~n", [Ast]),
+    ?assertEqual(Ast, [{vardef,1,b, {basic_type,1,{u8,0}},
+			{call,1,{varref,1,a},{varref,1,b},[{integer,1,13}]}}]),
+    ok.
+
 array_test() ->
     {ok, Tks, _} = ecompiler_scan:string("a: {u8, 100};"),
     %?debugFmt("~p~n", [Tks]),
@@ -45,7 +57,8 @@ array_test() ->
 		       {',',1}, {integer,1,100}, {'}',1}, {';',1}]),
     {ok, Ast} = ecompiler_parse:parse(Tks),
     %?debugFmt("~p~n", [Ast]),
-    ?assertEqual(Ast, [{vardef,1,a,{array_type,1,{basic_type,1,{u8,0}},100},
+    ?assertEqual(Ast, [{vardef,1,a,{array_type,1,{basic_type,1,{u8,0}},
+				    {integer,1,100}},
 			none}]),
     ok.
 
@@ -58,7 +71,8 @@ array_init_test() ->
 		       {';',1}]),
     {ok, Ast} = ecompiler_parse:parse(Tks),
     %?debugFmt("~p~n", [Ast]),
-    ?assertEqual(Ast, [{vardef,1,a, {array_type,1,{basic_type,1,{u8,0}},2},
+    ?assertEqual(Ast, [{vardef,1,a, {array_type,1,{basic_type,1,{u8,0}},
+				     {integer,1,2}},
 			{array_init,1,[{integer,1,11},{integer,1,22}]}}]),
     ok.
 
@@ -72,7 +86,7 @@ struct_init_test() ->
     {ok, Ast} = ecompiler_parse:parse(Tks),
     %?debugFmt("~p~n", [Ast]),
     ?assertEqual(Ast, [{vardef,1,a, {basic_type,1,{'S',0}},
-			{struct_init,1,'S',
+			{struct_init_raw,1,'S',
 			 [{op2,1,assign, {varref,1,name}, {string,1,"a"}},
 			  {op2,1,assign, {varref,1,val}, {integer,1,2}}]}}]),
     ok.

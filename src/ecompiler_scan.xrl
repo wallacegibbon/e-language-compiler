@@ -1,6 +1,6 @@
 Definitions.
 
-Delim = [@^.~:,;+\-*/(){}]|>=|<=|==|!=|!|>|<|=
+Delim = [@^.~,;+\-*/(){}]|>=|<=|==|!=|!|>|<|=|::|:
 Identifier = [_a-zA-Z][_a-zA-Z0-9]*
 StrQuote = "
 StrUnescapedChar = [^\"\\]

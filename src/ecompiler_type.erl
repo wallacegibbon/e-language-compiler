@@ -3,7 +3,7 @@
 -export([checktype_ast/3, typeof_expr/2]).
 
 -import(ecompiler_utils, [is_primitive_type/1, is_integer_type/1,
-			  expr2str/1, flat_format/2, void_type/1]).
+			  expr2str/1, flat_format/2, void_type/1, any_type/1]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -53,7 +53,7 @@ typeof_expr(#op2{operator=assign, op1=Op1, op2=Op2, line=Line},
 			typeof_structfield(typeof_expr(SubOp1, Ctx), SubOp2,
 					   StructMap, Line);
 		    #op1{operator='^', operand=SubOperand} ->
-			decr_pdepth(typeof_expr(SubOperand, Ctx));
+			decr_pdepth(typeof_expr(SubOperand, Ctx), Line);
 		    #varref{name=_} ->
 			typeof_expr(Op1, Ctx);
 		    Any ->
@@ -95,10 +95,10 @@ typeof_expr(#op2{operator=Operator, op1=Op1, op2=Op2, line=Line}, Ctx) ->
     end;
 typeof_expr(#op1{operator='^', operand=Operand, line=Line}, Ctx) ->
     case typeof_expr(Operand, Ctx) of
-	#basic_type{type={_, PDepth}} = T when PDepth > 0 ->
-	    decr_pdepth(T);
+	#basic_type{type=_} = T ->
+	    decr_pdepth(T, Line);
 	_ ->
-	    throw({Line, flat_format("invalid operator \"^\" on operand ~s",
+	    throw({Line, flat_format("invalid \"^\" on operand ~s",
 				     [expr2str(Operand)])})
     end;
 typeof_expr(#op1{operator='@', operand=Operand, line=Line},
@@ -106,16 +106,17 @@ typeof_expr(#op1{operator='@', operand=Operand, line=Line},
     case Operand of
 	#op2{operator='.', op1=Op1, op2=Op2} ->
 	    T = typeof_structfield(typeof_expr(Op1, Ctx), Op2, StructMap, Line),
-	    incr_pdepth(T);
+	    incr_pdepth(T, Line);
 	#varref{name=_} ->
-	    incr_pdepth(typeof_expr(Operand, Ctx));
+	    incr_pdepth(typeof_expr(Operand, Ctx), Line);
 	_ ->
-	    throw({Line, flat_format("invalid operator \"@\" on operand ~s",
+	    throw({Line, flat_format("invalid \"@\" on operand ~s",
 				     [expr2str(Operand)])})
     end;
 typeof_expr(#op1{operand=Operand}, Ctx) ->
     typeof_expr(Operand, Ctx);
-typeof_expr(#call{fn=FunExpr, args=Args, line=Line}, Ctx) ->
+typeof_expr(#call{fn=FunExpr, module=#varref{name=self}, args=Args, line=Line},
+	    Ctx) ->
     ArgsTypes = lists:map(fun(A) -> typeof_expr(A, Ctx) end, Args),
     FnType = typeof_expr(FunExpr, Ctx),
     case compare_types(ArgsTypes, FnType#fun_type.params) of
@@ -126,6 +127,12 @@ typeof_expr(#call{fn=FunExpr, args=Args, line=Line}, Ctx) ->
 	true ->
 	    FnType#fun_type.ret
     end;
+typeof_expr(#call{module=#varref{name=c}, args=Args, line=Line}, Ctx) ->
+    %% do not check type of C functions
+    lists:map(fun(A) -> typeof_expr(A, Ctx) end, Args),
+    any_type(Line);
+typeof_expr(#call{fn=_FunExpr, module=_Mod, args=_Args, line=Line}, _Ctx) ->
+    throw({Line, "module is not fully supported yet"});
 typeof_expr(#if_expr{condition=Condition, then=Then, else=Else, line=Line},
 	    Ctx) ->
     typeof_expr(Condition, Ctx),
@@ -192,16 +199,24 @@ typeof_expr({integer, Line, _}, _) ->
 typeof_expr({string, Line, _}, _) ->
     #basic_type{type={i8, 1}, line=Line}.
 
-incr_pdepth(#basic_type{type={Tname, Pdepth}} = Type) ->
+incr_pdepth(#basic_type{type={Tname, Pdepth}} = Type, _) ->
     Type#basic_type{type={Tname, Pdepth + 1}};
-incr_pdepth(#array_type{elemtype=#basic_type{type={Type, N}, line=Line}}) ->
-    #basic_type{type={Type, N + 1}, line=Line}.
+incr_pdepth(#array_type{elemtype=#basic_type{type={Type, N}, line=Line}}, _) ->
+    #basic_type{type={Type, N + 1}, line=Line};
+incr_pdepth(#fun_type{line=_}, OpLine) ->
+    throw({OpLine, "@ on function type is not allowed"}).
 
-decr_pdepth(#basic_type{type={Tname, Pdepth}} = Type) ->
-    Type#basic_type{type={Tname, Pdepth - 1}};
-decr_pdepth(#array_type{line=Line} = Type) ->
-    throw({Line, flat_format("pointer - on array type ~s is invalid",
-			     [fmt_type(Type)])}).
+decr_pdepth(#basic_type{type={Tname, Pdepth}} = Type, OpLine) ->
+    if Pdepth > 0 ->
+	   Type#basic_type{type={Tname, Pdepth - 1}};
+       true ->
+	   throw({OpLine, "^ on a non-pointer type"})
+    end;
+decr_pdepth(#array_type{line=_} = Type, OpLine) ->
+    throw({OpLine, flat_format("pointer - on array type ~s is invalid",
+			       [fmt_type(Type)])});
+decr_pdepth(#fun_type{line=_}, OpLine) ->
+    throw({OpLine, "^ on function type is not allowed"}).
 
 check_structfields([#varref{name=F, line=Line} | Rest], FieldTypes, ValMap,
 		   StructName, Ctx) ->
@@ -269,6 +284,11 @@ compare_types([], []) ->
 compare_types(_, _) ->
     false.
 
+%% any is just like the "any" in typescript, it matches any type.
+compare_type(#basic_type{type={any, _}}, _) ->
+    true;
+compare_type(_, #basic_type{type={any, _}}) ->
+    true;
 compare_type(#fun_type{params=P1, ret=R1}, #fun_type{params=P2, ret=R2}) ->
     compare_types(P1, P2) and compare_type(R1, R2);
 compare_type(#array_type{elemtype=E1, size=S1},

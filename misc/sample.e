@@ -66,6 +66,9 @@ fun main(argc: i64, argv: i64^^): i64
     f: fun(i64^): void = myfn;
     f(v1@);
 
+    %mym::f();
+    c::malloc(30);
+
     return 0;
 end
 
