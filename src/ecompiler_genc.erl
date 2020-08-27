@@ -86,13 +86,25 @@ statements_tostr([], StatementStrs, FnDeclars) ->
     {lists:reverse(StatementStrs), lists:reverse(FnDeclars)}.
 
 fn_declar_str(Name, Params, Rettype) ->
-    io_lib:format("~s(~s)",
-		  [type_tostr(Rettype, Name), params_to_str(Params, [])]).
+    ParamStr = params_to_str(Params),
+    case Rettype of
+	#basic_type{type={_, N}} when N > 0 ->
+	    fnret_type_tostr(Rettype,
+			     io_lib:format("(*~s(~s))", [Name, ParamStr]));
+	#fun_type{line=_} ->
+	    fnret_type_tostr(Rettype,
+			     io_lib:format("(*~s(~s))", [Name, ParamStr]));
+	_ ->
+	    type_tostr(Rettype,
+		       io_lib:format("~s(~s)", [Name, ParamStr]))
+    end.
 
-params_to_str([{Name, Type} | RestParams], FmtParams) ->
-    params_to_str(RestParams, [type_tostr(Type, Name) | FmtParams]);
-params_to_str([], FmtParams) ->
-    lists:join(",", lists:reverse(FmtParams)).
+params_to_str(NameTypePairs) ->
+    lists:join(",", lists:map(fun({N, T}) -> type_tostr(T, N) end,
+			      NameTypePairs)).
+
+params_to_str_noname(Types) ->
+    lists:join(",", lists:map(fun(T) -> type_tostr(T, "") end, Types)).
 
 %% order is not necessary for vars
 mapvars_to_str(VarsMap) when is_map(VarsMap) ->
@@ -113,13 +125,15 @@ get_names(VarrefList) ->
 kvlist_frommap(NameAtoms, ValueMap) ->
     lists:zip(NameAtoms, getvalues_bykeys(NameAtoms, ValueMap)).
 
+fnret_type_tostr(#fun_type{params=Params, ret=Rettype}, NameParams) ->
+    Paramstr = params_to_str_noname(Params),
+    NewNameParams = io_lib:format("~s(~s)", [NameParams, Paramstr]),
+    type_tostr(Rettype, NewNameParams);
+fnret_type_tostr(#basic_type{type={Typeanno, N}} = T, NameParams)
+  when N > 0 ->
+    type_tostr(T#basic_type{type={Typeanno, N-1}}, NameParams).
+
 %% convert type to C string
-type_tostr(#fun_type{params=Params, ret=Rettype}, Varname) ->
-    Paramstr = lists:join(",", lists:map(fun(T) ->
-						 type_tostr(T, "")
-					 end, Params)),
-    io_lib:format("~s (*~s)(~s)", [type_tostr(Rettype, ""), Varname,
-				  Paramstr]);
 type_tostr(#array_type{size=Size, elemtype=ElementType}, Varname) ->
     io_lib:format("struct {~s val[~w];} ~s", [type_tostr(ElementType, ""),
 					      Size, Varname]);
@@ -127,7 +141,11 @@ type_tostr(#basic_type{type={Typeanno, Depth}}, Varname) when Depth > 0 ->
     io_lib:format("~s~s ~s", [typeanno_tostr(Typeanno),
 			      lists:duplicate(Depth, "*"), Varname]);
 type_tostr(#basic_type{type={Typeanno, 0}}, Varname) ->
-    io_lib:format("~s ~s", [typeanno_tostr(Typeanno), Varname]).
+    io_lib:format("~s ~s", [typeanno_tostr(Typeanno), Varname]);
+type_tostr(#fun_type{params=Params, ret=Rettype}, Varname) ->
+    Paramstr = params_to_str_noname(Params),
+    NameParams = io_lib:format("(*~s)(~s)", [Varname, Paramstr]),
+    type_tostr(Rettype, NameParams).
 
 typeanno_tostr(Name) when is_atom(Name) ->
     case is_primitive_type(Name) of
@@ -153,6 +171,8 @@ expr_tostr(#if_expr{condition=Condition, then=Then, else=Else}) ->
 expr_tostr(#while_expr{condition=Condition, exprs=Exprs}) ->
     io_lib:format("while (~s) {\n~s\n}\n",
 		  [expr_tostr(Condition), exprs_tostr(Exprs)]);
+expr_tostr(#op2{operator='::', op1=#varref{name=c}, op2=Op2}) ->
+    expr_tostr(Op2);
 expr_tostr(#op2{operator=Operator, op1=Op1, op2=Op2}) ->
     io_lib:format("(~s ~s ~s)", [expr_tostr(Op1), translate_operator(Operator),
 				 expr_tostr(Op2)]);

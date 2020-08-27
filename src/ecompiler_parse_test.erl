@@ -5,13 +5,12 @@
 -include_lib("eunit/include/eunit.hrl").
 
 function_normal_test() ->
-    {ok, Tks, _} = ecompiler_scan:string( "fun a(v: i8^): void v^ = 10; end"),
+    {ok, Tks, _} = ecompiler_scan:string( "fun a(v: i8^) v^ = 10; end"),
     %?debugFmt("~p~n", [Tks]),
     ?assertEqual(Tks, [{'fun',1}, {identifier,1,a}, {'(',1},
 		       {identifier,1,v}, {':',1}, {basic_type,1,i8}, {'^',1},
-		       {')',1}, {':',1}, {basic_type,1,void},
-		       {identifier,1,v}, {'^',1}, {'=',1}, {integer,1,10},
-		       {';',1}, {'end',1}]),
+		       {')',1}, {identifier,1,v}, {'^',1}, {'=',1},
+		       {integer,1,10}, {';',1}, {'end',1}]),
     {ok, Ast} = ecompiler_parse:parse(Tks),
     %?debugFmt("~p~n", [Ast]),
     ?assertEqual(Ast, [{function_raw,1,a,
@@ -47,7 +46,8 @@ function_call_test() ->
     {ok, Ast} = ecompiler_parse:parse(Tks),
     %?debugFmt("~p~n", [Ast]),
     ?assertEqual(Ast, [{vardef,1,b, {basic_type,1,{u8,0}},
-			{call,1,{varref,1,a},{varref,1,b},[{integer,1,13}]}}]),
+			{call,1, {op2,1,'::',{varref,1,a},{varref,1,b}},
+			 [{integer,1,13}]}}]),
     ok.
 
 array_test() ->
@@ -92,12 +92,12 @@ struct_init_test() ->
     ok.
 
 assign_test() ->
-    {ok, Tks, _} = ecompiler_scan:string("fun b(): void a * = 3; c bsr = 5; end"),
+    {ok, Tks, _} = ecompiler_scan:string("fun b() a * = 3; c bsr = 5; end"),
     %?debugFmt("~p~n", [Tks]),
-    ?assertEqual(Tks, [{'fun',1}, {identifier,1,b}, {'(',1}, {')',1}, {':',1},
-		       {basic_type,1,void}, {identifier,1,a}, {'*',1},
-		       {'=',1}, {integer,1,3}, {';',1}, {identifier,1,c},
-		       {'bsr',1}, {'=',1}, {integer,1,5}, {';',1}, {'end',1}]),
+    ?assertEqual(Tks, [{'fun',1}, {identifier,1,b}, {'(',1}, {')',1},
+		       {identifier,1,a}, {'*',1}, {'=',1}, {integer,1,3},
+		       {';',1}, {identifier,1,c}, {'bsr',1}, {'=',1},
+		       {integer,1,5}, {';',1}, {'end',1}]),
     {ok, Ast} = ecompiler_parse:parse(Tks),
     %?debugFmt("~p~n", [Ast]),
     ?assertEqual(Ast, [{function_raw,1,b,[], {basic_type,1,{void,0}},

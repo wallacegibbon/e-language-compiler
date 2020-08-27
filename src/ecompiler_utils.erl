@@ -1,6 +1,6 @@
 -module(ecompiler_utils).
 
--export([is_primitive_type/1, is_integer_type/1, void_type/1, any_type/1,
+-export([is_primitive_type/1, is_integer_type/1, void_type/1, any_type/2,
 	 primitive_size/1]).
 
 -export([exprsmap/2, expr2str/1, flat_format/2, getvalues_bykeys/2,
@@ -86,13 +86,13 @@ primitive_size(i16) -> 2;
 primitive_size(u8) -> 1;
 primitive_size(i8) -> 1;
 primitive_size(T) ->
-    throw(flat_format("~p is not primitive type", [T])).
+    throw(flat_format("size of ~p is not defined", [T])).
 
 void_type(Line) ->
     #basic_type{type={void, 0}, line=Line}.
 
-any_type(Line) ->
-    #basic_type{type={any, 0}, line=Line}.
+any_type(Line, Pdepth) ->
+    #basic_type{type={any, Pdepth}, line=Line}.
 
 names_of_varrefs(VarRefs) ->
     lists:map(fun(#varref{name=N}) -> N end, VarRefs).

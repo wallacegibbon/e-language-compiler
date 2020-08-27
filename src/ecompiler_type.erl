@@ -3,7 +3,7 @@
 -export([checktype_ast/3, typeof_expr/2]).
 
 -import(ecompiler_utils, [is_primitive_type/1, is_integer_type/1,
-			  expr2str/1, flat_format/2, void_type/1, any_type/1]).
+			  expr2str/1, flat_format/2, void_type/1, any_type/2]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -61,6 +61,15 @@ typeof_expr(#op2{operator=assign, op1=Op1, op2=Op2, line=Line},
 typeof_expr(#op2{operator='.', op1=Op1, op2=Op2, line=Line},
 	    {_, _, StructMap, _} = Ctx) ->
     typeof_structfield(typeof_expr(Op1, Ctx), Op2, StructMap, Line);
+typeof_expr(#op2{operator='::', op1=Op1, op2=Op2, line=Line}, Ctx) ->
+    case Op1 of
+	#varref{name=self} ->
+	    typeof_expr(Op2, Ctx);
+	#varref{name=c} ->
+	    any_type(Line, 0);
+	_ ->
+	    throw({Line, "module is not fully supported yet"})
+    end;
 typeof_expr(#op2{operator=Operator, op1=Op1, op2=Op2, line=Line}, Ctx) ->
     TypeofOp1 = typeof_expr(Op1, Ctx),
     TypeofOp2 = typeof_expr(Op2, Ctx),
@@ -104,24 +113,21 @@ typeof_expr(#op1{operator='@', operand=Operand, line=Line},
     end;
 typeof_expr(#op1{operand=Operand}, Ctx) ->
     typeof_expr(Operand, Ctx);
-typeof_expr(#call{fn=FunExpr, module=#varref{name=self}, args=Args, line=Line},
-	    Ctx) ->
+typeof_expr(#call{fn=FunExpr, args=Args, line=Line}, Ctx) ->
     ArgsTypes = lists:map(fun(A) -> typeof_expr(A, Ctx) end, Args),
-    FnType = typeof_expr(FunExpr, Ctx),
-    case compare_types(ArgsTypes, FnType#fun_type.params) of
-	false ->
-	    throw({Line, flat_format("argument type (~s) should be (~s)",
-				     [fmt_types(ArgsTypes),
-				      fmt_types(FnType#fun_type.params)])});
-	true ->
-	    FnType#fun_type.ret
+    case typeof_expr(FunExpr, Ctx) of
+	#fun_type{params=FnParamTypes, ret=FnRetType} ->
+	    case compare_types(ArgsTypes, FnParamTypes) of
+		false ->
+		    throw({Line, flat_format("arg types (~s) =/= (~s)",
+					     [fmt_types(ArgsTypes),
+					      fmt_types(FnParamTypes)])});
+		true ->
+		    FnRetType
+	    end;
+	#basic_type{type={any, _}} = T ->
+	    T
     end;
-typeof_expr(#call{module=#varref{name=c}, args=Args, line=Line}, Ctx) ->
-    %% do not check type of C functions
-    lists:map(fun(A) -> typeof_expr(A, Ctx) end, Args),
-    any_type(Line);
-typeof_expr(#call{fn=_FunExpr, module=_Mod, args=_Args, line=Line}, _Ctx) ->
-    throw({Line, "module is not fully supported yet"});
 typeof_expr(#if_expr{condition=Condition, then=Then, else=Else, line=Line},
 	    Ctx) ->
     typeof_expr(Condition, Ctx),

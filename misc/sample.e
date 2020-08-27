@@ -11,6 +11,7 @@ struct User
     count: u32,
     blah: Blah,
     b2: {Blah,3},
+    a: void^,
 end
 
 struct List
@@ -63,7 +64,7 @@ fun main(argc: i64, argv: i64^^): i64
 
     v3: i64^ = v1@;
 
-    f: fun(i64^): void = myfn;
+    f: fun(i64^) = myfn;
     f(v1@);
 
     %mym::f();
@@ -72,14 +73,14 @@ fun main(argc: i64, argv: i64^^): i64
     return 0;
 end
 
-fun init_users(users: User^, size: i64): void
+fun init_users(users: User^, size: i64)
     cnt: i64 = 30 + 52 * size / 2 + 100 / 10;
 %    while(cnt < size)
 %	init_user((users + cnt)^, cnt, "test");
 %    end
 end
 
-fun init_user(user: User^, id: i64, desc: i64^): void
+fun init_user(user: User^, id: i64, desc: i64^)
     if(id < 1)
 	user^.id = 1;
 	user^.id = user^.id + 1;
@@ -94,7 +95,10 @@ fun init_user(user: User^, id: i64, desc: i64^): void
     end
 end
 
-fun myfn(any: i64^): void
-    any^ += 1;
+fun myfn(val: i64^)
+    val^ += 1;
 end
 
+fun add(val: i8): u8
+    return val * 3 + 1;
+end

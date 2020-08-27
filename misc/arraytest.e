@@ -9,15 +9,26 @@ fun main(argc: i64, argv: i64^^): i64
 
     print(tmp);
 
-    myfn: fun(u8^): void = inc;
-    myfn(tmp);
+    %myfn: fun(u8^) = inc;
+    %myfn(tmp);
+
+    myfn1: fun(): fun(): fun(u8^) = get_incfn1;
+    myfn1()()(tmp);
 
     print(tmp);
 
     return (tmp + 11)^;
 end
 
-fun inc(val: u8^): void
+fun get_incfn1(): fun(): fun(u8^)
+    return get_incfn2;
+end
+
+fun get_incfn2(): fun(u8^)
+   return inc;
+end
+
+fun inc(val: u8^)
     cnt: u8 = 0;
     while(cnt < TOTAL_NUM)
 	(val + cnt)^ = cnt * 2;
@@ -25,7 +36,7 @@ fun inc(val: u8^): void
     end
 end
 
-fun print(val: u8^): void
+fun print(val: u8^)
     cnt: u8 = 0;
 
     c::printf(">>>");

@@ -93,7 +93,6 @@
 	      op2 :: e_expr()}).
 
 -record(call, {line :: integer(),
-	       module :: e_expr(),
 	       fn :: e_expr(),
 	       args :: [e_expr()]}).
 
