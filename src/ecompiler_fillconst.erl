@@ -121,9 +121,9 @@ constnum_to_token(Num, Line) when is_float(Num) ->
 constnum_to_token(Num, Line) when is_integer(Num) ->
     #integer{val=Num, line=Line}.
 
-replace_intype(#array_type{elemtype=ElementType, size=Size} = T, Constants) ->
+replace_intype(#array_type{elemtype=ElementType, len=Len} = T, Constants) ->
     T#array_type{elemtype=replace_intype(ElementType, Constants),
-		 size=eval_constexpr(replace_inexpr(Size, Constants),
+		 len=eval_constexpr(replace_inexpr(Len, Constants),
 				     Constants)};
 replace_intype(Any, _) ->
     Any.

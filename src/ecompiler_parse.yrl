@@ -2,7 +2,7 @@ Nonterminals
 
 statements statement defconst defstruct defun defvars defvar params
 exprs expr call_expr if_expr else_expr while_expr preminusplus_expr return_expr
-expr_or_defvar assignable_initval
+sizeof_expr expr_or_defvar assignable_initval
 op19 op30 op29 op28 op27 op26 op25 op2_withassign
 typeanno_list typeanno pointer_depth atomic_literal
 valid_type valid_type_or_void_pointer
@@ -17,7 +17,7 @@ Terminals
 '!' '!=' '==' '>=' '<='
 %% keywords
 const struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
-while 'if' elif else return
+while 'if' elif else return sizeof
 %%
 identifier integer float string basic_type void_type any_type
 .
@@ -57,7 +57,7 @@ typeanno -> 'fun' '(' ')' :
     #fun_type{params=[], ret=void_type(tok_line('$3')), line=tok_line('$1')}.
 
 typeanno -> '{' typeanno ',' expr '}' :
-    #array_type{elemtype='$2', size='$4', line=tok_line('$1')}.
+    #array_type{elemtype='$2', len='$4', line=tok_line('$1')}.
 
 typeanno -> valid_type_or_void_pointer :
     '$1'.
@@ -119,6 +119,10 @@ defun -> 'fun' identifier '(' defvars ')' ':' typeanno exprs 'end' :
 defun -> 'fun' identifier '(' ')' ':' typeanno exprs 'end' :
     #function_raw{name=tok_val('$2'), params=[], ret='$6', exprs='$7',
 		  line=tok_line('$2')}.
+
+%% sizeof
+sizeof_expr -> sizeof '(' typeanno ')' :
+    #sizeof{type='$3', line=tok_line('$2')}.
 
 %% function invocation
 call_expr -> expr '(' params ')' :
@@ -188,6 +192,7 @@ expr -> return_expr : '$1'.
 expr -> '(' expr ')' : '$2'.
 expr -> atomic_literal : '$1'.
 expr -> call_expr : '$1'.
+expr -> sizeof_expr : '$1'.
 expr -> identifier :
     #varref{name=tok_val('$1'), line=tok_line('$1')}.
 expr -> expr op2_withassign expr :

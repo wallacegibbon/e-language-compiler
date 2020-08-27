@@ -2,6 +2,12 @@
 
 struct Blah
     id: i8^,
+    a: Administrator^,
+end
+
+struct Blah1
+    id: i8^,
+    blob: u64 = sizeof(Blah),
 end
 
 struct User
@@ -50,7 +56,6 @@ fun main(argc: i64, argv: i64^^): i64
     v0: i8 = -1;
     users@^.blah = Blah{id="b"};
     cnt: i64 = TOTOAL_USERCNT;
-    %init_users(users@, sizeof(users)/sizeof(User));
     init_users(users@, TOTOAL_USERCNT);
 
     v1: i64 = 1;
@@ -69,6 +74,13 @@ fun main(argc: i64, argv: i64^^): i64
 
     %mym::f();
     c::malloc(30);
+
+    sizeof(User);
+    sizeof(Administrator);
+    sizeof(Blah);
+    sizeof(List);
+
+    x: Blah1 = Blah1{id="a"};
 
     return 0;
 end

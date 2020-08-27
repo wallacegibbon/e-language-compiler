@@ -154,7 +154,7 @@ typeof_expr(#varref{name=Name, line=Line},
 	       error ->
 		   case maps:find(Name, FunctionMap) of
 		       error ->
-			   throw({Line, flat_format("~s is undefined",
+			   throw({Line, flat_format("variable ~s is undefined",
 						    [Name])});
 		       {ok, T} ->
 			   T
@@ -168,7 +168,7 @@ typeof_expr(#array_init{elements=Elements, line=Line}, Ctx) ->
     ElementTypes = typeof_exprs(Elements, Ctx),
     case are_sametype(ElementTypes) of
 	true ->
-	    #array_type{elemtype=hd(ElementTypes), size=length(ElementTypes),
+	    #array_type{elemtype=hd(ElementTypes), len=length(ElementTypes),
 			line=Line};
 	_ ->
 	    throw({Line,
@@ -187,6 +187,8 @@ typeof_expr(#struct_init{name=StructName, field_names=InitFieldNames,
 	    throw({Line, flat_format("struct ~s is not found",
 				     [StructName])})
     end;
+typeof_expr(#sizeof{type=_, line=Line}, _) ->
+    #basic_type{type={i64, 0}, line=Line};
 typeof_expr({float, Line, _}, _) ->
     #basic_type{type={f64, 0}, line=Line};
 typeof_expr({integer, Line, _}, _) ->
@@ -286,9 +288,9 @@ compare_type(_, #basic_type{type={any, _}}) ->
     true;
 compare_type(#fun_type{params=P1, ret=R1}, #fun_type{params=P2, ret=R2}) ->
     compare_types(P1, P2) and compare_type(R1, R2);
-compare_type(#array_type{elemtype=E1, size=S1},
-	     #array_type{elemtype=E2, size=S2}) ->
-    compare_type(E1, E2) and (S1 =:= S2);
+compare_type(#array_type{elemtype=E1, len=L1},
+	     #array_type{elemtype=E2, len=L2}) ->
+    compare_type(E1, E2) and (L1 =:= L2);
 compare_type(#basic_type{type={T1, 0}}, #basic_type{type={T2, 0}}) ->
     (T1 =:= T2) orelse (is_integer_type(T1) and is_integer_type(T2));
 compare_type(#basic_type{type=T1}, #basic_type{type=T2}) ->
@@ -345,7 +347,7 @@ fmt_types([], Result) ->
 fmt_type(#fun_type{params=Params, ret=Rettype}) ->
     io_lib:format("fun(~s): ~s", [lists:join(",", fmt_types(Params)),
 				  fmt_type(Rettype)]);
-fmt_type(#array_type{elemtype=Type, size=N}) ->
+fmt_type(#array_type{elemtype=Type, len=N}) ->
     io_lib:format("{~s, ~w}", [fmt_type(Type), N]);
 fmt_type(#basic_type{type={Type, Depth}}) when Depth > 0 ->
     io_lib:format("(~s~s)", [Type, lists:duplicate(Depth, "^")]);

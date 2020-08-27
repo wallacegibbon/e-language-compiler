@@ -2,13 +2,13 @@
 
 -export([generate_ccode/4]).
 
--import(ecompiler_utils, [exprsmap/2, is_primitive_type/1,
+-import(ecompiler_utils, [exprsmap/2, is_primitive_type/1, fn_struct_map/1,
 			  getvalues_bykeys/2]).
 
 -include("./ecompiler_frame.hrl").
 
 generate_ccode(Ast, GlobalVars, _InitCode, OutputFile) ->
-    {FnMap, StructMap} = ecompiler_compile:fn_struct_map(Ast),
+    {FnMap, StructMap} = fn_struct_map(Ast),
     Ast2 = fixfunction_for_c(Ast, FnMap, StructMap, GlobalVars),
     %% struct definition have to be before function declarations
     {StructAst, FnAst} = lists:partition(fun(A) ->
@@ -134,9 +134,9 @@ fnret_type_tostr(#basic_type{type={Typeanno, N}} = T, NameParams)
     type_tostr(T#basic_type{type={Typeanno, N-1}}, NameParams).
 
 %% convert type to C string
-type_tostr(#array_type{size=Size, elemtype=ElementType}, Varname) ->
+type_tostr(#array_type{len=Len, elemtype=ElementType}, Varname) ->
     io_lib:format("struct {~s val[~w];} ~s", [type_tostr(ElementType, ""),
-					      Size, Varname]);
+					      Len, Varname]);
 type_tostr(#basic_type{type={Typeanno, Depth}}, Varname) when Depth > 0 ->
     io_lib:format("~s~s ~s", [typeanno_tostr(Typeanno),
 			      lists:duplicate(Depth, "*"), Varname]);

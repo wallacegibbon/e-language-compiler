@@ -6,6 +6,8 @@
 -export([exprsmap/2, expr2str/1, flat_format/2, getvalues_bykeys/2,
 	 names_of_varrefs/1, names_of_vardefs/1]).
 
+-export([fillto_pointerwidth/2, fill_offset/2, fn_struct_map/1]).
+
 -include("./ecompiler_frame.hrl").
 
 %% when do simple convertions, this function can be used to avoid boilerplate
@@ -58,6 +60,27 @@ getvalues_bykeys([Field | Rest], Map, Result) ->
     getvalues_bykeys(Rest, Map, [maps:get(Field, Map) | Result]);
 getvalues_bykeys([], _, Result) ->
     lists:reverse(Result).
+
+%% make function and struct map from ast list
+fn_struct_map(Ast) ->
+    {Fns, Structs} = lists:partition(fun(A) ->
+					     element(1, A) =:= function
+				     end, Ast),
+    %% FnMap stores function type only
+    FnMap = maps:from_list(lists:map(fun(#function{name=Name} = Fn) ->
+					     {Name, Fn#function.type}
+				     end, Fns)),
+    StructMap = maps:from_list(lists:map(fun(#struct{name=Name} = S) ->
+						 {Name, S}
+					 end, Structs)),
+    {FnMap, StructMap}.
+
+%% address calculations
+fillto_pointerwidth(Num, PointerWidth) ->
+    (Num + PointerWidth - 1) div PointerWidth * PointerWidth.
+
+fill_offset(Offset, PointerWidth) ->
+    (Offset + PointerWidth) div PointerWidth * PointerWidth.
 
 is_primitive_type(void) -> true;
 is_primitive_type(any) -> true;

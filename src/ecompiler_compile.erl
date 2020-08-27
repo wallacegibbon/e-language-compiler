@@ -1,8 +1,8 @@
 -module(ecompiler_compile).
 
--export([compile_from_rawast/2, fn_struct_map/1]).
+-export([compile_from_rawast/2]).
 
--import(ecompiler_utils, [is_primitive_type/1, flat_format/2]).
+-import(ecompiler_utils, [is_primitive_type/1, flat_format/2, fn_struct_map/1]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -19,31 +19,28 @@ compile_from_rawast(Ast, CustomOptions) ->
 
     %% calculate struct size, filed offsets
     #{pointer_width := PointerWidth} = Options,
-    Ast3 = ecompiler_fillstruct:fill_structinfo(Ast2,
-						{StructMap, PointerWidth}),
+    Ast3 = ecompiler_fillsize:fill_structinfo(Ast2,
+					      {StructMap, PointerWidth}),
+    %io:format(">>> ~p~n", [Ast3]),
+
+    %% the struct data is updated (struct size contained), so StructMap
+    %% needs to be updated, too
+    {_, StructMap1} = fn_struct_map(Ast3),
 
     %% type checking
-    ecompiler_type:checktype_ast(Ast3, Vars, {FnMap, StructMap}),
+    ecompiler_type:checktype_ast(Ast3, Vars, {FnMap, StructMap1}),
 
     %% expand init exprs like A{a=1} and {1,2,3}
-    Ast4 = ecompiler_expandinit:expand_initexpr_infun(Ast3, StructMap),
-    {Ast4, Vars, InitCode}.
+    Ast4 = ecompiler_expandinit:expand_initexpr_infun(Ast3, StructMap1),
+
+    %% sizeof expression may also contained in struct init code,
+    %% dod sizeof expanding after struct_init expanding is more convenient
+    Ast5 = ecompiler_fillsize:expand_size(Ast4, {StructMap1, PointerWidth}),
+
+    {Ast5, Vars, InitCode}.
 
 default_options() ->
     #{pointer_width => 8}.
-
-fn_struct_map(Ast) ->
-    {Fns, Structs} = lists:partition(fun(A) ->
-					     element(1, A) =:= function
-				     end, Ast),
-    %% FnMap stores function type only
-    FnMap = maps:from_list(lists:map(fun(#function{name=Name} = Fn) ->
-					     {Name, Fn#function.type}
-				     end, Fns)),
-    StructMap = maps:from_list(lists:map(fun(#struct{name=Name} = S) ->
-						 {Name, S}
-					 end, Structs)),
-    {FnMap, StructMap}.
 
 check_struct_recursion(StructMap) ->
     lists:map(fun(S) -> check_struct_rec(S, StructMap, #{}) end,

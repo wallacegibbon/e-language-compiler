@@ -65,8 +65,8 @@ structinit_to_op(Target, [#varref{line=Line, name=Fname} = Field | Rest],
 structinit_to_op(_, [], _, _, Newcode, _) ->
     Newcode.
 
-default_initof(#array_type{elemtype=Etype, size=Size}, Line) ->
-    #array_init{elements=lists:duplicate(Size, default_initof(Etype, Line)),
+default_initof(#array_type{elemtype=Etype, len=Len}, Line) ->
+    #array_init{elements=lists:duplicate(Len, default_initof(Etype, Line)),
 		line=Line};
 default_initof(#basic_type{type={Tname, 0}}, Line) ->
     IsStruct = not is_primitive_type(Tname),

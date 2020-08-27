@@ -13,16 +13,16 @@
 		 name :: atom(),
 		 size :: integer(),
 		 field_types :: [any()],
+		 field_offsets :: #{atom() => integer()},
 		 field_names :: [any()],
-		 field_defaults :: #{atom() => e_expr()},
-		 field_offsets :: #{atom() => integer()}}).
+		 field_defaults :: #{atom() => e_expr()}}).
 
 -record(basic_type, {line :: integer(),
 		     type :: {atom(), integer()}}).
 
 -record(array_type, {line :: integer(),
 		     elemtype :: e_type(),
-		     size :: integer()}).
+		     len :: integer()}).
 
 -record(fun_type, {line :: integer(),
 		   params :: [e_type()],
@@ -95,4 +95,7 @@
 -record(call, {line :: integer(),
 	       fn :: e_expr(),
 	       args :: [e_expr()]}).
+
+-record(sizeof, {line :: integer(),
+		 type :: e_type()}).
 
