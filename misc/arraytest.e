@@ -44,6 +44,6 @@ fun print(val: u8^)
 	c::printf(" %d", (val + cnt)^);
 	cnt += 1;
     end
-    c::printf(".\n");
+    cnt = c::printf(".\n");
 end
 

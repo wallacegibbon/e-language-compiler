@@ -126,7 +126,10 @@ typeof_expr(#call{fn=FunExpr, args=Args, line=Line}, Ctx) ->
 		    FnRetType
 	    end;
 	#basic_type{type={any, _}} = T ->
-	    T
+	    T;
+	AnyType ->
+	    throw({Line, flat_format("invalid function expr: ~s",
+				     [fmt_type(AnyType)])})
     end;
 typeof_expr(#if_expr{condition=Condition, then=Then, else=Else, line=Line},
 	    Ctx) ->

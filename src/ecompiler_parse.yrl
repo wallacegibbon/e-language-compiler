@@ -1,11 +1,10 @@
 Nonterminals
 
 statements statement defconst defstruct defun defvars defvar params
-exprs expr call_expr if_expr else_expr while_expr preminusplus_expr return_expr
-sizeof_expr expr_or_defvar assignable_initval
+exprs expr root_expr call_expr if_expr else_expr while_expr preminusplus_expr
+return_expr sizeof_expr assign_expr
 op19 op30 op29 op28 op27 op26 op25 op2_withassign
-typeanno_list typeanno pointer_depth atomic_literal
-valid_type valid_type_or_void_pointer
+typeanno_list typeanno pointer_depth atomic_literal valid_type
 array_init_expr array_init_elements struct_init_expr struct_init_fields
 struct_init_assign
 .
@@ -32,13 +31,8 @@ statement -> defstruct : '$1'.
 statement -> defun : '$1'.
 statement -> defvar ';' : '$1'.
 
-
 defconst -> const identifier '=' expr ';' :
     #const{name=tok_val('$2'), val='$4', line=tok_line('$2')}.
-
-atomic_literal -> integer : '$1'.
-atomic_literal -> float : '$1'.
-atomic_literal -> string : '$1'.
 
 %% type annotation inside array or function
 typeanno_list -> typeanno ',' typeanno_list : ['$1' | '$3'].
@@ -46,35 +40,23 @@ typeanno_list -> typeanno : ['$1'].
 
 typeanno -> 'fun' '(' typeanno_list ')' ':' typeanno :
     #fun_type{params='$3', ret='$6', line=tok_line('$1')}.
-
 typeanno -> 'fun' '(' typeanno_list ')' :
     #fun_type{params='$3', ret=void_type(tok_line('$4')), line=tok_line('$1')}.
-
 typeanno -> 'fun' '(' ')' ':' typeanno :
     #fun_type{params=[], ret='$5', line=tok_line('$1')}.
-
 typeanno -> 'fun' '(' ')' :
     #fun_type{params=[], ret=void_type(tok_line('$3')), line=tok_line('$1')}.
-
 typeanno -> '{' typeanno ',' expr '}' :
     #array_type{elemtype='$2', len='$4', line=tok_line('$1')}.
-
-typeanno -> valid_type_or_void_pointer :
-    '$1'.
-
-valid_type_or_void_pointer -> valid_type pointer_depth :
+typeanno -> valid_type pointer_depth :
     #basic_type{type={tok_val('$1'), '$2'}, line=tok_line('$1')}.
-
-valid_type_or_void_pointer -> void_type pointer_depth :
+typeanno -> void_type pointer_depth :
     #basic_type{type={tok_val('$1'), '$2'}, line=tok_line('$1')}.
-
-valid_type_or_void_pointer -> valid_type :
+typeanno -> valid_type :
     #basic_type{type={tok_val('$1'), 0}, line=tok_line('$1')}.
-
-valid_type_or_void_pointer -> void_type :
+typeanno -> void_type :
     return_error(tok_line('$1'), "type void is not allowed here").
-
-valid_type_or_void_pointer -> any_type :
+typeanno -> any_type :
     return_error(tok_line('$1'), "type any is not allowed here").
 
 valid_type -> basic_type : '$1'.
@@ -88,52 +70,31 @@ defvars -> defvar ',' defvars : ['$1' | '$3'].
 defvars -> defvar ',' : ['$1'].
 defvars -> defvar : ['$1'].
 
-defvar -> identifier ':' typeanno '=' assignable_initval :
+defvar -> identifier ':' typeanno '=' expr :
     #vardef{name=tok_val('$1'), type='$3', initval='$5', line=tok_line('$1')}.
 
 defvar -> identifier ':' typeanno :
     #vardef{name=tok_val('$1'), type='$3', line=tok_line('$1')}.
-
-assignable_initval -> expr : '$1'.
-assignable_initval -> array_init_expr : '$1'.
-assignable_initval -> struct_init_expr : '$1'.
 
 %% struct definition
 defstruct -> struct identifier defvars 'end' :
     #struct_raw{name=tok_val('$2'), fields='$3', line=tok_line('$2')}.
 
 %% function definition
+defun -> 'fun' identifier '(' defvars ')' ':' typeanno exprs 'end' :
+    #function_raw{name=tok_val('$2'), params='$4', ret='$7', exprs='$8',
+		  line=tok_line('$2')}.
+defun -> 'fun' identifier '(' ')' ':' typeanno exprs 'end' :
+    #function_raw{name=tok_val('$2'), params=[], ret='$6', exprs='$7',
+		  line=tok_line('$2')}.
 defun -> 'fun' identifier '(' defvars ')' exprs 'end' :
     #function_raw{name=tok_val('$2'), params='$4',
 		  ret=void_type(tok_line('$5')),
 		  exprs='$6', line=tok_line('$2')}.
-
 defun -> 'fun' identifier '(' ')' exprs 'end' :
-    #function_raw{name=tok_val('$2'), params=[], ret=void_type(tok_line('$4')),
+    #function_raw{name=tok_val('$2'), params=[],
+		  ret=void_type(tok_line('$4')),
 		  exprs='$5', line=tok_line('$2')}.
-
-defun -> 'fun' identifier '(' defvars ')' ':' typeanno exprs 'end' :
-    #function_raw{name=tok_val('$2'), params='$4', ret='$7', exprs='$8',
-		  line=tok_line('$2')}.
-
-defun -> 'fun' identifier '(' ')' ':' typeanno exprs 'end' :
-    #function_raw{name=tok_val('$2'), params=[], ret='$6', exprs='$7',
-		  line=tok_line('$2')}.
-
-%% sizeof
-sizeof_expr -> sizeof '(' typeanno ')' :
-    #sizeof{type='$3', line=tok_line('$2')}.
-
-%% function invocation
-call_expr -> expr '(' params ')' :
-    #call{fn='$1', args='$3', line=tok_line('$2')}.
-
-call_expr -> expr '(' ')' :
-    #call{fn='$1', args=[], line=tok_line('$2')}.
-
-params -> expr ',' params : ['$1' | '$3'].
-params -> expr ',' : ['$1'].
-params -> expr : ['$1'].
 
 %% while
 while_expr -> while '(' expr ')' exprs 'end' :
@@ -150,20 +111,20 @@ else_expr -> else exprs 'end' :
 else_expr -> 'end' :
     [].
 
-return_expr -> return expr :
-    #return{expr='$2', line=tok_line('$1')}.
-
-Unary 800 array_init_expr.
+%% array_init_expr and struct_init_expr contains similar pattern '{' '}'.
+%% make the precedence of array_init_expr higher than struct_init_expr
+Unary 2100 array_init_expr.
 array_init_expr -> '{' array_init_elements '}' :
     #array_init{elements='$2', line=tok_line('$1')}.
 array_init_expr -> '{' string '}' :
     #array_init{elements=str_to_inttks('$2'), line=tok_line('$1')}.
 
-array_init_elements -> assignable_initval ',' array_init_elements :
+array_init_elements -> expr ',' array_init_elements :
     ['$1' | '$3'].
-array_init_elements -> assignable_initval :
+array_init_elements -> expr :
     ['$1'].
 
+Unary 2000 struct_init_expr.
 struct_init_expr -> identifier '{' struct_init_fields '}' :
     #struct_init_raw{name=tok_val('$1'), fields='$3', line=tok_line('$1')}.
 
@@ -172,36 +133,55 @@ struct_init_fields -> struct_init_assign ',' struct_init_fields :
 struct_init_fields -> struct_init_assign :
     ['$1'].
 
-struct_init_assign -> identifier '=' assignable_initval :
+struct_init_assign -> identifier '=' expr :
     #op2{operator=assign, op1=#varref{name=tok_val('$1'),
 				      line=tok_line('$1')},
 	 op2='$3', line=tok_line('$2')}.
 
-%% expression
-exprs -> expr_or_defvar ';' exprs : ['$1' | '$3'].
-exprs -> expr_or_defvar ';' : ['$1'].
-exprs -> while_expr exprs : ['$1' | '$2'].
-exprs -> if_expr exprs : ['$1' | '$2'].
-exprs -> while_expr : ['$1'].
-exprs -> if_expr : ['$1'].
+%% return
+return_expr -> return expr :
+    #return{expr='$2', line=tok_line('$1')}.
 
-expr_or_defvar -> defvar : '$1'.
-expr_or_defvar -> expr : '$1'.
+%% sizeof
+sizeof_expr -> sizeof '(' typeanno ')' :
+    #sizeof{type='$3', line=tok_line('$2')}.
 
-expr -> return_expr : '$1'.
-expr -> '(' expr ')' : '$2'.
-expr -> atomic_literal : '$1'.
-expr -> call_expr : '$1'.
-expr -> sizeof_expr : '$1'.
-expr -> identifier :
-    #varref{name=tok_val('$1'), line=tok_line('$1')}.
-expr -> expr op2_withassign expr :
+%% function invocation
+call_expr -> expr '(' params ')' :
+    #call{fn='$1', args='$3', line=tok_line('$2')}.
+call_expr -> expr '(' ')' :
+    #call{fn='$1', args=[], line=tok_line('$2')}.
+
+assign_expr -> expr op2_withassign expr :
     #op2{operator=assign, op1='$1', op2=#op2{operator=tok_sym('$2'), op1='$1',
 					     op2='$3', line=tok_line('$2')},
 	 line=tok_line('$2')}.
-expr -> expr '=' assignable_initval :
+assign_expr -> expr '=' expr :
     #op2{operator=assign, op1='$1', op2='$3', line=tok_line('$2')}.
-expr -> preminusplus_expr : '$1'.
+
+op2_withassign -> op29 '=' : '$1'.
+op2_withassign -> op28 '=' : '$1'.
+op2_withassign -> op27 '=' : '$1'.
+
+params -> expr ',' params : ['$1' | '$3'].
+params -> expr ',' : ['$1'].
+params -> expr : ['$1'].
+
+atomic_literal -> integer : '$1'.
+atomic_literal -> float : '$1'.
+atomic_literal -> string : '$1'.
+
+%% expression
+exprs -> root_expr exprs : ['$1' | '$2'].
+exprs -> root_expr : ['$1'].
+
+root_expr -> defvar ';' : '$1'.
+root_expr -> expr ';' : '$1'.
+root_expr -> assign_expr ';' : '$1'.
+root_expr -> return_expr ';' : '$1'.
+root_expr -> if_expr : '$1'.
+root_expr -> while_expr : '$1'.
+
 expr -> expr op30 expr :
     #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op29 expr :
@@ -216,17 +196,22 @@ expr -> expr op25 expr :
     #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op19 :
     #op1{operator=tok_sym('$2'), operand='$1', line=tok_line('$2')}.
+expr -> identifier :
+    #varref{name=tok_val('$1'), line=tok_line('$1')}.
+expr -> preminusplus_expr : '$1'.
+expr -> array_init_expr : '$1'.
+expr -> struct_init_expr : '$1'.
+expr -> atomic_literal : '$1'.
+expr -> call_expr : '$1'.
+expr -> sizeof_expr : '$1'.
+expr -> '(' expr ')' : '$2'.
 
-Unary 800 preminusplus_expr.
+%% the precedence of 'preminusplus_expr' needs to be higher than "op2 -"
+Unary 300 preminusplus_expr.
 preminusplus_expr -> '-' expr :
     #op1{operator=tok_sym('$1'), operand='$2', line=tok_line('$1')}.
 preminusplus_expr -> '+' expr :
     #op1{operator=tok_sym('$1'), operand='$2', line=tok_line('$1')}.
-
-Right 100 op2_withassign.
-op2_withassign -> op29 '=' : '$1'.
-op2_withassign -> op28 '=' : '$1'.
-op2_withassign -> op27 '=' : '$1'.
 
 Unary 900 op19.
 op19 -> '^' : '$1'.
@@ -265,8 +250,6 @@ op26 -> '<' : '$1'.
 Left 250 op25.
 op25 -> 'and' : '$1'.
 op25 -> 'or' : '$1'.
-
-Right 100 '='.
 
 
 Erlang code.

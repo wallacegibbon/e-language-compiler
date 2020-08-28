@@ -1,8 +1,8 @@
 -module(ecompiler_expandinit).
 
--export([expand_initexpr_infun/2]).
+-export([check_initexpr_position/1, expand_initexpr_infun/2]).
 
--import(ecompiler_utils, [flat_format/2, is_primitive_type/1]).
+-import(ecompiler_utils, [exprsmap/2, flat_format/2, is_primitive_type/1]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -13,8 +13,6 @@ expand_initexpr_infun([Any | Rest], StructMap) ->
     [Any | expand_initexpr_infun(Rest, StructMap)];
 expand_initexpr_infun([], _) ->
     [].
-
--define(ASSIGN(Op1, Op2), #op2{operator=assign, op1=Op1, op2=Op2}).
 
 expand_init([#if_expr{then=Then, else=Else} = E | Rest], NewAst, Ctx) ->
     expand_init(Rest,
@@ -31,6 +29,8 @@ expand_init([Any | Rest], NewAst, Ctx) ->
     expand_init(Rest, [Any | NewAst], Ctx);
 expand_init([], NewAst, _) ->
     lists:reverse(NewAst).
+
+-define(ASSIGN(Op1, Op2), #op2{operator=assign, op1=Op1, op2=Op2}).
 
 replace_init_ops(?ASSIGN(Op1, #struct_init{name=Name, field_values=FieldValues,
 					   line=Line}), {Structs} = Ctx) ->
@@ -91,4 +91,22 @@ arrayinit_to_op(Target, [E | Rest], Cnt, Line, Newcode, Ctx) ->
     arrayinit_to_op(Target, Rest, Cnt + 1, Line, Ops ++ Newcode, Ctx);
 arrayinit_to_op(_, [], _, _, Newcode, _) ->
     Newcode.
+
+check_initexpr_position([#function{exprs=Exprs} | Rest]) ->
+    exprsmap(fun check_initexpr_pos/1, Exprs),
+    check_initexpr_position(Rest);
+check_initexpr_position([_ | Rest]) ->
+    check_initexpr_position(Rest);
+check_initexpr_position([]) ->
+    ok.
+
+check_initexpr_pos(#op2{operator=assign, op2=Op2})
+  when is_record(Op2, struct_init); is_record(Op2, array_init) ->
+    ok;
+check_initexpr_pos(#struct_init{line=Line}) ->
+    throw({Line, "struct init expression is only allowed in assignments"});
+check_initexpr_pos(#array_init{line=Line}) ->
+    throw({Line, "array init expression is only allowed in assignments"});
+check_initexpr_pos(_) ->
+    ok.
 

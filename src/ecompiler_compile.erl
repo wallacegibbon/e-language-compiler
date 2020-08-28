@@ -30,6 +30,9 @@ compile_from_rawast(Ast, CustomOptions) ->
     %% type checking
     ecompiler_type:checktype_ast(Ast3, Vars, {FnMap, StructMap1}),
 
+    %% for now, array and struct init expression is only allowed in assignment
+    ecompiler_expandinit:check_initexpr_position(Ast3),
+
     %% expand init exprs like A{a=1} and {1,2,3}
     Ast4 = ecompiler_expandinit:expand_initexpr_infun(Ast3, StructMap1),
 
