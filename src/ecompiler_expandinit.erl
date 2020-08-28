@@ -1,12 +1,24 @@
 -module(ecompiler_expandinit).
 
--export([check_initexpr_position/1, expand_initexpr_infun/2]).
+-export([expand_initexpr_infun/2]).
 
 -import(ecompiler_utils, [exprsmap/2, flat_format/2, is_primitive_type/1]).
 
 -include("./ecompiler_frame.hrl").
 
+%% for now, array and struct init expression is only allowed in assignment
+check_initexpr_pos(#op2{operator=assign, op2=Op2})
+  when is_record(Op2, struct_init); is_record(Op2, array_init) ->
+    ok;
+check_initexpr_pos(#struct_init{line=Line}) ->
+    throw({Line, "struct init expression is only allowed in assignments"});
+check_initexpr_pos(#array_init{line=Line}) ->
+    throw({Line, "array init expression is only allowed in assignments"});
+check_initexpr_pos(_) ->
+    ok.
+
 expand_initexpr_infun([#function{exprs=Exprs} = F | Rest], StructMap) ->
+    exprsmap(fun check_initexpr_pos/1, Exprs),
     [F#function{exprs=expand_init(Exprs, [], {StructMap})} |
      expand_initexpr_infun(Rest, StructMap)];
 expand_initexpr_infun([Any | Rest], StructMap) ->
@@ -91,22 +103,4 @@ arrayinit_to_op(Target, [E | Rest], Cnt, Line, Newcode, Ctx) ->
     arrayinit_to_op(Target, Rest, Cnt + 1, Line, Ops ++ Newcode, Ctx);
 arrayinit_to_op(_, [], _, _, Newcode, _) ->
     Newcode.
-
-check_initexpr_position([#function{exprs=Exprs} | Rest]) ->
-    exprsmap(fun check_initexpr_pos/1, Exprs),
-    check_initexpr_position(Rest);
-check_initexpr_position([_ | Rest]) ->
-    check_initexpr_position(Rest);
-check_initexpr_position([]) ->
-    ok.
-
-check_initexpr_pos(#op2{operator=assign, op2=Op2})
-  when is_record(Op2, struct_init); is_record(Op2, array_init) ->
-    ok;
-check_initexpr_pos(#struct_init{line=Line}) ->
-    throw({Line, "struct init expression is only allowed in assignments"});
-check_initexpr_pos(#array_init{line=Line}) ->
-    throw({Line, "array init expression is only allowed in assignments"});
-check_initexpr_pos(_) ->
-    ok.
 
