@@ -17,12 +17,12 @@ struct User
     count: u32,
     blah: Blah,
     b2: {Blah,3},
-    a: void^,
+    a: any^,
 end
 
 struct List
     next: List^,
-    val: void^,
+    val: any^,
     ok: User = User{id=1, count=TOTOAL_USERCNT},
     %invalid: List,
 end

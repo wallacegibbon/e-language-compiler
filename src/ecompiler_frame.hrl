@@ -1,5 +1,4 @@
-%-type e_type() :: u8 | i8 | u16 | i16 | u32 | i32 | u64 | i64 | f64 | f32 | void.
--type e_type() :: any().
+-type e_type() :: any(). % u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
 -type e_expr() :: any().
 
 -record(function, {line :: integer(),
@@ -18,7 +17,9 @@
 		 field_defaults :: #{atom() => e_expr()}}).
 
 -record(basic_type, {line :: integer(),
-		     type :: {atom(), integer()}}).
+		     pdepth = 0 :: integer(),
+		     class :: struct|integer|float|void|any,
+		     tag :: atom()}).
 
 -record(array_type, {line :: integer(),
 		     elemtype :: e_type(),

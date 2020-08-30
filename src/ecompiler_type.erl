@@ -2,8 +2,7 @@
 
 -export([checktype_ast/3, typeof_expr/2]).
 
--import(ecompiler_utils, [is_primitive_type/1, is_integer_type/1,
-			  expr2str/1, flat_format/2, void_type/1, any_type/2]).
+-import(ecompiler_utils, [expr2str/1, flat_format/2, void_type/1, any_type/2]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -93,7 +92,7 @@ typeof_expr(#op2{operator=Operator, op1=Op1, op2=Op2, line=Line}, Ctx) ->
     end;
 typeof_expr(#op1{operator='^', operand=Operand, line=Line}, Ctx) ->
     case typeof_expr(Operand, Ctx) of
-	#basic_type{type=_} = T ->
+	#basic_type{tag=_} = T ->
 	    decr_pdepth(T, Line);
 	_ ->
 	    throw({Line, flat_format("invalid \"^\" on operand ~s",
@@ -125,11 +124,11 @@ typeof_expr(#call{fn=FunExpr, args=Args, line=Line}, Ctx) ->
 		true ->
 		    FnRetType
 	    end;
-	#basic_type{type={any, _}} = T ->
+	#basic_type{class=any} = T ->
 	    T;
-	AnyType ->
+	T ->
 	    throw({Line, flat_format("invalid function expr: ~s",
-				     [fmt_type(AnyType)])})
+				     [fmt_type(T)])})
     end;
 typeof_expr(#if_expr{condition=Condition, then=Then, else=Else, line=Line},
 	    Ctx) ->
@@ -185,32 +184,32 @@ typeof_expr(#struct_init{name=StructName, field_names=InitFieldNames,
 	{ok, #struct{field_types=FieldTypes}} ->
 	    check_structfields(InitFieldNames, FieldTypes, InitFieldValues,
 			       StructName, Ctx),
-	    #basic_type{type={StructName, 0}, line=Line};
+	    #basic_type{class=struct, tag=StructName, pdepth=0, line=Line};
 	_ ->
 	    throw({Line, flat_format("struct ~s is not found",
 				     [StructName])})
     end;
 typeof_expr(#sizeof{type=_, line=Line}, _) ->
-    #basic_type{type={i64, 0}, line=Line};
+    #basic_type{class=integer, pdepth=0, tag=i64, line=Line};
 typeof_expr({float, Line, _}, _) ->
-    #basic_type{type={f64, 0}, line=Line};
+    #basic_type{class=float, pdepth=0, tag=f64, line=Line};
 typeof_expr({integer, Line, _}, _) ->
-    #basic_type{type={i64, 0}, line=Line};
+    #basic_type{class=integer, pdepth=0, tag=i64, line=Line};
 typeof_expr({string, Line, _}, _) ->
-    #basic_type{type={i8, 1}, line=Line}.
+    #basic_type{class=integer, pdepth=r, tag=i8, line=Line}.
 
-incr_pdepth(#basic_type{type={Tname, Pdepth}} = Type, _) ->
-    Type#basic_type{type={Tname, Pdepth + 1}};
-incr_pdepth(#array_type{elemtype=#basic_type{type={Type, N}, line=Line}}, _) ->
-    #basic_type{type={Type, N + 1}, line=Line};
+incr_pdepth(#basic_type{pdepth=Pdepth} = T, _) ->
+    T#basic_type{pdepth=Pdepth+1};
+incr_pdepth(#array_type{elemtype=#basic_type{pdepth=Pdepth} = T}, _) ->
+    T#basic_type{pdepth=Pdepth+1};
 incr_pdepth(#fun_type{line=_}, OpLine) ->
     throw({OpLine, "@ on function type is not allowed"}).
 
-decr_pdepth(#basic_type{type={Tname, Pdepth}} = Type, OpLine) ->
+decr_pdepth(#basic_type{pdepth=Pdepth} = T, Line) ->
     if Pdepth > 0 ->
-	   Type#basic_type{type={Tname, Pdepth - 1}};
+	   T#basic_type{pdepth=Pdepth-1};
        true ->
-	   throw({OpLine, "^ on a non-pointer type"})
+	   throw({Line, "^ on a non-pointer type"})
     end;
 decr_pdepth(#array_type{line=_} = Type, OpLine) ->
     throw({OpLine, flat_format("pointer - on array type ~s is invalid",
@@ -252,8 +251,8 @@ are_sametype([_]) ->
 are_sametype(_) ->
     false.
 
-typeof_structfield(#basic_type{type={StructName, 0}}, #varref{name=FieldName},
-		   StructMap, Line) ->
+typeof_structfield(#basic_type{class=struct, tag=StructName, pdepth=0},
+		   #varref{name=FieldName}, StructMap, Line) ->
     case maps:find(StructName, StructMap) of
 	{ok, S} ->
 	    case maps:find(FieldName, S#struct.field_types) of
@@ -285,37 +284,41 @@ compare_types(_, _) ->
     false.
 
 %% any is just like the "any" in typescript, it matches any type.
-compare_type(#basic_type{type={any, _}}, _) ->
-    true;
-compare_type(_, #basic_type{type={any, _}}) ->
-    true;
+compare_type(#basic_type{class=any}, _) -> true;
+compare_type(_, #basic_type{class=any}) -> true;
 compare_type(#fun_type{params=P1, ret=R1}, #fun_type{params=P2, ret=R2}) ->
     compare_types(P1, P2) and compare_type(R1, R2);
 compare_type(#array_type{elemtype=E1, len=L1},
 	     #array_type{elemtype=E2, len=L2}) ->
     compare_type(E1, E2) and (L1 =:= L2);
-compare_type(#basic_type{type={T1, 0}}, #basic_type{type={T2, 0}}) ->
-    (T1 =:= T2) orelse (is_integer_type(T1) and is_integer_type(T2));
-compare_type(#basic_type{type=T1}, #basic_type{type=T2}) ->
-    T1 =:= T2;
+compare_type(#basic_type{class=integer}, #basic_type{class=integer}) ->
+    true;
+compare_type(#basic_type{class=C, tag=T, pdepth=P},
+	     #basic_type{class=C, tag=T, pdepth=P}) ->
+    true;
 compare_type(_, _) ->
     false.
 
-is_pointer_and_int(#basic_type{type={_, N}} = O, #basic_type{type={T, 0}})
-  when N > 0 ->
-    {is_integer_type(T), O};
-is_pointer_and_int(#basic_type{type={T, 0}}, #basic_type{type={_, N}} = O)
-  when N > 0 ->
-    {is_integer_type(T), O};
+is_pointer_and_int(#basic_type{pdepth=N} = O,
+		   #basic_type{class=integer, pdepth=0}) when N > 0 ->
+    {true, O};
+is_pointer_and_int(#basic_type{class=integer, pdepth=0},
+		   #basic_type{pdepth=N} = O) when N > 0 ->
+    {true, O};
 is_pointer_and_int(_, _) ->
     {false, none}.
 
 %% check type, ensure that all struct used by type exists.
-checktype_type(#fun_type{params=Params, ret=Rettype}, StructMap) ->
-    lists:map(fun(P) ->
-		      checktype_type(P, StructMap)
-	      end, Params),
-    checktype_type(Rettype, StructMap);
+checktype_type(#basic_type{class=struct, tag=Tag, line=Line}, StructMap) ->
+    case maps:find(Tag, StructMap) of
+	error ->
+	    throw({Line, flat_format("struct \"~s\" is not found",
+				     [Tag])});
+	{ok, _} ->
+	    ok
+    end;
+checktype_type(#basic_type{class=_}, _) ->
+    ok;
 checktype_type(#array_type{elemtype=Elemtype}, StructMap) ->
     case Elemtype of
 	#array_type{line=Line} ->
@@ -323,22 +326,11 @@ checktype_type(#array_type{elemtype=Elemtype}, StructMap) ->
 	_ ->
 	    checktype_type(Elemtype, StructMap)
     end;
-checktype_type(#basic_type{type={TypeName, _}, line=Line}, StructMap) ->
-    checktype_typename(TypeName, StructMap, Line).
-
-checktype_typename(Type, StructMap, Line) when is_atom(Type) ->
-    case is_primitive_type(Type) of
-	false ->
-	    case maps:find(Type, StructMap) of
-		error ->
-		    throw({Line, flat_format("struct \"~s\" is not found",
-					     [Type])});
-		{ok, _} ->
-		    ok
-	    end;
-	true ->
-	    ok
-    end.
+checktype_type(#fun_type{params=Params, ret=Rettype}, StructMap) ->
+    lists:map(fun(P) ->
+		      checktype_type(P, StructMap)
+	      end, Params),
+    checktype_type(Rettype, StructMap).
 
 fmt_types(Types) -> fmt_types(Types, []).
 
@@ -352,8 +344,8 @@ fmt_type(#fun_type{params=Params, ret=Rettype}) ->
 				  fmt_type(Rettype)]);
 fmt_type(#array_type{elemtype=Type, len=N}) ->
     io_lib:format("{~s, ~w}", [fmt_type(Type), N]);
-fmt_type(#basic_type{type={Type, Depth}}) when Depth > 0 ->
-    io_lib:format("(~s~s)", [Type, lists:duplicate(Depth, "^")]);
-fmt_type(#basic_type{type={Type, 0}}) ->
-    atom_to_list(Type).
+fmt_type(#basic_type{tag=Tag, pdepth=Pdepth}) when Pdepth > 0 ->
+    io_lib:format("(~s~s)", [Tag, lists:duplicate(Pdepth, "^")]);
+fmt_type(#basic_type{tag=Tag, pdepth=0}) ->
+    atom_to_list(Tag).
 

@@ -2,7 +2,7 @@
 
 -export([expand_initexpr_infun/2]).
 
--import(ecompiler_utils, [exprsmap/2, flat_format/2, is_primitive_type/1]).
+-import(ecompiler_utils, [exprsmap/2, flat_format/2]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -80,16 +80,13 @@ structinit_to_op(_, [], _, _, Newcode, _) ->
 default_initof(#array_type{elemtype=Etype, len=Len}, Line) ->
     #array_init{elements=lists:duplicate(Len, default_initof(Etype, Line)),
 		line=Line};
-default_initof(#basic_type{type={Tname, 0}}, Line) ->
-    IsStruct = not is_primitive_type(Tname),
-    case IsStruct of
-	true ->
-	    #struct_init{name=Tname, line=Line, field_values=#{},
-			 field_names=[]};
-	_ ->
-	    {integer, Line, 0}
-    end;
-default_initof(_, Line) ->
+default_initof(#basic_type{class=struct, tag=Tag, pdepth=0}, Line) ->
+    #struct_init{name=Tag, line=Line, field_values=#{}, field_names=[]};
+default_initof(#basic_type{class=integer, pdepth=0}, Line) ->
+    {integer, Line, 0};
+default_initof(#basic_type{class=float, pdepth=0}, Line) ->
+    {float, Line, 0.0};
+default_initof(#basic_type{pdepth=Pdepth}, Line) when Pdepth > 0 ->
     {integer, Line, 0}.
 
 arrayinit_to_op(Target, [E | Rest], Cnt, Line, Newcode, Ctx) ->

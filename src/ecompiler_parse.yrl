@@ -4,7 +4,7 @@ statements statement defconst defstruct defun defvars defvar params
 exprs expr root_expr call_expr if_expr else_expr while_expr preminusplus_expr
 return_expr sizeof_expr assign_expr
 op19 op30 op29 op28 op27 op26 op25 op2_withassign
-typeanno_list typeanno pointer_depth atomic_literal valid_type
+typeanno_list typeanno pointer_depth atomic_literal
 array_init_expr array_init_elements struct_init_expr struct_init_fields
 struct_init_assign
 .
@@ -18,7 +18,7 @@ Terminals
 const struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
 while 'if' elif else return sizeof
 %%
-identifier integer float string basic_type void_type any_type
+identifier integer float string integer_type float_type void_type any_type
 .
 
 Rootsymbol statements.
@@ -48,19 +48,30 @@ typeanno -> 'fun' '(' ')' :
     #fun_type{params=[], ret=void_type(tok_line('$3')), line=tok_line('$1')}.
 typeanno -> '{' typeanno ',' expr '}' :
     #array_type{elemtype='$2', len='$4', line=tok_line('$1')}.
-typeanno -> valid_type pointer_depth :
-    #basic_type{type={tok_val('$1'), '$2'}, line=tok_line('$1')}.
-typeanno -> void_type pointer_depth :
-    #basic_type{type={tok_val('$1'), '$2'}, line=tok_line('$1')}.
-typeanno -> valid_type :
-    #basic_type{type={tok_val('$1'), 0}, line=tok_line('$1')}.
-typeanno -> void_type :
-    return_error(tok_line('$1'), "type void is not allowed here").
+typeanno -> integer_type pointer_depth :
+    #basic_type{class=integer, pdepth='$2', tag=tok_val('$1'),
+		line=tok_line('$1')}.
+typeanno -> integer_type :
+    #basic_type{class=integer, pdepth=0, tag=tok_val('$1'),
+		line=tok_line('$1')}.
+typeanno -> float_type pointer_depth :
+    #basic_type{class=float, pdepth='$2', tag=tok_val('$1'),
+		line=tok_line('$1')}.
+typeanno -> float_type :
+    #basic_type{class=float, pdepth=0, tag=tok_val('$1'),
+		line=tok_line('$1')}.
+typeanno -> identifier pointer_depth :
+    #basic_type{class=struct, pdepth='$2', tag=tok_val('$1'),
+		line=tok_line('$1')}.
+typeanno -> identifier :
+    #basic_type{class=struct, pdepth=0, tag=tok_val('$1'),
+		line=tok_line('$1')}.
+typeanno -> any_type pointer_depth :
+    #basic_type{class=any, pdepth='$2', tag=void, line=tok_line('$1')}.
 typeanno -> any_type :
     return_error(tok_line('$1'), "type any is not allowed here").
-
-valid_type -> basic_type : '$1'.
-valid_type -> identifier : '$1'.
+typeanno -> void_type :
+    return_error(tok_line('$1'), "type void is not allowed here").
 
 %% pointer depth
 pointer_depth -> '^' pointer_depth : '$2' + 1.

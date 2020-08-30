@@ -2,7 +2,7 @@
 
 -export([compile_from_rawast/2]).
 
--import(ecompiler_utils, [is_primitive_type/1, flat_format/2, fn_struct_map/1]).
+-import(ecompiler_utils, [flat_format/2, fn_struct_map/1]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -60,7 +60,7 @@ check_struct_rec(_, _, _) ->
     ok.
 
 check_struct_rec_1([{_, FieldType} | Rest], StructMap, UsedMap) ->
-    case is_struct(FieldType) of
+    case contain_struct(FieldType) of
 	{yes, N} ->
 	    case maps:find(N, UsedMap) of
 		error ->
@@ -76,15 +76,10 @@ check_struct_rec_1([{_, FieldType} | Rest], StructMap, UsedMap) ->
 check_struct_rec_1([], _, _) ->
     ok.
 
-is_struct(#basic_type{type={Name, 0}}) ->
-    case is_primitive_type(Name) of
-	false ->
-	    {yes, Name};
-	true ->
-	    no
-    end;
-is_struct(#array_type{elemtype=BaseT}) ->
-    is_struct(BaseT);
-is_struct(_) ->
+contain_struct(#basic_type{class=struct, pdepth=0, tag=Name}) ->
+    {yes, Name};
+contain_struct(#array_type{elemtype=BaseT}) ->
+    contain_struct(BaseT);
+contain_struct(_) ->
     no.
 

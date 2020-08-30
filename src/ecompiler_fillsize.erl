@@ -3,8 +3,7 @@
 -export([fill_structinfo/2, expand_size/2]).
 
 -import(ecompiler_utils, [names_of_varrefs/1, getvalues_bykeys/2,
-			  primitive_size/1, is_primitive_type/1,
-			  flat_format/2, fn_struct_map/1,
+			  primitive_size/1, flat_format/2, fn_struct_map/1,
 			  fillto_pointerwidth/2, fill_offset/2]).
 
 -include("./ecompiler_frame.hrl").
@@ -116,20 +115,17 @@ sizeof(#array_type{elemtype=T, len=Len}, {_, PointerWidth} = Ctx) ->
        true ->
 	   fillto_pointerwidth(ElemSize, PointerWidth) * Len
     end;
-sizeof(#basic_type{type={_, N}}, {_, PointerWidth}) when N > 0 ->
+sizeof(#basic_type{pdepth=N}, {_, PointerWidth}) when N > 0 ->
     PointerWidth;
-sizeof(#basic_type{type={Sym, 0}}, {StructMap, _} = Ctx) ->
-    case is_primitive_type(Sym) of
-	false ->
-	    case maps:find(Sym, StructMap) of
-		{ok, S} ->
-		    sizeof_struct(S, Ctx);
-		error ->
-		    throw(flat_format("~s is not found", [Sym]))
-	    end;
-	true ->
-	    primitive_size(Sym)
+sizeof(#basic_type{class=struct, tag=Tag}, {StructMap, _} = Ctx) ->
+    case maps:find(Tag, StructMap) of
+	{ok, S} ->
+	    sizeof_struct(S, Ctx);
+	error ->
+	    throw(flat_format("~s is not found", [Tag]))
     end;
+sizeof(#basic_type{class=C, tag=Tag}, _) when C =:= integer; C =:= float ->
+    primitive_size(Tag);
 sizeof(#fun_type{ret=_}, {_, PointerWidth}) ->
     PointerWidth;
 sizeof(A, _) ->

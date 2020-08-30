@@ -2,8 +2,7 @@
 
 -export([generate_ccode/4]).
 
--import(ecompiler_utils, [exprsmap/2, is_primitive_type/1, fn_struct_map/1,
-			  getvalues_bykeys/2]).
+-import(ecompiler_utils, [exprsmap/2, fn_struct_map/1, getvalues_bykeys/2]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -88,7 +87,7 @@ statements_tostr([], StatementStrs, FnDeclars) ->
 fn_declar_str(Name, Params, Rettype) ->
     ParamStr = params_to_str(Params),
     case Rettype of
-	#basic_type{type={_, N}} when N > 0 ->
+	#basic_type{pdepth=N} when N > 0 ->
 	    fnret_type_tostr(Rettype,
 			     io_lib:format("(*~s(~s))", [Name, ParamStr]));
 	#fun_type{line=_} ->
@@ -129,31 +128,26 @@ fnret_type_tostr(#fun_type{params=Params, ret=Rettype}, NameParams) ->
     Paramstr = params_to_str_noname(Params),
     NewNameParams = io_lib:format("~s(~s)", [NameParams, Paramstr]),
     type_tostr(Rettype, NewNameParams);
-fnret_type_tostr(#basic_type{type={Typeanno, N}} = T, NameParams)
-  when N > 0 ->
-    type_tostr(T#basic_type{type={Typeanno, N-1}}, NameParams).
+fnret_type_tostr(#basic_type{pdepth=N} = T, NameParams) when N > 0 ->
+    type_tostr(T#basic_type{pdepth=N-1}, NameParams).
 
 %% convert type to C string
 type_tostr(#array_type{len=Len, elemtype=ElementType}, Varname) ->
     io_lib:format("struct {~s val[~w];} ~s", [type_tostr(ElementType, ""),
 					      Len, Varname]);
-type_tostr(#basic_type{type={Typeanno, Depth}}, Varname) when Depth > 0 ->
-    io_lib:format("~s~s ~s", [typeanno_tostr(Typeanno),
+type_tostr(#basic_type{class=Class, tag=Tag, pdepth=Depth}, Varname)
+  when Depth > 0 ->
+    io_lib:format("~s~s ~s", [typetag_tostr(Class, Tag),
 			      lists:duplicate(Depth, "*"), Varname]);
-type_tostr(#basic_type{type={Typeanno, 0}}, Varname) ->
-    io_lib:format("~s ~s", [typeanno_tostr(Typeanno), Varname]);
+type_tostr(#basic_type{class=Class, tag=Tag, pdepth=0}, Varname) ->
+    io_lib:format("~s ~s", [typetag_tostr(Class, Tag), Varname]);
 type_tostr(#fun_type{params=Params, ret=Rettype}, Varname) ->
     Paramstr = params_to_str_noname(Params),
     NameParams = io_lib:format("(*~s)(~s)", [Varname, Paramstr]),
     type_tostr(Rettype, NameParams).
 
-typeanno_tostr(Name) when is_atom(Name) ->
-    case is_primitive_type(Name) of
-	false ->
-	    io_lib:format("struct ~s", [Name]);
-	true ->
-	    atom_to_list(Name)
-    end.
+typetag_tostr(struct, Name) -> io_lib:format("struct ~s", [Name]);
+typetag_tostr(_, Name) -> atom_to_list(Name).
 
 %% convert expression to C string
 exprs_tostr(Exprs) ->

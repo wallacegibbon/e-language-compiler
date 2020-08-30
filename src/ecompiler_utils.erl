@@ -1,10 +1,9 @@
 -module(ecompiler_utils).
 
--export([is_primitive_type/1, is_integer_type/1, void_type/1, any_type/2,
-	 primitive_size/1]).
-
 -export([exprsmap/2, expr2str/1, flat_format/2, getvalues_bykeys/2,
 	 names_of_varrefs/1, names_of_vardefs/1]).
+
+-export([void_type/1, any_type/2, primitive_size/1]).
 
 -export([fillto_pointerwidth/2, fill_offset/2, fn_struct_map/1]).
 
@@ -82,24 +81,8 @@ fillto_pointerwidth(Num, PointerWidth) ->
 fill_offset(Offset, PointerWidth) ->
     (Offset + PointerWidth) div PointerWidth * PointerWidth.
 
-is_primitive_type(void) -> true;
-is_primitive_type(any) -> true;
-is_primitive_type(T) -> is_integer_type(T).
-
-is_integer_type(f64) -> true;
-is_integer_type(f32) -> true;
-is_integer_type(u64) -> true;
-is_integer_type(i64) -> true;
-is_integer_type(u32) -> true;
-is_integer_type(i32) -> true;
-is_integer_type(u16) -> true;
-is_integer_type(i16) -> true;
-is_integer_type(u8) -> true;
-is_integer_type(i8) -> true;
-is_integer_type(_) -> false.
-
 primitive_size(f64) -> 8;
-primitive_size(f32) -> 8;
+primitive_size(f32) -> 4;
 primitive_size(u64) -> 8;
 primitive_size(i64) -> 8;
 primitive_size(u32) -> 4;
@@ -112,10 +95,10 @@ primitive_size(T) ->
     throw(flat_format("size of ~p is not defined", [T])).
 
 void_type(Line) ->
-    #basic_type{type={void, 0}, line=Line}.
+    #basic_type{class=void, tag=void, pdepth=0, line=Line}.
 
 any_type(Line, Pdepth) ->
-    #basic_type{type={any, Pdepth}, line=Line}.
+    #basic_type{class=any, tag=any, pdepth=Pdepth, line=Line}.
 
 names_of_varrefs(VarRefs) ->
     lists:map(fun(#varref{name=N}) -> N end, VarRefs).
