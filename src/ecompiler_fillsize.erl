@@ -47,6 +47,12 @@ expand_size_inexpr(Any, _) ->
     Any.
 
 %% calculate struct size and collect field offsets.
+%%
+%% In the current algorithm, the size of the same struct will be calculated
+%% for multiple times, which is not necessary. But the code is beautiful, so
+%% I will just keep it as it is now.
+%% use a process to hold the calculated struct info when the speed really
+%% becomes a problem.
 fill_structinfo(Ast, {_, PointerWidth} = Ctx) ->
     Ast1 = lists:map(fun(E) -> fill_structsize(E, Ctx) end, Ast),
     {_, StructMap1} = fn_struct_map(Ast1),
