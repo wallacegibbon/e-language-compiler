@@ -4,18 +4,11 @@
 
 -import(ecompiler_utils, [names_of_varrefs/1, getvalues_bykeys/2,
 			  primitive_size/1, flat_format/2, fn_struct_map/1,
-			  fillto_pointerwidth/2, fill_offset/2]).
+			  fillto_pointerwidth/2, fill_offset/2, cut_extra/2]).
 
 -include("./ecompiler_frame.hrl").
 
-%% ast functions
-fill_structinfo(Ast, {_, PointerWidth} = Ctx) ->
-    Ast1 = lists:map(fun(E) -> fill_structsize(E, Ctx) end, Ast),
-    {_, StructMap1} = fn_struct_map(Ast1),
-    Ctx1 = {StructMap1, PointerWidth},
-    Ast2 = lists:map(fun(E) -> fill_structoffsets(E, Ctx1) end, Ast1),
-    Ast2.
-
+%% expand sizeof expressions (to integer)
 expand_size(Ast, {_StructMap, _PointerWidth} = Ctx) ->
     lists:map(fun(E) -> expand_size_fun(E, Ctx) end, Ast).
 
@@ -53,7 +46,14 @@ expand_size_inexpr(#op1{operand=Operand} = O, Ctx) ->
 expand_size_inexpr(Any, _) ->
     Any.
 
-%%
+%% calculate struct size and collect field offsets.
+fill_structinfo(Ast, {_, PointerWidth} = Ctx) ->
+    Ast1 = lists:map(fun(E) -> fill_structsize(E, Ctx) end, Ast),
+    {_, StructMap1} = fn_struct_map(Ast1),
+    Ctx1 = {StructMap1, PointerWidth},
+    Ast2 = lists:map(fun(E) -> fill_structoffsets(E, Ctx1) end, Ast1),
+    Ast2.
+
 fill_structsize(#struct{name=_} = S, Ctx) ->
     S#struct{size=sizeof_struct(S, Ctx)};
 fill_structsize(Any, _) ->
@@ -86,18 +86,20 @@ getkvs_byrefs(RefList, Map) ->
 sizeof_fields([{Fname, Ftype} | Rest], CurrentOffset, OffsetMap,
 	      {_, PointerWidth} = Ctx) ->
     FieldSize = sizeof(Ftype, Ctx),
+    NextOffset = CurrentOffset + FieldSize,
     if (CurrentOffset rem PointerWidth) =/= 0 ->
-	   NextOffset = CurrentOffset + FieldSize,
-	   if NextOffset div PointerWidth > CurrentOffset ->
-		  NewOffset = fill_offset(CurrentOffset, PointerWidth),
-		  sizeof_fields(Rest, NewOffset + FieldSize,
-				OffsetMap#{Fname => NewOffset}, Ctx);
-	      true ->
-		  sizeof_fields(Rest, CurrentOffset + FieldSize,
-				OffsetMap#{Fname => CurrentOffset}, Ctx)
+	   case (cut_extra(NextOffset, PointerWidth) >
+		 cut_extra(CurrentOffset, PointerWidth)) of
+	       true ->
+		   NewOffset = fill_offset(CurrentOffset, PointerWidth),
+		   sizeof_fields(Rest, NewOffset + FieldSize,
+				 OffsetMap#{Fname => NewOffset}, Ctx);
+	       _ ->
+		   sizeof_fields(Rest, NextOffset,
+				 OffsetMap#{Fname => CurrentOffset}, Ctx)
 	   end;
        true ->
-	   sizeof_fields(Rest, CurrentOffset + FieldSize,
+	   sizeof_fields(Rest, NextOffset,
 			 OffsetMap#{Fname => CurrentOffset}, Ctx)
     end;
 sizeof_fields([], CurrentOffset, OffsetMap, _) ->

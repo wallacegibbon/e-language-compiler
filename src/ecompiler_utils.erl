@@ -5,7 +5,9 @@
 
 -export([void_type/1, any_type/2, primitive_size/1]).
 
--export([fillto_pointerwidth/2, fill_offset/2, fn_struct_map/1]).
+-export([fillto_pointerwidth/2, fill_offset/2, cut_extra/2]).
+
+-export([fn_struct_map/1]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -80,6 +82,9 @@ fillto_pointerwidth(Num, PointerWidth) ->
 
 fill_offset(Offset, PointerWidth) ->
     (Offset + PointerWidth) div PointerWidth * PointerWidth.
+
+cut_extra(Offset, PointerWidth) ->
+    Offset div PointerWidth * PointerWidth.
 
 primitive_size(f64) -> 8;
 primitive_size(f32) -> 4;
