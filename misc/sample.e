@@ -58,6 +58,8 @@ fun main(argc: i64, argv: i64^^): i64
     cnt: i64 = TOTOAL_USERCNT;
     init_users(users@, TOTOAL_USERCNT);
 
+    %goto a;
+
     v1: i64 = 1;
     v1 = v1 + 10;
 

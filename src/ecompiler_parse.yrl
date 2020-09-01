@@ -6,7 +6,7 @@ return_expr sizeof_expr assign_expr
 op19 op30 op29 op28 op27 op26 op25 op2_withassign
 typeanno_list typeanno pointer_depth atomic_literal
 array_init_expr array_init_elements struct_init_expr struct_init_fields
-struct_init_assign
+struct_init_assign reserved_keyword
 .
 
 Terminals
@@ -17,6 +17,10 @@ Terminals
 %% keywords
 const struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
 while 'if' elif else return sizeof
+
+%% reserved keywords
+'cond' 'case' for break continue goto
+
 %%
 identifier integer float string integer_type float_type void_type any_type
 .
@@ -193,6 +197,9 @@ root_expr -> return_expr ';' : '$1'.
 root_expr -> if_expr : '$1'.
 root_expr -> while_expr : '$1'.
 
+expr -> reserved_keyword :
+    return_error(tok_line('$1'), flat_format("~s is reserved keyword",
+					     [tok_sym('$1')])).
 expr -> expr op30 expr :
     #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op29 expr :
@@ -216,6 +223,13 @@ expr -> atomic_literal : '$1'.
 expr -> call_expr : '$1'.
 expr -> sizeof_expr : '$1'.
 expr -> '(' expr ')' : '$2'.
+
+reserved_keyword -> 'cond' : '$1'.
+reserved_keyword -> 'case' : '$1'.
+reserved_keyword -> goto : '$1'.
+reserved_keyword -> for : '$1'.
+reserved_keyword -> break : '$1'.
+reserved_keyword -> continue : '$1'.
 
 %% the precedence of 'preminusplus_expr' needs to be higher than "op2 -"
 Unary 300 preminusplus_expr.
@@ -267,7 +281,7 @@ Erlang code.
 
 -include("./ecompiler_frame.hrl").
 
--import(ecompiler_utils, [void_type/1]).
+-import(ecompiler_utils, [void_type/1, flat_format/2]).
 
 str_to_inttks({string, Line, Str}) ->
     lists:map(fun(Char) -> {integer, Line, Char} end, Str).

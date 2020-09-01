@@ -54,6 +54,9 @@ const|struct|end|fun|return|if|elif|else|while|sizeof :
 rem|and|or|band|bor|bxor|bsl|bsr :
     {token, {list_to_atom(TokenChars), TokenLine}}.
 
+cond|case|goto|for|break|continue :
+    {token, {list_to_atom(TokenChars), TokenLine}}.
+
 u8|i8|u16|i16|u32|i32|u64|i64 :
     {token, {integer_type, TokenLine, list_to_atom(TokenChars)}}.
 
