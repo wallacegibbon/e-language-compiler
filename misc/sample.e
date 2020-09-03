@@ -84,6 +84,7 @@ fun main(argc: i64, argv: i64^^): i64
     sizeof(List);
 
     x: Blah1 = Blah1{id="a"};
+    y: Blah1 = Blah1{id="b"};
 
     %c::blah(Blah1{id="a"});
 

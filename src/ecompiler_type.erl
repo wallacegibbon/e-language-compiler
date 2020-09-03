@@ -69,24 +69,39 @@ typeof_expr(#op2{operator='::', op1=Op1, op2=Op2, line=Line}, Ctx) ->
 	_ ->
 	    throw({Line, "module is not fully supported yet"})
     end;
-typeof_expr(#op2{operator=Operator, op1=Op1, op2=Op2, line=Line}, Ctx) ->
+typeof_expr(#op2{operator=Op, op1=Op1, op2=Op2, line=Line}, Ctx)
+  when Op =:= '+'; Op =:= '-' ->
     TypeofOp1 = typeof_expr(Op1, Ctx),
     TypeofOp2 = typeof_expr(Op2, Ctx),
-    EInfo = flat_format("type mismatch in \"~s ~s ~s\"",
-			[fmt_type(TypeofOp1), Operator, fmt_type(TypeofOp2)]),
-    %% pointer + integer is valid
-    case compare_type(TypeofOp1, TypeofOp2) of
+    case is_bothnumber_sametype(TypeofOp1, TypeofOp2) of
 	false ->
-	    if Operator =:= '+' ->
-		   case is_pointer_and_int(TypeofOp1, TypeofOp2) of
-		       {true, Ptype} ->
-			   Ptype;
-		       {false, _} ->
-			   throw({Line, EInfo})
-		   end;
-	       true ->
-		   throw({Line, EInfo})
+	    case is_pointer_and_int(TypeofOp1, TypeofOp2) of
+		false ->
+		    throw({Line, type_mismatchinfo_op2(Op, TypeofOp1,
+						       TypeofOp2)});
+		{true, Ptype} ->
+		    Ptype
 	    end;
+	{true, T} ->
+	    T
+    end;
+typeof_expr(#op2{operator=Op, op1=Op1, op2=Op2, line=Line}, Ctx)
+  when Op =:= '*'; Op =:= '/' ->
+    TypeofOp1 = typeof_expr(Op1, Ctx),
+    TypeofOp2 = typeof_expr(Op2, Ctx),
+    case is_bothnumber_sametype(TypeofOp1, TypeofOp2) of
+	false ->
+	    throw({Line, type_mismatchinfo_op2(Op, TypeofOp1, TypeofOp2)});
+	{true, T} ->
+	    T
+    end;
+%% the left operators are: and, or, band, bor, bxor, bsl, bsr, >, <, ...
+typeof_expr(#op2{operator=Op, op1=Op1, op2=Op2, line=Line}, Ctx) ->
+    TypeofOp1 = typeof_expr(Op1, Ctx),
+    TypeofOp2 = typeof_expr(Op2, Ctx),
+    case is_bothinteger(TypeofOp1, TypeofOp2) of
+	false ->
+	    throw({Line, type_mismatchinfo_op2(Op, TypeofOp1, TypeofOp2)});
 	true ->
 	    TypeofOp1
     end;
@@ -196,7 +211,7 @@ typeof_expr({float, Line, _}, _) ->
 typeof_expr({integer, Line, _}, _) ->
     #basic_type{class=integer, pdepth=0, tag=i64, line=Line};
 typeof_expr({string, Line, _}, _) ->
-    #basic_type{class=integer, pdepth=r, tag=i8, line=Line}.
+    #basic_type{class=integer, pdepth=1, tag=i8, line=Line}.
 
 incr_pdepth(#basic_type{pdepth=Pdepth} = T, _) ->
     T#basic_type{pdepth=Pdepth+1};
@@ -306,7 +321,31 @@ is_pointer_and_int(#basic_type{class=integer, pdepth=0},
 		   #basic_type{pdepth=N} = O) when N > 0 ->
     {true, O};
 is_pointer_and_int(_, _) ->
-    {false, none}.
+    false.
+
+is_bothnumber_sametype(T1, T2) ->
+    case (is_bothinteger(T1, T2) or is_bothfloat(T1, T2)) of
+	true ->
+	    {true, T1};
+	false ->
+	    false
+    end.
+
+is_bothinteger(#basic_type{pdepth=0, class=integer},
+	       #basic_type{pdepth=0, class=integer}) ->
+    true;
+is_bothinteger(_, _) ->
+    false.
+
+is_bothfloat(#basic_type{pdepth=0, class=float},
+	     #basic_type{pdepth=0, class=float}) ->
+    true;
+is_bothfloat(_, _) ->
+    false.
+
+type_mismatchinfo_op2(Operator, TypeofOp1, TypeofOp2) ->
+    flat_format("type error in \"~s ~s ~s\"",
+		[fmt_type(TypeofOp1), Operator, fmt_type(TypeofOp2)]).
 
 %% check type, ensure that all struct used by type exists.
 checktype_type(#basic_type{class=struct, tag=Tag, line=Line}, StructMap) ->
