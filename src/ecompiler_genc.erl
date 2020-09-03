@@ -6,15 +6,15 @@
 
 -include("./ecompiler_frame.hrl").
 
-generate_ccode(Ast, GlobalVars, _InitCode, OutputFile) ->
+generate_ccode(Ast, GlobalVars, InitCode, OutputFile) ->
     {FnMap, StructMap} = fn_struct_map(Ast),
     Ast2 = fixfunction_for_c(Ast, FnMap, StructMap, GlobalVars),
     %% struct definition have to be before function declarations
     {StructAst, FnAst} = lists:partition(fun(A) ->
 						 element(1, A) =:= struct
 					 end, Ast2),
-    {StructStatements, []} = statements_tostr(StructAst),
-    {FnStatements, FnDeclars} = statements_tostr(FnAst),
+    {StructStatements, []} = statements_tostr(StructAst, []),
+    {FnStatements, FnDeclars} = statements_tostr(FnAst, InitCode),
     VarStatements = mapvars_to_str(GlobalVars),
     Code = [common_code(), "\n\n", StructStatements, "\n\n",
 	    VarStatements, "\n\n", FnDeclars, "\n\n", FnStatements],
@@ -59,29 +59,35 @@ common_code() ->
     "typedef unsigned long u64;\ntypedef long i64;\n"
     "typedef double f64;\ntypedef float f32;\n\n".
 
-statements_tostr(Statements) ->
-    statements_tostr(Statements, [], []).
+statements_tostr(Statements, InitCode) ->
+    statements_tostr(Statements, InitCode, [], []).
 
 statements_tostr([#function{name=Name, param_names=ParamNames, type=Fntype,
 			    var_types=VarTypes, exprs=Exprs} | Rest],
-		 StatementStrs, FnDeclars) ->
+		 InitCode, StatementStrs, FnDeclars) ->
     ParamNameAtoms = get_names(ParamNames),
     PureParams = kvlist_frommap(ParamNameAtoms,
 				maps:with(ParamNameAtoms, VarTypes)),
     PureVars = maps:without(ParamNameAtoms, VarTypes),
     Declar = fn_declar_str(Name, PureParams, Fntype#fun_type.ret),
+    FinalExprs = if Name =:= main ->
+			InitCode ++ Exprs;
+		    true ->
+			Exprs
+		 end,
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n",
-		      [Declar, mapvars_to_str(PureVars), exprs_tostr(Exprs)]),
-    statements_tostr(Rest, [S | StatementStrs],
+		      [Declar, mapvars_to_str(PureVars),
+		       exprs_tostr(FinalExprs)]),
+    statements_tostr(Rest, InitCode, [S | StatementStrs],
 		     [Declar ++ ";\n" | FnDeclars]);
 statements_tostr([#struct{name=Name, field_types=FieldTypes,
 			  field_names=FieldNames} | Rest],
-		 StatementStrs, FnDeclars) ->
+		 InitCode, StatementStrs, FnDeclars) ->
     FieldList = kvlist_frommap(get_names(FieldNames), FieldTypes),
     S = io_lib:format("struct ~s {~n~s~n};~n~n",
 		      [Name, listvars_to_str(FieldList)]),
-    statements_tostr(Rest, [S | StatementStrs], FnDeclars);
-statements_tostr([], StatementStrs, FnDeclars) ->
+    statements_tostr(Rest, InitCode, [S | StatementStrs], FnDeclars);
+statements_tostr([], _, StatementStrs, FnDeclars) ->
     {lists:reverse(StatementStrs), lists:reverse(FnDeclars)}.
 
 fn_declar_str(Name, Params, Rettype) ->

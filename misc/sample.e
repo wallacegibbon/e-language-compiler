@@ -35,6 +35,7 @@ end
 % global variable
 mod_info: {i64, 100};
 blah: i64 = 10;
+blah1: i64 = sizeof(Blah1);
 
 const TOTAL_ADMIN_LIMIT = 10 + 2;
 

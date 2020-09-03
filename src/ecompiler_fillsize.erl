@@ -1,49 +1,45 @@
 -module(ecompiler_fillsize).
 
--export([fill_structinfo/2, expand_size/2]).
+-export([fill_structinfo/2, expand_sizeof/2, expand_sizeof_inexprs/2]).
 
--import(ecompiler_utils, [names_of_varrefs/1, getvalues_bykeys/2,
+-import(ecompiler_utils, [names_of_varrefs/1, getvalues_bykeys/2, exprsmap/2,
 			  primitive_size/1, flat_format/2, fn_struct_map/1,
 			  fillto_pointerwidth/2, fill_offset/2, cut_extra/2]).
 
 -include("./ecompiler_frame.hrl").
 
-%% expand sizeof expressions (to integer)
-expand_size(Ast, {_StructMap, _PointerWidth} = Ctx) ->
-    lists:map(fun(E) -> expand_size_fun(E, Ctx) end, Ast).
+expand_sizeof([#function{exprs=Exprs} = F | Rest], Ctx) ->
+    [F#function{exprs=expand_sizeof_inexprs(Exprs, Ctx)} |
+     expand_sizeof(Rest, Ctx)];
+expand_sizeof([#struct{field_defaults=FieldDefaults} = S | Rest], Ctx) ->
+    [S#struct{field_defaults=expand_sizeof_inmap(FieldDefaults, Ctx)} |
+     expand_sizeof(Rest, Ctx)];
+expand_sizeof([], _) ->
+    [].
 
-expand_size_fun(#function{exprs=Exprs} = F, Ctx) ->
-    F#function{exprs=expand_size_inexprs(Exprs, Ctx)};
-expand_size_fun(Any, _) ->
-    Any.
+expand_sizeof_inmap(Map, Ctx) ->
+    maps:map(fun(_, V1) -> expand_sizeof_inexpr(V1, Ctx) end, Map).
 
-expand_size_inexprs(Exprs, Ctx) ->
-    lists:map(fun(E) -> expand_size_inexpr(E, Ctx) end, Exprs).
+expand_sizeof_inexprs(Exprs, Ctx) ->
+    exprsmap(fun(E) -> expand_sizeof_inexpr(E, Ctx) end, Exprs).
 
-expand_size_inexpr(#if_expr{condition=Cond, then=Then, else=Else} = If, Ctx) ->
-    If#if_expr{condition=expand_size_inexpr(Cond, Ctx),
-	       then=expand_size_inexprs(Then, Ctx),
-	       else=expand_size_inexprs(Else, Ctx)};
-expand_size_inexpr(#while_expr{condition=Cond, exprs=Exprs} = While, Ctx) ->
-    While#while_expr{condition=expand_size_inexpr(Cond, Ctx),
-		     exprs=expand_size_inexprs(Exprs, Ctx)};
-expand_size_inexpr(#sizeof{type=T, line=Line}, Ctx) ->
+expand_sizeof_inexpr(#sizeof{type=T, line=Line}, Ctx) ->
     try
 	{integer, Line, sizeof(T, Ctx)}
     catch
 	throw:I ->
 	    throw({Line, I})
     end;
-expand_size_inexpr(#call{fn=Callee, args=Args} = Fncall, Ctx) ->
-    Fncall#call{fn=expand_size_inexpr(Callee, Ctx),
-		args=expand_size_inexprs(Args, Ctx)};
-expand_size_inexpr(#return{expr=Retexpr} = Return, Ctx) ->
-    Return#return{expr=expand_size_inexpr(Retexpr, Ctx)};
-expand_size_inexpr(#op2{op1=Op1, op2=Op2} = O, Ctx) ->
-    O#op2{op1=expand_size_inexpr(Op1, Ctx), op2=expand_size_inexpr(Op2, Ctx)};
-expand_size_inexpr(#op1{operand=Operand} = O, Ctx) ->
-    O#op1{operand=expand_size_inexpr(Operand, Ctx)};
-expand_size_inexpr(Any, _) ->
+expand_sizeof_inexpr(#op2{op1=Op1, op2=Op2} = O, Ctx) ->
+    O#op2{op1=expand_sizeof_inexpr(Op1, Ctx),
+	  op2=expand_sizeof_inexpr(Op2, Ctx)};
+expand_sizeof_inexpr(#op1{operand=Operand} = O, Ctx) ->
+    O#op1{operand=expand_sizeof_inexpr(Operand, Ctx)};
+expand_sizeof_inexpr(#struct_init{field_values=ExprMap} = Si, Ctx) ->
+    Si#struct_init{field_values=expand_sizeof_inmap(ExprMap, Ctx)};
+expand_sizeof_inexpr(#array_init{elements=Elements} = Ai, Ctx) ->
+    Ai#array_init{elements=expand_sizeof_inexprs(Elements, Ctx)};
+expand_sizeof_inexpr(Any, _) ->
     Any.
 
 %% calculate struct size and collect field offsets.

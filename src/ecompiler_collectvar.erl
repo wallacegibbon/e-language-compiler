@@ -78,7 +78,8 @@ fetch_vars([#vardef{name=Name, type=Type, line=Line, initval=Initval} | Rest],
 				     [Name])})
     end;
 fetch_vars([#function_raw{name=Name, ret=Ret, params=Params, exprs=Exprs,
-			  line=Line} | Rest], NewAst, Ctx) ->
+			  line=Line} | Rest],
+	   NewAst, {GlobalVars, _, _} = Ctx) ->
     {[], ParamVars, ParamInitCode} = fetch_vars(Params, [],
 						{#{}, [], true}),
     if ParamInitCode =/= [] ->
@@ -88,6 +89,7 @@ fetch_vars([#function_raw{name=Name, ret=Ret, params=Params, exprs=Exprs,
     end,
     {NewExprs, FunVarTypes, []} = fetch_vars(Exprs, [],
 					     {ParamVars, [], false}),
+    check_varconflict(GlobalVars, FunVarTypes),
     ParamsForType = getvalues_bydefs(Params, ParamVars),
     Fn = #function{name=Name, var_types=FunVarTypes, exprs=NewExprs,
 		   param_names=varrefs_from_vardefs(Params), line=Line,
@@ -113,6 +115,14 @@ append_to_ast(Ast, Varname, Initval, Line) when Initval =/= none ->
 	  op2=Initval, line=Line} | Ast];
 append_to_ast(Ast, _, _, _) ->
     Ast.
+
+check_varconflict(GlobalVars, LocalVars) ->
+    ConflictMap = maps:with(maps:keys(GlobalVars), LocalVars),
+    maps:map(fun(Name, T) ->
+		     throw({element(2, T),
+			    flat_format("~s is conflict with global variable",
+					[Name])})
+	     end, ConflictMap).
 
 getvalues_bydefs(DefList, Map) ->
     getvalues_bykeys(names_of_vardefs(DefList), Map).
