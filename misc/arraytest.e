@@ -3,7 +3,7 @@
 const TOTAL_NUM = 10;
 testglobal: u32 = TOTAL_NUM;
 
-fun main(argc: i64, argv: i64^^): i64
+fun main(argc: isize, argv: i64^^): i64
     blah: {u8, TOTAL_NUM};
     tmp: u8^ = blah@;
     tmp^ = TOTAL_NUM;
@@ -17,6 +17,14 @@ fun main(argc: i64, argv: i64^^): i64
     myfn1()()(tmp);
 
     print(tmp);
+
+    c::printf("before goto\n");
+    goto finish;
+
+    c::printf("after goto\n");
+
+@@finish:
+    c::printf("after label\n");
 
     return (tmp + 11)^;
 end

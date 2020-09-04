@@ -105,5 +105,10 @@ void (*(*(*myfn1)())())(u8* );
 myfn1 = get_incfn1;
 ```
 
-more docs are to be written...
+## Why another C ?
+
+- the syntax of C language is bad in many situations, like complex function pointers.
+
+- the goto statement in C language is not powerful enough, gcc have "labels as values" to solve this, but it is not standard C, and it introduces new keyword.
+
 

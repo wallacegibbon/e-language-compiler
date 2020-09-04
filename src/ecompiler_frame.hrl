@@ -6,6 +6,7 @@
 		   type :: any(),
 		   param_names :: [atom()],
 		   var_types :: #{atom() => e_type()},
+		   labels :: [e_expr()],
 		   exprs :: [e_expr()]}).
 
 -record(struct, {line :: integer(),
@@ -99,4 +100,10 @@
 
 -record(sizeof, {line :: integer(),
 		 type :: e_type()}).
+
+-record(label, {line :: integer(),
+		name :: atom()}).
+
+-record(goto, {line :: integer(),
+	       expr :: e_expr()}).
 

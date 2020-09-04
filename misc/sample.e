@@ -78,6 +78,8 @@ fun main(argc: i64, argv: i64^^): i64
     %mym::f();
     c::malloc(30);
 
+    goto finish;
+
     sizeof(User);
     sizeof(Administrator);
     sizeof(Blah);
@@ -87,6 +89,8 @@ fun main(argc: i64, argv: i64^^): i64
     y: Blah1 = Blah1{id="b"};
 
     %c::blah(Blah1{id="a"});
+
+@@finish:
 
     return 0;
 end

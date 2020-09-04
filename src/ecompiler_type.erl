@@ -206,6 +206,10 @@ typeof_expr(#struct_init{name=StructName, field_names=InitFieldNames,
     end;
 typeof_expr(#sizeof{type=_, line=Line}, _) ->
     #basic_type{class=integer, pdepth=0, tag=i64, line=Line};
+typeof_expr(#goto{line=Line}, _) ->
+    void_type(Line);
+typeof_expr(#label{line=Line}, _) ->
+    void_type(Line);
 typeof_expr({float, Line, _}, _) ->
     #basic_type{class=float, pdepth=0, tag=f64, line=Line};
 typeof_expr({integer, Line, _}, _) ->

@@ -53,6 +53,7 @@ fixexpr_for_c(Any, _) ->
 
 common_code() ->
     "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\n"
+    "typedef unsigned int usize;\ntypedef int isize;\n"
     "typedef unsigned char u8;\ntypedef char i8;\n"
     "typedef unsigned short u16;\ntypedef short i16;\n"
     "typedef unsigned int u32;\ntypedef int i32;\n"
@@ -157,40 +158,49 @@ typetag_tostr(_, Name) -> atom_to_list(Name).
 
 %% convert expression to C string
 exprs_tostr(Exprs) ->
-    [lists:join(";\n", exprs_tostr(Exprs, [])), ";"].
+    [lists:join("\n", exprs_tostr(Exprs, []))].
 
 exprs_tostr([Expr | Rest], ExprList) ->
-    exprs_tostr(Rest, [expr_tostr(Expr) | ExprList]);
+    exprs_tostr(Rest, [expr_tostr(Expr, $;) | ExprList]);
 exprs_tostr([], ExprList) ->
     lists:reverse(ExprList).
 
-expr_tostr(#if_expr{condition=Condition, then=Then, else=Else}) ->
+expr_tostr(#if_expr{condition=Condition, then=Then, else=Else}, _) ->
     io_lib:format("if (~s) {\n~s\n} else {\n~s}",
-		  [expr_tostr(Condition), exprs_tostr(Then),
-		   exprs_tostr(Else)]);
-expr_tostr(#while_expr{condition=Condition, exprs=Exprs}) ->
+		  [expr_tostr(Condition, $\s),
+		   exprs_tostr(Then), exprs_tostr(Else)]);
+expr_tostr(#while_expr{condition=Condition, exprs=Exprs}, _) ->
     io_lib:format("while (~s) {\n~s\n}\n",
-		  [expr_tostr(Condition), exprs_tostr(Exprs)]);
-expr_tostr(#op2{operator='::', op1=#varref{name=c}, op2=Op2}) ->
-    expr_tostr(Op2);
-expr_tostr(#op2{operator=Operator, op1=Op1, op2=Op2}) ->
-    io_lib:format("(~s ~s ~s)", [expr_tostr(Op1), translate_operator(Operator),
-				 expr_tostr(Op2)]);
-expr_tostr(#op1{operator=Operator, operand=Operand}) ->
-    io_lib:format("(~s ~s)", [translate_operator(Operator),
-			      expr_tostr(Operand)]);
-expr_tostr(#call{fn=Fn, args=Args}) ->
-    io_lib:format("~s(~s)", [expr_tostr(Fn),
-			     lists:join(",", lists:map(fun expr_tostr/1,
-						       Args))]);
-expr_tostr(#return{expr=Expr}) ->
-    io_lib:format("return ~s", [expr_tostr(Expr)]);
-expr_tostr(#varref{name=Name}) ->
-    io_lib:format("~s", [Name]);
-expr_tostr({Any, _Line, Value}) when Any =:= integer; Any =:= float ->
-    io_lib:format("~w", [Value]);
-expr_tostr({Any, _Line, S}) when Any =:= string ->
-    io_lib:format("\"~s\"", [handle_special_char_instr(S, special_chars())]).
+		  [expr_tostr(Condition, $\s), exprs_tostr(Exprs)]);
+expr_tostr(#op2{operator='::', op1=#varref{name=c}, op2=Op2}, Endchar) ->
+    expr_tostr(Op2, Endchar);
+expr_tostr(#op2{operator=Operator, op1=Op1, op2=Op2}, Endchar) ->
+    io_lib:format("(~s ~s ~s)~c", [expr_tostr(Op1, $\s),
+				   translate_operator(Operator),
+				   expr_tostr(Op2, $\s),
+				   Endchar]);
+expr_tostr(#op1{operator=Operator, operand=Operand}, Endchar) ->
+    io_lib:format("(~s ~s)~c", [translate_operator(Operator),
+				expr_tostr(Operand, $\s),
+				Endchar]);
+expr_tostr(#call{fn=Fn, args=Args}, Endchar) ->
+    ArgStr = lists:join(",", lists:map(fun(E) -> expr_tostr(E, $\s) end,
+				       Args)),
+    io_lib:format("~s(~s)~c", [expr_tostr(Fn, $\s), ArgStr, Endchar]);
+expr_tostr(#return{expr=Expr}, Endchar) ->
+    io_lib:format("return ~s~c", [expr_tostr(Expr, $\s), Endchar]);
+expr_tostr(#goto{expr=Expr}, Endchar) ->
+    io_lib:format("goto ~s~c", [expr_tostr(Expr, $\s), Endchar]);
+expr_tostr(#label{name=Name}, _) ->
+    io_lib:format("~s:", [Name]);
+expr_tostr(#varref{name=Name}, Endchar) ->
+    io_lib:format("~s~c", [Name, Endchar]);
+expr_tostr({Any, _Line, Value}, Endchar) when Any =:= integer;
+					      Any =:= float ->
+    io_lib:format("~w~c", [Value, Endchar]);
+expr_tostr({Any, _Line, S}, Endchar) when Any =:= string ->
+    io_lib:format("\"~s\"~c", [handle_special_char_instr(S, special_chars()),
+			       Endchar]).
 
 special_chars() ->
     #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}.

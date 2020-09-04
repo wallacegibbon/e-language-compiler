@@ -9,6 +9,7 @@
 compile_from_rawast(Ast, CustomOptions) ->
     Options = maps:merge(default_options(), CustomOptions),
     Ast1 = ecompiler_fillconst:parse_and_remove_const(Ast),
+    %io:format(">>> ~p~n", [Ast1]),
 
     {Ast2, Vars, InitCode0} = ecompiler_collectvar:fetch_vars(Ast1),
     %io:format(">>> ~p~n", [Ast2]),

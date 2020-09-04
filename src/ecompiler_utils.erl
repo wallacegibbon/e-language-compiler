@@ -9,6 +9,8 @@
 
 -export([fn_struct_map/1]).
 
+-export([assert/2]).
+
 -include("./ecompiler_frame.hrl").
 
 %% when do simple convertions, this function can be used to avoid boilerplate
@@ -110,4 +112,7 @@ names_of_varrefs(VarRefs) ->
 
 names_of_vardefs(VarDefs) ->
     lists:map(fun(#vardef{name=N}) -> N end, VarDefs).
+
+assert(false, Info) -> throw(Info);
+assert(true, _) -> ok.
 

@@ -2,11 +2,12 @@ Nonterminals
 
 statements statement defconst defstruct defun defvars defvar params
 exprs expr root_expr call_expr if_expr else_expr while_expr preminusplus_expr
-return_expr sizeof_expr assign_expr
+return_expr sizeof_expr assign_expr label_expr goto_expr
 op19 op30 op29 op28 op27 op26 op25 op2_withassign
 typeanno_list typeanno pointer_depth atomic_literal
 array_init_expr array_init_elements struct_init_expr struct_init_fields
 struct_init_assign reserved_keyword
+
 .
 
 Terminals
@@ -16,13 +17,14 @@ Terminals
 '!' '!=' '==' '>=' '<='
 %% keywords
 const struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
-while 'if' elif else return sizeof
+while 'if' elif else return sizeof goto
 
 %% reserved keywords
-'cond' 'case' for break continue goto
+'cond' 'case' for break continue
 
 %%
 identifier integer float string integer_type float_type void_type any_type
+
 .
 
 Rootsymbol statements.
@@ -157,6 +159,10 @@ struct_init_assign -> identifier '=' expr :
 return_expr -> return expr :
     #return{expr='$2', line=tok_line('$1')}.
 
+%% goto
+goto_expr -> goto expr :
+    #goto{expr='$2', line=tok_line('$1')}.
+
 %% sizeof
 sizeof_expr -> sizeof '(' typeanno ')' :
     #sizeof{type='$3', line=tok_line('$2')}.
@@ -186,6 +192,9 @@ atomic_literal -> integer : '$1'.
 atomic_literal -> float : '$1'.
 atomic_literal -> string : '$1'.
 
+label_expr -> '@' '@' identifier ':' :
+    #label{name=tok_val('$3'), line=tok_line('$3')}.
+
 %% expression
 exprs -> root_expr exprs : ['$1' | '$2'].
 exprs -> root_expr : ['$1'].
@@ -194,8 +203,10 @@ root_expr -> defvar ';' : '$1'.
 root_expr -> expr ';' : '$1'.
 root_expr -> assign_expr ';' : '$1'.
 root_expr -> return_expr ';' : '$1'.
+root_expr -> goto_expr ';' : '$1'.
 root_expr -> if_expr : '$1'.
 root_expr -> while_expr : '$1'.
+root_expr -> label_expr : '$1'.
 
 expr -> reserved_keyword :
     return_error(tok_line('$1'), flat_format("~s is reserved keyword",
@@ -226,7 +237,6 @@ expr -> '(' expr ')' : '$2'.
 
 reserved_keyword -> 'cond' : '$1'.
 reserved_keyword -> 'case' : '$1'.
-reserved_keyword -> goto : '$1'.
 reserved_keyword -> for : '$1'.
 reserved_keyword -> break : '$1'.
 reserved_keyword -> continue : '$1'.

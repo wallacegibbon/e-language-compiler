@@ -5,7 +5,7 @@
 -export([fetch_vars/1]).
 
 -import(ecompiler_utils, [flat_format/2, getvalues_bykeys/2, exprsmap/2,
-			 names_of_vardefs/1]).
+			  names_of_vardefs/1, assert/2]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -74,7 +74,7 @@ fetch_vars([#vardef{name=Name, type=Type, line=Line, initval=Initval} | Rest],
 			      NewCtx)
 	    end;
 	{ok, _} ->
-	    throw({Line, flat_format("var name conflict: \"~s\"",
+	    throw({Line, flat_format("variable name conflict: \"~s\"",
 				     [Name])})
     end;
 fetch_vars([#function_raw{name=Name, ret=Ret, params=Params, exprs=Exprs,
@@ -82,14 +82,16 @@ fetch_vars([#function_raw{name=Name, ret=Ret, params=Params, exprs=Exprs,
 	   NewAst, {GlobalVars, _, _} = Ctx) ->
     {[], ParamVars, ParamInitCode} = fetch_vars(Params, [],
 						{#{}, [], true}),
-    if ParamInitCode =/= [] ->
-	   throw({Line, "function parameters can not have default value"});
-       true ->
-	   ok
-    end,
+    assert(ParamInitCode =:= [],
+	   {Line, "function parameters can not have default value"}),
     {NewExprs, FunVarTypes, []} = fetch_vars(Exprs, [],
 					     {ParamVars, [], false}),
+    %% local variables should have different names from global variables
     check_varconflict(GlobalVars, FunVarTypes),
+    %% lable names should be different from variables, because the operand of
+    %% goto could be a pointer variable.
+    Labels = lists:filter(fun(E) -> element(1, E) =:= label end, Exprs),
+    check_labelconflict(Labels, GlobalVars, FunVarTypes),
     ParamsForType = getvalues_bydefs(Params, ParamVars),
     Fn = #function{name=Name, var_types=FunVarTypes, exprs=NewExprs,
 		   param_names=varrefs_from_vardefs(Params), line=Line,
@@ -115,6 +117,25 @@ append_to_ast(Ast, Varname, Initval, Line) when Initval =/= none ->
 	  op2=Initval, line=Line} | Ast];
 append_to_ast(Ast, _, _, _) ->
     Ast.
+
+check_labelconflict([#label{name=Name, line=Line} | Rest],
+		    GlobalVars, LocalVars) ->
+    case maps:find(Name, LocalVars) of
+	error ->
+	    case maps:find(Name, GlobalVars) of
+		{ok, _} ->
+		    throw({Line,
+			   flat_format("~s is conflict with global variable",
+				       [Name])});
+		error ->
+		    check_labelconflict(Rest, GlobalVars, LocalVars)
+	    end;
+	{ok, _} ->
+	    throw({Line, flat_format("~s is conflict with local variable",
+				     [Name])})
+    end;
+check_labelconflict([], _, _) ->
+    ok.
 
 check_varconflict(GlobalVars, LocalVars) ->
     ConflictMap = maps:with(maps:keys(GlobalVars), LocalVars),
