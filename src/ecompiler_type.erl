@@ -7,7 +7,7 @@
 -include("./ecompiler_frame.hrl").
 
 checktype_ast([#function{var_types=VarTypes, exprs=Exprs, type=Fntype} | Rest],
-	       GlobalVarTypes, {FunctionMap, StructMap} = Maps) ->
+	      GlobalVarTypes, {FunctionMap, StructMap} = Maps) ->
     lists:map(fun(T) -> checktype_type(T, StructMap) end,
 	      maps:values(VarTypes)),
     checktype_type(Fntype#fun_type.ret, StructMap),

@@ -124,7 +124,7 @@ constnum_to_token(Num, Line) when is_integer(Num) ->
 replace_intype(#array_type{elemtype=ElementType, len=Len} = T, Constants) ->
     T#array_type{elemtype=replace_intype(ElementType, Constants),
 		 len=eval_constexpr(replace_inexpr(Len, Constants),
-				     Constants)};
+				    Constants)};
 replace_intype(Any, _) ->
     Any.
 

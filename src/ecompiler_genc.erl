@@ -21,7 +21,7 @@ generate_ccode(Ast, GlobalVars, InitCode, OutputFile) ->
     file:write_file(OutputFile, Code).
 
 fixfunction_for_c([#function{exprs=Exprs, var_types=VarTypes} = F | Rest],
-		   FnMap, StructMap, GlobalVars) ->
+		  FnMap, StructMap, GlobalVars) ->
     CurrentVars = maps:merge(GlobalVars, VarTypes),
     Ctx = {CurrentVars, FnMap, StructMap},
     [F#function{exprs=fixexprs_for_c(Exprs, Ctx)} |
