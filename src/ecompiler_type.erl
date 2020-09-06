@@ -69,15 +69,30 @@ typeof_expr(#op2{operator='::', op1=Op1, op2=Op2, line=Line}, Ctx) ->
 	_ ->
 	    throw({Line, "module is not fully supported yet"})
     end;
-typeof_expr(#op2{operator=Op, op1=Op1, op2=Op2, line=Line}, Ctx)
-  when Op =:= '+'; Op =:= '-' ->
+typeof_expr(#op2{operator='+', op1=Op1, op2=Op2, line=Line}, Ctx) ->
     TypeofOp1 = typeof_expr(Op1, Ctx),
     TypeofOp2 = typeof_expr(Op2, Ctx),
     case is_bothnumber_sametype(TypeofOp1, TypeofOp2) of
 	false ->
 	    case is_pointer_and_int(TypeofOp1, TypeofOp2) of
 		false ->
-		    throw({Line, type_mismatchinfo_op2(Op, TypeofOp1,
+		    throw({Line, type_mismatchinfo_op2('+', TypeofOp1,
+						       TypeofOp2)});
+		{true, Ptype} ->
+		    Ptype
+	    end;
+	{true, T} ->
+	    T
+    end;
+%% integer + pointer is valid, but integer - pointer is invalid
+typeof_expr(#op2{operator='-', op1=Op1, op2=Op2, line=Line}, Ctx) ->
+    TypeofOp1 = typeof_expr(Op1, Ctx),
+    TypeofOp2 = typeof_expr(Op2, Ctx),
+    case is_bothnumber_sametype(TypeofOp1, TypeofOp2) of
+	false ->
+	    case is_pointer_and_int_order(TypeofOp1, TypeofOp2) of
+		false ->
+		    throw({Line, type_mismatchinfo_op2('-', TypeofOp1,
 						       TypeofOp2)});
 		{true, Ptype} ->
 		    Ptype
@@ -316,6 +331,12 @@ compare_type(#basic_type{class=C, tag=T, pdepth=P},
 	     #basic_type{class=C, tag=T, pdepth=P}) ->
     true;
 compare_type(_, _) ->
+    false.
+
+is_pointer_and_int_order(#basic_type{pdepth=N} = O,
+			 #basic_type{class=integer, pdepth=0}) when N > 0 ->
+    {true, O};
+is_pointer_and_int_order(_, _) ->
     false.
 
 is_pointer_and_int(#basic_type{pdepth=N} = O,
