@@ -1,13 +1,14 @@
 ecompiler
 =====
 
-This is the compiler for my programming language (I didn't give it a name yet).
-For convenience, I will call it E language in this document.
+This is the compiler for my machine-level programming language.
+
+I haven't given it a name yet, so for convenience, I will call it the E language in this document.
 
 
 ## What is it ?
 
-E language is a simplified C language, they have similar semantics, but the
+The E language is a simplified C language, they have similar semantics, but the
 syntax of E language is more compact.
 
 Here are some comparisons:
@@ -57,10 +58,15 @@ Blah c[2] = {{1, "a"}, {2, "b}};
 
 ```
 
+### union and enum
+
+E language do not support enum or union.
+
+
 ### function definition
 
 ```
-fun main(argc: u8, argv: i8^^): i32
+fun main(argc: isize, argv: i8^^): isize
     return 0;
 end
 ```
