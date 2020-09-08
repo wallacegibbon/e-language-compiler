@@ -50,10 +50,12 @@ const TOTOAL_USERCNT = 10 + 3 * BASE_MUL - 1;
 const blah1 = 1 bsl 8;
 const blah2 = 1 bsr 8;
 
+u1: User = User{id=8};
+
 fun main(argc: i64, argv: i64^^): i64
     %users: {User, TOTOAL_USERCNT} = {User{nameref=1}, User{id=1}};
     %users: {User, 2} = {User{non=1}, User{id=1}};
-    users: {User, 2} = {User{id=0, blah=Blah{id="a"}}, User{id=1}};
+    users: {User, 2} = {User{id=1, blah=Blah{id="a"}}, User{id=1}};
     v0: i8 = -1;
     users@^.blah = Blah{id="b"};
     cnt: i64 = TOTOAL_USERCNT;

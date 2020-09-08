@@ -34,12 +34,15 @@ compile_from_rawast(Ast, CustomOptions) ->
     {_, StructMap2} = fn_struct_map(Ast4),
 
     %% type checking
-    ecompiler_type:checktype_ast(Ast4, Vars, {FnMap, StructMap2}),
+    Maps = {FnMap, StructMap2},
+    ecompiler_type:checktype_ast(Ast4, Vars, Maps),
+    ecompiler_type:checktype_exprs(InitCode1, Vars, Maps),
 
     %% expand init exprs like A{a=1} and {1,2,3}
     Ast5 = ecompiler_expandinit:expand_initexpr_infun(Ast4, StructMap2),
+    InitCode2 = ecompiler_expandinit:expand_initexprs(InitCode1, StructMap2),
 
-    {Ast5, Vars, InitCode1}.
+    {Ast5, Vars, InitCode2}.
 
 default_options() ->
     #{pointer_width => 8}.

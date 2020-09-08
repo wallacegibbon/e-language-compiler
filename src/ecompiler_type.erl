@@ -1,6 +1,6 @@
 -module(ecompiler_type).
 
--export([checktype_ast/3, typeof_expr/2]).
+-export([checktype_ast/3, checktype_exprs/3, typeof_expr/2]).
 
 -import(ecompiler_utils, [expr2str/1, flat_format/2, void_type/1, any_type/2]).
 
@@ -28,6 +28,10 @@ checktype_ast([_ | Rest], GlobalVarTypes, Maps) ->
     checktype_ast(Rest, GlobalVarTypes, Maps);
 checktype_ast([], _, _) ->
     ok.
+
+checktype_exprs(Exprs, GlobalVarTypes, {FunctionMap, StructMap}) ->
+    Ctx = {GlobalVarTypes, FunctionMap, StructMap, none},
+    typeof_exprs(Exprs, Ctx).
 
 typeof_exprs([Expr | Rest], Ctx) ->
     [typeof_expr(Expr, Ctx) | typeof_exprs(Rest, Ctx)];
@@ -325,7 +329,8 @@ compare_type(#fun_type{params=P1, ret=R1}, #fun_type{params=P2, ret=R2}) ->
 compare_type(#array_type{elemtype=E1, len=L1},
 	     #array_type{elemtype=E2, len=L2}) ->
     compare_type(E1, E2) and (L1 =:= L2);
-compare_type(#basic_type{class=integer}, #basic_type{class=integer}) ->
+compare_type(#basic_type{class=integer, pdepth=0},
+	     #basic_type{class=integer, pdepth=0}) ->
     true;
 compare_type(#basic_type{class=C, tag=T, pdepth=P},
 	     #basic_type{class=C, tag=T, pdepth=P}) ->
