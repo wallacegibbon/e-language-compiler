@@ -118,3 +118,12 @@ myfn1 = get_incfn1;
 - the goto statement in C language is not powerful enough, gcc have "labels as values" to solve this, but it is not standard C, and it introduces new keyword.
 
 
+## vim plugin
+
+A simple vim plugin is ready to use, install with this command
+
+```sh
+mkdir -p ~/.vim/pack/my/start/
+cp -r misc/elang.vim/ ~/.vim/pack/my/start/
+```
+
