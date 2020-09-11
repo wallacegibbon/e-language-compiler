@@ -36,7 +36,7 @@ expand_init([#if_expr{then=Then, else=Else} = E | Rest], NewAst, StructMap) ->
 expand_init([#while_expr{exprs=Exprs} = E | Rest], NewAst, StructMap) ->
     expand_init(Rest, [E#while_expr{exprs=expand_init(Exprs, [], StructMap)} |
 		       NewAst], StructMap);
-expand_init([#op2{operator=_} = Op | Rest], NewAst, StructMap) ->
+expand_init([#op2{} = Op | Rest], NewAst, StructMap) ->
     expand_init(Rest, replace_init_ops(Op, StructMap) ++ NewAst, StructMap);
 expand_init([Any | Rest], NewAst, StructMap) ->
     expand_init(Rest, [Any | NewAst], StructMap);

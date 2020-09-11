@@ -46,7 +46,7 @@ typeof_expr(#op2{operator=assign, op1=Op1, op2=Op2, line=Line},
 					   StructMap, Line);
 		    #op1{operator='^', operand=SubOperand} ->
 			decr_pdepth(typeof_expr(SubOperand, Ctx), Line);
-		    #varref{name=_} ->
+		    #varref{} ->
 			typeof_expr(Op1, Ctx);
 		    Any ->
 			throw({Line, flat_format("invalid left value ~s",
@@ -126,7 +126,7 @@ typeof_expr(#op2{operator=Op, op1=Op1, op2=Op2, line=Line}, Ctx) ->
     end;
 typeof_expr(#op1{operator='^', operand=Operand, line=Line}, Ctx) ->
     case typeof_expr(Operand, Ctx) of
-	#basic_type{tag=_} = T ->
+	#basic_type{} = T ->
 	    decr_pdepth(T, Line);
 	_ ->
 	    throw({Line, flat_format("invalid \"^\" on operand ~s",
@@ -138,7 +138,7 @@ typeof_expr(#op1{operator='@', operand=Operand, line=Line},
 	#op2{operator='.', op1=Op1, op2=Op2} ->
 	    T = typeof_structfield(typeof_expr(Op1, Ctx), Op2, StructMap, Line),
 	    incr_pdepth(T, Line);
-	#varref{name=_} ->
+	#varref{} ->
 	    incr_pdepth(typeof_expr(Operand, Ctx), Line);
 	_ ->
 	    throw({Line, flat_format("invalid \"@\" on operand ~s",
@@ -223,7 +223,7 @@ typeof_expr(#struct_init{name=StructName, field_names=InitFieldNames,
 	    throw({Line, flat_format("struct ~s is not found",
 				     [StructName])})
     end;
-typeof_expr(#sizeof{type=_, line=Line}, _) ->
+typeof_expr(#sizeof{line=Line}, _) ->
     #basic_type{class=integer, pdepth=0, tag=i64, line=Line};
 typeof_expr(#goto{line=Line}, _) ->
     void_type(Line);
@@ -240,7 +240,7 @@ incr_pdepth(#basic_type{pdepth=Pdepth} = T, _) ->
     T#basic_type{pdepth=Pdepth+1};
 incr_pdepth(#array_type{elemtype=#basic_type{pdepth=Pdepth} = T}, _) ->
     T#basic_type{pdepth=Pdepth+1};
-incr_pdepth(#fun_type{line=_}, OpLine) ->
+incr_pdepth(#fun_type{}, OpLine) ->
     throw({OpLine, "@ on function type is not allowed"}).
 
 decr_pdepth(#basic_type{pdepth=Pdepth} = T, Line) ->
@@ -249,10 +249,10 @@ decr_pdepth(#basic_type{pdepth=Pdepth} = T, Line) ->
        true ->
 	   throw({Line, "^ on a non-pointer type"})
     end;
-decr_pdepth(#array_type{line=_} = Type, OpLine) ->
+decr_pdepth(#array_type{} = Type, OpLine) ->
     throw({OpLine, flat_format("pointer - on array type ~s is invalid",
 			       [fmt_type(Type)])});
-decr_pdepth(#fun_type{line=_}, OpLine) ->
+decr_pdepth(#fun_type{}, OpLine) ->
     throw({OpLine, "^ on function type is not allowed"}).
 
 check_structfields([#varref{name=F, line=Line} | Rest], FieldTypes, ValMap,
@@ -386,7 +386,7 @@ checktype_type(#basic_type{class=struct, tag=Tag, line=Line}, StructMap) ->
 	{ok, _} ->
 	    ok
     end;
-checktype_type(#basic_type{class=_}, _) ->
+checktype_type(#basic_type{}, _) ->
     ok;
 checktype_type(#array_type{elemtype=Elemtype}, StructMap) ->
     case Elemtype of

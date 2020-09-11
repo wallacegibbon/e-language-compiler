@@ -38,7 +38,7 @@ fixexpr_for_c(#op1{operator='@', operand=Operand, line=Line} = E,
 	      {VarTypes, FnMap, StructMap} = Ctx) ->
     case ecompiler_type:typeof_expr(Operand, {VarTypes, FnMap, StructMap,
 					      none}) of
-	#array_type{elemtype=_} ->
+	#array_type{} ->
 	    #op2{operator='.', op1=fixexpr_for_c(Operand, Ctx),
 		 op2=#varref{name=val, line=Line}};
 	_ ->
@@ -97,7 +97,7 @@ fn_declar_str(Name, Params, Rettype) ->
 	#basic_type{pdepth=N} when N > 0 ->
 	    fnret_type_tostr(Rettype,
 			     io_lib:format("(*~s(~s))", [Name, ParamStr]));
-	#fun_type{line=_} ->
+	#fun_type{} ->
 	    fnret_type_tostr(Rettype,
 			     io_lib:format("(*~s(~s))", [Name, ParamStr]));
 	_ ->

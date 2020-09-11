@@ -56,12 +56,12 @@ fill_structinfo(Ast, {_, PointerWidth} = Ctx) ->
     Ast2 = lists:map(fun(E) -> fill_structoffsets(E, Ctx1) end, Ast1),
     Ast2.
 
-fill_structsize(#struct{name=_} = S, Ctx) ->
+fill_structsize(#struct{} = S, Ctx) ->
     S#struct{size=sizeof_struct(S, Ctx)};
 fill_structsize(Any, _) ->
     Any.
 
-fill_structoffsets(#struct{name=_} = S, Ctx) ->
+fill_structoffsets(#struct{} = S, Ctx) ->
     S#struct{field_offsets=offsetsof_struct(S, Ctx)};
 fill_structoffsets(Any, _) ->
     Any.
@@ -130,7 +130,7 @@ sizeof(#basic_type{class=struct, tag=Tag}, {StructMap, _} = Ctx) ->
     end;
 sizeof(#basic_type{class=C, tag=Tag}, _) when C =:= integer; C =:= float ->
     primitive_size(Tag);
-sizeof(#fun_type{ret=_}, {_, PointerWidth}) ->
+sizeof(#fun_type{}, {_, PointerWidth}) ->
     PointerWidth;
 sizeof(A, _) ->
     throw(flat_format("invalid type ~p on sizeof", [A])).
