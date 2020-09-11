@@ -39,7 +39,7 @@ end
 
 fun inc(val: u8^)
     cnt: u8 = 0;
-    while(cnt < TOTAL_NUM)
+    while cnt < TOTAL_NUM:
 	(val + cnt)^ = cnt * 2;
 	cnt += 1;
     end
@@ -49,8 +49,8 @@ fun print(val: u8^)
     cnt: u8 = 0;
 
     c::printf(">>>");
-    while(cnt < TOTAL_NUM)
-	c::printf(" %d", (val + cnt)^);
+    while cnt < TOTAL_NUM:
+	c::printf(" %02x", (val + cnt)^);
 	cnt += 1;
     end
     cnt = c::printf(".\n");

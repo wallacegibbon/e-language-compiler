@@ -80,11 +80,11 @@ int main(int argc, char **argv) {
 ### condition
 
 ```
-if(fn1(fn2(val1)) >= fn3(val2))
+if fn1(fn2(val1)) >= fn3(val2):
     fn4();
-elif(val3)
+elif val3:
     fn5();
-else
+else:
     fn6();
 end
 ```
@@ -106,9 +106,7 @@ myfn1: fun(): fun(): fun(u8^) = get_incfn1;
 ```
 
 ```c
-void (*(*(*myfn1)())())(u8* );
-
-myfn1 = get_incfn1;
+void (*(*(*myfn1)())())(u8* ) = get_incfn1;
 ```
 
 ## Why another C ?

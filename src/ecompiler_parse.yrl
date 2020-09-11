@@ -114,17 +114,17 @@ defun -> 'fun' identifier '(' ')' exprs 'end' :
 		  exprs='$5', line=tok_line('$2')}.
 
 %% while
-while_expr -> while '(' expr ')' exprs 'end' :
-    #while_expr{condition='$3', exprs='$5', line=tok_line('$1')}.
+while_expr -> while expr ':' exprs 'end' :
+    #while_expr{condition='$2', exprs='$4', line=tok_line('$1')}.
 
 %% if
-if_expr -> 'if' '(' expr ')' exprs else_expr :
-    #if_expr{condition='$3', then='$5', else='$6', line=tok_line('$1')}.
+if_expr -> 'if' expr ':' exprs else_expr :
+    #if_expr{condition='$2', then='$4', else='$5', line=tok_line('$1')}.
 
-else_expr -> elif '(' expr ')' exprs else_expr :
-    [#if_expr{condition='$3', then='$5', else='$6', line=tok_line('$1')}].
-else_expr -> else exprs 'end' :
-    '$2'.
+else_expr -> elif expr ':' exprs else_expr :
+    [#if_expr{condition='$2', then='$4', else='$5', line=tok_line('$1')}].
+else_expr -> else ':' exprs 'end' :
+    '$3'.
 else_expr -> 'end' :
     [].
 
