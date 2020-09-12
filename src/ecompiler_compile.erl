@@ -42,7 +42,7 @@ compile_from_rawast(Ast, CustomOptions) ->
     Ast5 = ecompiler_expandinit:expand_initexpr_infun(Ast4, StructMap2),
     InitCode2 = ecompiler_expandinit:expand_initexprs(InitCode1, StructMap2),
 
-    {Ast5, Vars, InitCode2}.
+    {Ast5, Vars, InitCode2, FnMap}.
 
 default_options() ->
     #{pointer_width => 8}.

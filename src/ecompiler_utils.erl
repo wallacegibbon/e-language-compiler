@@ -3,7 +3,7 @@
 -export([exprsmap/2, expr2str/1, flat_format/2, getvalues_bykeys/2,
 	 names_of_varrefs/1, names_of_vardefs/1]).
 
--export([void_type/1, any_type/2, primitive_size/1]).
+-export([void_type/1, primitive_size/1]).
 
 -export([fillto_pointerwidth/2, fill_offset/2, cut_extra/2]).
 
@@ -103,9 +103,6 @@ primitive_size(T) ->
 
 void_type(Line) ->
     #basic_type{class=void, tag=void, pdepth=0, line=Line}.
-
-any_type(Line, Pdepth) ->
-    #basic_type{class=any, tag=any, pdepth=Pdepth, line=Line}.
 
 names_of_varrefs(VarRefs) ->
     lists:map(fun(#varref{name=N}) -> N end, VarRefs).

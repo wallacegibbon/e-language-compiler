@@ -2,7 +2,7 @@
 
 -export([checktype_ast/3, checktype_exprs/3, typeof_expr/2]).
 
--import(ecompiler_utils, [expr2str/1, flat_format/2, void_type/1, any_type/2]).
+-import(ecompiler_utils, [expr2str/1, flat_format/2, void_type/1, assert/2]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -65,13 +65,28 @@ typeof_expr(#op2{operator='.', op1=Op1, op2=Op2, line=Line},
 	    {_, _, StructMap, _} = Ctx) ->
     typeof_structfield(typeof_expr(Op1, Ctx), Op2, StructMap, Line);
 typeof_expr(#op2{operator='::', op1=Op1, op2=Op2, line=Line}, Ctx) ->
-    case Op1 of
-	#varref{name=self} ->
-	    typeof_expr(Op2, Ctx);
-	#varref{name=c} ->
-	    any_type(Line, 0);
-	_ ->
-	    throw({Line, "module is not fully supported yet"})
+    assert(is_record(Op1, varref), {Line, "invalid usage on ::"}),
+    assert(is_record(Op2, varref), {Line, "invalid usage on ::"}),
+    #varref{name=ModName} = Op1,
+    #varref{name=FunName} = Op2,
+    if ModName =/= self ->
+	   try
+	       ecompiler:query_modulefun(ModName, FunName)
+	   of
+	       {error, module_notfound, _} ->
+		   throw({Line, flat_format("module ~s is not found",
+					    [ModName])});
+	       {error, function_notfound} ->
+		   throw({Line, flat_format("~s:~s is not found",
+					    [ModName, FunName])});
+	       {ok, Type} ->
+		   Type
+	   catch
+	       throw:E ->
+		   throw({Line, E})
+	   end;
+       true ->
+	   typeof_expr(Op2, Ctx)
     end;
 typeof_expr(#op2{operator='+', op1=Op1, op2=Op2, line=Line}, Ctx) ->
     TypeofOp1 = typeof_expr(Op1, Ctx),
@@ -153,13 +168,11 @@ typeof_expr(#call{fn=FunExpr, args=Args, line=Line}, Ctx) ->
 	    case compare_types(ArgsTypes, FnParamTypes) of
 		false ->
 		    throw({Line, flat_format("arg types (~s) =/= (~s)",
-					     [fmt_types(ArgsTypes),
-					      fmt_types(FnParamTypes)])});
+					     [fmt_types_join(ArgsTypes),
+					      fmt_types_join(FnParamTypes)])});
 		true ->
 		    FnRetType
 	    end;
-	#basic_type{class=any} = T ->
-	    T;
 	T ->
 	    throw({Line, flat_format("invalid function expr: ~s",
 				     [fmt_type(T)])})
@@ -209,7 +222,7 @@ typeof_expr(#array_init{elements=Elements, line=Line}, Ctx) ->
 	_ ->
 	    throw({Line,
 		   flat_format("array init values type conflict: {~s}",
-			       [lists:join(",", fmt_types(ElementTypes))])})
+			       [fmt_types_join(ElementTypes)])})
     end;
 typeof_expr(#struct_init{name=StructName, field_names=InitFieldNames,
 			 field_values=InitFieldValues, line=Line},
@@ -321,9 +334,6 @@ compare_types([], []) ->
 compare_types(_, _) ->
     false.
 
-%% any is just like the "any" in typescript, it matches any type.
-compare_type(#basic_type{class=any}, _) -> true;
-compare_type(_, #basic_type{class=any}) -> true;
 compare_type(#fun_type{params=P1, ret=R1}, #fun_type{params=P2, ret=R2}) ->
     compare_types(P1, P2) and compare_type(R1, R2);
 compare_type(#array_type{elemtype=E1, len=L1},
@@ -401,6 +411,9 @@ checktype_type(#fun_type{params=Params, ret=Rettype}, StructMap) ->
 	      end, Params),
     checktype_type(Rettype, StructMap).
 
+fmt_types_join(Types) ->
+    lists:join(",", fmt_types(Types)).
+
 fmt_types(Types) -> fmt_types(Types, []).
 
 fmt_types([Type | Rest], Result) ->
@@ -409,7 +422,7 @@ fmt_types([], Result) ->
     lists:reverse(Result).
 
 fmt_type(#fun_type{params=Params, ret=Rettype}) ->
-    io_lib:format("fun(~s): ~s", [lists:join(",", fmt_types(Params)),
+    io_lib:format("fun(~s): ~s", [fmt_types_join(Params),
 				  fmt_type(Rettype)]);
 fmt_type(#array_type{elemtype=Type, len=N}) ->
     io_lib:format("{~s, ~w}", [fmt_type(Type), N]);

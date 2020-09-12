@@ -102,7 +102,7 @@ end
 
 fun init_users(users: User^, size: i64)
     cnt: i64 = 30 + 52 * size / 2 + 100 / 10;
-%    while(cnt < size)
+%    while cnt < size:
 %	init_user((users + cnt)^, cnt, "test");
 %    end
 end

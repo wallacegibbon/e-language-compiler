@@ -18,13 +18,13 @@ fun main(argc: isize, argv: i64^^): i64
 
     print(tmp);
 
-    c::printf("before goto\n");
+    c::puts("before goto");
     goto finish;
 
-    c::printf("after goto\n");
+    c::puts("after goto");
 
 @@finish:
-    c::printf("after label\n");
+    c::puts("after label");
 
     return (tmp + 11)^;
 end
@@ -48,11 +48,11 @@ end
 fun print(val: u8^)
     cnt: u8 = 0;
 
-    c::printf(">>>");
+    c::puts(">>>");
     while cnt < TOTAL_NUM:
 	c::printf(" %02x", (val + cnt)^);
 	cnt += 1;
     end
-    cnt = c::printf(".\n");
+    cnt = c::puts("");
 end
 
