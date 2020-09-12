@@ -64,29 +64,27 @@ typeof_expr(#op2{operator=assign, op1=Op1, op2=Op2, line=Line},
 typeof_expr(#op2{operator='.', op1=Op1, op2=Op2, line=Line},
 	    {_, _, StructMap, _} = Ctx) ->
     typeof_structfield(typeof_expr(Op1, Ctx), Op2, StructMap, Line);
+typeof_expr(#op2{operator='::', op1=#varref{name=self}, op2=Op2}, Ctx) ->
+    typeof_expr(Op2, Ctx);
 typeof_expr(#op2{operator='::', op1=Op1, op2=Op2, line=Line}, Ctx) ->
     assert(is_record(Op1, varref), {Line, "invalid usage on ::"}),
     assert(is_record(Op2, varref), {Line, "invalid usage on ::"}),
     #varref{name=ModName} = Op1,
     #varref{name=FunName} = Op2,
-    if ModName =/= self ->
-	   try
-	       ecompiler:query_modulefun(ModName, FunName)
-	   of
-	       {error, module_notfound, _} ->
-		   throw({Line, flat_format("module ~s is not found",
-					    [ModName])});
-	       {error, function_notfound} ->
-		   throw({Line, flat_format("~s:~s is not found",
-					    [ModName, FunName])});
-	       {ok, Type} ->
-		   Type
-	   catch
-	       throw:E ->
-		   throw({Line, E})
-	   end;
-       true ->
-	   typeof_expr(Op2, Ctx)
+    try
+	ecompiler:query_modulefun(ModName, FunName)
+    of
+	{error, module_notfound, _} ->
+	    throw({Line, flat_format("module ~s is not found",
+				     [ModName])});
+	{error, function_notfound} ->
+	    throw({Line, flat_format("~s:~s is not found",
+				     [ModName, FunName])});
+	{ok, Type} ->
+	    Type
+    catch
+	throw:E ->
+	    throw({Line, E})
     end;
 typeof_expr(#op2{operator='+', op1=Op1, op2=Op2, line=Line}, Ctx) ->
     TypeofOp1 = typeof_expr(Op1, Ctx),

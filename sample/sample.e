@@ -95,6 +95,9 @@ fun main(argc: i64, argv: i64^^): i64
 
     %c::blah(Blah1{id="a"});
 
+    %t: u8^ = simplemod::test();
+    t: u8 = simplemod::test();
+
 @@finish:
 
     return 0;
