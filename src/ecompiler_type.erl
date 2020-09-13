@@ -66,7 +66,7 @@ typeof_expr(#op2{operator='.', op1=Op1, op2=Op2, line=Line},
     typeof_structfield(typeof_expr(Op1, Ctx), Op2, StructMap, Line);
 typeof_expr(#op2{operator='::', op1=#varref{name=self}, op2=Op2}, Ctx) ->
     typeof_expr(Op2, Ctx);
-typeof_expr(#op2{operator='::', op1=Op1, op2=Op2, line=Line}, Ctx) ->
+typeof_expr(#op2{operator='::', op1=Op1, op2=Op2, line=Line}, _) ->
     assert(is_record(Op1, varref), {Line, "invalid usage on ::"}),
     assert(is_record(Op2, varref), {Line, "invalid usage on ::"}),
     #varref{name=ModName} = Op1,

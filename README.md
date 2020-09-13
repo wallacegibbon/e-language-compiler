@@ -111,9 +111,11 @@ void (*(*(*myfn1)())())(u8* ) = get_incfn1;
 
 ## Why another C ?
 
-- the syntax of C language is bad in many situations, like complex function pointers.
+- The syntax of C language is bad in many situations like complex function pointers.
 
-- the goto statement in C language is not powerful enough, gcc have "labels as values" to solve this, but it is not standard C, and it introduces new keyword.
+- The goto statement in C language is not powerful enough, gcc have "labels as values" to solve this, but it is not standard C, and it introduces new keyword.
+
+- C language does not have module system, the code constructing depends on many header files and building tools.
 
 
 ## vim plugin
