@@ -8,8 +8,7 @@
 
 checktype_ast([#function{var_types=VarTypes, exprs=Exprs, type=Fntype} | Rest],
 	      GlobalVarTypes, {FunctionMap, StructMap} = Maps) ->
-    lists:map(fun(T) -> checktype_type(T, StructMap) end,
-	      maps:values(VarTypes)),
+    checktype_types(maps:values(VarTypes), StructMap),
     checktype_type(Fntype#fun_type.ret, StructMap),
     CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
     Ctx = {CurrentVars, FunctionMap, StructMap, Fntype#fun_type.ret},
@@ -18,8 +17,7 @@ checktype_ast([#function{var_types=VarTypes, exprs=Exprs, type=Fntype} | Rest],
 checktype_ast([#struct{name=Name, field_types=FieldTypes,
 		       field_names=FieldNames, field_defaults=FieldDefaults} |
 	       Rest], GlobalVarTypes, {FunctionMap, StructMap} = Maps) ->
-    lists:map(fun(T) -> checktype_type(T, StructMap) end,
-	      maps:values(FieldTypes)),
+    checktype_types(maps:values(FieldTypes), StructMap),
     Ctx = {GlobalVarTypes, FunctionMap, StructMap, none},
     %% check the default values for fields
     check_structfields(FieldNames, FieldTypes, FieldDefaults, Name, Ctx),
@@ -160,14 +158,14 @@ typeof_expr(#op1{operator='@', operand=Operand, line=Line},
 typeof_expr(#op1{operand=Operand}, Ctx) ->
     typeof_expr(Operand, Ctx);
 typeof_expr(#call{fn=FunExpr, args=Args, line=Line}, Ctx) ->
-    ArgsTypes = lists:map(fun(A) -> typeof_expr(A, Ctx) end, Args),
+    ArgsTypes = typeof_exprs(Args, Ctx),
     case typeof_expr(FunExpr, Ctx) of
 	#fun_type{params=FnParamTypes, ret=FnRetType} ->
 	    case compare_types(ArgsTypes, FnParamTypes) of
 		false ->
-		    throw({Line, flat_format("arg types (~s) =/= (~s)",
-					     [fmt_types_join(ArgsTypes),
-					      fmt_types_join(FnParamTypes)])});
+		    throw({Line, flat_format("args should be (~s), not (~s)",
+					     [fmt_types_join(FnParamTypes),
+					      fmt_types_join(ArgsTypes)])});
 		true ->
 		    FnRetType
 	    end;
@@ -385,6 +383,9 @@ type_mismatchinfo_op2(Operator, TypeofOp1, TypeofOp2) ->
     flat_format("type error in \"~s ~s ~s\"",
 		[fmt_type(TypeofOp1), Operator, fmt_type(TypeofOp2)]).
 
+checktype_types(TypeList, StructMap) ->
+    lists:map(fun(T) -> checktype_type(T, StructMap) end, TypeList).
+
 %% check type, ensure that all struct used by type exists.
 checktype_type(#basic_type{class=struct, tag=Tag, line=Line}, StructMap) ->
     case maps:find(Tag, StructMap) of
@@ -404,9 +405,7 @@ checktype_type(#array_type{elemtype=Elemtype}, StructMap) ->
 	    checktype_type(Elemtype, StructMap)
     end;
 checktype_type(#fun_type{params=Params, ret=Rettype}, StructMap) ->
-    lists:map(fun(P) ->
-		      checktype_type(P, StructMap)
-	      end, Params),
+    checktype_types(Params, StructMap),
     checktype_type(Rettype, StructMap).
 
 fmt_types_join(Types) ->

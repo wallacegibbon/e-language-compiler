@@ -132,3 +132,4 @@ end
 fun add(val: i8): u8
     return val * 3 + 1;
 end
+

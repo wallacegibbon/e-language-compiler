@@ -88,8 +88,8 @@ fill_offset(Offset, PointerWidth) ->
 cut_extra(Offset, PointerWidth) ->
     Offset div PointerWidth * PointerWidth.
 
-primitive_size(f64) -> 8;
-primitive_size(f32) -> 4;
+primitive_size(usize) -> pwidth;
+primitive_size(isize) -> pwidth;
 primitive_size(u64) -> 8;
 primitive_size(i64) -> 8;
 primitive_size(u32) -> 4;
@@ -98,6 +98,8 @@ primitive_size(u16) -> 2;
 primitive_size(i16) -> 2;
 primitive_size(u8) -> 1;
 primitive_size(i8) -> 1;
+primitive_size(f64) -> 8;
+primitive_size(f32) -> 4;
 primitive_size(T) ->
     throw(flat_format("size of ~p is not defined", [T])).
 

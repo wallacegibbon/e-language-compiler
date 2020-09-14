@@ -128,8 +128,16 @@ sizeof(#basic_type{class=struct, tag=Tag}, {StructMap, _} = Ctx) ->
 	error ->
 	    throw(flat_format("~s is not found", [Tag]))
     end;
-sizeof(#basic_type{class=C, tag=Tag}, _) when C =:= integer; C =:= float ->
-    primitive_size(Tag);
+sizeof(#basic_type{class=C, tag=Tag}, {_, PointerWidth}) when C =:= integer;
+							      C =:= float ->
+    case primitive_size(Tag) of
+	pwidth ->
+	    PointerWidth;
+	V when is_integer(V) ->
+	    V;
+	_ ->
+	    throw(flat_format("primitive_size(~s) is invalid", [Tag]))
+    end;
 sizeof(#fun_type{}, {_, PointerWidth}) ->
     PointerWidth;
 sizeof(A, _) ->
