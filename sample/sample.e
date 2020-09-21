@@ -3,7 +3,7 @@
 struct Blah
     id: i8^,
     a: Administrator^,
-    b: Administrator,
+    %b: Administrator,
 end
 
 struct Blah1

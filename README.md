@@ -26,7 +26,7 @@ p->m						p^.m
 uint8_t *p					p: u8^
 void **p					p: any^^
 sizeof (struct Blah *)				sizeof(Blah^)
-malloc(sizeof(struct A))			malloc(size(A))
+malloc(sizeof(struct A))			malloc(sizeof(A))
 ```
 
 ### array and struct
@@ -124,6 +124,6 @@ A simple vim plugin is ready to use, install with this command
 
 ```sh
 mkdir -p ~/.vim/pack/my/start/
-cp -r misc/elang.vim/ ~/.vim/pack/my/start/
+cp -r ecompiler/misc/elang.vim/ ~/.vim/pack/my/start/
 ```
 
