@@ -1,7 +1,7 @@
 -module(ecompiler_utils).
 
 -export([exprsmap/2, expr2str/1, flat_format/2, getvalues_bykeys/2,
-	 names_of_varrefs/1, names_of_vardefs/1]).
+	 names_of_varrefs/1, names_of_vardefs/1, value_inlist/2]).
 
 -export([void_type/1, primitive_size/1]).
 
@@ -114,4 +114,7 @@ names_of_vardefs(VarDefs) ->
 
 assert(false, Info) -> throw(Info);
 assert(true, _) -> ok.
+
+value_inlist(Value, List) ->
+    lists:any(fun(V) -> V =:= Value end, List).
 

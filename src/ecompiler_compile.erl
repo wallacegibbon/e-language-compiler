@@ -2,7 +2,7 @@
 
 -export([compile_from_rawast/2]).
 
--import(ecompiler_utils, [flat_format/2, fn_struct_map/1]).
+-import(ecompiler_utils, [flat_format/2, fn_struct_map/1, value_inlist/2]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -48,37 +48,37 @@ default_options() ->
     #{pointer_width => 8}.
 
 check_struct_recursion(StructMap) ->
-    lists:map(fun(S) -> check_struct_rec(S, StructMap, #{}) end,
+    lists:map(fun(S) -> check_struct_rec(S, StructMap, []) end,
 	      maps:values(StructMap)).
 
 check_struct_rec(#struct{name=Name, field_types=FieldTypes, line=Line},
-		 StructMap, UsedMap) ->
+		 StructMap, UsedStructs) ->
     try
-	check_struct_rec_1(maps:to_list(FieldTypes), StructMap,
-			   UsedMap#{Name => true})
+	check_field_rec(maps:to_list(FieldTypes), StructMap,
+			[Name | UsedStructs])
     catch
-	throw:recur ->
-	    throw({Line, flat_format("some field in ~s is recursive",
-				     [Name])})
+	throw:{recur, Chain} ->
+	    throw({Line, flat_format("recursive struct ~s -> ~w",
+				     [Name, Chain])})
     end;
 check_struct_rec(_, _, _) ->
     ok.
 
-check_struct_rec_1([{_, FieldType} | Rest], StructMap, UsedMap) ->
+check_field_rec([{_, FieldType} | Rest], StructMap, UsedStructs) ->
     case contain_struct(FieldType) of
 	{yes, N} ->
-	    case maps:find(N, UsedMap) of
-		error ->
+	    case value_inlist(N, UsedStructs) of
+		false ->
 		    check_struct_rec(maps:get(N, StructMap), StructMap,
-				     UsedMap#{N => true}),
-		    check_struct_rec_1(Rest, StructMap, UsedMap);
-		{ok, _} ->
-		    throw(recur)
+				     UsedStructs),
+		    check_field_rec(Rest, StructMap, UsedStructs);
+		true ->
+		    throw({recur, lists:reverse(UsedStructs)})
 	    end;
 	no ->
-	    check_struct_rec_1(Rest, StructMap, UsedMap)
+	    check_field_rec(Rest, StructMap, UsedStructs)
     end;
-check_struct_rec_1([], _, _) ->
+check_field_rec([], _, _) ->
     ok.
 
 contain_struct(#basic_type{class=struct, pdepth=0, tag=Name}) ->

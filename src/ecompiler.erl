@@ -2,10 +2,9 @@
 
 -export([parse_and_compile/1, compile_to_c/2, query_modulefun/2]).
 
--import(ecompiler_utils, [flat_format/2]).
+-import(ecompiler_utils, [flat_format/2, value_inlist/2]).
 
--compile({nowarn_unused_function, [stop_compilercd/0,
-				   record_details/0]}).
+-compile({nowarn_unused_function, [record_details/0]}).
 
 -include("./ecompiler_frame.hrl").
 
@@ -169,9 +168,6 @@ compilercd_handle(debug, #{modmap := ModuleFnMap,
     {reply, {ModuleFnMap, ModuleLinks}, State};
 compilercd_handle(stop, _) ->
     stop.
-
-value_inlist(Value, List) ->
-    lists:filter(fun(V) -> V =:= Value end, List) =/= [].
 
 -ifdef(TEST).
 
