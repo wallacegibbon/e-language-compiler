@@ -62,10 +62,10 @@ parse_file(Filename) when is_list(Filename) ->
 
 start_compilercd(SearchDir) ->
     State = #{searchdir => SearchDir, modmap => init_modmap(), modlinks => []},
-    case whereis(compilercd) of
+    case whereis(ecompiler_helper) of
 	undefined ->
 	    Pid = spawn_link(fun() -> compilercd_loop(State) end),
-	    register(compilercd, Pid);
+	    register(ecompiler_helper, Pid);
 	_ ->
 	    already
     end.
@@ -84,7 +84,7 @@ init_modmap() ->
 stop_compilercd() ->
     try
 	ok = compilercd_cmd(stop),
-	unregister(compilercd)
+	unregister(ecompiler_helper)
     catch
 	error:_ ->
 	    ok
@@ -117,7 +117,7 @@ record_details() ->
 
 compilercd_cmd(Command) ->
     Ref = make_ref(),
-    compilercd ! {self(), Ref, Command},
+    ecompiler_helper ! {self(), Ref, Command},
     receive
 	{Ref, Result} ->
 	    Result

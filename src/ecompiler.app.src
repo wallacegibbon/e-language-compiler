@@ -1,6 +1,7 @@
 {application, ecompiler,
- [{description, "An OTP library"},
+ [{description, "An Compiler for the E programming language"},
   {vsn, "0.1.0"},
+  {registered, [ecompiler_helper]},
   {applications, [kernel, stdlib]},
   {licenses, ["Apache 2.0"]}
  ]}.
