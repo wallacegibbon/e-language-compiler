@@ -9,10 +9,10 @@
 compile_from_rawast(Ast, CustomOptions) ->
     Options = maps:merge(default_options(), CustomOptions),
     Ast1 = ecompiler_fillconst:parse_and_remove_const(Ast),
-    %io:format(">>> ~p~n", [Ast1]),
+    %%    io:format(">>> ~p~n", [Ast1]),
 
     {Ast2, Vars, InitCode0} = ecompiler_collectvar:fetch_vars(Ast1),
-    %io:format(">>> ~p~n", [Ast2]),
+    %%    io:format(">>> ~p~n", [Ast2]),
     {FnMap, StructMap0} = fn_struct_map(Ast2),
     %% struct recursion is not allowed.
     check_struct_recursion(StructMap0),
@@ -49,34 +49,34 @@ default_options() ->
 
 check_struct_recursion(StructMap) ->
     lists:map(fun(S) -> check_struct_rec(S, StructMap, []) end,
-	      maps:values(StructMap)).
+              maps:values(StructMap)).
 
 check_struct_rec(#struct{name=Name, field_types=FieldTypes, line=Line},
-		 StructMap, UsedStructs) ->
+                 StructMap, UsedStructs) ->
     try
-	check_field_rec(maps:to_list(FieldTypes), StructMap,
-			[Name | UsedStructs])
+        check_field_rec(maps:to_list(FieldTypes), StructMap,
+                        [Name | UsedStructs])
     catch
-	throw:{recur, Chain} ->
-	    throw({Line, flat_format("recursive struct ~s -> ~w",
-				     [Name, Chain])})
+        throw:{recur, Chain} ->
+            throw({Line, flat_format("recursive struct ~s -> ~w",
+                                     [Name, Chain])})
     end;
 check_struct_rec(_, _, _) ->
     ok.
 
 check_field_rec([{_, FieldType} | Rest], StructMap, UsedStructs) ->
     case contain_struct(FieldType) of
-	{yes, N} ->
-	    case value_inlist(N, UsedStructs) of
-		false ->
-		    check_struct_rec(maps:get(N, StructMap), StructMap,
-				     UsedStructs),
-		    check_field_rec(Rest, StructMap, UsedStructs);
-		true ->
-		    throw({recur, lists:reverse(UsedStructs)})
-	    end;
-	no ->
-	    check_field_rec(Rest, StructMap, UsedStructs)
+        {yes, N} ->
+            case value_inlist(N, UsedStructs) of
+                false ->
+                    check_struct_rec(maps:get(N, StructMap), StructMap,
+                                     UsedStructs),
+                    check_field_rec(Rest, StructMap, UsedStructs);
+                true ->
+                    throw({recur, lists:reverse(UsedStructs)})
+            end;
+        no ->
+            check_field_rec(Rest, StructMap, UsedStructs)
     end;
 check_field_rec([], _, _) ->
     ok.
@@ -87,4 +87,3 @@ contain_struct(#array_type{elemtype=BaseT}) ->
     contain_struct(BaseT);
 contain_struct(_) ->
     no.
-

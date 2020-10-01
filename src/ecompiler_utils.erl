@@ -1,7 +1,7 @@
 -module(ecompiler_utils).
 
 -export([exprsmap/2, expr2str/1, flat_format/2, getvalues_bykeys/2,
-	 names_of_varrefs/1, names_of_vardefs/1, value_inlist/2]).
+         names_of_varrefs/1, names_of_vardefs/1, value_inlist/2]).
 
 -export([void_type/1, primitive_size/1]).
 
@@ -17,7 +17,7 @@
 %% code for if, while, return, call...,  so you can concentrate on op1, op2...
 exprsmap(Fn, [#if_expr{condition=Cond, then=Then, else=Else} = If | Rest]) ->
     [If#if_expr{condition=Fn(Cond), then=exprsmap(Fn, Then),
-		else=exprsmap(Fn, Else)} | exprsmap(Fn, Rest)];
+                else=exprsmap(Fn, Else)} | exprsmap(Fn, Rest)];
 exprsmap(Fn, [#while_expr{condition=Cond, exprs=Exprs} = While | Rest]) ->
     [While#while_expr{condition=Fn(Cond), exprs=exprsmap(Fn, Exprs)} |
      exprsmap(Fn, Rest)];
@@ -32,7 +32,7 @@ exprsmap(_, []) ->
 
 expr2str(#if_expr{condition=Cond, then=Then, else=Else}) ->
     io_lib:format("if (~s) ~s else ~s end", [expr2str(Cond), expr2str(Then),
-					     expr2str(Else)]);
+                                             expr2str(Else)]);
 expr2str(#while_expr{condition=Cond, exprs=Exprs}) ->
     io_lib:format("while (~s) ~s end", [expr2str(Cond), expr2str(Exprs)]);
 expr2str(#call{fn=Callee, args=Args}) ->
@@ -67,15 +67,15 @@ getvalues_bykeys([], _, Result) ->
 %% make function and struct map from ast list
 fn_struct_map(Ast) ->
     {Fns, Structs} = lists:partition(fun(A) ->
-					     element(1, A) =:= function
-				     end, Ast),
+                                             element(1, A) =:= function
+                                     end, Ast),
     %% FnMap stores function type only
     FnMap = maps:from_list(lists:map(fun(#function{name=Name} = Fn) ->
-					     {Name, Fn#function.type}
-				     end, Fns)),
+                                             {Name, Fn#function.type}
+                                     end, Fns)),
     StructMap = maps:from_list(lists:map(fun(#struct{name=Name} = S) ->
-						 {Name, S}
-					 end, Structs)),
+                                                 {Name, S}
+                                         end, Structs)),
     {FnMap, StructMap}.
 
 %% address calculations
@@ -117,4 +117,3 @@ assert(true, _) -> ok.
 
 value_inlist(Value, List) ->
     lists:any(fun(V) -> V =:= Value end, List).
-

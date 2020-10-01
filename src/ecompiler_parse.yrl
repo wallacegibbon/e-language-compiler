@@ -100,18 +100,18 @@ defstruct -> struct identifier defvars 'end' :
 %% function definition
 defun -> 'fun' identifier '(' defvars ')' ':' typeanno exprs 'end' :
     #function_raw{name=tok_val('$2'), params='$4', ret='$7', exprs='$8',
-		  line=tok_line('$2')}.
+                  line=tok_line('$2')}.
 defun -> 'fun' identifier '(' ')' ':' typeanno exprs 'end' :
     #function_raw{name=tok_val('$2'), params=[], ret='$6', exprs='$7',
-		  line=tok_line('$2')}.
+                  line=tok_line('$2')}.
 defun -> 'fun' identifier '(' defvars ')' exprs 'end' :
     #function_raw{name=tok_val('$2'), params='$4',
-		  ret=void_type(tok_line('$5')),
-		  exprs='$6', line=tok_line('$2')}.
+                  ret=void_type(tok_line('$5')),
+                  exprs='$6', line=tok_line('$2')}.
 defun -> 'fun' identifier '(' ')' exprs 'end' :
     #function_raw{name=tok_val('$2'), params=[],
-		  ret=void_type(tok_line('$4')),
-		  exprs='$5', line=tok_line('$2')}.
+                  ret=void_type(tok_line('$4')),
+                  exprs='$5', line=tok_line('$2')}.
 
 %% while
 while_expr -> while expr ':' exprs 'end' :
@@ -152,7 +152,7 @@ struct_init_fields -> struct_init_assign :
 
 struct_init_assign -> identifier '=' expr :
     #op2{operator=assign, op1=#varref{name=tok_val('$1'),
-				      line=tok_line('$1')},
+         line=tok_line('$1')},
 	 op2='$3', line=tok_line('$2')}.
 
 %% return
@@ -175,8 +175,8 @@ call_expr -> expr '(' ')' :
 
 assign_expr -> expr op2_withassign expr :
     #op2{operator=assign, op1='$1', op2=#op2{operator=tok_sym('$2'), op1='$1',
-					     op2='$3', line=tok_line('$2')},
-	 line=tok_line('$2')}.
+                                             op2='$3', line=tok_line('$2')},
+         line=tok_line('$2')}.
 assign_expr -> expr '=' expr :
     #op2{operator=assign, op1='$1', op2='$3', line=tok_line('$2')}.
 
@@ -210,7 +210,7 @@ root_expr -> label_expr : '$1'.
 
 expr -> reserved_keyword :
     return_error(tok_line('$1'), flat_format("~s is reserved keyword",
-					     [tok_sym('$1')])).
+                 [tok_sym('$1')])).
 expr -> expr op30 expr :
     #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op29 expr :

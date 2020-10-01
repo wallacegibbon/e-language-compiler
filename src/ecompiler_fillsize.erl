@@ -3,8 +3,8 @@
 -export([fill_structinfo/2, expand_sizeof/2, expand_sizeof_inexprs/2]).
 
 -import(ecompiler_utils, [names_of_varrefs/1, getvalues_bykeys/2, exprsmap/2,
-			  primitive_size/1, flat_format/2, fn_struct_map/1,
-			  fillto_pointerwidth/2, fill_offset/2, cut_extra/2]).
+                          primitive_size/1, flat_format/2, fn_struct_map/1,
+                          fillto_pointerwidth/2, fill_offset/2, cut_extra/2]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -25,14 +25,14 @@ expand_sizeof_inexprs(Exprs, Ctx) ->
 
 expand_sizeof_inexpr(#sizeof{type=T, line=Line}, Ctx) ->
     try
-	{integer, Line, sizeof(T, Ctx)}
+        {integer, Line, sizeof(T, Ctx)}
     catch
-	throw:I ->
-	    throw({Line, I})
+        throw:I ->
+            throw({Line, I})
     end;
 expand_sizeof_inexpr(#op2{op1=Op1, op2=Op2} = O, Ctx) ->
     O#op2{op1=expand_sizeof_inexpr(Op1, Ctx),
-	  op2=expand_sizeof_inexpr(Op2, Ctx)};
+          op2=expand_sizeof_inexpr(Op2, Ctx)};
 expand_sizeof_inexpr(#op1{operand=Operand} = O, Ctx) ->
     O#op1{operand=expand_sizeof_inexpr(Operand, Ctx)};
 expand_sizeof_inexpr(#struct_init{field_values=ExprMap} = Si, Ctx) ->
@@ -67,7 +67,7 @@ fill_structoffsets(Any, _) ->
     Any.
 
 offsetsof_struct(#struct{field_names=FieldNames, field_types=FieldTypes},
-		 Ctx) ->
+                 Ctx) ->
     FieldTypeList = getkvs_byrefs(FieldNames, FieldTypes),
     {_, OffsetMap} = sizeof_fields(FieldTypeList, 0, #{}, Ctx),
     OffsetMap.
@@ -86,23 +86,23 @@ getkvs_byrefs(RefList, Map) ->
 
 %% this is the function that calculate size and offsets
 sizeof_fields([{Fname, Ftype} | Rest], CurrentOffset, OffsetMap,
-	      {_, PointerWidth} = Ctx) ->
+              {_, PointerWidth} = Ctx) ->
     FieldSize = sizeof(Ftype, Ctx),
     NextOffset = CurrentOffset + FieldSize,
     if (CurrentOffset rem PointerWidth) =/= 0 ->
-	   case (cut_extra(NextOffset, PointerWidth) >
-		 cut_extra(CurrentOffset, PointerWidth)) of
-	       true ->
-		   NewOffset = fill_offset(CurrentOffset, PointerWidth),
-		   sizeof_fields(Rest, NewOffset + FieldSize,
-				 OffsetMap#{Fname => NewOffset}, Ctx);
-	       _ ->
-		   sizeof_fields(Rest, NextOffset,
-				 OffsetMap#{Fname => CurrentOffset}, Ctx)
-	   end;
+            case (cut_extra(NextOffset, PointerWidth) >
+                      cut_extra(CurrentOffset, PointerWidth)) of
+                true ->
+                    NewOffset = fill_offset(CurrentOffset, PointerWidth),
+                    sizeof_fields(Rest, NewOffset + FieldSize,
+                                  OffsetMap#{Fname => NewOffset}, Ctx);
+                _ ->
+                    sizeof_fields(Rest, NextOffset,
+                                  OffsetMap#{Fname => CurrentOffset}, Ctx)
+            end;
        true ->
-	   sizeof_fields(Rest, NextOffset,
-			 OffsetMap#{Fname => CurrentOffset}, Ctx)
+            sizeof_fields(Rest, NextOffset,
+                          OffsetMap#{Fname => CurrentOffset}, Ctx)
     end;
 sizeof_fields([], CurrentOffset, OffsetMap, _) ->
     {CurrentOffset, OffsetMap}.
@@ -111,35 +111,34 @@ sizeof_fields([], CurrentOffset, OffsetMap, _) ->
 sizeof(#array_type{elemtype=T, len=Len}, {_, PointerWidth} = Ctx) ->
     ElemSize = sizeof(T, Ctx),
     if (ElemSize < PointerWidth) ->
-	   if (PointerWidth rem ElemSize =:= 0) ->
-		  ElemSize * Len;
-	      true ->
-		  PointerWidth * Len
-	   end;
+            if (PointerWidth rem ElemSize =:= 0) ->
+                    ElemSize * Len;
+               true ->
+                    PointerWidth * Len
+            end;
        true ->
-	   fillto_pointerwidth(ElemSize, PointerWidth) * Len
+            fillto_pointerwidth(ElemSize, PointerWidth) * Len
     end;
 sizeof(#basic_type{pdepth=N}, {_, PointerWidth}) when N > 0 ->
     PointerWidth;
 sizeof(#basic_type{class=struct, tag=Tag}, {StructMap, _} = Ctx) ->
     case maps:find(Tag, StructMap) of
-	{ok, S} ->
-	    sizeof_struct(S, Ctx);
-	error ->
-	    throw(flat_format("~s is not found", [Tag]))
+        {ok, S} ->
+            sizeof_struct(S, Ctx);
+        error ->
+            throw(flat_format("~s is not found", [Tag]))
     end;
 sizeof(#basic_type{class=C, tag=Tag}, {_, PointerWidth}) when C =:= integer;
-							      C =:= float ->
+                                                              C =:= float ->
     case primitive_size(Tag) of
-	pwidth ->
-	    PointerWidth;
-	V when is_integer(V) ->
-	    V;
-	_ ->
-	    throw(flat_format("primitive_size(~s) is invalid", [Tag]))
+        pwidth ->
+            PointerWidth;
+        V when is_integer(V) ->
+            V;
+        _ ->
+            throw(flat_format("primitive_size(~s) is invalid", [Tag]))
     end;
 sizeof(#fun_type{}, {_, PointerWidth}) ->
     PointerWidth;
 sizeof(A, _) ->
     throw(flat_format("invalid type ~p on sizeof", [A])).
-
