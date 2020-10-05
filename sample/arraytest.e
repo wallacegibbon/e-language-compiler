@@ -34,14 +34,14 @@ fun get_incfn1(): fun(): fun(u8^)
 end
 
 fun get_incfn2(): fun(u8^)
-   return inc;
+    return inc;
 end
 
 fun inc(val: u8^)
     cnt: u8 = 0;
     while cnt < TOTAL_NUM:
         (val + cnt)^ = cnt * 2;
-	cnt += 1;
+	    cnt += 1;
     end
 end
 

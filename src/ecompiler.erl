@@ -15,7 +15,7 @@
 compile_to_c(InputFilename, OutputFilename) ->
     try
         {Ast, Vars, InitCode} = parse_and_compile(InputFilename),
-        %%        io:format(">> ~p~n~n", [Ast]),
+                                                %io:format(">> ~p~n~n", [Ast]),
         ecompiler_genc:generate_ccode(Ast, Vars, InitCode, OutputFilename),
         stop_compilercd()
     catch
