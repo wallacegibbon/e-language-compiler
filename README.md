@@ -124,6 +124,6 @@ A simple vim plugin is ready to use, install with this command
 
 ```sh
 mkdir -p ~/.vim/pack/my/start/
-cp -r ecompiler/misc/elang.vim/ ~/.vim/pack/my/start/
+cp -r ./misc/elang.vim/ ~/.vim/pack/my/start/
 ```
 

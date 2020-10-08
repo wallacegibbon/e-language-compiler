@@ -2,107 +2,107 @@
 -type e_expr() :: any().
 
 -record(function, {line :: integer(),
-                   name :: atom(),
-                   type :: any(),
-                   param_names :: [atom()],
-                   var_types :: #{atom() => e_type()},
-                   labels :: [e_expr()],
-                   exprs :: [e_expr()]}).
+		   name :: atom(),
+		   type :: any(),
+		   param_names :: [atom()],
+		   var_types :: #{atom() => e_type()},
+		   labels :: [e_expr()],
+		   exprs :: [e_expr()]}).
 
 -record(struct, {line :: integer(),
-                 name :: atom(),
-                 size :: integer(),
-                 field_types :: [any()],
-                 field_offsets :: #{atom() => integer()},
-                 field_names :: [any()],
-                 field_defaults :: #{atom() => e_expr()}}).
+		 name :: atom(),
+		 size :: integer(),
+		 field_types :: [any()],
+		 field_offsets :: #{atom() => integer()},
+		 field_names :: [any()],
+		 field_defaults :: #{atom() => e_expr()}}).
 
 -record(basic_type, {line :: integer(),
-                     pdepth = 0 :: integer(),
-                     class :: struct|integer|float|void|any,
-                     tag :: atom()}).
+		     pdepth = 0 :: integer(),
+		     class :: struct|integer|float|void|any,
+		     tag :: atom()}).
 
 -record(array_type, {line :: integer(),
-                     elemtype :: e_type(),
-                     len :: integer()}).
+		     elemtype :: e_type(),
+		     len :: integer()}).
 
 -record(fun_type, {line :: integer(),
-                   params :: [e_type()],
-                   ret :: e_type()}).
+		   params :: [e_type()],
+		   ret :: e_type()}).
 
 -record(struct_init, {line :: integer(),
-                      name :: atom(),
-                      field_names :: [any()],
-                      field_values :: #{atom() => e_expr()}}).
+		      name :: atom(),
+		      field_names :: [any()],
+		      field_values :: #{atom() => e_expr()}}).
 
 -record(array_init, {line :: integer(),
-                     elements :: [e_expr()]}).
+		     elements :: [e_expr()]}).
 
 -record(struct_init_raw, {line :: integer(),
-                          name :: atom(),
-                          fields :: [e_expr()]}).
+			  name :: atom(),
+			  fields :: [e_expr()]}).
 
 -record(function_raw, {line :: integer(),
-                       name :: atom(),
-                       params :: [e_expr()],
-                       ret :: e_type(),
-                       exprs :: [e_expr()]}).
+		       name :: atom(),
+		       params :: [e_expr()],
+		       ret :: e_type(),
+		       exprs :: [e_expr()]}).
 
 -record(struct_raw, {line :: integer(),
-                     name :: atom(),
-                     fields :: [e_expr()]}).
+		     name :: atom(),
+		     fields :: [e_expr()]}).
 
 -record(return, {line :: integer(),
-                 expr :: e_expr()}).
+		 expr :: e_expr()}).
 
 -record(while_expr, {line :: integer(),
-                     condition :: e_expr(),
-                     exprs :: [e_expr()]}).
+		     condition :: e_expr(),
+		     exprs :: [e_expr()]}).
 
 -record(if_expr, {line :: integer(),
-                  condition :: e_expr(),
-                  then :: [e_expr()],
-                  else :: [e_expr()]}).
+		  condition :: e_expr(),
+		  then :: [e_expr()],
+		  else :: [e_expr()]}).
 
 -record(const, {line :: integer(),
-                name :: atom(),
-                val :: any()}).
+		name :: atom(),
+		val :: any()}).
 
 -record(vardef, {line :: integer(),
-                 name :: atom(),
-                 type :: e_type(),
-                 initval = none :: any()}).
+		 name :: atom(),
+		 type :: e_type(),
+		 initval = none :: any()}).
 
 -record(varref, {line :: integer(),
-                 name :: atom()}).
+		 name :: atom()}).
 
 -record(integer, {line :: integer(),
-                  val :: integer()}).
+		  val :: integer()}).
 
 -record(float, {line :: integer(),
-                val :: float()}).
+		val :: float()}).
 
 -record(string, {line :: integer(),
-                 val :: string()}).
+		 val :: string()}).
 
 -record(op1, {line :: integer(),
-              operator :: atom(),
-              operand :: e_expr()}).
+	      operator :: atom(),
+	      operand :: e_expr()}).
 
 -record(op2, {line :: integer(),
-              operator :: atom(),
-              op1 :: e_expr(),
-              op2 :: e_expr()}).
+	      operator :: atom(),
+	      op1 :: e_expr(),
+	      op2 :: e_expr()}).
 
 -record(call, {line :: integer(),
-               fn :: e_expr(),
-               args :: [e_expr()]}).
+	       fn :: e_expr(),
+	       args :: [e_expr()]}).
 
 -record(sizeof, {line :: integer(),
-                 type :: e_type()}).
+		 type :: e_type()}).
 
 -record(label, {line :: integer(),
-                name :: atom()}).
+		name :: atom()}).
 
 -record(goto, {line :: integer(),
-               expr :: e_expr()}).
+	       expr :: e_expr()}).
