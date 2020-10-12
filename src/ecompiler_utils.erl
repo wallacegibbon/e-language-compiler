@@ -1,7 +1,8 @@
 -module(ecompiler_utils).
 
 -export([exprsmap/2, expr2str/1, flat_format/2, getvalues_bykeys/2,
-	 names_of_varrefs/1, names_of_vardefs/1, value_inlist/2]).
+	 names_of_varrefs/1, names_of_vardefs/1, value_inlist/2,
+	 filter_varref_inmaps/2]).
 
 -export([void_type/1, primitive_size/1]).
 
@@ -12,6 +13,10 @@
 -export([assert/2]).
 
 -include("./ecompiler_frame.hrl").
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
 
 %% when do simple convertions, this function can be used to avoid boilerplate
 %% code for if, while, return, call...,  so you can concentrate on op1, op2...
@@ -64,6 +69,14 @@ getvalues_bykeys([Field | Rest], Map, Result) ->
 	getvalues_bykeys(Rest, Map, [maps:get(Field, Map) | Result]);
 getvalues_bykeys([], _, Result) ->
 	lists:reverse(Result).
+
+-ifdef(TEST).
+
+getvalues_bykeys_test() ->
+	A = getvalues_bykeys([a, b], #{c => 1, b => 2, a => 3}),
+	?assertEqual(A, [3, 2]).
+
+-endif.
 
 %% make function and struct map from ast list
 fn_struct_map(Ast) ->
@@ -124,4 +137,28 @@ assert(true, _) -> ok.
 
 value_inlist(Value, List) ->
 	lists:any(fun(V) -> V =:= Value end, List).
+
+%% filter_varref_inmaps([#varref{name=a}, #varref{name=b}], #{a => 1})
+%% > [#varref{name=a}].
+filter_varref_inmaps(Varrefs, TargetMap) ->
+	lists:filter(fun(#varref{name=N}) ->
+				     exist_inmap(N, TargetMap)
+		     end, Varrefs).
+
+-ifdef(TEST).
+
+filter_varref_inmaps_test() ->
+	A = filter_varref_inmaps([#varref{name=a}, #varref{name=b}],
+				 #{a => 1}),
+	?assertEqual(A, [#varref{name=a}]).
+
+-endif.
+
+exist_inmap(Keyname, Map) ->
+	case maps:find(Keyname, Map) of
+		{ok, _} ->
+			true;
+		_ ->
+			false
+	end.
 

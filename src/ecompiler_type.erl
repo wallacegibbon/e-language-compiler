@@ -2,7 +2,8 @@
 
 -export([checktype_ast/3, checktype_exprs/3, typeof_expr/2]).
 
--import(ecompiler_utils, [expr2str/1, flat_format/2, void_type/1, assert/2]).
+-import(ecompiler_utils, [expr2str/1, flat_format/2, void_type/1, assert/2,
+			  filter_varref_inmaps/2]).
 
 -include("./ecompiler_frame.hrl").
 
@@ -17,11 +18,14 @@ checktype_ast([#function{var_types=VarTypes, exprs=Exprs, type=Fntype} | Rest],
 
 checktype_ast([#struct{name=Name, field_types=FieldTypes,
 		       field_names=FieldNames, field_defaults=FieldDefaults} |
-	       Rest], GlobalVarTypes, {FunctionMap, StructMap} = Maps) ->
+	       Rest],
+	      GlobalVarTypes, {FunctionMap, StructMap} = Maps) ->
 	checktype_types(maps:values(FieldTypes), StructMap),
 	Ctx = {GlobalVarTypes, FunctionMap, StructMap, none},
 	%% check the default values for fields
-	check_structfields(FieldNames, FieldTypes, FieldDefaults, Name, Ctx),
+	InitFieldNames = filter_varref_inmaps(FieldNames, FieldDefaults),
+	check_structfields(InitFieldNames, FieldTypes, FieldDefaults, Name,
+			   Ctx),
 	checktype_ast(Rest, GlobalVarTypes, Maps);
 
 checktype_ast([_ | Rest], GlobalVarTypes, Maps) ->
@@ -29,7 +33,6 @@ checktype_ast([_ | Rest], GlobalVarTypes, Maps) ->
 
 checktype_ast([], _, _) ->
 	ok.
-
 
 checktype_exprs(Exprs, GlobalVarTypes, {FunctionMap, StructMap}) ->
 	Ctx = {GlobalVarTypes, FunctionMap, StructMap, none},
@@ -241,8 +244,7 @@ typeof_expr(#struct_init{name=StructName, field_names=InitFieldNames,
 	case maps:find(StructName, StructMap) of
 		{ok, #struct{field_types=FieldTypes}} ->
 			check_structfields(InitFieldNames, FieldTypes,
-					   InitFieldValues, StructName,
-					   Ctx),
+					   InitFieldValues, StructName, Ctx),
 			#basic_type{class=struct, tag=StructName,
 				    pdepth=0, line=Line};
 		_ ->
@@ -286,37 +288,25 @@ decr_pdepth(#array_type{} = Type, OpLine) ->
 decr_pdepth(#fun_type{}, OpLine) ->
 	throw({OpLine, "^ on function type is not allowed"}).
 
-check_structfields([#varref{name=F, line=Line} | Rest], FieldTypes,
-		   ValMap, StructName, Ctx) ->
-	case maps:find(F, ValMap) of
-		{ok, Val} ->
-			check_fieldvalue(F, typeof_expr(Val, Ctx),
-					 FieldTypes, StructName, Line),
-			check_structfields(Rest, FieldTypes, ValMap,
-					   StructName, Ctx);
-		error ->
-			check_structfields(Rest, FieldTypes, ValMap,
-					   StructName, Ctx)
-	end;
-check_structfields([], _, _, _, _) ->
-	ok.
+check_structfields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
+	lists:map(fun(V) -> check_structfield(V, FieldTypes, ValMap, StructName,
+					      Ctx)
+		  end, FieldNames).
 
-check_fieldvalue(FieldName, GivenType, FieldTypes, StructName, Line) ->
-	case maps:find(FieldName, FieldTypes) of
-		{ok, T} ->
-			E = flat_format("~s.~s type error: ~s = ~s",
-					[StructName, FieldName, fmt_type(T),
-					 fmt_type(GivenType)]),
-			case compare_type(T, GivenType) of
-				false ->
-					throw({Line, E});
-				_ ->
-					ok
-			end;
-		error ->
-			throw({Line,
-			       flat_format("field ~s does not exist",
-					   [FieldName])})
+check_structfield(#varref{name=FieldName, line=Line}, FieldTypes, ValMap,
+		  StructName, {_, _, StructMap, _} = Ctx) ->
+	{ok, Val} = maps:find(FieldName, ValMap),
+	ExpectedType = get_field_type(FieldName, FieldTypes, StructName, Line),
+	checktype_type(ExpectedType, StructMap),
+	GivenType = typeof_expr(Val, Ctx),
+	case compare_type(ExpectedType, GivenType) of
+		false ->
+			throw({Line, flat_format("~s.~s type error: ~s = ~s",
+						 [StructName, FieldName,
+						  fmt_type(ExpectedType),
+						  fmt_type(GivenType)])});
+		_ ->
+			ok
 	end.
 
 are_sametype([TargetType, TargetType | Rest]) ->
@@ -329,8 +319,9 @@ are_sametype(_) ->
 typeof_structfield(#basic_type{class=struct, tag=StructName, pdepth=0},
 		   #varref{name=FieldName}, StructMap, Line) ->
 	case maps:find(StructName, StructMap) of
-		{ok, S} ->
-			get_field_type(S, FieldName, StructMap, Line);
+		{ok, #struct{field_types=FieldTypes}} ->
+			get_field_type(FieldName, FieldTypes, StructName,
+				       Line);
 		error ->
 			throw({Line, flat_format("struct ~s is not found",
 						 [StructName])})
@@ -339,16 +330,14 @@ typeof_structfield(T, _, _, Line) ->
 	throw({Line, flat_format("op1 for \".\" is not struct ~s",
 				 [fmt_type(T)])}).
 
-get_field_type(#struct{name=StructName, field_types=FieldTypes},
-	       FieldName, StructMap, Line) ->
+get_field_type(FieldName, FieldTypes, StructName, Line) ->
 	case maps:find(FieldName, FieldTypes) of
-		{ok, Type} ->
-			checktype_type(Type, StructMap),
-			Type;
 		error ->
 			throw({Line,
-			       flat_format("\"~s.~s\" does not exist",
-					   [StructName, FieldName])})
+			       flat_format("~s.~s does not exist",
+					   [StructName, FieldName])});
+		{ok, Type} ->
+			Type
 	end.
 
 compare_types([T1 | Types1], [T2 | Types2]) ->
@@ -422,8 +411,7 @@ checktype_types(TypeList, StructMap) ->
 	lists:map(fun(T) -> checktype_type(T, StructMap) end, TypeList).
 
 %% check type, ensure that all struct used by type exists.
-checktype_type(#basic_type{class=struct, tag=Tag, line=Line},
-	       StructMap) ->
+checktype_type(#basic_type{class=struct, tag=Tag, line=Line}, StructMap) ->
 	case maps:find(Tag, StructMap) of
 		error ->
 			throw({Line, flat_format("struct ~s is not found",
