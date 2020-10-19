@@ -90,8 +90,7 @@ sizeof_fields([{Fname, Ftype} | Rest], CurrentOffset, OffsetMap,
     FieldSize = sizeof(Ftype, Ctx),
     NextOffset = CurrentOffset + FieldSize,
     if (CurrentOffset rem PointerWidth) =/= 0 ->
-	   OffsetFixed = fix_offset(CurrentOffset, NextOffset,
-				    PointerWidth),
+	   OffsetFixed = fix_offset(CurrentOffset, NextOffset, PointerWidth),
 	   sizeof_fields(Rest, OffsetFixed + FieldSize,
 			 OffsetMap#{Fname => OffsetFixed}, Ctx);
        true ->

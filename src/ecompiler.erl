@@ -160,9 +160,7 @@ compilercd_handle({record_compileop, ModName},
     NewModuleLinks = [ModName | ModuleLinks],
     case value_inlist(ModName, ModuleLinks) of
 	true ->
-	    {reply, {error, module_loop,
-		     lists:reverse(NewModuleLinks)},
-	     State};
+	    {reply, {error, module_loop, lists:reverse(NewModuleLinks)}, State};
 	_ ->
 	    {reply, ok, State#{modlinks := NewModuleLinks}}
     end;

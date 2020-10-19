@@ -138,8 +138,7 @@ check_varconflict(GlobalVars, LocalVars) ->
 	     end, ConflictMap).
 
 throw_varconflict(Name, Type, Line) when Type =:= global; Type =:= local ->
-    throw({Line, flat_format("~s conflicts with ~s variable",
-			     [Name, Type])}).
+    throw({Line, flat_format("~s conflicts with ~s variable", [Name, Type])}).
 
 getvalues_bydefs(DefList, Map) ->
     getvalues_bykeys(names_of_vardefs(DefList), Map).

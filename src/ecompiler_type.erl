@@ -125,8 +125,7 @@ typeof_expr(#op2{operator=Op, op1=Op1, op2=Op2, line=Line}, Ctx)
     TypeofOp2 = typeof_expr(Op2, Ctx),
     case is_bothnumber_sametype(TypeofOp1, TypeofOp2) of
 	false ->
-	    throw({Line, type_mismatchinfo_op2(Op, TypeofOp1,
-					       TypeofOp2)});
+	    throw({Line, type_mismatchinfo_op2(Op, TypeofOp1, TypeofOp2)});
 	{true, T} ->
 	    T
     end;
@@ -136,8 +135,7 @@ typeof_expr(#op2{operator=Op, op1=Op1, op2=Op2, line=Line}, Ctx) ->
     TypeofOp2 = typeof_expr(Op2, Ctx),
     case is_bothinteger(TypeofOp1, TypeofOp2) of
 	false ->
-	    throw({Line, type_mismatchinfo_op2(Op, TypeofOp1,
-					       TypeofOp2)});
+	    throw({Line, type_mismatchinfo_op2(Op, TypeofOp1, TypeofOp2)});
 	true ->
 	    TypeofOp1
     end;
@@ -271,8 +269,8 @@ decr_pdepth(#fun_type{}, OpLine) ->
     throw({OpLine, "^ on function type is not allowed"}).
 
 check_structfields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
-    lists:map(fun(V) -> check_structfield(V, FieldTypes, ValMap, StructName,
-					  Ctx)
+    lists:map(fun(V) ->
+		      check_structfield(V, FieldTypes, ValMap, StructName, Ctx)
 	      end, FieldNames).
 
 check_structfield(#varref{name=FieldName, line=Line}, FieldTypes, ValMap,

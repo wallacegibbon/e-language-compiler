@@ -40,8 +40,8 @@ fixexprs_for_c(Exprs, Ctx) ->
 
 fixexpr_for_c(#op1{operator='@', operand=Operand, line=Line} = E,
 	      {FnMap, StructMap, VarTypes} = Ctx) ->
-    case ecompiler_type:typeof_expr(Operand, {VarTypes, FnMap, StructMap,
-					      none}) of
+    case ecompiler_type:typeof_expr(Operand,
+				    {VarTypes, FnMap, StructMap, none}) of
 	#array_type{} ->
 	    #op2{operator='.', op1=fixexpr_for_c(Operand, Ctx),
 		 op2=#varref{name=val, line=Line}};
@@ -76,14 +76,13 @@ statements_tostr([#function{name=Name, param_names=ParamNames, type=Fntype,
     PureVars = maps:without(ParamNameAtoms, VarTypes),
     Declar = fn_declar_str(Name, params_to_str(PureParams),
 			   Fntype#fun_type.ret),
-    FinalExprs = if Name =:= main ->
-			InitCode ++ Exprs;
-		    true ->
-			Exprs
-		 end,
+    Exprs2 = if Name =:= main ->
+		    InitCode ++ Exprs;
+		true ->
+		    Exprs
+	     end,
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n",
-		      [Declar, mapvars_to_str(PureVars),
-		       exprs_tostr(FinalExprs)]),
+		      [Declar, mapvars_to_str(PureVars), exprs_tostr(Exprs2)]),
     statements_tostr(Rest, InitCode, [S | StatementStrs],
 		     [Declar ++ ";\n" | FnDeclars]);
 statements_tostr([#struct{name=Name, field_types=FieldTypes,
@@ -141,8 +140,8 @@ fnret_type_tostr(#basic_type{pdepth=N} = T, NameParams) when N > 0 ->
 
 %% convert type to C string
 type_tostr(#array_type{len=Len, elemtype=ElementType}, Varname) ->
-    io_lib:format("struct {~s val[~w];} ~s", [type_tostr(ElementType, ""),
-					      Len, Varname]);
+    io_lib:format("struct {~s val[~w];} ~s", [type_tostr(ElementType, ""), Len,
+					      Varname]);
 type_tostr(#basic_type{class=Class, tag=Tag, pdepth=Depth}, Varname)
   when Depth > 0 ->
     io_lib:format("~s~s ~s", [typetag_tostr(Class, Tag),
