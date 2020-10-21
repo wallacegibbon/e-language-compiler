@@ -1,4 +1,4 @@
-ecompiler
+## The E compiler
 =====
 
 This is the compiler for my machine-level programming language.
@@ -126,4 +126,10 @@ A simple vim plugin is ready to use, install with this command
 mkdir -p ~/.vim/pack/my/start/
 cp -r ./misc/elang.vim/ ~/.vim/pack/my/start/
 ```
+
+
+## TODO
+
+This compiler only compile E language to C language for now, in the future,
+it will be compiled directly to machine language.
 

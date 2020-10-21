@@ -344,8 +344,7 @@ compare_type(_, _) ->
     false.
 
 is_pointer_and_int_order(#basic_type{pdepth=N} = O,
-			 #basic_type{class=integer, pdepth=0})
-  when N > 0 ->
+			 #basic_type{class=integer, pdepth=0}) when N > 0 ->
     {true, O};
 is_pointer_and_int_order(_, _) ->
     false.
