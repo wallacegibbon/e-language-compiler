@@ -40,8 +40,9 @@ fixexprs_for_c(Exprs, Ctx) ->
 
 fixexpr_for_c(#op1{operator='@', operand=Operand, line=Line} = E,
 	      {FnMap, StructMap, VarTypes} = Ctx) ->
-    case ecompiler_type:typeof_expr(Operand,
-				    {VarTypes, FnMap, StructMap, none}) of
+    case
+	ecompiler_type:typeof_expr(Operand, {VarTypes, FnMap, StructMap, none})
+    of
 	#array_type{} ->
 	    #op2{operator='.', op1=fixexpr_for_c(Operand, Ctx),
 		 op2=#varref{name=val, line=Line}};
@@ -96,11 +97,9 @@ statements_tostr([], _, StatementStrs, FnDeclars) ->
     {lists:reverse(StatementStrs), lists:reverse(FnDeclars)}.
 
 fn_declar_str(Name, ParamStr, #basic_type{pdepth=N} = Rettype) when N > 0 ->
-    fnret_type_tostr(Rettype,
-		     io_lib:format("(*~s(~s))", [Name, ParamStr]));
+    fnret_type_tostr(Rettype, io_lib:format("(*~s(~s))", [Name, ParamStr]));
 fn_declar_str(Name, ParamStr, #fun_type{} = Rettype) ->
-    fnret_type_tostr(Rettype,
-		     io_lib:format("(*~s(~s))", [Name, ParamStr]));
+    fnret_type_tostr(Rettype, io_lib:format("(*~s(~s))", [Name, ParamStr]));
 fn_declar_str(Name, ParamStr, Rettype) ->
     type_tostr(Rettype, io_lib:format("~s(~s)", [Name, ParamStr])).
 
@@ -113,8 +112,7 @@ params_to_str_noname(Types) ->
 
 %% order is not necessary for vars
 mapvars_to_str(VarsMap) when is_map(VarsMap) ->
-    lists:flatten(lists:join(";\n", vars_to_str(maps:to_list(VarsMap),
-						[])),
+    lists:flatten(lists:join(";\n", vars_to_str(maps:to_list(VarsMap), [])),
 		  ";").
 
 listvars_to_str(VarList) when is_list(VarList) ->
@@ -182,8 +180,7 @@ expr_tostr(#op1{operator=Operator, operand=Operand}, Endchar) ->
     io_lib:format("(~s ~s)~c", [translate_operator(Operator),
 				expr_tostr(Operand, $\s), Endchar]);
 expr_tostr(#call{fn=Fn, args=Args}, Endchar) ->
-    ArgStr = lists:join(",", lists:map(fun(E) -> expr_tostr(E, $\s) end,
-				       Args)),
+    ArgStr = lists:join(",", lists:map(fun(E) -> expr_tostr(E, $\s) end, Args)),
     io_lib:format("~s(~s)~c", [expr_tostr(Fn, $\s), ArgStr, Endchar]);
 expr_tostr(#return{expr=Expr}, Endchar) ->
     io_lib:format("return ~s~c", [expr_tostr(Expr, $\s), Endchar]);
@@ -193,27 +190,16 @@ expr_tostr(#label{name=Name}, _) ->
     io_lib:format("~s:", [Name]);
 expr_tostr(#varref{name=Name}, Endchar) ->
     io_lib:format("~s~c", [Name, Endchar]);
-expr_tostr({Any, _Line, Value}, Endchar) when Any =:= integer;
-					      Any =:= float ->
+expr_tostr({Any, _Line, Value}, Endchar) when Any =:= integer; Any =:= float ->
     io_lib:format("~w~c", [Value, Endchar]);
 expr_tostr({Any, _Line, S}, Endchar) when Any =:= string ->
-    io_lib:format("\"~s\"~c", [handle_special_char_instr(S, special_chars()),
-			       Endchar]).
+    io_lib:format("\"~s\"~c", [handle_special_char_instr(S), Endchar]).
 
-special_chars() ->
-    #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f",
-      $\b => "\\b"}.
+-define(SPECIAL_CHARMAP, #{$\n => "\\n", $\r => "\\r", $\t => "\\t",
+			   $\f => "\\f", $\b => "\\b"}).
 
-handle_special_char_instr([Char | Str], CharMap) ->
-    C = case maps:find(Char, CharMap) of
-	    {ok, MappedChar} ->
-		MappedChar;
-	    error ->
-		Char
-	end,
-    [C | handle_special_char_instr(Str, CharMap)];
-handle_special_char_instr([], _) ->
-    [].
+handle_special_char_instr(Str) ->
+    lists:map(fun(C) -> maps:get(C, ?SPECIAL_CHARMAP, C) end, Str).
 
 translate_operator('assign') -> "=";
 translate_operator('rem') -> "%";

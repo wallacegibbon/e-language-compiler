@@ -48,7 +48,7 @@ end
 fun print(val: u8^)
 	cnt: u8 = 0;
 
-	c::puts(">>>");
+	c::puts(">>>\t");
 	while (cnt < TOTAL_NUM)
 		c::printf(" %02x", (val + cnt)^);
 		cnt += 1;
