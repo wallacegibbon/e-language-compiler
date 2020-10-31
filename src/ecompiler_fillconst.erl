@@ -55,8 +55,7 @@ eval_constexpr(#op2{operator='bsl', op1=Op1, op2=Op2}, Constants) ->
 eval_constexpr(#varref{name=Name, line=Line}, Constants) ->
     case maps:find(Name, Constants) of
 	error ->
-	    throw({Line, flat_format("undefined constant ~s",
-				     [Name])});
+	    throw({Line, flat_format("undefined constant ~s", [Name])});
 	{ok, Val} ->
 	    Val
     end;

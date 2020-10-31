@@ -64,17 +64,18 @@ fetch_vars([#vardef{name=Name, type=Type, line=Line, initval=Initval} | Rest],
 	{ok, _} ->
 	    throw_varconflict(Name, local, Line);
 	_ ->
-	    ok
-    end,
-    if CollectInitCode ->
-	   NewCtx = {VarTypes#{Name => Type},
-		     append_to_ast(InitCode, Name, Initval, Line),
-		     CollectInitCode},
-	   fetch_vars(Rest, NewAst, NewCtx);
-       true ->
-	   NewCtx = {VarTypes#{Name => Type}, InitCode, CollectInitCode},
-	   fetch_vars(Rest, append_to_ast(NewAst, Name, Initval, Line),
-		      NewCtx)
+	    if CollectInitCode ->
+		   NewCtx = {VarTypes#{Name => Type},
+			     append_to_ast(InitCode, Name, Initval, Line),
+			     CollectInitCode},
+		   fetch_vars(Rest, NewAst, NewCtx);
+	       true ->
+		   NewCtx = {VarTypes#{Name => Type}, InitCode,
+			     CollectInitCode},
+		   fetch_vars(Rest,
+			      append_to_ast(NewAst, Name, Initval, Line),
+			      NewCtx)
+	    end
     end;
 fetch_vars([#function_raw{name=Name, ret=Ret, params=Params, exprs=Exprs,
 			  line=Line} | Rest],
