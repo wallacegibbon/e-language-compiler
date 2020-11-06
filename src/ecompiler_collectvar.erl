@@ -60,22 +60,16 @@ structinit_tomap([], FieldNames, ExprMap) ->
 %% same place.
 fetch_vars([#vardef{name=Name, type=Type, line=Line, initval=Initval} | Rest],
 	   NewAst, {VarTypes, InitCode, CollectInitCode}) ->
-    case maps:find(Name, VarTypes) of
-	{ok, _} ->
-	    throw_varconflict(Name, local, Line);
-	_ ->
-	    if CollectInitCode ->
-		   NewCtx = {VarTypes#{Name => Type},
-			     append_to_ast(InitCode, Name, Initval, Line),
-			     CollectInitCode},
-		   fetch_vars(Rest, NewAst, NewCtx);
-	       true ->
-		   NewCtx = {VarTypes#{Name => Type}, InitCode,
-			     CollectInitCode},
-		   fetch_vars(Rest,
-			      append_to_ast(NewAst, Name, Initval, Line),
-			      NewCtx)
-	    end
+    ensure_no_conflict(Name, VarTypes, Line),
+    if CollectInitCode ->
+	   fetch_vars(Rest, NewAst,
+		      {VarTypes#{Name => Type},
+		       append_to_ast(InitCode, Name, Initval, Line),
+		       CollectInitCode});
+       true ->
+	   NewCtx = ,
+	   fetch_vars(Rest, append_to_ast(NewAst, Name, Initval, Line),
+		      {VarTypes#{Name => Type}, InitCode, CollectInitCode})
     end;
 fetch_vars([#function_raw{name=Name, ret=Ret, params=Params, exprs=Exprs,
 			  line=Line} | Rest],
@@ -87,13 +81,14 @@ fetch_vars([#function_raw{name=Name, ret=Ret, params=Params, exprs=Exprs,
 					     {ParamVars, [], false}),
     %% local variables should have different names from global variables
     check_varconflict(GlobalVars, FunVarTypes),
-    %% lable names should be different from variables, because the operand of
-    %% goto could be a pointer variable.
+    %% lable names should be different from variables,
+    %% because the operand of goto could be a pointer variable.
     Labels = lists:filter(fun(E) -> element(1, E) =:= label end, Exprs),
     check_labelconflict(Labels, GlobalVars, FunVarTypes),
     ParamsForType = getvalues_bydefs(Params, ParamVars),
     Fn = #function{name=Name, var_types=FunVarTypes, exprs=NewExprs,
-		   param_names=varrefs_from_vardefs(Params), line=Line,
+		   param_names=varrefs_from_vardefs(Params),
+		   line=Line,
 		   type=#fun_type{params=ParamsForType, ret=Ret, line=Line}},
     fetch_vars(Rest, [Fn | NewAst], Ctx);
 fetch_vars([#struct_raw{name=Name, fields=Fields, line=Line} | Rest],
@@ -118,28 +113,28 @@ append_to_ast(Ast, _, _, _) ->
 
 check_labelconflict([#label{name=Name, line=Line} | Rest], GlobalVars,
 		    LocalVars) ->
-    case maps:find(Name, LocalVars) of
-	{ok, _} ->
-	    throw_varconflict(Name, local, Line);
-	_ ->
-	    case maps:find(Name, GlobalVars) of
-		{ok, _} ->
-		    throw_varconflict(Name, global, Line);
-		_ ->
-		    check_labelconflict(Rest, GlobalVars, LocalVars)
-	    end
-    end;
+    ensure_no_conflict(Name, LocalVars, Line),
+    ensure_no_conflict(Name, GlobalVars, Line),
+    check_labelconflict(Rest, GlobalVars, LocalVars);
 check_labelconflict([], _, _) ->
     ok.
 
 check_varconflict(GlobalVars, LocalVars) ->
     ConflictMap = maps:with(maps:keys(GlobalVars), LocalVars),
     maps:map(fun(Name, T) ->
-		     throw_varconflict(Name, global, element(2, T))
+		     throw({element(2, T),
+			    flat_format("name ~s has already been used",
+					[Name])})
 	     end, ConflictMap).
 
-throw_varconflict(Name, Type, Line) when Type =:= global; Type =:= local ->
-    throw({Line, flat_format("~s conflicts with ~s variable", [Name, Type])}).
+ensure_no_conflict(Name, VarMap, Line) ->
+    case maps:find(Name, VarMap) of
+	{ok, _} ->
+	    throw({Line, flat_format("name ~s has already been used",
+				     [Name])});
+	_ ->
+	    ok
+    end.
 
 getvalues_bydefs(DefList, Map) ->
     getvalues_bykeys(names_of_vardefs(DefList), Map).
