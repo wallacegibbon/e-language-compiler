@@ -1,5 +1,4 @@
 %%% this is the 2nd pass, variable map will be created after this pass.
-
 -module(ecompiler_collectvar).
 
 -export([fetch_vars/1]).
@@ -48,8 +47,10 @@ fix_structinit(Any) ->
 structinit_tomap(Exprs) ->
     structinit_tomap(Exprs, [], #{}).
 
-structinit_tomap([#op2{operator=assign, op1=#varref{name=Field} = Op1,
-		       op2=Val} | Rest], FieldNames, ExprMap) ->
+-define(ASSIGN_OP(Op1, Op2), #op2{operator=assign, op1=Op1, op2=Op2}).
+
+structinit_tomap([?ASSIGN_OP(#varref{name=Field} = Op1, Val) | Rest],
+		 FieldNames, ExprMap) ->
     structinit_tomap(Rest, [Op1 | FieldNames],
 		     ExprMap#{Field => fix_structinit(Val)});
 structinit_tomap([], FieldNames, ExprMap) ->
@@ -67,7 +68,6 @@ fetch_vars([#vardef{name=Name, type=Type, line=Line, initval=Initval} | Rest],
 		       append_to_ast(InitCode, Name, Initval, Line),
 		       CollectInitCode});
        true ->
-	   NewCtx = ,
 	   fetch_vars(Rest, append_to_ast(NewAst, Name, Initval, Line),
 		      {VarTypes#{Name => Type}, InitCode, CollectInitCode})
     end;
@@ -105,6 +105,7 @@ fetch_vars([Any | Rest], NewAst, Ctx) ->
 fetch_vars([], NewAst, {VarTypes, InitCode, _}) ->
     {lists:reverse(NewAst), VarTypes, lists:reverse(InitCode)}.
 
+
 append_to_ast(Ast, Varname, Initval, Line) when Initval =/= none ->
     [#op2{operator=assign, op1=#varref{name=Varname, line=Line}, op2=Initval,
 	  line=Line} | Ast];
@@ -122,19 +123,19 @@ check_labelconflict([], _, _) ->
 check_varconflict(GlobalVars, LocalVars) ->
     ConflictMap = maps:with(maps:keys(GlobalVars), LocalVars),
     maps:map(fun(Name, T) ->
-		     throw({element(2, T),
-			    flat_format("name ~s has already been used",
-					[Name])})
+		     throw_name_conflict(Name, element(2, T))
 	     end, ConflictMap).
 
 ensure_no_conflict(Name, VarMap, Line) ->
     case maps:find(Name, VarMap) of
 	{ok, _} ->
-	    throw({Line, flat_format("name ~s has already been used",
-				     [Name])});
+	    throw_name_conflict(Name, Line);
 	_ ->
 	    ok
     end.
+
+throw_name_conflict(Name, Line) ->
+    throw({Line, flat_format("name ~s has already been used", [Name])}).
 
 getvalues_bydefs(DefList, Map) ->
     getvalues_bykeys(names_of_vardefs(DefList), Map).
