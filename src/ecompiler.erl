@@ -26,16 +26,16 @@ compile_to_c(InputFilename, OutputFilename) ->
 parse_and_compile(Filename) ->
     %% start the recording process (record fnmap for module)
     start_compilercd(filename:dirname(Filename)),
-    record_compileop(Filename),
+    ok = record_compileop(Filename),
     try
 	{ok, Ast} = parse_file(Filename),
 	Ret = ecompiler_compile:compile_from_rawast(Ast, #{}),
 	{Ast1, Vars, InitCode, FnMap} = Ret,
-	record_module(Filename, FnMap),
+	ok = record_module(Filename, FnMap),
 	{Ast1, Vars, InitCode}
     catch
 	throw:E ->
-	    unrecord_compileop(Filename),
+	    ok = unrecord_compileop(Filename),
 	    throw({Filename, E})
     end.
 
@@ -69,7 +69,7 @@ start_compilercd(SearchDir) ->
 	    Pid = spawn_link(fun() -> compilercd_loop(State) end),
 	    register(ecompiler_helper, Pid);
 	_ ->
-	    change_searchdir(SearchDir)
+	    ok = change_searchdir(SearchDir)
     end.
 
 %% some c functions like printf, puts, malloc
@@ -93,16 +93,16 @@ stop_compilercd() ->
     end.
 
 record_compileop(Filename) ->
-    ok = compilercd_cmd({record_compileop, filename_tomod(Filename)}).
+    compilercd_cmd({record_compileop, filename_tomod(Filename)}).
 
 unrecord_compileop(Filename) ->
-    ok = compilercd_cmd({unrecord_compileop, filename_tomod(Filename)}).
+    compilercd_cmd({unrecord_compileop, filename_tomod(Filename)}).
 
 record_module(Filename, FnMap) ->
-    ok = compilercd_cmd({record_module, filename_tomod(Filename), FnMap}).
+    compilercd_cmd({record_module, filename_tomod(Filename), FnMap}).
 
 change_searchdir(NewDir) ->
-    ok = compilercd_cmd({change_searchdir, NewDir}).
+    compilercd_cmd({change_searchdir, NewDir}).
 
 filename_tomod(Filename) when is_list(Filename) ->
     list_to_atom(filename:basename(Filename, ".e")).
@@ -154,8 +154,7 @@ compilercd_handle({query_funret, ModName, FunName},
 		{ok, _Type} = D ->
 		    {reply, D, State};
 		error ->
-		    {reply, {error, function_notfound},
-		     State}
+		    {reply, {error, function_notfound}, State}
 	    end;
 	error ->
 	    {reply, {error, module_notfound, SearchDir}, State}
