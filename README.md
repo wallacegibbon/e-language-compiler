@@ -35,8 +35,8 @@ malloc(sizeof(struct A))			malloc(sizeof(A))
 arr: {i32, 3} = {1, 2, 3};
 
 struct Blah
-	id: i32,
-	name: i8^,
+    id: i32,
+    name: i8^,
 end
 
 b: Blah = Blah{id=1, name="hello"};
@@ -48,8 +48,8 @@ c: {Blah, 2} = { Blah{id=1, name="a"}, Blah{id=2, name="b"} };
 i32 arr[3] = {1, 2, 3};
 
 struct Blah {
-	i32 id;
-	char *name;
+    i32 id;
+    char *name;
 }
 
 Blah b = {1, "hello"};
@@ -67,13 +67,14 @@ E language do not support enum or union.
 
 ```
 fun main(argc: isize, argv: i8^^): isize
-	return 0;
+    return 0;
 end
 ```
 
 ```c
-int main(int argc, char **argv) {
-	return 0;
+int main(int argc, char **argv)
+{
+    return 0;
 }
 ```
 
@@ -81,21 +82,21 @@ int main(int argc, char **argv) {
 
 ```
 if (fn1(fn2(val1)) >= fn3(val2))
-	fn4();
+    fn4();
 elif (val3)
-	fn5();
+    fn5();
 else
-	fn6();
+    fn6();
 end
 ```
 
 ```c
 if (fn1(fn2(val1)) >= fn3(val2)) {
-	fn4();
+    fn4();
 } else if (val3) {
-	fn5();
+    fn5();
 } else {
-	fn6();
+    fn6();
 }
 ```
 

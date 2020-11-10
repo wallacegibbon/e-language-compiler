@@ -24,19 +24,18 @@ compile_to_c(InputFilename, OutputFilename) ->
     end.
 
 parse_and_compile(Filename) ->
+    %% start the recording process (record fnmap for module)
+    start_compilercd(filename:dirname(Filename)),
+    record_compileop(Filename),
     try
-	%% start the recording process (record fnmap for module)
-	start_compilercd(filename:dirname(Filename)),
-	%% record the file that will be compiled.
-	record_compileop(Filename),
 	{ok, Ast} = parse_file(Filename),
 	Ret = ecompiler_compile:compile_from_rawast(Ast, #{}),
-	%% Ret is {Ast, Vars, InitCode, FnMap}
 	{Ast1, Vars, InitCode, FnMap} = Ret,
 	record_module(Filename, FnMap),
 	{Ast1, Vars, InitCode}
     catch
 	throw:E ->
+	    unrecord_compileop(Filename),
 	    throw({Filename, E})
     end.
 
@@ -64,13 +63,13 @@ parse_content(RawContent) ->
     end.
 
 start_compilercd(SearchDir) ->
-    State = #{searchdir => SearchDir, modmap => init_modmap(), modlinks => []},
+    State = #{searchdir => SearchDir, modmap => init_modmap(), modchain => []},
     case whereis(ecompiler_helper) of
 	undefined ->
 	    Pid = spawn_link(fun() -> compilercd_loop(State) end),
 	    register(ecompiler_helper, Pid);
 	_ ->
-	    already
+	    change_searchdir(SearchDir)
     end.
 
 %% some c functions like printf, puts, malloc
@@ -94,10 +93,16 @@ stop_compilercd() ->
     end.
 
 record_compileop(Filename) ->
-    compilercd_cmd({record_compileop, filename_tomod(Filename)}).
+    ok = compilercd_cmd({record_compileop, filename_tomod(Filename)}).
+
+unrecord_compileop(Filename) ->
+    ok = compilercd_cmd({unrecord_compileop, filename_tomod(Filename)}).
 
 record_module(Filename, FnMap) ->
     ok = compilercd_cmd({record_module, filename_tomod(Filename), FnMap}).
+
+change_searchdir(NewDir) ->
+    ok = compilercd_cmd({change_searchdir, NewDir}).
 
 filename_tomod(Filename) when is_list(Filename) ->
     list_to_atom(filename:basename(Filename, ".e")).
@@ -156,20 +161,25 @@ compilercd_handle({query_funret, ModName, FunName},
 	    {reply, {error, module_notfound, SearchDir}, State}
     end;
 compilercd_handle({record_compileop, ModName},
-		  #{modlinks := ModuleLinks} = State) ->
-    NewModuleLinks = [ModName | ModuleLinks],
-    case value_inlist(ModName, ModuleLinks) of
+		  #{modchain := ModuleChain} = State) ->
+    NewModuleChain = [ModName | ModuleChain],
+    case value_inlist(ModName, ModuleChain) of
 	true ->
-	    {reply, {error, module_loop, lists:reverse(NewModuleLinks)}, State};
+	    {reply, {error, module_loop, lists:reverse(NewModuleChain)}, State};
 	_ ->
-	    {reply, ok, State#{modlinks := NewModuleLinks}}
+	    {reply, ok, State#{modchain := NewModuleChain}}
     end;
+compilercd_handle({unrecord_compileop, ModName},
+		  #{modchain := [ModName | Rest]} = State) ->
+    {reply, ok, State#{modchain := Rest}};
 compilercd_handle({record_module, ModName, FnMap},
 		  #{modmap := ModuleFnMap} = State) ->
     {reply, ok, State#{modmap := ModuleFnMap#{ModName => FnMap}}};
+compilercd_handle({change_searchdir, NewDir}, State) ->
+    {reply, ok, State#{searchdir := NewDir}};
 compilercd_handle(debug, #{modmap := ModuleFnMap,
-			   modlinks := ModuleLinks} = State) ->
-    {reply, {ModuleFnMap, ModuleLinks}, State};
+			   modchain := ModuleChain} = State) ->
+    {reply, {ModuleFnMap, ModuleChain}, State};
 compilercd_handle(stop, _) ->
     stop.
 
