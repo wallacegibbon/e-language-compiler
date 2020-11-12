@@ -21,12 +21,12 @@ generate_ccode(Ast, GlobalVars, InitCode, OutputFile) ->
     {FnStatements,FnDeclars} = statements_tostr(FnAst, InitCode2),
 
     VarStatements = mapvars_to_str(GlobalVars),
-    Code = [common_code(),"\n\n",StructStatements,"\n\n", VarStatements,
+    Code = [common_code(),"\n\n",StructStatements,"\n\n",VarStatements,
 	    "\n\n",FnDeclars,"\n\n",FnStatements],
     file:write_file(OutputFile, Code).
 
 fixfunction_for_c([#function{exprs=Exprs,var_types=VarTypes}=F|Rest],
-		  {FnMap,StructMap,GlobalVars} = Ctx) ->
+		  {FnMap,StructMap,GlobalVars}=Ctx) ->
     Ctx1 = {FnMap,StructMap,maps:merge(GlobalVars, VarTypes)},
     [F#function{exprs=fixexprs_for_c(Exprs, Ctx1)}|
      fixfunction_for_c(Rest, Ctx)];
@@ -104,7 +104,7 @@ fn_declar_str(Name, ParamStr, Rettype) ->
     type_tostr(Rettype, io_lib:format("~s(~s)", [Name,ParamStr])).
 
 params_to_str(NameTypePairs) ->
-    lists:join(",", lists:map(fun({N, T}) -> type_tostr(T, N) end,
+    lists:join(",", lists:map(fun({N,T}) -> type_tostr(T, N) end,
 			      NameTypePairs)).
 
 params_to_str_noname(Types) ->
@@ -165,7 +165,7 @@ exprs_tostr([], ExprList) ->
 
 expr_tostr(#if_expr{condition=Condition,then=Then,else=Else}, _) ->
     io_lib:format("if (~s) {\n~s\n} else {\n~s}",
-		  [expr_tostr(Condition, $\s), exprs_tostr(Then),
+		  [expr_tostr(Condition, $\s),exprs_tostr(Then),
 		   exprs_tostr(Else)]);
 expr_tostr(#while_expr{condition=Condition,exprs=Exprs}, _) ->
     io_lib:format("while (~s) {\n~s\n}\n",
@@ -189,10 +189,10 @@ expr_tostr(#goto{expr=Expr}, Endchar) ->
 expr_tostr(#label{name=Name}, _) ->
     io_lib:format("~s:", [Name]);
 expr_tostr(#varref{name=Name}, Endchar) ->
-    io_lib:format("~s~c", [Name, Endchar]);
-expr_tostr({Any, _Line, Value}, Endchar) when Any =:= integer; Any =:= float ->
-    io_lib:format("~w~c", [Value, Endchar]);
-expr_tostr({Any, _Line, S}, Endchar) when Any =:= string ->
+    io_lib:format("~s~c", [Name,Endchar]);
+expr_tostr({Any,_Line,Value}, Endchar) when Any =:= integer; Any =:= float ->
+    io_lib:format("~w~c", [Value,Endchar]);
+expr_tostr({Any,_Line,S}, Endchar) when Any =:= string ->
     io_lib:format("\"~s\"~c", [handle_special_char_instr(S),Endchar]).
 
 -define(SPECIAL_CHARMAP, #{$\n=>"\\n",$\r=>"\\r",$\t=>"\\t", $\f=>"\\f",

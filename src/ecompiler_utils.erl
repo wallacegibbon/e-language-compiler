@@ -47,7 +47,7 @@ expr2str(#return{expr=Retexpr}) ->
     io_lib:format("return (~s)", [expr2str(Retexpr)]);
 expr2str(#varref{name=Name}) ->
     io_lib:format("~s", [expr2str(Name)]);
-expr2str(#op2{operator=Operator, op1=Op1,op2=Op2}) ->
+expr2str(#op2{operator=Operator,op1=Op1,op2=Op2}) ->
     io_lib:format("~s ~s ~s", [expr2str(Op1),Operator,expr2str(Op2)]);
 expr2str(#op1{operator=Operator,operand=Operand}) ->
     io_lib:format("~s ~s", [expr2str(Operand),Operator]);
@@ -73,8 +73,8 @@ getvalues_bykeys([], _, Result) ->
 -ifdef(TEST).
 
 getvalues_bykeys_test() ->
-    A = getvalues_bykeys([a, b], #{c=>1,b=>2,a=>3}),
-    ?assertEqual(A, [3, 2]).
+    A = getvalues_bykeys([a,b], #{c=>1,b=>2,a=>3}),
+    ?assertEqual(A, [3,2]).
 
 -endif.
 
@@ -84,18 +84,15 @@ fn_struct_map(Ast) ->
 		  element(1, A) =:= function
 	  end,
     {Fns,Structs} = lists:partition(Ck1, Ast),
-
     %% FnMap stores function type only
     F2 = fun(#function{name=Name}=Fn) ->
 		 {Name,Fn#function.type}
 	 end,
-    FnMap = maps:from_list(lists:map(F2 , Fns)),
-
+    FnMap = maps:from_list(lists:map(F2, Fns)),
     F3 = fun(#struct{name=Name} = S) ->
 		 {Name,S}
 	 end,
     StructMap = maps:from_list(lists:map(F3, Structs)),
-
     {FnMap,StructMap}.
 
 %% address calculations
@@ -148,7 +145,7 @@ filter_varref_inmaps(Varrefs, TargetMap) ->
 -ifdef(TEST).
 
 filter_varref_inmaps_test() ->
-    A = filter_varref_inmaps([#varref{name=a},#varref{name=b}],#{a => 1}),
+    A = filter_varref_inmaps([#varref{name=a},#varref{name=b}],#{a=>1}),
     ?assertEqual(A, [#varref{name=a}]).
 
 -endif.

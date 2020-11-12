@@ -80,7 +80,7 @@ typeof_expr(#op2{operator='::',op1=Op1,op2=Op2,line=Line}, _) ->
 	{error,module_notfound,_} ->
 	    throw({Line,flat_format("module ~s is not found", [ModName])});
 	{error,function_notfound} ->
-	    throw({Line,flat_format("~s:~s is not found", [ModName, FunName])});
+	    throw({Line,flat_format("~s:~s is not found", [ModName,FunName])});
 	{ok,Type} ->
 	    Type
     catch
@@ -115,7 +115,7 @@ typeof_expr(#op2{operator='-',op1=Op1,op2=Op2,line=Line}, Ctx) ->
 		{true,Ptype} ->
 		    Ptype
 	    end;
-	{true, T} ->
+	{true,T} ->
 	    T
     end;
 typeof_expr(#op2{operator=Op,op1=Op1,op2=Op2,line=Line}, Ctx)
@@ -235,7 +235,7 @@ typeof_expr(#goto{line=Line}, _) ->
     void_type(Line);
 typeof_expr(#label{line=Line}, _) ->
     void_type(Line);
-typeof_expr({float, Line,_}, _) ->
+typeof_expr({float,Line,_}, _) ->
     #basic_type{class=float,pdepth=0,tag=f64,line=Line};
 typeof_expr({integer,Line,_}, _) ->
     #basic_type{class=integer,pdepth=0,tag=i64,line=Line};
@@ -251,7 +251,7 @@ incr_pdepth(#basic_type{pdepth=Pdepth}=T, _) ->
 incr_pdepth(#array_type{elemtype=#basic_type{pdepth=Pdepth}=T}, _) ->
     T#basic_type{pdepth=Pdepth + 1};
 incr_pdepth(#fun_type{}, OpLine) ->
-    throw({OpLine, "@ on function type is not allowed"}).
+    throw({OpLine,"@ on function type is not allowed"}).
 
 decr_pdepth(#basic_type{pdepth=Pdepth}=T, Line) ->
     if Pdepth > 0 ->
@@ -263,7 +263,7 @@ decr_pdepth(#array_type{}=Type, OpLine) ->
     throw({OpLine,flat_format("pointer- on array type ~s is invalid",
 			      [fmt_type(Type)])});
 decr_pdepth(#fun_type{}, OpLine) ->
-    throw({OpLine, "^ on function type is not allowed"}).
+    throw({OpLine,"^ on function type is not allowed"}).
 
 check_structfields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
     lists:map(fun(V) ->
@@ -296,7 +296,7 @@ are_sametype(_) ->
 typeof_structfield(#basic_type{class=struct,tag=StructName,pdepth=0},
 		   #varref{name=FieldName}, StructMap, Line) ->
     case maps:find(StructName, StructMap) of
-	{ok, #struct{field_types=FieldTypes}} ->
+	{ok,#struct{field_types=FieldTypes}} ->
 	    get_field_type(FieldName, FieldTypes, StructName, Line);
 	error ->
 	    throw({Line,flat_format("struct ~s is not found", [StructName])})
@@ -419,6 +419,6 @@ fmt_type(#array_type{elemtype=Type,len=N}) ->
     io_lib:format("{~s, ~w}", [fmt_type(Type),N]);
 fmt_type(#basic_type{tag=Tag,pdepth=Pdepth}) when Pdepth > 0 ->
     io_lib:format("(~s~s)", [Tag,lists:duplicate(Pdepth, "^")]);
-fmt_type(#basic_type{tag=Tag, pdepth=0}) ->
+fmt_type(#basic_type{tag=Tag,pdepth=0}) ->
     atom_to_list(Tag).
 

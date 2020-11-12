@@ -23,12 +23,12 @@ expand_sizeof_inmap(Map, Ctx) ->
 expand_sizeof_inexprs(Exprs, Ctx) ->
     exprsmap(fun(E) -> expand_sizeof_inexpr(E, Ctx) end, Exprs).
 
-expand_sizeof_inexpr(#sizeof{type=T, line=Line}, Ctx) ->
+expand_sizeof_inexpr(#sizeof{type=T,line=Line}, Ctx) ->
     try
 	{integer,Line,sizeof(T, Ctx)}
     catch
 	throw:I ->
-	    throw({Line, I})
+	    throw({Line,I})
     end;
 expand_sizeof_inexpr(#op2{op1=Op1,op2=Op2}=O, Ctx) ->
     O#op2{op1=expand_sizeof_inexpr(Op1, Ctx),
@@ -52,7 +52,7 @@ expand_sizeof_inexpr(Any, _) ->
 fill_structinfo(Ast, {_,PointerWidth}=Ctx) ->
     Ast1 = lists:map(fun(E) -> fill_structsize(E, Ctx) end, Ast),
     {_,StructMap1} = fn_struct_map(Ast1),
-    Ctx1 = {StructMap1, PointerWidth},
+    Ctx1 = {StructMap1,PointerWidth},
     Ast2 = lists:map(fun(E) -> fill_structoffsets(E, Ctx1) end, Ast1),
     Ast2.
 

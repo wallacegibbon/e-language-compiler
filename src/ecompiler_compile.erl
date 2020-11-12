@@ -55,7 +55,8 @@ check_struct_recursion(StructMap) ->
 check_struct_rec(#struct{name=Name,field_types=FieldTypes,line=Line},
 		 StructMap, UsedStructs) ->
     try
-	check_field_rec1(maps:to_list(FieldTypes), StructMap, [Name|UsedStructs])
+	check_field_rec1(maps:to_list(FieldTypes), StructMap,
+			 [Name|UsedStructs])
     catch
 	throw:{recur,Chain} ->
 	    throw({Line,flat_format("recursive struct ~s -> ~w", [Name,Chain])})

@@ -7,7 +7,7 @@
 function_normal_test() ->
     {ok,Tks,_} = ecompiler_scan:string("fun a(v: i8^) v^ = 10; end"),
     %?debugFmt("~p~n", [Tks]),
-    ?assertEqual(Tks, [{'fun',1},{identifier,1,a},{'(',1}, {identifier,1,v},
+    ?assertEqual(Tks, [{'fun',1},{identifier,1,a},{'(',1},{identifier,1,v},
 		       {':',1},{integer_type,1,i8},{'^',1},{')',1},
 		       {identifier,1,v},{'^',1},{'=',1},{integer,1,10},{';',1},
 		       {'end',1}]),

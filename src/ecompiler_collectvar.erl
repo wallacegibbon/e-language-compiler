@@ -10,7 +10,7 @@
 
 fetch_vars(Ast) ->
     Ast2 = prepare_structinit_expr(Ast),
-    {Ast3,VarTypes,InitCode} = fetch_vars(Ast2,[],{#{},[],true}),
+    {Ast3,VarTypes,InitCode} = fetch_vars(Ast2, [], {#{},[],true}),
     {Ast3,VarTypes,InitCode}.
 
 %% struct_init's fields were assign expressions, convert it to a map
@@ -30,7 +30,7 @@ fix_structinit_ast(Lst) ->
     exprsmap(fun fix_structinit/1, Lst).
 
 fix_structinit(#struct_init_raw{name=Name,fields=Fields,line=Line}) ->
-    {FieldNames, InitExprMap} = structinit_tomap(Fields),
+    {FieldNames,InitExprMap} = structinit_tomap(Fields),
     #struct_init{name=Name,field_names=FieldNames,field_values=InitExprMap,
 		 line=Line};
 fix_structinit(#array_init{elements=Elements}=A) ->
@@ -109,7 +109,8 @@ append_to_ast(Ast, Varname, Initval, Line) when Initval =/= none ->
 append_to_ast(Ast, _, _, _) ->
     Ast.
 
-check_labelconflict([#label{name=Name,line=Line}|Rest], GlobalVars, LocalVars) ->
+check_labelconflict([#label{name=Name,line=Line}|Rest], GlobalVars,
+		    LocalVars) ->
     ensure_no_conflict(Name, LocalVars, Line),
     ensure_no_conflict(Name, GlobalVars, Line),
     check_labelconflict(Rest, GlobalVars, LocalVars);

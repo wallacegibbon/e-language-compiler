@@ -1,10 +1,10 @@
 -module(ecompiler).
 
--export([parse_and_compile/1,compile_to_c/2,query_modulefun/2]).
+-export([compile_to_ast/1,compile_to_c/2,query_modulefun/2]).
 
 -import(ecompiler_utils, [flat_format/2,value_inlist/2]).
 
--compile({nowarn_unused_function, [record_details/0]}).
+-compile({nowarn_unused_function,[record_details/0]}).
 
 -include("./ecompiler_frame.hrl").
 
@@ -13,19 +13,24 @@
 -endif.
 
 compile_to_c(InputFilename, OutputFilename) ->
+    start_compilercd(filename:dirname(InputFilename)),
     try
 	{Ast,Vars,InitCode} = parse_and_compile(InputFilename),
 	%io:format(">> ~p~n~n", [Ast]),
-	ecompiler_genc:generate_ccode(Ast, Vars, InitCode, OutputFilename),
-	stop_compilercd()
+	ecompiler_genc:generate_ccode(Ast, Vars, InitCode, OutputFilename)
     catch
 	throw:{Filename,Errinfo} ->
 	    io:format("~s: ~p~n", [Filename,Errinfo])
-    end.
+    end,
+    stop_compilercd().
+
+compile_to_ast(Filename) ->
+    start_compilercd(filename:dirname(Filename)),
+    R = parse_and_compile(Filename),
+    stop_compilercd(),
+    R.
 
 parse_and_compile(Filename) ->
-    %% start the recording process (record fnmap for module)
-    start_compilercd(filename:dirname(Filename)),
     ok = record_compileop(Filename),
     try
 	{ok,Ast} = parse_file(Filename),
@@ -62,6 +67,7 @@ parse_content(RawContent) ->
 	    throw({Errors,Warnings})
     end.
 
+%% start the recording process (record fnmap for module)
 start_compilercd(SearchDir) ->
     State = #{searchdir=>SearchDir,modmap=>init_modmap(),modchain=>[]},
     case whereis(ecompiler_helper) of
@@ -93,16 +99,16 @@ stop_compilercd() ->
     end.
 
 record_compileop(Filename) ->
-    compilercd_cmd({record_compileop, filename_tomod(Filename)}).
+    compilercd_cmd({record_compileop,filename_tomod(Filename)}).
 
 unrecord_compileop(Filename) ->
-    compilercd_cmd({unrecord_compileop, filename_tomod(Filename)}).
+    compilercd_cmd({unrecord_compileop,filename_tomod(Filename)}).
 
 record_module(Filename, FnMap) ->
-    compilercd_cmd({record_module, filename_tomod(Filename), FnMap}).
+    compilercd_cmd({record_module,filename_tomod(Filename),FnMap}).
 
 change_searchdir(NewDir) ->
-    compilercd_cmd({change_searchdir, NewDir}).
+    compilercd_cmd({change_searchdir,NewDir}).
 
 filename_tomod(Filename) when is_list(Filename) ->
     list_to_atom(filename:basename(Filename, ".e")).
@@ -174,7 +180,7 @@ compilercd_handle({unrecord_compileop,ModName},
 compilercd_handle({record_module,ModName,FnMap},
 		  #{modmap:=ModuleFnMap}=State) ->
     {reply,ok,State#{modmap:=ModuleFnMap#{ModName=>FnMap}}};
-compilercd_handle({change_searchdir, NewDir}, State) ->
+compilercd_handle({change_searchdir,NewDir}, State) ->
     {reply,ok,State#{searchdir:=NewDir}};
 compilercd_handle(debug, #{modmap:=ModuleFnMap,
 			   modchain:=ModuleChain}=State) ->
