@@ -5,7 +5,7 @@
 		   name :: atom(),
 		   type :: any(),
 		   param_names :: [atom()],
-		   var_types :: #{atom() => e_type()},
+		   var_types :: #{atom():=e_type()},
 		   labels :: [e_expr()],
 		   exprs :: [e_expr()]}).
 
@@ -13,12 +13,12 @@
 		 name :: atom(),
 		 size :: integer(),
 		 field_types :: [any()],
-		 field_offsets :: #{atom() => integer()},
+		 field_offsets :: #{atom():=integer()},
 		 field_names :: [any()],
-		 field_defaults :: #{atom() => e_expr()}}).
+		 field_defaults :: #{atom():=e_expr()}}).
 
 -record(basic_type, {line :: integer(),
-		     pdepth = 0 :: integer(),
+		     pdepth=0 :: integer(),
 		     class :: struct|integer|float|void|any,
 		     tag :: atom()}).
 
@@ -33,7 +33,7 @@
 -record(struct_init, {line :: integer(),
 		      name :: atom(),
 		      field_names :: [any()],
-		      field_values :: #{atom() => e_expr()}}).
+		      field_values :: #{atom():=e_expr()}}).
 
 -record(array_init, {line :: integer(),
 		     elements :: [e_expr()]}).
@@ -71,7 +71,7 @@
 -record(vardef, {line :: integer(),
 		 name :: atom(),
 		 type :: e_type(),
-		 initval = none :: any()}).
+		 initval=none :: any()}).
 
 -record(varref, {line :: integer(),
 		 name :: atom()}).

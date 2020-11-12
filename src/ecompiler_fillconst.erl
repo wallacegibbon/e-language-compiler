@@ -4,13 +4,13 @@
 
 -export([parse_and_remove_const/1]).
 
--import(ecompiler_utils, [exprsmap/2, flat_format/2]).
+-import(ecompiler_utils, [exprsmap/2,flat_format/2]).
 
 -include("./ecompiler_frame.hrl").
 
 %% find all consts in AST, calculate it and replace all const references.
 parse_and_remove_const(Ast) ->
-    {Constants, Ast2} = fetch_constants(Ast),
+    {Constants,Ast2} = fetch_constants(Ast),
     Ast3 = replace_constants(Ast2, Constants),
     %io:format(">>> ~p~n", [Ast3]),
     Ast3.
@@ -18,49 +18,49 @@ parse_and_remove_const(Ast) ->
 %% fetch constants
 fetch_constants(Ast) -> fetch_constants(Ast, [], #{}).
 
-fetch_constants([#const{name=Name, val=Expr} | Rest], Statements, Constants) ->
+fetch_constants([#const{name=Name,val=Expr}|Rest], Statements, Constants) ->
     fetch_constants(Rest, Statements,
-		    Constants#{Name => eval_constexpr(Expr, Constants)});
-fetch_constants([Any | Rest], Statements, Constants) ->
-    fetch_constants(Rest, [Any | Statements], Constants);
+		    Constants#{Name=>eval_constexpr(Expr, Constants)});
+fetch_constants([Any|Rest], Statements, Constants) ->
+    fetch_constants(Rest, [Any|Statements], Constants);
 fetch_constants([], Statements, Constants) ->
-    {Constants, lists:reverse(Statements)}.
+    {Constants,lists:reverse(Statements)}.
 
-eval_constexpr(#op2{operator='+', op1=Op1, op2=Op2}, Constants) ->
+eval_constexpr(#op2{operator='+',op1=Op1,op2=Op2}, Constants) ->
     eval_constexpr(Op1, Constants) + eval_constexpr(Op2, Constants);
-eval_constexpr(#op2{operator='-', op1=Op1, op2=Op2}, Constants) ->
+eval_constexpr(#op2{operator='-',op1=Op1,op2=Op2}, Constants) ->
     eval_constexpr(Op1, Constants) - eval_constexpr(Op2, Constants);
-eval_constexpr(#op2{operator='*', op1=Op1, op2=Op2}, Constants) ->
+eval_constexpr(#op2{operator='*',op1=Op1,op2=Op2}, Constants) ->
     eval_constexpr(Op1, Constants) * eval_constexpr(Op2, Constants);
-eval_constexpr(#op2{operator='/', op1=Op1, op2=Op2}, Constants) ->
+eval_constexpr(#op2{operator='/',op1=Op1,op2=Op2}, Constants) ->
     eval_constexpr(Op1, Constants) / eval_constexpr(Op2, Constants);
-eval_constexpr(#op2{operator='rem', op1=Op1, op2=Op2}, Constants) ->
+eval_constexpr(#op2{operator='rem',op1=Op1,op2=Op2}, Constants) ->
     eval_constexpr(Op1, Constants) rem eval_constexpr(Op2, Constants);
-eval_constexpr(#op2{operator='and', op1=Op1, op2=Op2}, Constants) ->
+eval_constexpr(#op2{operator='and',op1=Op1,op2=Op2}, Constants) ->
     ((eval_constexpr(Op1, Constants) =/= 0) and
      (eval_constexpr(Op2, Constants) =/= 0));
-eval_constexpr(#op2{operator='or', op1=Op1, op2=Op2}, Constants) ->
+eval_constexpr(#op2{operator='or',op1=Op1,op2=Op2}, Constants) ->
     ((eval_constexpr(Op1, Constants) =:= 1) or
      (eval_constexpr(Op2, Constants) =:= 1));
-eval_constexpr(#op2{operator='band', op1=Op1, op2=Op2}, Constants) ->
+eval_constexpr(#op2{operator='band',op1=Op1,op2=Op2}, Constants) ->
     eval_constexpr(Op1, Constants) band eval_constexpr(Op2, Constants);
-eval_constexpr(#op2{operator='bor', op1=Op1, op2=Op2}, Constants) ->
+eval_constexpr(#op2{operator='bor',op1=Op1,op2=Op2}, Constants) ->
     eval_constexpr(Op1, Constants) bor eval_constexpr(Op2, Constants);
-eval_constexpr(#op2{operator='bxor', op1=Op1, op2=Op2}, Constants) ->
+eval_constexpr(#op2{operator='bxor',op1=Op1,op2=Op2}, Constants) ->
     eval_constexpr(Op1, Constants) bxor eval_constexpr(Op2, Constants);
-eval_constexpr(#op2{operator='bsr', op1=Op1, op2=Op2}, Constants) ->
+eval_constexpr(#op2{operator='bsr',op1=Op1,op2=Op2}, Constants) ->
     eval_constexpr(Op1, Constants) bsr eval_constexpr(Op2, Constants);
-eval_constexpr(#op2{operator='bsl', op1=Op1, op2=Op2}, Constants) ->
+eval_constexpr(#op2{operator='bsl',op1=Op1,op2=Op2}, Constants) ->
     eval_constexpr(Op1, Constants) bsl eval_constexpr(Op2, Constants);
-eval_constexpr(#varref{name=Name, line=Line}, Constants) ->
+eval_constexpr(#varref{name=Name,line=Line}, Constants) ->
     case maps:find(Name, Constants) of
 	error ->
-	    throw({Line, flat_format("undefined constant ~s", [Name])});
-	{ok, Val} ->
+	    throw({Line,flat_format("undefined constant ~s", [Name])});
+	{ok,Val} ->
 	    Val
     end;
-eval_constexpr({ImmiType, _, Val}, _) when ImmiType =:= integer;
-					   ImmiType =:= float ->
+eval_constexpr({ImmiType,_,Val}, _) when ImmiType =:= integer;
+					 ImmiType =:= float ->
     Val;
 eval_constexpr(Num, _) when is_integer(Num); is_float(Num) ->
     Num;
@@ -68,18 +68,18 @@ eval_constexpr(Any, _) ->
     throw(flat_format("invalid const expression: ~p", [Any])).
 
 %% replace constants in AST
-replace_constants([#function_raw{params=Params, exprs=Exprs} = Fn | Rest],
+replace_constants([#function_raw{params=Params,exprs=Exprs}=Fn|Rest],
 		  Constants) ->
     [Fn#function_raw{params=replace_inexprs(Params, Constants),
-		     exprs=replace_inexprs(Exprs, Constants)} |
+		     exprs=replace_inexprs(Exprs, Constants)}|
      replace_constants(Rest, Constants)];
-replace_constants([#struct_raw{fields=Fields} = S | Rest], Constants) ->
-    [S#struct_raw{fields=replace_inexprs(Fields, Constants)} |
+replace_constants([#struct_raw{fields=Fields}=S|Rest], Constants) ->
+    [S#struct_raw{fields=replace_inexprs(Fields, Constants)}|
      replace_constants(Rest, Constants)];
-replace_constants([#vardef{type=Type, initval=Initval} = V | Rest],
+replace_constants([#vardef{type=Type,initval=Initval}=V|Rest],
 		  Constants) ->
     [V#vardef{type=replace_intype(Type, Constants),
-	      initval=replace_inexpr(Initval, Constants)} |
+	      initval=replace_inexpr(Initval, Constants)}|
      replace_constants(Rest, Constants)];
 replace_constants([], _) ->
     [].
@@ -87,40 +87,40 @@ replace_constants([], _) ->
 replace_inexprs(Exprs, Constants) ->
     exprsmap(fun(E) -> replace_inexpr(E, Constants) end, Exprs).
 
-replace_inexpr(#vardef{name=Name, initval=Initval, type=Type,
-		       line=Line} = Expr, Constants) ->
+replace_inexpr(#vardef{name=Name,initval=Initval,type=Type,line=Line}=Expr,
+	       Constants) ->
     case maps:find(Name, Constants) of
-	{ok, _} ->
-	    throw({Line, flat_format("~s conflicts with const", [Name])});
+	{ok,_} ->
+	    throw({Line,flat_format("~s conflicts with const", [Name])});
 	error ->
 	    Expr#vardef{initval=replace_inexpr(Initval, Constants),
 			type=replace_intype(Type, Constants)}
     end;
-replace_inexpr(#varref{name=Name, line=Line} = Expr, Constants) ->
+replace_inexpr(#varref{name=Name,line=Line}=Expr, Constants) ->
     case maps:find(Name, Constants) of
-	{ok, Val} ->
+	{ok,Val} ->
 	    constnum_to_token(Val, Line);
 	error ->
 	    Expr
     end;
-replace_inexpr(#struct_init_raw{fields=Fields} = Expr, Constants) ->
+replace_inexpr(#struct_init_raw{fields=Fields}=Expr, Constants) ->
     Expr#struct_init_raw{fields=replace_inexprs(Fields, Constants)};
-replace_inexpr(#array_init{elements=Elements} = Expr, Constants) ->
+replace_inexpr(#array_init{elements=Elements}=Expr, Constants) ->
     Expr#array_init{elements=replace_inexprs(Elements, Constants)};
-replace_inexpr(#op2{op1=Op1, op2=Op2} = Expr, Constants) ->
+replace_inexpr(#op2{op1=Op1,op2=Op2}=Expr, Constants) ->
     Expr#op2{op1=replace_inexpr(Op1, Constants),
 	     op2=replace_inexpr(Op2, Constants)};
-replace_inexpr(#op1{operand=Operand} = Expr, Constants) ->
+replace_inexpr(#op1{operand=Operand}=Expr, Constants) ->
     Expr#op1{operand=replace_inexpr(Operand, Constants)};
 replace_inexpr(Any, _) ->
     Any.
 
 constnum_to_token(Num, Line) when is_float(Num) ->
-    #float{val=Num, line=Line};
+    #float{val=Num,line=Line};
 constnum_to_token(Num, Line) when is_integer(Num) ->
-    #integer{val=Num, line=Line}.
+    #integer{val=Num,line=Line}.
 
-replace_intype(#array_type{elemtype=ElementType, len=Len} = T, Constants) ->
+replace_intype(#array_type{elemtype=ElementType,len=Len}=T, Constants) ->
     T#array_type{elemtype=replace_intype(ElementType, Constants),
 		 len=eval_constexpr(replace_inexpr(Len, Constants), Constants)};
 replace_intype(Any, _) ->
