@@ -36,10 +36,8 @@ checktype_exprs(Exprs, GlobalVarTypes, {FunctionMap,StructMap}) ->
     Ctx = {GlobalVarTypes,FunctionMap,StructMap,none},
     typeof_exprs(Exprs, Ctx).
 
-typeof_exprs([Expr|Rest], Ctx) ->
-    [typeof_expr(Expr, Ctx)|typeof_exprs(Rest, Ctx)];
-typeof_exprs([], _) ->
-    [].
+typeof_exprs(Exprs, Ctx) ->
+    lists:map(fun(Expr) -> typeof_expr(Expr, Ctx) end, Exprs).
 
 typeof_expr(#op2{operator=assign,op1=Op1,op2=Op2,line=Line},
 	    {_,_,StructMap,_}=Ctx) ->
@@ -52,7 +50,7 @@ typeof_expr(#op2{operator=assign,op1=Op1,op2=Op2,line=Line},
 		    #varref{} ->
 			typeof_expr(Op1, Ctx);
 		    Any ->
-			throw({Line,flat_format("invalid left value ~s",
+			throw({Line,flat_format("invalid left value (~s)",
 						[expr2str(Any)])})
 		end,
     TypeofOp2 = typeof_expr(Op2, Ctx),
@@ -250,20 +248,13 @@ incr_pdepth(#basic_type{pdepth=Pdepth}=T, _) ->
     T#basic_type{pdepth=Pdepth + 1};
 incr_pdepth(#array_type{elemtype=#basic_type{pdepth=Pdepth}=T}, _) ->
     T#basic_type{pdepth=Pdepth + 1};
-incr_pdepth(#fun_type{}, OpLine) ->
-    throw({OpLine,"@ on function type is not allowed"}).
+incr_pdepth(T, OpLine) ->
+    throw({OpLine,flat_format("'@' on type ~s is invalid", [fmt_type(T)])}).
 
-decr_pdepth(#basic_type{pdepth=Pdepth}=T, Line) ->
-    if Pdepth > 0 ->
-	   T#basic_type{pdepth=Pdepth-1};
-       true ->
-	   throw({Line,"^ on a non-pointer type"})
-    end;
-decr_pdepth(#array_type{}=Type, OpLine) ->
-    throw({OpLine,flat_format("pointer- on array type ~s is invalid",
-			      [fmt_type(Type)])});
-decr_pdepth(#fun_type{}, OpLine) ->
-    throw({OpLine,"^ on function type is not allowed"}).
+decr_pdepth(#basic_type{pdepth=Pdepth}=T, Line) when Pdepth > 0 ->
+    T#basic_type{pdepth=Pdepth-1};
+decr_pdepth(T, OpLine) ->
+    throw({OpLine,flat_format("'^' on type ~s is invalid", [fmt_type(T)])}).
 
 check_structfields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
     lists:map(fun(V) ->
