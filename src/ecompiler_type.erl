@@ -246,8 +246,8 @@ args_errorinfo(FnParamTypes, ArgsTypes) ->
 
 incr_pdepth(#basic_type{pdepth=Pdepth}=T, _) ->
     T#basic_type{pdepth=Pdepth + 1};
-incr_pdepth(#array_type{elemtype=#basic_type{pdepth=Pdepth}=T}, _) ->
-    T#basic_type{pdepth=Pdepth + 1};
+incr_pdepth(#array_type{elemtype=#basic_type{pdepth=Pdepth}=T}, OpLine) ->
+    incr_pdepth(T, OpLine);
 incr_pdepth(T, OpLine) ->
     throw({OpLine,flat_format("'@' on type ~s is invalid", [fmt_type(T)])}).
 
