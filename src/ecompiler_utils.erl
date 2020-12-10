@@ -14,7 +14,7 @@
 
 -include("./ecompiler_frame.hrl").
 
--ifdef(TEST).
+-ifdef(EUNIT).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
@@ -70,7 +70,7 @@ getvalues_bykeys([Field|Rest], Map, Result) ->
 getvalues_bykeys([], _, Result) ->
     lists:reverse(Result).
 
--ifdef(TEST).
+-ifdef(EUNIT).
 
 getvalues_bykeys_test() ->
     A = getvalues_bykeys([a,b], #{c=>1,b=>2,a=>3}),
@@ -142,7 +142,7 @@ filter_varref_inmaps(Varrefs, TargetMap) ->
 			 exist_inmap(N, TargetMap)
 		 end, Varrefs).
 
--ifdef(TEST).
+-ifdef(EUNIT).
 
 filter_varref_inmaps_test() ->
     A = filter_varref_inmaps([#varref{name=a},#varref{name=b}],#{a=>1}),

@@ -8,7 +8,7 @@
 
 -include("./ecompiler_frame.hrl").
 
--ifdef(TEST).
+-ifdef(EUNIT).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
@@ -188,7 +188,7 @@ compilercd_handle(debug, #{modmap:=ModuleFnMap,
 compilercd_handle(stop, _) ->
     stop.
 
--ifdef(TEST).
+-ifdef(EUNIT).
 
 start_beforetest(SearchDir) ->
     stop_compilercd(),

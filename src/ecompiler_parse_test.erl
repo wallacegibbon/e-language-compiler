@@ -1,6 +1,6 @@
 -module(ecompiler_parse_test).
 
--ifdef(TEST).
+-ifdef(EUNIT).
 
 -include_lib("eunit/include/eunit.hrl").
 
