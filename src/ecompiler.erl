@@ -132,7 +132,7 @@ record_details() ->
 
 compilercd_cmd(Command) ->
     Ref = make_ref(),
-    ecompiler_helper ! {self(),Ref,Command},
+    ecompiler_helper ! {{self(),Ref},Command},
     receive
 	{Ref,Result} ->
 	    Result
@@ -140,7 +140,7 @@ compilercd_cmd(Command) ->
 
 compilercd_loop(State) ->
     receive
-	{Pid,Ref,Command} ->
+	{{Pid,Ref},Command} ->
 	    case compilercd_handle(Command, State) of
 		{reply,Result,NewState} ->
 		    Pid ! {Ref,Result},
