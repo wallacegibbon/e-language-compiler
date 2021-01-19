@@ -89,7 +89,7 @@ fn_struct_map(Ast) ->
 		 {Name,Fn#function.type}
 	 end,
     FnMap = maps:from_list(lists:map(F2, Fns)),
-    F3 = fun(#struct{name=Name} = S) ->
+    F3 = fun(#struct{name=Name}=S) ->
 		 {Name,S}
 	 end,
     StructMap = maps:from_list(lists:map(F3, Structs)),

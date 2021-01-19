@@ -138,7 +138,7 @@ typeof_expr(#op2{operator=Op,op1=Op1,op2=Op2,line=Line}, Ctx) ->
     end;
 typeof_expr(#op1{operator='^',operand=Operand,line=Line}, Ctx) ->
     case typeof_expr(Operand, Ctx) of
-	#basic_type{} = T ->
+	#basic_type{}=T ->
 	    decr_pdepth(T, Line);
 	_ ->
 	    throw({Line,flat_format("invalid \"^\" on operand ~s",
@@ -331,7 +331,7 @@ compare_type(#basic_type{class=C,tag=T,pdepth=P},
 compare_type(_, _) ->
     false.
 
-is_pointer_and_int_order(#basic_type{pdepth=N} = O,
+is_pointer_and_int_order(#basic_type{pdepth=N}=O,
 			 #basic_type{class=integer,pdepth=0}) when N > 0 ->
     {true,O};
 is_pointer_and_int_order(_, _) ->

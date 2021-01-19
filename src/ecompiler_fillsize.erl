@@ -123,7 +123,7 @@ sizeof(#array_type{elemtype=T,len=Len}, {_,PointerWidth}=Ctx) ->
     end;
 sizeof(#basic_type{pdepth=N}, {_,PointerWidth}) when N > 0 ->
     PointerWidth;
-sizeof(#basic_type{class=struct,tag=Tag}, {StructMap,_} = Ctx) ->
+sizeof(#basic_type{class=struct,tag=Tag}, {StructMap,_}=Ctx) ->
     case maps:find(Tag, StructMap) of
 	{ok,S} ->
 	    sizeof_struct(S, Ctx);
