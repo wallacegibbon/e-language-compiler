@@ -2,7 +2,7 @@
 
 -export([expand_initexpr_infun/2,expand_initexprs/2]).
 
--import(ecompiler_utils, [exprsmap/2,flat_format/2]).
+-import(ecompiler_util, [exprsmap/2,flat_format/2]).
 
 -include("./ecompiler_frame.hrl").
 

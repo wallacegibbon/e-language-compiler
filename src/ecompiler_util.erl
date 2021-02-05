@@ -1,4 +1,4 @@
--module(ecompiler_utils).
+-module(ecompiler_util).
 
 -export([exprsmap/2,expr2str/1,flat_format/2,getvalues_bykeys/2,
 	 names_of_varrefs/1,names_of_vardefs/1,value_inlist/2,

@@ -3,8 +3,8 @@
 
 -export([fetch_vars/1]).
 
--import(ecompiler_utils, [flat_format/2,getvalues_bykeys/2,exprsmap/2,
-			  names_of_vardefs/1,assert/2]).
+-import(ecompiler_util, [flat_format/2,getvalues_bykeys/2,exprsmap/2,
+			 names_of_vardefs/1,assert/2]).
 
 -include("./ecompiler_frame.hrl").
 

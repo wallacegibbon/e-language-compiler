@@ -2,7 +2,7 @@
 
 -export([compile_to_ast/1,compile_to_c/2,query_modulefun/2]).
 
--import(ecompiler_utils, [flat_format/2,value_inlist/2]).
+-import(ecompiler_util, [flat_format/2,value_inlist/2]).
 
 -compile({nowarn_unused_function,[record_details/0]}).
 

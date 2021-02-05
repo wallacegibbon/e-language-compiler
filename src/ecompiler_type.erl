@@ -2,8 +2,8 @@
 
 -export([checktype_ast/3,checktype_exprs/3,typeof_expr/2]).
 
--import(ecompiler_utils, [expr2str/1,flat_format/2,void_type/1,assert/2,
-			  filter_varref_inmaps/2]).
+-import(ecompiler_util, [expr2str/1,flat_format/2,void_type/1,assert/2,
+			 filter_varref_inmaps/2]).
 
 -include("./ecompiler_frame.hrl").
 

@@ -2,9 +2,9 @@
 
 -export([fill_structinfo/2,expand_sizeof/2,expand_sizeof_inexprs/2]).
 
--import(ecompiler_utils, [names_of_varrefs/1,getvalues_bykeys/2,exprsmap/2,
-			  primitive_size/1,flat_format/2,fn_struct_map/1,
-			  fillto_pointerwidth/2,fill_offset/2,cut_extra/2]).
+-import(ecompiler_util, [names_of_varrefs/1,getvalues_bykeys/2,exprsmap/2,
+			 primitive_size/1,flat_format/2,fn_struct_map/1,
+			 fillto_pointerwidth/2,fill_offset/2,cut_extra/2]).
 
 -include("./ecompiler_frame.hrl").
 

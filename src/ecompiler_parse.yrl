@@ -284,7 +284,7 @@ Erlang code.
 
 -include("./ecompiler_frame.hrl").
 
--import(ecompiler_utils, [void_type/1,flat_format/2]).
+-import(ecompiler_util, [void_type/1,flat_format/2]).
 
 str_to_inttks({string,Line,Str}) ->
     lists:map(fun(Char) -> {integer,Line,Char} end, Str).

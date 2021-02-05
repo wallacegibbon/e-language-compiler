@@ -2,7 +2,7 @@
 
 -export([compile_from_rawast/2]).
 
--import(ecompiler_utils, [flat_format/2,fn_struct_map/1,value_inlist/2]).
+-import(ecompiler_util, [flat_format/2,fn_struct_map/1,value_inlist/2]).
 
 -include("./ecompiler_frame.hrl").
 

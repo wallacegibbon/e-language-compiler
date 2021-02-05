@@ -2,7 +2,7 @@
 
 -export([generate_ccode/4]).
 
--import(ecompiler_utils, [exprsmap/2,fn_struct_map/1,getvalues_bykeys/2]).
+-import(ecompiler_util, [exprsmap/2,fn_struct_map/1,getvalues_bykeys/2]).
 
 -include("./ecompiler_frame.hrl").
 
