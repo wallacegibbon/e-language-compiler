@@ -9,7 +9,7 @@
 generate_ccode(Ast, GlobalVars, InitCode, OutputFile) ->
     {FnMap,StructMap} = fn_struct_map(Ast),
     Ctx = {FnMap,StructMap,GlobalVars},
-    Ast2 = fixfunction_for_c(Ast, Ctx),
+    Ast2 = lists:map(fun(A) -> fixfunction_for_c(A, Ctx) end, Ast),
     InitCode2 = fixexprs_for_c(InitCode, Ctx),
     %io:format(">>>~p~n", [Ast2]),
 
@@ -25,15 +25,12 @@ generate_ccode(Ast, GlobalVars, InitCode, OutputFile) ->
 	    "\n\n",FnDeclars,"\n\n",FnStatements],
     file:write_file(OutputFile, Code).
 
-fixfunction_for_c([#function{exprs=Exprs,var_types=VarTypes}=F|Rest],
-		  {FnMap,StructMap,GlobalVars}=Ctx) ->
+fixfunction_for_c(#function{exprs=Exprs,var_types=VarTypes}=F,
+		  {FnMap,StructMap,GlobalVars}) ->
     Ctx1 = {FnMap,StructMap,maps:merge(GlobalVars, VarTypes)},
-    [F#function{exprs=fixexprs_for_c(Exprs, Ctx1)}|
-     fixfunction_for_c(Rest, Ctx)];
-fixfunction_for_c([A|Rest], Ctx) ->
-    [A|fixfunction_for_c(Rest, Ctx)];
-fixfunction_for_c([], _) ->
-    [].
+    F#function{exprs=fixexprs_for_c(Exprs, Ctx1)};
+fixfunction_for_c(Any, _) ->
+    Any.
 
 fixexprs_for_c(Exprs, Ctx) ->
     exprsmap(fun(E) -> fixexpr_for_c(E, Ctx) end, Exprs).
