@@ -287,9 +287,9 @@ Erlang code.
 -import(ecompiler_util, [void_type/1,flat_format/2]).
 
 str_to_inttks({string,Line,Str}) ->
-    lists:map(fun(Char) -> {integer,Line,Char} end, Str).
+    lists:map(fun (Char) -> {integer, Line, Char} end, Str).
 
-tok_val({_,_,Val}) -> Val.
-tok_sym({Sym,_}) -> Sym.
+tok_val({_, _, Val}) -> Val.
+tok_sym({Sym, _}) -> Sym.
 tok_line(T) -> element(2, T).
 

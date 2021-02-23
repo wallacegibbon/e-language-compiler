@@ -107,12 +107,12 @@ fixchars([C|Rest]) ->
 fixchars([]) ->
     [].
 
-fixchar([$\\,$\\]) -> $\\;
-fixchar([$\\,$b]) -> $\b;
-fixchar([$\\,$f]) -> $\f;
-fixchar([$\\,$n]) -> $\n;
-fixchar([$\\,$r]) -> $\r;
-fixchar([$\\,$t]) -> $\t;
-fixchar([$\\,Any]) -> Any;
-fixchar([Any]) -> Any.
+fixchar([$\\, $\\]) -> $\\;
+fixchar([$\\, $b]) -> $\b;
+fixchar([$\\, $f]) -> $\f;
+fixchar([$\\, $n]) -> $\n;
+fixchar([$\\, $r]) -> $\r;
+fixchar([$\\, $t]) -> $\t;
+fixchar([$\\, Any]) -> Any;
+fixchar([Any] ) -> Any.
 
