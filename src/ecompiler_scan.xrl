@@ -78,34 +78,23 @@ any :
 
 Erlang code.
 
-str_to_integer([$0,_|Chars], Base) ->
+str_to_integer([$0, _ | Chars], Base) ->
     list_to_integer(Chars, Base).
 
-drop_quotes([_|QuotedString]) ->
+drop_quotes([_ | QuotedString]) ->
     lists:droplast(QuotedString).
 
-fixchars([$\\,$\\|Rest]) ->
-    [$\\|fixchars(Rest)];
-fixchars([$\\,$/|Rest]) ->
-    [$/|fixchars(Rest)];
-fixchars([$\\,$b|Rest]) ->
-    [$\b|fixchars(Rest)];
-fixchars([$\\,$f|Rest]) ->
-    [$\f|fixchars(Rest)];
-fixchars([$\\,$n|Rest]) ->
-    [$\n|fixchars(Rest)];
-fixchars([$\\,$r|Rest]) ->
-    [$\r|fixchars(Rest)];
-fixchars([$\\,$t|Rest]) ->
-    [$\t|fixchars(Rest)];
-fixchars([$\\,$"|Rest]) ->
-    [$"|fixchars(Rest)];
-fixchars([$\\,Any|Rest]) ->
-    [Any|fixchars(Rest)];
-fixchars([C|Rest]) ->
-    [C|fixchars(Rest)];
-fixchars([]) ->
-    [].
+fixchars([$\\, $\\ | Rest]) -> [$\\ | fixchars(Rest)];
+fixchars([$\\, $/ | Rest]) -> [$/ | fixchars(Rest)];
+fixchars([$\\, $b | Rest]) -> [$\b | fixchars(Rest)];
+fixchars([$\\, $f | Rest]) -> [$\f | fixchars(Rest)];
+fixchars([$\\, $n | Rest]) -> [$\n | fixchars(Rest)];
+fixchars([$\\, $r | Rest]) -> [$\r | fixchars(Rest)];
+fixchars([$\\, $t | Rest]) -> [$\t | fixchars(Rest)];
+fixchars([$\\, $" | Rest]) -> [$" | fixchars(Rest)];
+fixchars([$\\, Any | Rest]) -> [Any | fixchars(Rest)];
+fixchars([C | Rest]) -> [C | fixchars(Rest)];
+fixchars([]) -> [].
 
 fixchar([$\\, $\\]) -> $\\;
 fixchar([$\\, $b]) -> $\b;
@@ -114,5 +103,4 @@ fixchar([$\\, $n]) -> $\n;
 fixchar([$\\, $r]) -> $\r;
 fixchar([$\\, $t]) -> $\t;
 fixchar([$\\, Any]) -> Any;
-fixchar([Any] ) -> Any.
-
+fixchar([Any]) -> Any.

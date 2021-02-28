@@ -38,34 +38,34 @@ statement -> defun : '$1'.
 statement -> defvar ';' : '$1'.
 
 defconst -> const identifier '=' expr ';' :
-    #const{name=tok_val('$2'),val='$4',line=tok_line('$2')}.
+    #const{name=tok_val('$2'), val='$4', line=tok_line('$2')}.
 
 %% type annotation inside array or function
 typeanno_list -> typeanno ',' typeanno_list : ['$1'|'$3'].
 typeanno_list -> typeanno : ['$1'].
 
 typeanno -> 'fun' '(' typeanno_list ')' ':' typeanno :
-    #fun_type{params='$3',ret='$6',line=tok_line('$1')}.
+    #fun_type{params='$3', ret='$6', line=tok_line('$1')}.
 typeanno -> 'fun' '(' typeanno_list ')' :
-    #fun_type{params='$3',ret=void_type(tok_line('$4')),line=tok_line('$1')}.
+    #fun_type{params='$3', ret=void_type(tok_line('$4')), line=tok_line('$1')}.
 typeanno -> 'fun' '(' ')' ':' typeanno :
-    #fun_type{params=[],ret='$5',line=tok_line('$1')}.
+    #fun_type{params=[], ret='$5', line=tok_line('$1')}.
 typeanno -> 'fun' '(' ')' :
-    #fun_type{params=[],ret=void_type(tok_line('$3')),line=tok_line('$1')}.
+    #fun_type{params=[], ret=void_type(tok_line('$3')), line=tok_line('$1')}.
 typeanno -> '{' typeanno ',' expr '}' :
-    #array_type{elemtype='$2',len='$4',line=tok_line('$1')}.
+    #array_type{elemtype='$2', len='$4', line=tok_line('$1')}.
 typeanno -> integer_type pointer_depth :
-    #basic_type{class=integer,pdepth='$2',tag=tok_val('$1'),
-		line=tok_line('$1')}.
+    #basic_type{class = integer, pdepth = '$2',
+                tag = tok_val('$1'), line = tok_line('$1')}.
 typeanno -> integer_type :
-    #basic_type{class=integer,pdepth=0,tag=tok_val('$1'),line=tok_line('$1')}.
+    #basic_type{class=integer, pdepth=0, tag=tok_val('$1'), line=tok_line('$1')}.
 typeanno -> float_type pointer_depth :
-    #basic_type{class=float,pdepth='$2',tag=tok_val('$1'),line=tok_line('$1')}.
+    #basic_type{class=float, pdepth='$2',tag=tok_val('$1'),line=tok_line('$1')}.
 typeanno -> float_type :
     #basic_type{class=float,pdepth=0,tag=tok_val('$1'),line=tok_line('$1')}.
 typeanno -> identifier pointer_depth :
     #basic_type{class=struct,pdepth='$2',tag=tok_val('$1'),
-		line=tok_line('$1')}.
+                line=tok_line('$1')}.
 typeanno -> identifier :
     #basic_type{class=struct,pdepth=0,tag=tok_val('$1'),line=tok_line('$1')}.
 typeanno -> any_type pointer_depth :
@@ -96,16 +96,16 @@ defstruct -> struct identifier defvars 'end' :
 %% function definition
 defun -> 'fun' identifier '(' defvars ')' ':' typeanno exprs 'end' :
     #function_raw{name=tok_val('$2'),params='$4',ret='$7',exprs='$8',
-		  line=tok_line('$2')}.
+                  line=tok_line('$2')}.
 defun -> 'fun' identifier '(' ')' ':' typeanno exprs 'end' :
     #function_raw{name=tok_val('$2'),params=[],ret='$6',exprs='$7',
-		  line=tok_line('$2')}.
+                  line=tok_line('$2')}.
 defun -> 'fun' identifier '(' defvars ')' exprs 'end' :
     #function_raw{name=tok_val('$2'),params='$4',ret=void_type(tok_line('$5')),
-		  exprs='$6',line=tok_line('$2')}.
+                  exprs='$6',line=tok_line('$2')}.
 defun -> 'fun' identifier '(' ')' exprs 'end' :
     #function_raw{name=tok_val('$2'),params=[],ret=void_type(tok_line('$4')),
-		  exprs='$5',line=tok_line('$2')}.
+                  exprs='$5',line=tok_line('$2')}.
 
 %% while
 while_expr -> while '(' expr ')' exprs 'end' :
@@ -146,7 +146,7 @@ struct_init_fields -> struct_init_assign :
 
 struct_init_assign -> identifier '=' expr :
     #op2{operator=assign,op1=#varref{name=tok_val('$1'),line=tok_line('$1')},
-	 op2='$3',line=tok_line('$2')}.
+         op2='$3',line=tok_line('$2')}.
 
 %% return
 return_expr -> return expr :
@@ -168,8 +168,8 @@ call_expr -> expr '(' ')' :
 
 assign_expr -> expr op2_withassign expr :
     #op2{operator=assign,op1='$1',line=tok_line('$2'),
-	 op2=#op2{operator=tok_sym('$2'),op1='$1',op2='$3',
-		  line=tok_line('$2')}}.
+         op2=#op2{operator=tok_sym('$2'),op1='$1',op2='$3',
+                  line=tok_line('$2')}}.
 assign_expr -> expr '=' expr :
     #op2{operator=assign,op1='$1',op2='$3',line=tok_line('$2')}.
 
@@ -203,23 +203,23 @@ root_expr -> label_expr : '$1'.
 
 expr -> reserved_keyword :
     return_error(tok_line('$1'), flat_format("~s is reserved keyword",
-					     [tok_sym('$1')])).
+                                             [tok_sym('$1')])).
 expr -> expr op30 expr :
-    #op2{operator=tok_sym('$2'),op1='$1',op2='$3',line=tok_line('$2')}.
+    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op29 expr :
-    #op2{operator=tok_sym('$2'),op1='$1',op2='$3',line=tok_line('$2')}.
+    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op28 expr :
-    #op2{operator=tok_sym('$2'),op1='$1',op2='$3',line=tok_line('$2')}.
+    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op27 expr :
-    #op2{operator=tok_sym('$2'),op1='$1',op2='$3',line=tok_line('$2')}.
+    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op26 expr :
-    #op2{operator=tok_sym('$2'),op1='$1',op2='$3',line=tok_line('$2')}.
+    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op25 expr :
-    #op2{operator=tok_sym('$2'),op1='$1',op2='$3',line=tok_line('$2')}.
+    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op19 :
-    #op1{operator=tok_sym('$2'),operand='$1',line=tok_line('$2')}.
+    #op1{operator=tok_sym('$2'), operand='$1', line=tok_line('$2')}.
 expr -> identifier :
-    #varref{name=tok_val('$1'),line=tok_line('$1')}.
+    #varref{name=tok_val('$1'), line=tok_line('$1')}.
 expr -> preminusplus_expr : '$1'.
 expr -> array_init_expr : '$1'.
 expr -> struct_init_expr : '$1'.
@@ -237,9 +237,9 @@ reserved_keyword -> continue : '$1'.
 %% the precedence of 'preminusplus_expr' needs to be higher than "op2 -"
 Unary 300 preminusplus_expr.
 preminusplus_expr -> '-' expr :
-    #op1{operator=tok_sym('$1'),operand='$2',line=tok_line('$1')}.
+    #op1{operator=tok_sym('$1'), operand='$2', line=tok_line('$1')}.
 preminusplus_expr -> '+' expr :
-    #op1{operator=tok_sym('$1'),operand='$2',line=tok_line('$1')}.
+    #op1{operator=tok_sym('$1'), operand='$2', line=tok_line('$1')}.
 
 Unary 900 op19.
 op19 -> '^' : '$1'.
@@ -286,10 +286,11 @@ Erlang code.
 
 -import(ecompiler_util, [void_type/1,flat_format/2]).
 
-str_to_inttks({string,Line,Str}) ->
+str_to_inttks({string, Line, Str}) ->
     lists:map(fun (Char) -> {integer, Line, Char} end, Str).
 
 tok_val({_, _, Val}) -> Val.
-tok_sym({Sym, _}) -> Sym.
-tok_line(T) -> element(2, T).
 
+tok_sym({Sym, _}) -> Sym.
+
+tok_line(T) -> element(2, T).

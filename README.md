@@ -16,17 +16,17 @@ Here are some comparisons:
 ### basic operations
 
 ```
-&p						p@
-*p						p^
-***p						p^^^
-p[3]						(p+3)^
-p.m						p.m
-p->m						p^.m
-&p[3]						p+3
-uint8_t *p					p: u8^
-void **p					p: any^^
-sizeof (struct Blah *)				sizeof(Blah^)
-malloc(sizeof(struct A))			malloc(sizeof(A))
+&p                                              p@
+*p                                              p^
+***p                                            p^^^
+p[3]                                            (p+3)^
+p.m                                             p.m
+p->m                                            p^.m
+&p[3]                                           p+3
+uint8_t *p                                      p: u8^
+void **p                                        p: any^^
+sizeof (struct Blah *)                          sizeof(Blah^)
+malloc(sizeof(struct A))                        malloc(sizeof(A))
 ```
 
 ### array and struct
