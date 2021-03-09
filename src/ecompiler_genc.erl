@@ -2,13 +2,10 @@
 
 -export([generate_ccode/4]).
 
--import(ecompiler_util,
-        [exprsmap/2, fn_struct_map/1, getvalues_bykeys/2]).
-
 -include("./ecompiler_frame.hrl").
 
 generate_ccode(Ast, GlobalVars, InitCode, OutputFile) ->
-    {FnMap, StructMap} = fn_struct_map(Ast),
+    {FnMap, StructMap} = ecompiler_util:fn_struct_map(Ast),
     Ctx = {FnMap, StructMap, GlobalVars},
     Ast2 = lists:map(fun (A) -> fixfunction_for_c(A, Ctx)
                      end,
@@ -45,7 +42,9 @@ fixfunction_for_c(#function{exprs = Exprs,
 fixfunction_for_c(Any, _) -> Any.
 
 fixexprs_for_c(Exprs, Ctx) ->
-    exprsmap(fun (E) -> fixexpr_for_c(E, Ctx) end, Exprs).
+    ecompiler_util:exprsmap(fun (E) -> fixexpr_for_c(E, Ctx)
+                            end,
+                            Exprs).
 
 fixexpr_for_c(#op1{operator = '@', operand = Operand,
                    line = Line} =
@@ -161,7 +160,7 @@ get_names(VarrefList) ->
 
 kvlist_frommap(NameAtoms, ValueMap) ->
     lists:zip(NameAtoms,
-              getvalues_bykeys(NameAtoms, ValueMap)).
+              ecompiler_util:getvalues_bykeys(NameAtoms, ValueMap)).
 
 fnret_type_tostr(#fun_type{params = Params,
                            ret = Rettype},

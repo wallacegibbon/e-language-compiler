@@ -4,8 +4,6 @@
 
 -export([parse_and_remove_const/1]).
 
--import(ecompiler_util, [exprsmap/2, flat_format/2]).
-
 -include("./ecompiler_frame.hrl").
 
 %% find all consts in AST, calculate it and replace all const references.
@@ -94,7 +92,8 @@ eval_constexpr(#varref{name = Name, line = Line},
     case maps:find(Name, Constants) of
         error ->
             throw({Line,
-                   flat_format("undefined constant ~s", [Name])});
+                   ecompiler_util:flat_format("undefined constant ~s",
+                                              [Name])});
         {ok, Val} -> Val
     end;
 eval_constexpr({ImmiType, _, Val}, _)
@@ -104,8 +103,8 @@ eval_constexpr(Num, _)
     when is_integer(Num); is_float(Num) ->
     Num;
 eval_constexpr(Any, _) ->
-    throw(flat_format("invalid const expression: ~p",
-                      [Any])).
+    throw(ecompiler_util:flat_format("invalid const expression: ~p",
+                                     [Any])).
 
 %% replace constants in AST
 replace_constants([#function_raw{params = Params,
@@ -134,8 +133,10 @@ replace_constants([#vardef{type = Type,
 replace_constants([], _) -> [].
 
 replace_inexprs(Exprs, Constants) ->
-    exprsmap(fun (E) -> replace_inexpr(E, Constants) end,
-             Exprs).
+    ecompiler_util:exprsmap(fun (E) ->
+                                    replace_inexpr(E, Constants)
+                            end,
+                            Exprs).
 
 replace_inexpr(#vardef{name = Name, initval = Initval,
                        type = Type, line = Line} =
@@ -144,7 +145,8 @@ replace_inexpr(#vardef{name = Name, initval = Initval,
     case maps:find(Name, Constants) of
         {ok, _} ->
             throw({Line,
-                   flat_format("~s conflicts with const", [Name])});
+                   ecompiler_util:flat_format("~s conflicts with const",
+                                              [Name])});
         error ->
             Expr#vardef{initval =
                             replace_inexpr(Initval, Constants),

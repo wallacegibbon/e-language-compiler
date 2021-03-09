@@ -2,8 +2,6 @@
 
 -export([expand_initexpr_infun/2, expand_initexprs/2]).
 
--import(ecompiler_util, [exprsmap/2, flat_format/2]).
-
 -include("./ecompiler_frame.hrl").
 
 %% for now, array and struct init expression is only allowed in assignment
@@ -24,7 +22,8 @@ check_initexpr_pos(_) -> ok.
 expand_initexpr_infun([#function{exprs = Exprs} = F
                        | Rest],
                       StructMap) ->
-    exprsmap(fun check_initexpr_pos/1, Exprs),
+    ecompiler_util:exprsmap(fun check_initexpr_pos/1,
+                            Exprs),
     [F#function{exprs = expand_initexprs(Exprs, StructMap)}
      | expand_initexpr_infun(Rest, StructMap)];
 expand_initexpr_infun([Any | Rest], StructMap) ->
@@ -75,7 +74,8 @@ replace_init_ops(#op2{operator = assign, op1 = Op1,
                              StructMap);
         error ->
             throw({Line,
-                   flat_format("struct ~s is not found", [Name])})
+                   ecompiler_util:flat_format("struct ~s is not found",
+                                              [Name])})
     end;
 replace_init_ops(#op2{operator = assign, op1 = Op1,
                       op2 = #array_init{elements = Elements, line = Line}},

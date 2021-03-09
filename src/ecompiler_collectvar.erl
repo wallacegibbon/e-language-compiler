@@ -3,13 +3,6 @@
 
 -export([fetch_vars/1]).
 
--import(ecompiler_util,
-        [assert/2,
-         exprsmap/2,
-         flat_format/2,
-         getvalues_bykeys/2,
-         names_of_vardefs/1]).
-
 -include("./ecompiler_frame.hrl").
 
 fetch_vars(Ast) ->
@@ -36,7 +29,7 @@ prepare_structinit_expr([#vardef{initval = Initval} = V
 prepare_structinit_expr([]) -> [].
 
 fix_structinit_ast(Lst) ->
-    exprsmap(fun fix_structinit/1, Lst).
+    ecompiler_util:exprsmap(fun fix_structinit/1, Lst).
 
 fix_structinit(#struct_init_raw{name = Name,
                                 fields = Fields, line = Line}) ->
@@ -98,10 +91,10 @@ fetch_vars([#function_raw{name = Name, ret = Ret,
     {[], ParamVars, ParamInitCode} = fetch_vars(Params,
                                                 [],
                                                 {#{}, [], true}),
-    assert(ParamInitCode =:= [],
-           {Line,
-            "function parameters can not have default "
-            "value"}),
+    ecompiler_util:assert(ParamInitCode =:= [],
+                          {Line,
+                           "function parameters can not have default "
+                           "value"}),
     {NewExprs, FunVarTypes, []} = fetch_vars(Exprs,
                                              [],
                                              {ParamVars, [], false}),
@@ -174,10 +167,12 @@ ensure_no_conflict(Name, VarMap, Line) ->
 
 throw_name_conflict(Name, Line) ->
     throw({Line,
-           flat_format("name ~s has already been used", [Name])}).
+           ecompiler_util:flat_format("name ~s has already been used",
+                                      [Name])}).
 
 getvalues_bydefs(DefList, Map) ->
-    getvalues_bykeys(names_of_vardefs(DefList), Map).
+    ecompiler_util:getvalues_bykeys(ecompiler_util:names_of_vardefs(DefList),
+                                    Map).
 
 varrefs_from_vardefs(Vardefs) ->
     lists:map(fun (#vardef{name = N, line = Line}) ->

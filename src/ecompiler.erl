@@ -4,8 +4,6 @@
          compile_to_c/2,
          query_modulefun/2]).
 
--import(ecompiler_util, [value_inlist/2]).
-
 -compile({nowarn_unused_function,
           [{record_details, 0}]}).
 
@@ -170,7 +168,8 @@ compilercd_handle({query_funret, ModName, FunName},
 compilercd_handle({record_compileop, ModName},
                   #{modchain := ModuleChain} = State) ->
     NewModuleChain = [ModName | ModuleChain],
-    case value_inlist(ModName, ModuleChain) of
+    case ecompiler_util:value_inlist(ModName, ModuleChain)
+        of
         true ->
             {reply,
              {error, module_loop, lists:reverse(NewModuleChain)},

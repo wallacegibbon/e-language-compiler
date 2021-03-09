@@ -4,17 +4,6 @@
          expand_sizeof_inexprs/2,
          fill_structinfo/2]).
 
--import(ecompiler_util,
-        [cut_extra/2,
-         exprsmap/2,
-         fill_offset/2,
-         fillto_pointerwidth/2,
-         flat_format/2,
-         fn_struct_map/1,
-         getvalues_bykeys/2,
-         names_of_varrefs/1,
-         primitive_size/1]).
-
 -include("./ecompiler_frame.hrl").
 
 expand_sizeof([#function{exprs = Exprs} = F | Rest],
@@ -36,8 +25,10 @@ expand_sizeof_inmap(Map, Ctx) ->
              Map).
 
 expand_sizeof_inexprs(Exprs, Ctx) ->
-    exprsmap(fun (E) -> expand_sizeof_inexpr(E, Ctx) end,
-             Exprs).
+    ecompiler_util:exprsmap(fun (E) ->
+                                    expand_sizeof_inexpr(E, Ctx)
+                            end,
+                            Exprs).
 
 expand_sizeof_inexpr(#sizeof{type = T, line = Line},
                      Ctx) ->
@@ -74,7 +65,7 @@ expand_sizeof_inexpr(Any, _) -> Any.
 fill_structinfo(Ast, {_, PointerWidth} = Ctx) ->
     Ast1 = lists:map(fun (E) -> fill_structsize(E, Ctx) end,
                      Ast),
-    {_, StructMap1} = fn_struct_map(Ast1),
+    {_, StructMap1} = ecompiler_util:fn_struct_map(Ast1),
     Ctx1 = {StructMap1, PointerWidth},
     Ast2 = lists:map(fun (E) -> fill_structoffsets(E, Ctx1)
                      end,
@@ -110,8 +101,8 @@ sizeof_struct(#struct{field_names = FieldNames,
     Size.
 
 getkvs_byrefs(RefList, Map) ->
-    Keys = names_of_varrefs(RefList),
-    Values = getvalues_bykeys(Keys, Map),
+    Keys = ecompiler_util:names_of_varrefs(RefList),
+    Values = ecompiler_util:getvalues_bykeys(Keys, Map),
     lists:zip(Keys, Values).
 
 %% this is the function that calculate size and offsets
@@ -138,10 +129,11 @@ sizeof_fields([], CurrentOffset, OffsetMap, _) ->
     {CurrentOffset, OffsetMap}.
 
 fix_offset(CurrentOffset, NextOffset, PointerWidth) ->
-    case cut_extra(NextOffset, PointerWidth) >
-             cut_extra(CurrentOffset, PointerWidth)
+    case ecompiler_util:cut_extra(NextOffset, PointerWidth)
+             > ecompiler_util:cut_extra(CurrentOffset, PointerWidth)
         of
-        true -> fill_offset(CurrentOffset, PointerWidth);
+        true ->
+            ecompiler_util:fill_offset(CurrentOffset, PointerWidth);
         _ -> CurrentOffset
     end.
 
@@ -149,14 +141,17 @@ fix_offset(CurrentOffset, NextOffset, PointerWidth) ->
 sizeof(#array_type{elemtype = T, len = Len},
        {_, PointerWidth} = Ctx) ->
     ElemSize = sizeof(T, Ctx),
-    case ElemSize < PointerWidth of
-        true ->
-            case PointerWidth rem ElemSize of
-                0 -> ElemSize * Len;
-                _ -> PointerWidth * Len
-            end;
-        _ -> fillto_pointerwidth(ElemSize, PointerWidth) * Len
-    end;
+    FixedSize = case ElemSize < PointerWidth of
+                    true ->
+                        case PointerWidth rem ElemSize of
+                            0 -> ElemSize;
+                            _ -> PointerWidth
+                        end;
+                    _ ->
+                        ecompiler_util:fillto_pointerwidth(ElemSize,
+                                                           PointerWidth)
+                end,
+    FixedSize * Len;
 sizeof(#basic_type{pdepth = N}, {_, PointerWidth})
     when N > 0 ->
     PointerWidth;
@@ -164,18 +159,21 @@ sizeof(#basic_type{class = struct, tag = Tag},
        {StructMap, _} = Ctx) ->
     case maps:find(Tag, StructMap) of
         {ok, S} -> sizeof_struct(S, Ctx);
-        error -> throw(flat_format("~s is not found", [Tag]))
+        error ->
+            throw(ecompiler_util:flat_format("~s is not found",
+                                             [Tag]))
     end;
 sizeof(#basic_type{class = C, tag = Tag},
        {_, PointerWidth})
     when C =:= integer; C =:= float ->
-    case primitive_size(Tag) of
+    case ecompiler_util:primitive_size(Tag) of
         pwidth -> PointerWidth;
         V when is_integer(V) -> V;
         _ ->
-            throw(flat_format("primitive_size(~s) is invalid",
-                              [Tag]))
+            throw(ecompiler_util:flat_format("primitive_size(~s) is invalid",
+                                             [Tag]))
     end;
 sizeof(#fun_type{}, {_, PointerWidth}) -> PointerWidth;
 sizeof(A, _) ->
-    throw(flat_format("invalid type ~p on sizeof", [A])).
+    throw(ecompiler_util:flat_format("invalid type ~p on sizeof",
+                                     [A])).
