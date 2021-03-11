@@ -1,8 +1,3 @@
--type
-     e_type() :: any(). % u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
-
--type e_expr() :: any().
-
 -record(function,
         {line :: integer(),
          name :: atom(),
@@ -114,3 +109,8 @@
 -record(label, {line :: integer(), name :: atom()}).
 
 -record(goto, {line :: integer(), expr :: e_expr()}).
+
+% primitive types: u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
+-type e_type() :: any().
+
+-type e_expr() :: any().
