@@ -62,10 +62,10 @@ eval_constexpr(#varref{name = Name, line = Line}, Constants) ->
             Val
     end;
 eval_constexpr({ImmiType, _, Val}, _)
-    when ImmiType =:= integer; ImmiType =:= float ->
+        when ImmiType =:= integer; ImmiType =:= float ->
     Val;
 eval_constexpr(Num, _)
-    when is_integer(Num); is_float(Num) ->
+        when is_integer(Num); is_float(Num) ->
     Num;
 eval_constexpr(Any, _) ->
     throw(ecompiler_util:flat_format("invalid const expression: ~p",

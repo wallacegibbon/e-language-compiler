@@ -6,8 +6,7 @@
 
 %% for now, array and struct init expression is only allowed in assignment
 check_initexpr_pos(#op2{operator = assign, op2 = Op2})
-    when is_record(Op2, struct_init);
-         is_record(Op2, array_init) ->
+        when is_record(Op2, struct_init); is_record(Op2, array_init) ->
     ok;
 check_initexpr_pos(#struct_init{line = Line}) ->
     throw({Line,
@@ -113,7 +112,7 @@ default_initof(#basic_type{class = float, pdepth = 0},
                Line) ->
     {float, Line, 0.0};
 default_initof(#basic_type{pdepth = Pdepth}, Line)
-    when Pdepth > 0 ->
+        when Pdepth > 0 ->
     {integer, Line, 0}.
 
 arrayinit_to_op(Target, [E | Rest], Cnt, Line, Newcode, StructMap) ->

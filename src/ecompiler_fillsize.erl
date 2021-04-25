@@ -74,8 +74,7 @@ offsetsof_struct(#struct{field_names = FieldNames,
     {_, OffsetMap} = sizeof_fields(FieldTypeList, 0, #{}, Ctx),
     OffsetMap.
 
-sizeof_struct(#struct{size = Size}, _)
-    when is_integer(Size) ->
+sizeof_struct(#struct{size = Size}, _) when is_integer(Size) ->
     Size;
 sizeof_struct(#struct{field_names = FieldNames,
                       field_types = FieldTypes},
@@ -122,8 +121,7 @@ fix_offset(CurrentOffset, NextOffset, PointerWidth) ->
     end.
 
 %%
-sizeof(#array_type{elemtype = T, len = Len},
-       {_, PointerWidth} = Ctx) ->
+sizeof(#array_type{elemtype = T, len = Len}, {_, PointerWidth} = Ctx) ->
     ElemSize = sizeof(T, Ctx),
     FixedSize = case ElemSize < PointerWidth of
                     true ->
@@ -138,8 +136,7 @@ sizeof(#array_type{elemtype = T, len = Len},
                                                            PointerWidth)
                 end,
     FixedSize * Len;
-sizeof(#basic_type{pdepth = N}, {_, PointerWidth})
-    when N > 0 ->
+sizeof(#basic_type{pdepth = N}, {_, PointerWidth}) when N > 0 ->
     PointerWidth;
 sizeof(#basic_type{class = struct, tag = Tag},
        {StructMap, _} = Ctx) ->
@@ -150,9 +147,8 @@ sizeof(#basic_type{class = struct, tag = Tag},
             throw(ecompiler_util:flat_format("~s is not found",
                                              [Tag]))
     end;
-sizeof(#basic_type{class = C, tag = Tag},
-       {_, PointerWidth})
-    when C =:= integer; C =:= float ->
+sizeof(#basic_type{class = C, tag = Tag}, {_, PointerWidth})
+        when C =:= integer; C =:= float ->
     case ecompiler_util:primitive_size(Tag) of
         pwidth ->
             PointerWidth;

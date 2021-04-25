@@ -120,8 +120,7 @@ fetch_vars([Any | Rest], NewAst, Ctx) ->
 fetch_vars([], NewAst, {VarTypes, InitCode, _}) ->
     {lists:reverse(NewAst), VarTypes, lists:reverse(InitCode)}.
 
-append_to_ast(Ast, Varname, Initval, Line)
-    when Initval =/= none ->
+append_to_ast(Ast, Varname, Initval, Line) when Initval =/= none ->
     [#op2{operator = assign, op1 = #varref{name = Varname, line = Line},
           op2 = Initval, line = Line} | Ast];
 append_to_ast(Ast, _, _, _) ->

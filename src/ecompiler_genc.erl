@@ -100,7 +100,7 @@ statements_tostr([], _, StatementStrs, FnDeclars) ->
      lists:reverse(FnDeclars)}.
 
 fn_declar_str(Name, ParamStr, #basic_type{pdepth = N} = Rettype)
-    when N > 0 ->
+        when N > 0 ->
     fnret_type_tostr(Rettype,
                      io_lib:format("(*~s(~s))", [Name, ParamStr]));
 fn_declar_str(Name, ParamStr, #fun_type{} = Rettype) ->
@@ -142,39 +142,28 @@ kvlist_frommap(NameAtoms, ValueMap) ->
     lists:zip(NameAtoms,
               ecompiler_util:getvalues_bykeys(NameAtoms, ValueMap)).
 
-fnret_type_tostr(#fun_type{params = Params,
-                           ret = Rettype},
-                 NameParams) ->
+fnret_type_tostr(#fun_type{params = Params, ret = Rettype}, NameParams) ->
     Paramstr = params_to_str_noname(Params),
     NewNameParams = io_lib:format("~s(~s)",
                                   [NameParams, Paramstr]),
     type_tostr(Rettype, NewNameParams);
-fnret_type_tostr(#basic_type{pdepth = N} = T,
-                 NameParams)
-    when N > 0 ->
+fnret_type_tostr(#basic_type{pdepth = N} = T, NameParams) when N > 0 ->
     type_tostr(T#basic_type{pdepth = N - 1}, NameParams).
 
 %% convert type to C string
-type_tostr(#array_type{len = Len,
-                       elemtype = ElementType},
-           Varname) ->
+type_tostr(#array_type{len = Len, elemtype = ElementType}, Varname) ->
     io_lib:format("struct {~s val[~w];} ~s",
                   [type_tostr(ElementType, ""), Len, Varname]);
-type_tostr(#basic_type{class = Class, tag = Tag,
-                       pdepth = Depth},
-           Varname)
-    when Depth > 0 ->
+type_tostr(#basic_type{class = Class, tag = Tag, pdepth = Depth}, Varname)
+        when Depth > 0 ->
     io_lib:format("~s~s ~s",
                   [typetag_tostr(Class, Tag),
                    lists:duplicate(Depth, "*"),
                    Varname]);
-type_tostr(#basic_type{class = Class, tag = Tag,
-                       pdepth = 0},
-           Varname) ->
+type_tostr(#basic_type{class = Class, tag = Tag, pdepth = 0}, Varname) ->
     io_lib:format("~s ~s",
                   [typetag_tostr(Class, Tag), Varname]);
-type_tostr(#fun_type{params = Params, ret = Rettype},
-           Varname) ->
+type_tostr(#fun_type{params = Params, ret = Rettype}, Varname) ->
     Paramstr = params_to_str_noname(Params),
     NameParams = io_lib:format("(*~s)(~s)",
                                [Varname, Paramstr]),
@@ -231,10 +220,10 @@ expr_tostr(#label{name = Name}, _) ->
 expr_tostr(#varref{name = Name}, Endchar) ->
     io_lib:format("~s~c", [Name, Endchar]);
 expr_tostr({Any, _Line, Value}, Endchar)
-    when Any =:= integer; Any =:= float ->
+        when Any =:= integer; Any =:= float ->
     io_lib:format("~w~c", [Value, Endchar]);
 expr_tostr({Any, _Line, S}, Endchar)
-    when Any =:= string ->
+        when Any =:= string ->
     io_lib:format("\"~s\"~c",
                   [handle_special_char_instr(S), Endchar]).
 

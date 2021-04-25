@@ -124,7 +124,7 @@ typeof_expr(#op2{operator = '-', op1 = Op1, op2 = Op2, line = Line}, Ctx) ->
             T
     end;
 typeof_expr(#op2{operator = Op, op1 = Op1, op2 = Op2, line = Line}, Ctx)
-    when Op =:= '*'; Op =:= '/' ->
+        when Op =:= '*'; Op =:= '/' ->
     TypeofOp1 = typeof_expr(Op1, Ctx),
     TypeofOp2 = typeof_expr(Op2, Ctx),
     case is_bothnumber_sametype(TypeofOp1, TypeofOp2) of
@@ -283,7 +283,7 @@ incr_pdepth(T, OpLine) ->
                                       [fmt_type(T)])}).
 
 decr_pdepth(#basic_type{pdepth = Pdepth} = T, _)
-    when Pdepth > 0 ->
+        when Pdepth > 0 ->
     T#basic_type{pdepth = Pdepth - 1};
 decr_pdepth(T, OpLine) ->
     throw({OpLine,
@@ -379,19 +379,19 @@ compare_type(_, _) ->
 
 is_pointer_and_int_order(#basic_type{pdepth = N} = O,
                          #basic_type{class = integer, pdepth = 0})
-    when N > 0 ->
+        when N > 0 ->
     {true, O};
 is_pointer_and_int_order(_, _) ->
     false.
 
 is_pointer_and_int(#basic_type{pdepth = N} = O,
                    #basic_type{class = integer, pdepth = 0})
-    when N > 0 ->
+        when N > 0 ->
     {true, O};
 is_pointer_and_int(#basic_type{class = integer,
                                pdepth = 0},
                    #basic_type{pdepth = N} = O)
-    when N > 0 ->
+        when N > 0 ->
     {true, O};
 is_pointer_and_int(_, _) ->
     false.
@@ -467,7 +467,7 @@ fmt_type(#fun_type{params = Params, ret = Rettype}) ->
 fmt_type(#array_type{elemtype = Type, len = N}) ->
     io_lib:format("{~s, ~w}", [fmt_type(Type), N]);
 fmt_type(#basic_type{tag = Tag, pdepth = Pdepth})
-    when Pdepth > 0 ->
+        when Pdepth > 0 ->
     io_lib:format("(~s~s)", [Tag, lists:duplicate(Pdepth, "^")]);
 fmt_type(#basic_type{tag = Tag, pdepth = 0}) ->
     atom_to_list(Tag).
