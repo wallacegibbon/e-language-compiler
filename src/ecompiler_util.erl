@@ -1,19 +1,12 @@
 -module(ecompiler_util).
 
--export([expr2str/1,
-         exprsmap/2,
-         filter_varref_inmaps/2,
-         flat_format/2,
-         getvalues_bykeys/2,
-         names_of_vardefs/1,
-         names_of_varrefs/1,
+-export([expr2str/1, exprsmap/2, filter_varref_inmaps/2, flat_format/2,
+         getvalues_bykeys/2, names_of_vardefs/1, names_of_varrefs/1,
          value_inlist/2]).
 
 -export([primitive_size/1, void_type/1]).
 
--export([cut_extra/2,
-         fill_offset/2,
-         fillto_pointerwidth/2]).
+-export([cut_extra/2, fill_offset/2, fillto_pointerwidth/2]).
 
 -export([fn_struct_map/1]).
 
@@ -29,37 +22,30 @@
 
 %% when do simple convertions, this function can be used to avoid boilerplate
 %% code for if, while, return, call...,  so you can concentrate on op1, op2...
-exprsmap(Fn,
-         [#if_expr{condition = Cond, then = Then, else = Else} =
-              If
-          | Rest]) ->
+exprsmap(Fn, [#if_expr{condition = Cond, then = Then, else = Else} = If
+              | Rest]) ->
     [If#if_expr{condition = Fn(Cond),
                 then = exprsmap(Fn, Then), else = exprsmap(Fn, Else)}
      | exprsmap(Fn, Rest)];
-exprsmap(Fn,
-         [#while_expr{condition = Cond, exprs = Exprs} = While
-          | Rest]) ->
+exprsmap(Fn, [#while_expr{condition = Cond, exprs = Exprs} = While | Rest]) ->
     [While#while_expr{condition = Fn(Cond),
                       exprs = exprsmap(Fn, Exprs)}
      | exprsmap(Fn, Rest)];
-exprsmap(Fn,
-         [#call{fn = Callee, args = Args} = Fncall | Rest]) ->
+exprsmap(Fn, [#call{fn = Callee, args = Args} = Fncall | Rest]) ->
     [Fncall#call{fn = Fn(Callee), args = exprsmap(Fn, Args)}
      | exprsmap(Fn, Rest)];
-exprsmap(Fn,
-         [#return{expr = Retexpr} = Return | Rest]) ->
+exprsmap(Fn, [#return{expr = Retexpr} = Return | Rest]) ->
     [Return#return{expr = Fn(Retexpr)} | exprsmap(Fn,
                                                   Rest)];
 exprsmap(Fn, [Any | Rest]) ->
     [Fn(Any) | exprsmap(Fn, Rest)];
-exprsmap(_, []) -> [].
+exprsmap(_, []) ->
+    [].
 
-expr2str(#if_expr{condition = Cond, then = Then,
-                  else = Else}) ->
+expr2str(#if_expr{condition = Cond, then = Then, else = Else}) ->
     io_lib:format("if (~s) ~s else ~s end",
                   [expr2str(Cond), expr2str(Then), expr2str(Else)]);
-expr2str(#while_expr{condition = Cond,
-                     exprs = Exprs}) ->
+expr2str(#while_expr{condition = Cond, exprs = Exprs}) ->
     io_lib:format("while (~s) ~s end",
                   [expr2str(Cond), expr2str(Exprs)]);
 expr2str(#call{fn = Callee, args = Args}) ->
@@ -69,18 +55,18 @@ expr2str(#return{expr = Retexpr}) ->
     io_lib:format("return (~s)", [expr2str(Retexpr)]);
 expr2str(#varref{name = Name}) ->
     io_lib:format("~s", [expr2str(Name)]);
-expr2str(#op2{operator = Operator, op1 = Op1,
-              op2 = Op2}) ->
+expr2str(#op2{operator = Operator, op1 = Op1, op2 = Op2}) ->
     io_lib:format("~s ~s ~s",
                   [expr2str(Op1), Operator, expr2str(Op2)]);
-expr2str(#op1{operator = Operator,
-              operand = Operand}) ->
+expr2str(#op1{operator = Operator, operand = Operand}) ->
     io_lib:format("~s ~s", [expr2str(Operand), Operator]);
 expr2str({Immi, _, Val})
     when Immi =:= integer; Immi =:= float ->
     io_lib:format("~w", [Val]);
-expr2str({Immi, _, Val}) when Immi =:= string -> Val;
-expr2str(Any) -> Any.
+expr2str({Immi, _, Val}) when Immi =:= string ->
+    Val;
+expr2str(Any) ->
+    Any.
 
 flat_format(FmtStr, Args) ->
     lists:flatten(io_lib:format(FmtStr, Args)).
@@ -172,8 +158,7 @@ filter_varref_inmaps(Varrefs, TargetMap) ->
 -ifdef(EUNIT).
 
 filter_varref_inmaps_test() ->
-    A = filter_varref_inmaps([#varref{name = a},
-                              #varref{name = b}],
+    A = filter_varref_inmaps([#varref{name = a}, #varref{name = b}],
                              #{a => 1}),
     ?assertEqual(A, [#varref{name = a}]).
 
@@ -181,6 +166,8 @@ filter_varref_inmaps_test() ->
 
 exist_inmap(Keyname, Map) ->
     case maps:find(Keyname, Map) of
-        {ok, _} -> true;
-        _ -> false
+        {ok, _} ->
+            true;
+        _ ->
+            false
     end.

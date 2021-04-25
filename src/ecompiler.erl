@@ -1,11 +1,8 @@
 -module(ecompiler).
 
--export([compile_to_ast/1,
-         compile_to_c/2,
-         query_modulefun/2]).
+-export([compile_to_ast/1, compile_to_c/2, query_modulefun/2]).
 
--compile({nowarn_unused_function,
-          [{record_details, 0}]}).
+-compile({nowarn_unused_function, [{record_details, 0}]}).
 
 -include("./ecompiler_frame.hrl").
 
@@ -17,13 +14,10 @@
 
 compile_to_c(InputFilename, OutputFilename) ->
     start_compilercd(filename:dirname(InputFilename)),
-    try {Ast, Vars, InitCode} =
-            parse_and_compile(InputFilename),
+    try
+        {Ast, Vars, InitCode} = parse_and_compile(InputFilename),
         %io:format(">> ~p~n~n", [Ast]),
-        ecompiler_genc:generate_ccode(Ast,
-                                      Vars,
-                                      InitCode,
-                                      OutputFilename)
+        ecompiler_genc:generate_ccode(Ast, Vars, InitCode, OutputFilename)
     catch
         {Filename, Errinfo} ->
             io:format("~s: ~p~n", [Filename, Errinfo])
@@ -38,7 +32,8 @@ compile_to_ast(Filename) ->
 
 parse_and_compile(Filename) ->
     ok = record_compileop(Filename),
-    try {ok, Ast} = parse_file(Filename),
+    try
+        {ok, Ast} = parse_file(Filename),
         Ret = ecompiler_compile:compile_from_rawast(Ast, #{}),
         {Ast1, Vars, InitCode, FnMap} = Ret,
         ok = record_module(Filename, FnMap),
@@ -51,20 +46,27 @@ parse_and_compile(Filename) ->
 
 parse_file(Filename) when is_list(Filename) ->
     case file:read_file(Filename) of
-        {ok, RawContent} -> parse_content(RawContent);
-        {error, enoent} -> throw("module not found");
-        {error, Reason} -> throw(Reason)
+        {ok, RawContent} ->
+            parse_content(RawContent);
+        {error, enoent} ->
+            throw("module not found");
+        {error, Reason} ->
+            throw(Reason)
     end.
 
 parse_content(RawContent) ->
-    case ecompiler_scan:string(binary_to_list(RawContent))
-        of
+    case
+        ecompiler_scan:string(binary_to_list(RawContent))
+    of
         {ok, Tokens, _} ->
             case ecompiler_parse:parse(Tokens) of
-                {ok, _Ast} = D -> D;
-                {error, {Line, _, Errinfo}} -> throw({Line, Errinfo})
+                {ok, _Ast} = D ->
+                    D;
+                {error, {Line, _, Errinfo}} ->
+                    throw({Line, Errinfo})
             end;
-        {error, Errors, Warnings} -> throw({Errors, Warnings})
+        {error, Errors, Warnings} ->
+            throw({Errors, Warnings})
     end.
 
 %% start the recording process (record fnmap for module)
@@ -75,7 +77,8 @@ start_compilercd(SearchDir) ->
         undefined ->
             Pid = spawn_link(fun () -> compilercd_loop(State) end),
             register(ecompiler_helper, Pid);
-        _ -> ok = change_searchdir(SearchDir)
+        _ ->
+            ok = change_searchdir(SearchDir)
     end.
 
 %% some c functions like printf, puts, malloc
@@ -96,7 +99,8 @@ init_modmap() ->
                           ret = CommonStrType}}}.
 
 stop_compilercd() ->
-    try ok = compilercd_cmd(stop),
+    try
+        ok = compilercd_cmd(stop),
         unregister(ecompiler_helper)
     catch
         error:_ -> ok
@@ -126,8 +130,10 @@ query_modulefun(ModName, FunName) ->
         {error, module_notfound, SearchDir} ->
             parse_and_compile(mk_filename(SearchDir, ModName)),
             query_modulefun(ModName, FunName);
-        {error, function_notfound} = R -> R;
-        {ok, _Type} = R -> R
+        {error, function_notfound} = R ->
+            R;
+        {ok, _Type} = R ->
+            R
     end.
 
 mk_filename(SearchDir, ModName) ->
@@ -148,9 +154,11 @@ compilercd_loop(State) ->
                 {reply, Result, NewState} ->
                     Pid ! {Ref, Result},
                     compilercd_loop(NewState);
-                stop -> Pid ! {Ref, ok}
+                stop ->
+                    Pid ! {Ref, ok}
             end;
-        Any -> throw(Any)
+        Any ->
+            throw(Any)
     end.
 
 compilercd_handle({query_funret, ModName, FunName},
@@ -159,8 +167,10 @@ compilercd_handle({query_funret, ModName, FunName},
     case maps:find(ModName, ModuleFnMap) of
         {ok, FnMap} ->
             case maps:find(FunName, FnMap) of
-                {ok, _Type} = D -> {reply, D, State};
-                error -> {reply, {error, function_notfound}, State}
+                {ok, _Type} = D ->
+                    {reply, D, State};
+                error ->
+                    {reply, {error, function_notfound}, State}
             end;
         error ->
             {reply, {error, module_notfound, SearchDir}, State}
@@ -168,29 +178,29 @@ compilercd_handle({query_funret, ModName, FunName},
 compilercd_handle({record_compileop, ModName},
                   #{modchain := ModuleChain} = State) ->
     NewModuleChain = [ModName | ModuleChain],
-    case ecompiler_util:value_inlist(ModName, ModuleChain)
-        of
+    case
+        ecompiler_util:value_inlist(ModName, ModuleChain)
+    of
         true ->
-            {reply,
-             {error, module_loop, lists:reverse(NewModuleChain)},
+            {reply, {error, module_loop, lists:reverse(NewModuleChain)},
              State};
-        _ -> {reply, ok, State#{modchain := NewModuleChain}}
+        _ ->
+            {reply, ok, State#{modchain := NewModuleChain}}
     end;
 compilercd_handle({unrecord_compileop, ModName},
                   #{modchain := [ModName | Rest]} = State) ->
     {reply, ok, State#{modchain := Rest}};
 compilercd_handle({record_module, ModName, FnMap},
                   #{modmap := ModuleFnMap} = State) ->
-    {reply,
-     ok,
-     State#{modmap := ModuleFnMap#{ModName => FnMap}}};
+    {reply, ok, State#{modmap := ModuleFnMap#{ModName => FnMap}}};
 compilercd_handle({change_searchdir, NewDir}, State) ->
     {reply, ok, State#{searchdir := NewDir}};
 compilercd_handle(debug,
                   #{modmap := ModuleFnMap, modchain := ModuleChain} =
                       State) ->
     {reply, {ModuleFnMap, ModuleChain}, State};
-compilercd_handle(stop, _) -> stop.
+compilercd_handle(stop, _) ->
+    stop.
 
 -ifdef(EUNIT).
 

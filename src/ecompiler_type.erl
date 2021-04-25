@@ -1,22 +1,16 @@
 -module(ecompiler_type).
 
--export([checktype_ast/3,
-         checktype_exprs/3,
-         typeof_expr/2]).
+-export([checktype_ast/3, checktype_exprs/3, typeof_expr/2]).
 
 -include("./ecompiler_frame.hrl").
 
-checktype_ast([#function{var_types = VarTypes,
-                         exprs = Exprs, type = Fntype}
+checktype_ast([#function{var_types = VarTypes, exprs = Exprs, type = Fntype}
                | Rest],
               GlobalVarTypes, {FunctionMap, StructMap} = Maps) ->
     checktype_types(maps:values(VarTypes), StructMap),
     checktype_type(Fntype#fun_type.ret, StructMap),
     CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
-    Ctx = {CurrentVars,
-           FunctionMap,
-           StructMap,
-           Fntype#fun_type.ret},
+    Ctx = {CurrentVars, FunctionMap, StructMap, Fntype#fun_type.ret},
     typeof_exprs(Exprs, Ctx),
     checktype_ast(Rest, GlobalVarTypes, Maps);
 checktype_ast([#struct{name = Name,
@@ -28,20 +22,15 @@ checktype_ast([#struct{name = Name,
     Ctx = {GlobalVarTypes, FunctionMap, StructMap, none},
     %% check the default values for fields
     InitFieldNames =
-        ecompiler_util:filter_varref_inmaps(FieldNames,
-                                            FieldDefaults),
-    check_structfields(InitFieldNames,
-                       FieldTypes,
-                       FieldDefaults,
-                       Name,
-                       Ctx),
+        ecompiler_util:filter_varref_inmaps(FieldNames, FieldDefaults),
+    check_structfields(InitFieldNames, FieldTypes, FieldDefaults, Name, Ctx),
     checktype_ast(Rest, GlobalVarTypes, Maps);
 checktype_ast([_ | Rest], GlobalVarTypes, Maps) ->
     checktype_ast(Rest, GlobalVarTypes, Maps);
-checktype_ast([], _, _) -> ok.
+checktype_ast([], _, _) ->
+    ok.
 
-checktype_exprs(Exprs, GlobalVarTypes,
-                {FunctionMap, StructMap}) ->
+checktype_exprs(Exprs, GlobalVarTypes, {FunctionMap, StructMap}) ->
     Ctx = {GlobalVarTypes, FunctionMap, StructMap, none},
     typeof_exprs(Exprs, Ctx).
 
@@ -49,8 +38,7 @@ typeof_exprs(Exprs, Ctx) ->
     lists:map(fun (Expr) -> typeof_expr(Expr, Ctx) end,
               Exprs).
 
-typeof_expr(#op2{operator = assign, op1 = Op1,
-                 op2 = Op2, line = Line},
+typeof_expr(#op2{operator = assign, op1 = Op1, op2 = Op2, line = Line},
             {_, _, StructMap, _} = Ctx) ->
     TypeofOp1 = case Op1 of
                     #op2{operator = '.', op1 = SubOp1, op2 = SubOp2} ->
@@ -58,11 +46,13 @@ typeof_expr(#op2{operator = assign, op1 = Op1,
                         typeof_structfield(S, SubOp2, StructMap, Line);
                     #op1{operator = '^', operand = SubOp} ->
                         decr_pdepth(typeof_expr(SubOp, Ctx), Line);
-                    #varref{} -> typeof_expr(Op1, Ctx);
+                    #varref{} ->
+                        typeof_expr(Op1, Ctx);
                     Any ->
                         throw({Line,
-                               ecompiler_util:flat_format("invalid left value (~s)",
-                                                          [ecompiler_util:expr2str(Any)])})
+                               ecompiler_util:flat_format(
+                                    "invalid left value (~s)",
+                                    [ecompiler_util:expr2str(Any)])})
                 end,
     TypeofOp2 = typeof_expr(Op2, Ctx),
     case compare_type(TypeofOp1, TypeofOp2) of
@@ -71,22 +61,16 @@ typeof_expr(#op2{operator = assign, op1 = Op1,
                    ecompiler_util:flat_format("type mismatch in \"~s = ~s\"",
                                               [fmt_type(TypeofOp1),
                                                fmt_type(TypeofOp2)])});
-        _ -> TypeofOp1
+        _ ->
+            TypeofOp1
     end;
-typeof_expr(#op2{operator = '.', op1 = Op1, op2 = Op2,
-                 line = Line},
+typeof_expr(#op2{operator = '.', op1 = Op1, op2 = Op2, line = Line},
             {_, _, StructMap, _} = Ctx) ->
-    typeof_structfield(typeof_expr(Op1, Ctx),
-                       Op2,
-                       StructMap,
-                       Line);
-typeof_expr(#op2{operator = '::',
-                 op1 = #varref{name = self}, op2 = Op2},
+    typeof_structfield(typeof_expr(Op1, Ctx), Op2, StructMap, Line);
+typeof_expr(#op2{operator = '::', op1 = #varref{name = self}, op2 = Op2},
             Ctx) ->
     typeof_expr(Op2, Ctx);
-typeof_expr(#op2{operator = '::', op1 = Op1, op2 = Op2,
-                 line = Line},
-            _) ->
+typeof_expr(#op2{operator = '::', op1 = Op1, op2 = Op2, line = Line}, _) ->
     ecompiler_util:assert(is_record(Op1, varref),
                           {Line, "invalid usage on ::"}),
     ecompiler_util:assert(is_record(Op2, varref),
@@ -102,13 +86,13 @@ typeof_expr(#op2{operator = '::', op1 = Op1, op2 = Op2,
             throw({Line,
                    ecompiler_util:flat_format("~s:~s is not found",
                                               [ModName, FunName])});
-        {ok, Type} -> Type
+        {ok, Type} ->
+            Type
     catch
-        E -> throw({Line, E})
+        E ->
+            throw({Line, E})
     end;
-typeof_expr(#op2{operator = '+', op1 = Op1, op2 = Op2,
-                 line = Line},
-            Ctx) ->
+typeof_expr(#op2{operator = '+', op1 = Op1, op2 = Op2, line = Line}, Ctx) ->
     TypeofOp1 = typeof_expr(Op1, Ctx),
     TypeofOp2 = typeof_expr(Op2, Ctx),
     case is_bothnumber_sametype(TypeofOp1, TypeofOp2) of
@@ -117,14 +101,14 @@ typeof_expr(#op2{operator = '+', op1 = Op1, op2 = Op2,
                 false ->
                     throw({Line,
                            type_mismatchinfo_op2('+', TypeofOp1, TypeofOp2)});
-                {true, Ptype} -> Ptype
+                {true, Ptype} ->
+                    Ptype
             end;
-        {true, T} -> T
+        {true, T} ->
+            T
     end;
 %% integer + pointer is valid, but integer - pointer is invalid
-typeof_expr(#op2{operator = '-', op1 = Op1, op2 = Op2,
-                 line = Line},
-            Ctx) ->
+typeof_expr(#op2{operator = '-', op1 = Op1, op2 = Op2, line = Line}, Ctx) ->
     TypeofOp1 = typeof_expr(Op1, Ctx),
     TypeofOp2 = typeof_expr(Op2, Ctx),
     case is_bothnumber_sametype(TypeofOp1, TypeofOp2) of
@@ -133,13 +117,13 @@ typeof_expr(#op2{operator = '-', op1 = Op1, op2 = Op2,
                 false ->
                     throw({Line,
                            type_mismatchinfo_op2('-', TypeofOp1, TypeofOp2)});
-                {true, Ptype} -> Ptype
+                {true, Ptype} ->
+                    Ptype
             end;
-        {true, T} -> T
+        {true, T} ->
+            T
     end;
-typeof_expr(#op2{operator = Op, op1 = Op1, op2 = Op2,
-                 line = Line},
-            Ctx)
+typeof_expr(#op2{operator = Op, op1 = Op1, op2 = Op2, line = Line}, Ctx)
     when Op =:= '*'; Op =:= '/' ->
     TypeofOp1 = typeof_expr(Op1, Ctx),
     TypeofOp2 = typeof_expr(Op2, Ctx),
@@ -147,59 +131,56 @@ typeof_expr(#op2{operator = Op, op1 = Op1, op2 = Op2,
         false ->
             throw({Line,
                    type_mismatchinfo_op2(Op, TypeofOp1, TypeofOp2)});
-        {true, T} -> T
+        {true, T} ->
+            T
     end;
 %% the left operators are: and, or, band, bor, bxor, bsl, bsr, >, <, ...
-typeof_expr(#op2{operator = Op, op1 = Op1, op2 = Op2,
-                 line = Line},
-            Ctx) ->
+typeof_expr(#op2{operator = Op, op1 = Op1, op2 = Op2, line = Line}, Ctx) ->
     TypeofOp1 = typeof_expr(Op1, Ctx),
     TypeofOp2 = typeof_expr(Op2, Ctx),
     case is_bothinteger(TypeofOp1, TypeofOp2) of
         false ->
             throw({Line,
                    type_mismatchinfo_op2(Op, TypeofOp1, TypeofOp2)});
-        true -> TypeofOp1
+        true ->
+            TypeofOp1
     end;
-typeof_expr(#op1{operator = '^', operand = Operand,
-                 line = Line},
-            Ctx) ->
+typeof_expr(#op1{operator = '^', operand = Operand, line = Line}, Ctx) ->
     case typeof_expr(Operand, Ctx) of
-        #basic_type{} = T -> decr_pdepth(T, Line);
+        #basic_type{} = T ->
+            decr_pdepth(T, Line);
         _ ->
             throw({Line,
-                   ecompiler_util:flat_format("invalid \"^\" on operand ~s",
-                                              [ecompiler_util:expr2str(Operand)])})
+                   ecompiler_util:flat_format(
+                        "invalid \"^\" on operand ~s",
+                        [ecompiler_util:expr2str(Operand)])})
     end;
-typeof_expr(#op1{operator = '@', operand = Operand,
-                 line = Line},
+typeof_expr(#op1{operator = '@', operand = Operand, line = Line},
             {_, _, StructMap, _} = Ctx) ->
     case Operand of
         #op2{operator = '.', op1 = Op1, op2 = Op2} ->
-            T = typeof_structfield(typeof_expr(Op1, Ctx),
-                                   Op2,
-                                   StructMap,
+            T = typeof_structfield(typeof_expr(Op1, Ctx), Op2, StructMap,
                                    Line),
             incr_pdepth(T, Line);
         #varref{} ->
             incr_pdepth(typeof_expr(Operand, Ctx), Line);
         _ ->
             throw({Line,
-                   ecompiler_util:flat_format("invalid \"@\" on operand ~s",
-                                              [ecompiler_util:expr2str(Operand)])})
+                   ecompiler_util:flat_format(
+                        "invalid \"@\" on operand ~s",
+                        [ecompiler_util:expr2str(Operand)])})
     end;
 typeof_expr(#op1{operand = Operand}, Ctx) ->
     typeof_expr(Operand, Ctx);
-typeof_expr(#call{fn = FunExpr, args = Args,
-                  line = Line},
-            Ctx) ->
+typeof_expr(#call{fn = FunExpr, args = Args, line = Line}, Ctx) ->
     ArgsTypes = typeof_exprs(Args, Ctx),
     case typeof_expr(FunExpr, Ctx) of
         #fun_type{params = FnParamTypes, ret = FnRetType} ->
             case compare_types(ArgsTypes, FnParamTypes) of
                 false ->
                     throw({Line, args_errorinfo(FnParamTypes, ArgsTypes)});
-                true -> FnRetType
+                true ->
+                    FnRetType
             end;
         T ->
             throw({Line,
@@ -213,8 +194,7 @@ typeof_expr(#if_expr{condition = Condition, then = Then,
     typeof_exprs(Then, Ctx),
     typeof_exprs(Else, Ctx),
     ecompiler_util:void_type(Line);
-typeof_expr(#while_expr{condition = Condition,
-                        exprs = Exprs, line = Line},
+typeof_expr(#while_expr{condition = Condition, exprs = Exprs, line = Line},
             Ctx) ->
     typeof_expr(Condition, Ctx),
     typeof_exprs(Exprs, Ctx),
@@ -225,10 +205,11 @@ typeof_expr(#return{expr = Expr, line = Line},
     case compare_type(RealRet, FnRetType) of
         false ->
             throw({Line,
-                   ecompiler_util:flat_format("ret type should be (~s), not (~s)",
-                                              [fmt_type(FnRetType),
-                                               fmt_type(RealRet)])});
-        true -> RealRet
+                   ecompiler_util:flat_format(
+                        "ret type should be (~s), not (~s)",
+                        [fmt_type(FnRetType), fmt_type(RealRet)])});
+        true ->
+            RealRet
     end;
 typeof_expr(#varref{name = Name, line = Line},
             {VarTypes, FunctionMap, StructMap, _}) ->
@@ -237,17 +218,17 @@ typeof_expr(#varref{name = Name, line = Line},
                    case maps:find(Name, FunctionMap) of
                        error ->
                            throw({Line,
-                                  ecompiler_util:flat_format("variable ~s is undefined",
-                                                             [Name])});
-                       {ok, T} -> T
+                                  ecompiler_util:flat_format(
+                                        "variable ~s is undefined", [Name])});
+                       {ok, T} ->
+                           T
                    end;
-               {ok, T} -> T
+               {ok, T} ->
+                   T
            end,
     checktype_type(Type, StructMap),
     Type;
-typeof_expr(#array_init{elements = Elements,
-                        line = Line},
-            Ctx) ->
+typeof_expr(#array_init{elements = Elements, line = Line}, Ctx) ->
     ElementTypes = typeof_exprs(Elements, Ctx),
     case are_sametype(ElementTypes) of
         true ->
@@ -264,11 +245,8 @@ typeof_expr(#struct_init{name = StructName,
             {_, _, StructMap, _} = Ctx) ->
     case maps:find(StructName, StructMap) of
         {ok, #struct{field_types = FieldTypes}} ->
-            check_structfields(InitFieldNames,
-                               FieldTypes,
-                               InitFieldValues,
-                               StructName,
-                               Ctx),
+            check_structfields(InitFieldNames, FieldTypes, InitFieldValues,
+                               StructName, Ctx),
             #basic_type{class = struct, tag = StructName,
                         pdepth = 0, line = Line};
         _ ->
@@ -277,21 +255,17 @@ typeof_expr(#struct_init{name = StructName,
                                               [StructName])})
     end;
 typeof_expr(#sizeof{line = Line}, _) ->
-    #basic_type{class = integer, pdepth = 0, tag = i64,
-                line = Line};
+    #basic_type{class = integer, pdepth = 0, tag = i64, line = Line};
 typeof_expr(#goto{line = Line}, _) ->
     ecompiler_util:void_type(Line);
 typeof_expr(#label{line = Line}, _) ->
     ecompiler_util:void_type(Line);
 typeof_expr({float, Line, _}, _) ->
-    #basic_type{class = float, pdepth = 0, tag = f64,
-                line = Line};
+    #basic_type{class = float, pdepth = 0, tag = f64, line = Line};
 typeof_expr({integer, Line, _}, _) ->
-    #basic_type{class = integer, pdepth = 0, tag = i64,
-                line = Line};
+    #basic_type{class = integer, pdepth = 0, tag = i64, line = Line};
 typeof_expr({string, Line, _}, _) ->
-    #basic_type{class = integer, pdepth = 1, tag = i8,
-                line = Line}.
+    #basic_type{class = integer, pdepth = 1, tag = i8, line = Line}.
 
 args_errorinfo(FnParamTypes, ArgsTypes) ->
     ecompiler_util:flat_format("args should be (~s), not (~s)",
@@ -316,43 +290,37 @@ decr_pdepth(T, OpLine) ->
            ecompiler_util:flat_format("'^' on type ~s is invalid",
                                       [fmt_type(T)])}).
 
-check_structfields(FieldNames, FieldTypes, ValMap,
-                   StructName, Ctx) ->
+check_structfields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
     lists:map(fun (V) ->
-                      check_structfield(V,
-                                        FieldTypes,
-                                        ValMap,
-                                        StructName,
+                      check_structfield(V, FieldTypes, ValMap, StructName,
                                         Ctx)
               end,
               FieldNames).
 
-check_structfield(#varref{name = FieldName,
-                          line = Line},
+check_structfield(#varref{name = FieldName, line = Line},
                   FieldTypes, ValMap, StructName,
                   {_, _, StructMap, _} = Ctx) ->
     {ok, Val} = maps:find(FieldName, ValMap),
-    ExpectedType = get_field_type(FieldName,
-                                  FieldTypes,
-                                  StructName,
-                                  Line),
+    ExpectedType = get_field_type(FieldName, FieldTypes, StructName, Line),
     checktype_type(ExpectedType, StructMap),
     GivenType = typeof_expr(Val, Ctx),
     case compare_type(ExpectedType, GivenType) of
         false ->
             throw({Line,
                    ecompiler_util:flat_format("~s.~s type error: ~s = ~s",
-                                              [StructName,
-                                               FieldName,
+                                              [StructName, FieldName,
                                                fmt_type(ExpectedType),
                                                fmt_type(GivenType)])});
-        _ -> ok
+        _ ->
+            ok
     end.
 
 are_sametype([TargetType, TargetType | Rest]) ->
     are_sametype([TargetType | Rest]);
-are_sametype([_]) -> true;
-are_sametype(_) -> false.
+are_sametype([_]) ->
+    true;
+are_sametype(_) ->
+    false.
 
 typeof_structfield(#basic_type{class = struct,
                                tag = StructName, pdepth = 0},
@@ -377,16 +345,21 @@ get_field_type(FieldName, FieldTypes, StructName,
             throw({Line,
                    ecompiler_util:flat_format("~s.~s does not exist",
                                               [StructName, FieldName])});
-        {ok, Type} -> Type
+        {ok, Type} ->
+            Type
     end.
 
 compare_types([T1 | Types1], [T2 | Types2]) ->
     case compare_type(T1, T2) of
-        true -> compare_types(Types1, Types2);
-        _ -> false
+        true ->
+            compare_types(Types1, Types2);
+        _ ->
+            false
     end;
-compare_types([], []) -> true;
-compare_types(_, _) -> false.
+compare_types([], []) ->
+    true;
+compare_types(_, _) ->
+    false.
 
 compare_type(#fun_type{params = P1, ret = R1},
              #fun_type{params = P2, ret = R2}) ->
@@ -401,13 +374,15 @@ compare_type(#basic_type{class = C, tag = T,
                          pdepth = P},
              #basic_type{class = C, tag = T, pdepth = P}) ->
     true;
-compare_type(_, _) -> false.
+compare_type(_, _) ->
+    false.
 
 is_pointer_and_int_order(#basic_type{pdepth = N} = O,
                          #basic_type{class = integer, pdepth = 0})
     when N > 0 ->
     {true, O};
-is_pointer_and_int_order(_, _) -> false.
+is_pointer_and_int_order(_, _) ->
+    false.
 
 is_pointer_and_int(#basic_type{pdepth = N} = O,
                    #basic_type{class = integer, pdepth = 0})
@@ -418,28 +393,32 @@ is_pointer_and_int(#basic_type{class = integer,
                    #basic_type{pdepth = N} = O)
     when N > 0 ->
     {true, O};
-is_pointer_and_int(_, _) -> false.
+is_pointer_and_int(_, _) ->
+    false.
 
 is_bothnumber_sametype(T1, T2) ->
     case is_bothinteger(T1, T2) or is_bothfloat(T1, T2) of
-        true -> {true, T1};
-        false -> false
+        true ->
+            {true, T1};
+        false ->
+            false
     end.
 
 is_bothinteger(#basic_type{pdepth = 0, class = integer},
                #basic_type{pdepth = 0, class = integer}) ->
     true;
-is_bothinteger(_, _) -> false.
+is_bothinteger(_, _) ->
+    false.
 
 is_bothfloat(#basic_type{pdepth = 0, class = float},
              #basic_type{pdepth = 0, class = float}) ->
     true;
-is_bothfloat(_, _) -> false.
+is_bothfloat(_, _) ->
+    false.
 
 type_mismatchinfo_op2(Operator, TypeofOp1, TypeofOp2) ->
     ecompiler_util:flat_format("type error in \"~s ~s ~s\"",
-                               [fmt_type(TypeofOp1),
-                                Operator,
+                               [fmt_type(TypeofOp1), Operator,
                                 fmt_type(TypeofOp2)]).
 
 checktype_types(TypeList, StructMap) ->
@@ -447,26 +426,26 @@ checktype_types(TypeList, StructMap) ->
               TypeList).
 
 %% check type, ensure that all struct used by type exists.
-checktype_type(#basic_type{class = struct, tag = Tag,
-                           line = Line},
+checktype_type(#basic_type{class = struct, tag = Tag, line = Line},
                StructMap) ->
     case maps:find(Tag, StructMap) of
         error ->
             throw({Line,
                    ecompiler_util:flat_format("struct ~s is not found",
                                               [Tag])});
-        {ok, _} -> ok
+        {ok, _} ->
+            ok
     end;
-checktype_type(#basic_type{}, _) -> ok;
-checktype_type(#array_type{elemtype = Elemtype},
-               StructMap) ->
+checktype_type(#basic_type{}, _) ->
+    ok;
+checktype_type(#array_type{elemtype = Elemtype}, StructMap) ->
     case Elemtype of
         #array_type{line = Line} ->
             throw({Line, "nested array is not supported"});
-        _ -> checktype_type(Elemtype, StructMap)
+        _ ->
+            checktype_type(Elemtype, StructMap)
     end;
-checktype_type(#fun_type{params = Params,
-                         ret = Rettype},
+checktype_type(#fun_type{params = Params, ret = Rettype},
                StructMap) ->
     checktype_types(Params, StructMap),
     checktype_type(Rettype, StructMap).
@@ -474,11 +453,13 @@ checktype_type(#fun_type{params = Params,
 fmt_types_join(Types) ->
     lists:join(",", fmt_types(Types)).
 
-fmt_types(Types) -> fmt_types(Types, []).
+fmt_types(Types) ->
+    fmt_types(Types, []).
 
 fmt_types([Type | Rest], Result) ->
     fmt_types(Rest, [fmt_type(Type) | Result]);
-fmt_types([], Result) -> lists:reverse(Result).
+fmt_types([], Result) ->
+    lists:reverse(Result).
 
 fmt_type(#fun_type{params = Params, ret = Rettype}) ->
     io_lib:format("fun(~s): ~s",
@@ -487,7 +468,6 @@ fmt_type(#array_type{elemtype = Type, len = N}) ->
     io_lib:format("{~s, ~w}", [fmt_type(Type), N]);
 fmt_type(#basic_type{tag = Tag, pdepth = Pdepth})
     when Pdepth > 0 ->
-    io_lib:format("(~s~s)",
-                  [Tag, lists:duplicate(Pdepth, "^")]);
+    io_lib:format("(~s~s)", [Tag, lists:duplicate(Pdepth, "^")]);
 fmt_type(#basic_type{tag = Tag, pdepth = 0}) ->
     atom_to_list(Tag).

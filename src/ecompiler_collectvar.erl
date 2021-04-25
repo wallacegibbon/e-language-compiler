@@ -7,26 +7,21 @@
 
 fetch_vars(Ast) ->
     Ast2 = prepare_structinit_expr(Ast),
-    {Ast3, VarTypes, InitCode} = fetch_vars(Ast2,
-                                            [],
-                                            {#{}, [], true}),
+    {Ast3, VarTypes, InitCode} = fetch_vars(Ast2, [], {#{}, [], true}),
     {Ast3, VarTypes, InitCode}.
 
 %% struct_init's fields were assign expressions, convert it to a map
-prepare_structinit_expr([#function_raw{exprs = Exprs} =
-                             F
-                         | Rest]) ->
+prepare_structinit_expr([#function_raw{exprs = Exprs} = F | Rest]) ->
     [F#function_raw{exprs = fix_structinit_ast(Exprs)}
      | prepare_structinit_expr(Rest)];
-prepare_structinit_expr([#struct_raw{fields = Exprs} = S
-                         | Rest]) ->
+prepare_structinit_expr([#struct_raw{fields = Exprs} = S | Rest]) ->
     [S#struct_raw{fields = fix_structinit_ast(Exprs)}
      | prepare_structinit_expr(Rest)];
-prepare_structinit_expr([#vardef{initval = Initval} = V
-                         | Rest]) ->
+prepare_structinit_expr([#vardef{initval = Initval} = V | Rest]) ->
     [V#vardef{initval = fix_structinit(Initval)}
      | prepare_structinit_expr(Rest)];
-prepare_structinit_expr([]) -> [].
+prepare_structinit_expr([]) ->
+    [].
 
 fix_structinit_ast(Lst) ->
     ecompiler_util:exprsmap(fun fix_structinit/1, Lst).
@@ -45,7 +40,8 @@ fix_structinit(#op2{op1 = Op1, op2 = Op2} = O) ->
           op2 = fix_structinit(Op2)};
 fix_structinit(#op1{operand = Operand} = O) ->
     O#op1{operand = fix_structinit(Operand)};
-fix_structinit(Any) -> Any.
+fix_structinit(Any) ->
+    Any.
 
 structinit_tomap(Exprs) ->
     structinit_tomap(Exprs, [], #{}).
@@ -53,13 +49,9 @@ structinit_tomap(Exprs) ->
 -define(ASSIGN_OP(Op1, Op2),
         #op2{operator = assign, op1 = Op1, op2 = Op2}).
 
-structinit_tomap([?ASSIGN_OP((#varref{name = Field} =
-                                  Op1),
-                             Val)
-                  | Rest],
+structinit_tomap([?ASSIGN_OP((#varref{name = Field} = Op1), Val) | Rest],
                  FieldNames, ExprMap) ->
-    structinit_tomap(Rest,
-                     [Op1 | FieldNames],
+    structinit_tomap(Rest, [Op1 | FieldNames],
                      ExprMap#{Field => fix_structinit(Val)});
 structinit_tomap([], FieldNames, ExprMap) ->
     {FieldNames, ExprMap}.
@@ -68,14 +60,12 @@ structinit_tomap([], FieldNames, ExprMap) ->
 %% fetched out from the code, it should be replaced as assignment in the
 %% same place.
 fetch_vars([#vardef{name = Name, type = Type,
-                    line = Line, initval = Initval}
-            | Rest],
+                    line = Line, initval = Initval} | Rest],
            NewAst, {VarTypes, InitCode, CollectInitCode}) ->
     ensure_no_conflict(Name, VarTypes, Line),
     case CollectInitCode of
         true ->
-            fetch_vars(Rest,
-                       NewAst,
+            fetch_vars(Rest, NewAst,
                        {VarTypes#{Name => Type},
                         append_to_ast(InitCode, Name, Initval, Line),
                         CollectInitCode});
@@ -85,8 +75,7 @@ fetch_vars([#vardef{name = Name, type = Type,
                        {VarTypes#{Name => Type}, InitCode, CollectInitCode})
     end;
 fetch_vars([#function_raw{name = Name, ret = Ret,
-                          params = Params, exprs = Exprs, line = Line}
-            | Rest],
+                          params = Params, exprs = Exprs, line = Line} | Rest],
            NewAst, {GlobalVars, _, _} = Ctx) ->
     {[], ParamVars, ParamInitCode} = fetch_vars(Params,
                                                 [],
@@ -115,9 +104,7 @@ fetch_vars([#function_raw{name = Name, ret = Ret,
                                  line = Line}},
     fetch_vars(Rest, [Fn | NewAst], Ctx);
 fetch_vars([#struct_raw{name = Name, fields = Fields,
-                        line = Line}
-            | Rest],
-           NewAst, Ctx) ->
+                        line = Line} | Rest], NewAst, Ctx) ->
     %% struct can have default value
     {[], FieldTypes, StructInitCode} = fetch_vars(Fields,
                                                   [],
@@ -131,29 +118,25 @@ fetch_vars([#struct_raw{name = Name, fields = Fields,
 fetch_vars([Any | Rest], NewAst, Ctx) ->
     fetch_vars(Rest, [Any | NewAst], Ctx);
 fetch_vars([], NewAst, {VarTypes, InitCode, _}) ->
-    {lists:reverse(NewAst),
-     VarTypes,
-     lists:reverse(InitCode)}.
+    {lists:reverse(NewAst), VarTypes, lists:reverse(InitCode)}.
 
 append_to_ast(Ast, Varname, Initval, Line)
     when Initval =/= none ->
-    [#op2{operator = assign,
-          op1 = #varref{name = Varname, line = Line},
-          op2 = Initval, line = Line}
-     | Ast];
-append_to_ast(Ast, _, _, _) -> Ast.
+    [#op2{operator = assign, op1 = #varref{name = Varname, line = Line},
+          op2 = Initval, line = Line} | Ast];
+append_to_ast(Ast, _, _, _) ->
+    Ast.
 
-check_labelconflict([#label{name = Name, line = Line}
-                     | Rest],
+check_labelconflict([#label{name = Name, line = Line} | Rest],
                     GlobalVars, LocalVars) ->
     ensure_no_conflict(Name, LocalVars, Line),
     ensure_no_conflict(Name, GlobalVars, Line),
     check_labelconflict(Rest, GlobalVars, LocalVars);
-check_labelconflict([], _, _) -> ok.
+check_labelconflict([], _, _) ->
+    ok.
 
 check_varconflict(GlobalVars, LocalVars) ->
-    ConflictMap = maps:with(maps:keys(GlobalVars),
-                            LocalVars),
+    ConflictMap = maps:with(maps:keys(GlobalVars), LocalVars),
     maps:map(fun (Name, T) ->
                      throw_name_conflict(Name, element(2, T))
              end,
@@ -161,8 +144,10 @@ check_varconflict(GlobalVars, LocalVars) ->
 
 ensure_no_conflict(Name, VarMap, Line) ->
     case maps:find(Name, VarMap) of
-        {ok, _} -> throw_name_conflict(Name, Line);
-        _ -> ok
+        {ok, _} ->
+            throw_name_conflict(Name, Line);
+        _ ->
+            ok
     end.
 
 throw_name_conflict(Name, Line) ->
