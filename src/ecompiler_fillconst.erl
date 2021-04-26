@@ -17,8 +17,8 @@ parse_and_remove_const(Ast) ->
 fetch_constants(Ast) ->
     fetch_constants(Ast, [], #{}).
 
-fetch_constants([#const{name = Name, val = Expr} | Rest],
-                Statements, Constants) ->
+fetch_constants([#const{name = Name, val = Expr} | Rest], Statements,
+                Constants) ->
     fetch_constants(Rest, Statements,
                     Constants#{Name => eval_constexpr(Expr, Constants)});
 fetch_constants([Any | Rest], Statements, Constants) ->
@@ -55,9 +55,8 @@ eval_constexpr(#op2{operator = 'bsl', op1 = Op1, op2 = Op2}, Constants) ->
 eval_constexpr(#varref{name = Name, line = Line}, Constants) ->
     case maps:find(Name, Constants) of
         error ->
-            throw({Line,
-                   ecompiler_util:flat_format("undefined constant ~s",
-                                              [Name])});
+            throw({Line, ecompiler_util:flat_format("undefined constant ~s",
+                                                    [Name])});
         {ok, Val} ->
             Val
     end;
@@ -72,16 +71,13 @@ eval_constexpr(Any, _) ->
                                      [Any])).
 
 %% replace constants in AST
-replace_constants([#function_raw{params = Params,
-                                 exprs = Exprs} = Fn | Rest],
+replace_constants([#function_raw{params = Params, exprs = Exprs} = Fn | Rest],
                   Constants) ->
-    [Fn#function_raw{params =
-                         replace_inexprs(Params, Constants),
+    [Fn#function_raw{params = replace_inexprs(Params, Constants),
                      exprs = replace_inexprs(Exprs, Constants)}
      | replace_constants(Rest, Constants)];
 replace_constants([#struct_raw{fields = Fields} = S | Rest], Constants) ->
-    [S#struct_raw{fields =
-                      replace_inexprs(Fields, Constants)}
+    [S#struct_raw{fields = replace_inexprs(Fields, Constants)}
      | replace_constants(Rest, Constants)];
 replace_constants([#vardef{type = Type, initval = Initval} = V | Rest],
                   Constants) ->
@@ -97,41 +93,32 @@ replace_inexprs(Exprs, Constants) ->
                             end,
                             Exprs).
 
-replace_inexpr(#vardef{name = Name, initval = Initval,
-                       type = Type, line = Line} = Expr,
+replace_inexpr(#vardef{name = Name, initval = Initval, type = Type,
+                       line = Line} = Expr,
                Constants) ->
     case maps:find(Name, Constants) of
         {ok, _} ->
-            throw({Line,
-                   ecompiler_util:flat_format("~s conflicts with const",
-                                              [Name])});
+            throw({Line, ecompiler_util:flat_format("~s conflicts with const",
+                                                    [Name])});
         error ->
-            Expr#vardef{initval =
-                            replace_inexpr(Initval, Constants),
+            Expr#vardef{initval = replace_inexpr(Initval, Constants),
                         type = replace_intype(Type, Constants)}
     end;
-replace_inexpr(#varref{name = Name, line = Line} = Expr,
-               Constants) ->
+replace_inexpr(#varref{name = Name, line = Line} = Expr, Constants) ->
     case maps:find(Name, Constants) of
         {ok, Val} ->
             constnum_to_token(Val, Line);
         error ->
             Expr
     end;
-replace_inexpr(#struct_init_raw{fields = Fields} = Expr,
-               Constants) ->
-    Expr#struct_init_raw{fields =
-                             replace_inexprs(Fields, Constants)};
-replace_inexpr(#array_init{elements = Elements} = Expr,
-               Constants) ->
-    Expr#array_init{elements =
-                        replace_inexprs(Elements, Constants)};
-replace_inexpr(#op2{op1 = Op1, op2 = Op2} = Expr,
-               Constants) ->
+replace_inexpr(#struct_init_raw{fields = Fields} = Expr, Constants) ->
+    Expr#struct_init_raw{fields = replace_inexprs(Fields, Constants)};
+replace_inexpr(#array_init{elements = Elements} = Expr, Constants) ->
+    Expr#array_init{elements = replace_inexprs(Elements, Constants)};
+replace_inexpr(#op2{op1 = Op1, op2 = Op2} = Expr, Constants) ->
     Expr#op2{op1 = replace_inexpr(Op1, Constants),
              op2 = replace_inexpr(Op2, Constants)};
-replace_inexpr(#op1{operand = Operand} = Expr,
-               Constants) ->
+replace_inexpr(#op1{operand = Operand} = Expr, Constants) ->
     Expr#op1{operand = replace_inexpr(Operand, Constants)};
 replace_inexpr(Any, _) ->
     Any.
@@ -141,13 +128,11 @@ constnum_to_token(Num, Line) when is_float(Num) ->
 constnum_to_token(Num, Line) when is_integer(Num) ->
     #integer{val = Num, line = Line}.
 
-replace_intype(#array_type{elemtype = ElementType,
-                           len = Len} = T,
+replace_intype(#array_type{elemtype = ElementType, len = Len} = T,
                Constants) ->
-    T#array_type{elemtype =
-                     replace_intype(ElementType, Constants),
-                 len =
-                     eval_constexpr(replace_inexpr(Len, Constants),
-                                    Constants)};
+    T#array_type{elemtype = replace_intype(ElementType, Constants),
+                 len = eval_constexpr(replace_inexpr(Len, Constants),
+                                      Constants)};
 replace_intype(Any, _) ->
     Any.
+

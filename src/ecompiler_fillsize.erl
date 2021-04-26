@@ -33,11 +33,9 @@ expand_sizeof_inexpr(#op2{op1 = Op1, op2 = Op2} = O, Ctx) ->
 expand_sizeof_inexpr(#op1{operand = Operand} = O, Ctx) ->
     O#op1{operand = expand_sizeof_inexpr(Operand, Ctx)};
 expand_sizeof_inexpr(#struct_init{field_values = ExprMap} = Si, Ctx) ->
-    Si#struct_init{field_values =
-                       expand_sizeof_inmap(ExprMap, Ctx)};
+    Si#struct_init{field_values = expand_sizeof_inmap(ExprMap, Ctx)};
 expand_sizeof_inexpr(#array_init{elements = Elements} = Ai, Ctx) ->
-    Ai#array_init{elements =
-                      expand_sizeof_inexprs(Elements, Ctx)};
+    Ai#array_init{elements = expand_sizeof_inexprs(Elements, Ctx)};
 expand_sizeof_inexpr(Any, _) ->
     Any.
 
@@ -76,8 +74,7 @@ offsetsof_struct(#struct{field_names = FieldNames,
 
 sizeof_struct(#struct{size = Size}, _) when is_integer(Size) ->
     Size;
-sizeof_struct(#struct{field_names = FieldNames,
-                      field_types = FieldTypes},
+sizeof_struct(#struct{field_names = FieldNames, field_types = FieldTypes},
               Ctx) ->
     FieldTypeList = getkvs_byrefs(FieldNames, FieldTypes),
     {Size, _} = sizeof_fields(FieldTypeList, 0, #{}, Ctx),
@@ -138,8 +135,7 @@ sizeof(#array_type{elemtype = T, len = Len}, {_, PointerWidth} = Ctx) ->
     FixedSize * Len;
 sizeof(#basic_type{pdepth = N}, {_, PointerWidth}) when N > 0 ->
     PointerWidth;
-sizeof(#basic_type{class = struct, tag = Tag},
-       {StructMap, _} = Ctx) ->
+sizeof(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
     case maps:find(Tag, StructMap) of
         {ok, S} ->
             sizeof_struct(S, Ctx);
@@ -163,3 +159,4 @@ sizeof(#fun_type{}, {_, PointerWidth}) ->
 sizeof(A, _) ->
     throw(ecompiler_util:flat_format("invalid type ~p on sizeof",
                                      [A])).
+

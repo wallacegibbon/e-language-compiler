@@ -26,8 +26,7 @@ prepare_structinit_expr([]) ->
 fix_structinit_ast(Lst) ->
     ecompiler_util:exprsmap(fun fix_structinit/1, Lst).
 
-fix_structinit(#struct_init_raw{name = Name,
-                                fields = Fields, line = Line}) ->
+fix_structinit(#struct_init_raw{name = Name, fields = Fields, line = Line}) ->
     {FieldNames, InitExprMap} = structinit_tomap(Fields),
     #struct_init{name = Name, field_names = FieldNames,
                  field_values = InitExprMap, line = Line};
@@ -36,8 +35,7 @@ fix_structinit(#array_init{elements = Elements} = A) ->
 fix_structinit(#vardef{initval = Initval} = V) ->
     V#vardef{initval = fix_structinit(Initval)};
 fix_structinit(#op2{op1 = Op1, op2 = Op2} = O) ->
-    O#op2{op1 = fix_structinit(Op1),
-          op2 = fix_structinit(Op2)};
+    O#op2{op1 = fix_structinit(Op1), op2 = fix_structinit(Op2)};
 fix_structinit(#op1{operand = Operand} = O) ->
     O#op1{operand = fix_structinit(Operand)};
 fix_structinit(Any) ->
@@ -59,31 +57,30 @@ structinit_tomap([], FieldNames, ExprMap) ->
 %% in function expressions, the init code of defvar can not be simply
 %% fetched out from the code, it should be replaced as assignment in the
 %% same place.
-fetch_vars([#vardef{name = Name, type = Type,
-                    line = Line, initval = Initval} | Rest],
-           NewAst, {VarTypes, InitCode, CollectInitCode}) ->
+fetch_vars([#vardef{name = Name, type = Type, line = Line, initval = Initval}
+            | Rest],
+           NewAst,
+           {VarTypes, InitCode, CollectInitCode}) ->
     ensure_no_conflict(Name, VarTypes, Line),
     case CollectInitCode of
         true ->
-            fetch_vars(Rest, NewAst,
-                       {VarTypes#{Name => Type},
+            fetch_vars(Rest, NewAst, {VarTypes#{Name => Type},
                         append_to_ast(InitCode, Name, Initval, Line),
                         CollectInitCode});
         _ ->
-            fetch_vars(Rest,
-                       append_to_ast(NewAst, Name, Initval, Line),
+            fetch_vars(Rest, append_to_ast(NewAst, Name, Initval, Line),
                        {VarTypes#{Name => Type}, InitCode, CollectInitCode})
     end;
-fetch_vars([#function_raw{name = Name, ret = Ret,
-                          params = Params, exprs = Exprs, line = Line} | Rest],
-           NewAst, {GlobalVars, _, _} = Ctx) ->
+fetch_vars([#function_raw{name = Name, ret = Ret, params = Params,
+                          exprs = Exprs, line = Line} | Rest],
+           NewAst,
+           {GlobalVars, _, _} = Ctx) ->
     {[], ParamVars, ParamInitCode} = fetch_vars(Params,
                                                 [],
                                                 {#{}, [], true}),
     ecompiler_util:assert(ParamInitCode =:= [],
                           {Line,
-                           "function parameters can not have default "
-                           "value"}),
+                           "function parameters can not have default value"}),
     {NewExprs, FunVarTypes, []} = fetch_vars(Exprs,
                                              [],
                                              {ParamVars, [], false}),
@@ -91,24 +88,20 @@ fetch_vars([#function_raw{name = Name, ret = Ret,
     check_varconflict(GlobalVars, FunVarTypes),
     %% lable names should be different from variables,
     %% because the operand of goto could be a pointer variable.
-    Labels = lists:filter(fun (E) -> element(1, E) =:= label
-                          end,
+    Labels = lists:filter(fun (E) -> element(1, E) =:= label end,
                           Exprs),
     check_labelconflict(Labels, GlobalVars, FunVarTypes),
     ParamsForType = getvalues_bydefs(Params, ParamVars),
-    Fn = #function{name = Name, var_types = FunVarTypes,
-                   exprs = NewExprs,
+    Fn = #function{name = Name, var_types = FunVarTypes, exprs = NewExprs,
                    param_names = varrefs_from_vardefs(Params), line = Line,
                    type =
                        #fun_type{params = ParamsForType, ret = Ret,
                                  line = Line}},
     fetch_vars(Rest, [Fn | NewAst], Ctx);
-fetch_vars([#struct_raw{name = Name, fields = Fields,
-                        line = Line} | Rest], NewAst, Ctx) ->
+fetch_vars([#struct_raw{name = Name, fields = Fields, line = Line} | Rest],
+           NewAst, Ctx) ->
     %% struct can have default value
-    {[], FieldTypes, StructInitCode} = fetch_vars(Fields,
-                                                  [],
-                                                  {#{}, [], true}),
+    {[], FieldTypes, StructInitCode} = fetch_vars(Fields, [], {#{}, [], true}),
     {_, FieldInitMap} = structinit_tomap(StructInitCode),
     FieldNames = varrefs_from_vardefs(Fields),
     S = #struct{name = Name, field_types = FieldTypes,
@@ -127,7 +120,8 @@ append_to_ast(Ast, _, _, _) ->
     Ast.
 
 check_labelconflict([#label{name = Name, line = Line} | Rest],
-                    GlobalVars, LocalVars) ->
+                    GlobalVars,
+                    LocalVars) ->
     ensure_no_conflict(Name, LocalVars, Line),
     ensure_no_conflict(Name, GlobalVars, Line),
     check_labelconflict(Rest, GlobalVars, LocalVars);
@@ -150,9 +144,8 @@ ensure_no_conflict(Name, VarMap, Line) ->
     end.
 
 throw_name_conflict(Name, Line) ->
-    throw({Line,
-           ecompiler_util:flat_format("name ~s has already been used",
-                                      [Name])}).
+    throw({Line, ecompiler_util:flat_format("name ~s has already been used",
+                                            [Name])}).
 
 getvalues_bydefs(DefList, Map) ->
     ecompiler_util:getvalues_bykeys(ecompiler_util:names_of_vardefs(DefList),
@@ -163,3 +156,4 @@ varrefs_from_vardefs(Vardefs) ->
                       #varref{name = N, line = Line}
               end,
               Vardefs).
+

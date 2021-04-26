@@ -77,15 +77,12 @@ check_field_rec1([], _, _) ->
 check_field_rec2(Name, StructMap, UsedStructs) ->
     case ecompiler_util:value_inlist(Name, UsedStructs) of
         false ->
-            check_struct_rec(maps:get(Name, StructMap),
-                             StructMap,
-                             UsedStructs);
+            check_struct_rec(maps:get(Name, StructMap), StructMap, UsedStructs);
         true ->
             throw({recur, lists:reverse(UsedStructs)})
     end.
 
-contain_struct(#basic_type{class = struct, pdepth = 0,
-                           tag = Name}) ->
+contain_struct(#basic_type{class = struct, pdepth = 0, tag = Name}) ->
     {yes, Name};
 contain_struct(#array_type{elemtype = BaseT}) ->
     contain_struct(BaseT);

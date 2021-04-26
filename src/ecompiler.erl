@@ -55,9 +55,7 @@ parse_file(Filename) when is_list(Filename) ->
     end.
 
 parse_content(RawContent) ->
-    case
-        ecompiler_scan:string(binary_to_list(RawContent))
-    of
+    case ecompiler_scan:string(binary_to_list(RawContent)) of
         {ok, Tokens, _} ->
             case ecompiler_parse:parse(Tokens) of
                 {ok, _Ast} = D ->
@@ -71,8 +69,7 @@ parse_content(RawContent) ->
 
 %% start the recording process (record fnmap for module)
 start_compilercd(SearchDir) ->
-    State = #{searchdir => SearchDir,
-              modmap => init_modmap(), modchain => []},
+    State = #{searchdir => SearchDir, modmap => init_modmap(), modchain => []},
     case whereis(ecompiler_helper) of
         undefined ->
             Pid = spawn_link(fun () -> compilercd_loop(State) end),
@@ -83,10 +80,8 @@ start_compilercd(SearchDir) ->
 
 %% some c functions like printf, puts, malloc
 init_modmap() ->
-    CommonIntType = #basic_type{class = integer,
-                                tag = isize, pdepth = 0},
-    CommonStrType = #basic_type{class = integer, tag = i8,
-                                pdepth = 1},
+    CommonIntType = #basic_type{class = integer, tag = isize, pdepth = 0},
+    CommonStrType = #basic_type{class = integer, tag = i8, pdepth = 1},
     #{c =>
           #{printf =>
                 #fun_type{params = [CommonStrType, CommonIntType],
@@ -107,17 +102,13 @@ stop_compilercd() ->
     end.
 
 record_compileop(Filename) ->
-    compilercd_cmd({record_compileop,
-                    filename_tomod(Filename)}).
+    compilercd_cmd({record_compileop, filename_tomod(Filename)}).
 
 unrecord_compileop(Filename) ->
-    compilercd_cmd({unrecord_compileop,
-                    filename_tomod(Filename)}).
+    compilercd_cmd({unrecord_compileop, filename_tomod(Filename)}).
 
 record_module(Filename, FnMap) ->
-    compilercd_cmd({record_module,
-                    filename_tomod(Filename),
-                    FnMap}).
+    compilercd_cmd({record_module, filename_tomod(Filename), FnMap}).
 
 change_searchdir(NewDir) ->
     compilercd_cmd({change_searchdir, NewDir}).
@@ -137,10 +128,10 @@ query_modulefun(ModName, FunName) ->
     end.
 
 mk_filename(SearchDir, ModName) ->
-    lists:flatten(io_lib:format("~s/~s.e",
-                                [SearchDir, ModName])).
+    lists:flatten(io_lib:format("~s/~s.e", [SearchDir, ModName])).
 
-record_details() -> compilercd_cmd(debug).
+record_details() ->
+    compilercd_cmd(debug).
 
 compilercd_cmd(Command) ->
     Ref = make_ref(),
@@ -178,9 +169,7 @@ compilercd_handle({query_funret, ModName, FunName},
 compilercd_handle({record_compileop, ModName},
                   #{modchain := ModuleChain} = State) ->
     NewModuleChain = [ModName | ModuleChain],
-    case
-        ecompiler_util:value_inlist(ModName, ModuleChain)
-    of
+    case ecompiler_util:value_inlist(ModName, ModuleChain) of
         true ->
             {reply, {error, module_loop, lists:reverse(NewModuleChain)},
              State};
