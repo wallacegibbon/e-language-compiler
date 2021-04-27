@@ -88,3 +88,4 @@ contain_struct(#array_type{elemtype = BaseT}) ->
     contain_struct(BaseT);
 contain_struct(_) ->
     no.
+

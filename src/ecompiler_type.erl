@@ -315,9 +315,8 @@ typeof_structfield(#basic_type{class = struct, tag = StructName, pdepth = 0},
         {ok, #struct{field_types = FieldTypes}} ->
             get_field_type(FieldName, FieldTypes, StructName, Line);
         error ->
-            throw({Line,
-                   ecompiler_util:flat_format("struct ~s is not found",
-                                              [StructName])})
+            throw({Line, ecompiler_util:flat_format("struct ~s is not found",
+                                                    [StructName])})
     end;
 typeof_structfield(T, _, _, Line) ->
     throw({Line, ecompiler_util:flat_format("op1 for \".\" is not struct ~s",

@@ -86,8 +86,8 @@ getkvs_byrefs(RefList, Map) ->
     lists:zip(Keys, Values).
 
 %% this is the function that calculate size and offsets
-sizeof_fields([{Fname, Ftype} | Rest], CurrentOffset,
-              OffsetMap, {_, PointerWidth} = Ctx) ->
+sizeof_fields([{Fname, Ftype} | Rest], CurrentOffset, OffsetMap,
+              {_, PointerWidth} = Ctx) ->
     FieldSize = sizeof(Ftype, Ctx),
     NextOffset = CurrentOffset + FieldSize,
     case CurrentOffset rem PointerWidth =/= 0 of
@@ -140,8 +140,7 @@ sizeof(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
         {ok, S} ->
             sizeof_struct(S, Ctx);
         error ->
-            throw(ecompiler_util:flat_format("~s is not found",
-                                             [Tag]))
+            throw(ecompiler_util:flat_format("~s is not found", [Tag]))
     end;
 sizeof(#basic_type{class = C, tag = Tag}, {_, PointerWidth})
         when C =:= integer; C =:= float ->

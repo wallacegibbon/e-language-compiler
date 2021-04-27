@@ -153,8 +153,7 @@ compilercd_loop(State) ->
     end.
 
 compilercd_handle({query_funret, ModName, FunName},
-                  #{modmap := ModuleFnMap, searchdir := SearchDir} =
-                      State) ->
+                  #{modmap := ModuleFnMap, searchdir := SearchDir} = State) ->
     case maps:find(ModName, ModuleFnMap) of
         {ok, FnMap} ->
             case maps:find(FunName, FnMap) of
@@ -184,9 +183,8 @@ compilercd_handle({record_module, ModName, FnMap},
     {reply, ok, State#{modmap := ModuleFnMap#{ModName => FnMap}}};
 compilercd_handle({change_searchdir, NewDir}, State) ->
     {reply, ok, State#{searchdir := NewDir}};
-compilercd_handle(debug,
-                  #{modmap := ModuleFnMap, modchain := ModuleChain} =
-                      State) ->
+compilercd_handle(debug, #{modmap := ModuleFnMap,
+                           modchain := ModuleChain} = State) ->
     {reply, {ModuleFnMap, ModuleChain}, State};
 compilercd_handle(stop, _) ->
     stop.
@@ -217,3 +215,4 @@ get_uncompiled_module_test() ->
     ok.
 
 -endif.
+

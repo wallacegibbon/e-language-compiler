@@ -55,8 +55,8 @@ replace_init_ops(#op2{operator = assign, op1 = Op1,
         {ok, #struct{field_names = FieldNames, field_types = FieldTypes,
                      field_defaults = FieldDefaults}} ->
             FieldValueMap = maps:merge(FieldDefaults, FieldValues),
-            structinit_to_op(Op1, FieldNames, FieldValueMap, FieldTypes,
-                             [], StructMap);
+            structinit_to_op(Op1, FieldNames, FieldValueMap, FieldTypes, [],
+                             StructMap);
         error ->
             throw({Line, ecompiler_util:flat_format("struct ~s is not found",
                                                     [Name])})
@@ -106,3 +106,4 @@ arrayinit_to_op(Target, [E | Rest], Cnt, Line, Newcode, StructMap) ->
     arrayinit_to_op(Target, Rest, Cnt + 1, Line, Ops ++ Newcode, StructMap);
 arrayinit_to_op(_, [], _, _, Newcode, _) ->
     Newcode.
+

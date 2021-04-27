@@ -44,18 +44,15 @@ expr2str(#if_expr{condition = Cond, then = Then, else = Else}) ->
     io_lib:format("if (~s) ~s else ~s end",
                   [expr2str(Cond), expr2str(Then), expr2str(Else)]);
 expr2str(#while_expr{condition = Cond, exprs = Exprs}) ->
-    io_lib:format("while (~s) ~s end",
-                  [expr2str(Cond), expr2str(Exprs)]);
+    io_lib:format("while (~s) ~s end", [expr2str(Cond), expr2str(Exprs)]);
 expr2str(#call{fn = Callee, args = Args}) ->
-    io_lib:format("(~s)(~s)",
-                  [expr2str(Callee), expr2str(Args)]);
+    io_lib:format("(~s)(~s)", [expr2str(Callee), expr2str(Args)]);
 expr2str(#return{expr = Retexpr}) ->
     io_lib:format("return (~s)", [expr2str(Retexpr)]);
 expr2str(#varref{name = Name}) ->
     io_lib:format("~s", [expr2str(Name)]);
 expr2str(#op2{operator = Operator, op1 = Op1, op2 = Op2}) ->
-    io_lib:format("~s ~s ~s",
-                  [expr2str(Op1), Operator, expr2str(Op2)]);
+    io_lib:format("~s ~s ~s", [expr2str(Op1), Operator, expr2str(Op2)]);
 expr2str(#op1{operator = Operator, operand = Operand}) ->
     io_lib:format("~s ~s", [expr2str(Operand), Operator]);
 expr2str({Immi, _, Val}) when Immi =:= integer; Immi =:= float ->
@@ -101,8 +98,7 @@ fn_struct_map(Ast) ->
 
 %% address calculations
 fillto_pointerwidth(Num, PointerWidth) ->
-    (Num + PointerWidth - 1) div PointerWidth *
-        PointerWidth.
+    (Num + PointerWidth - 1) div PointerWidth * PointerWidth.
 
 fill_offset(Offset, PointerWidth) ->
     (Offset + PointerWidth) div PointerWidth * PointerWidth.

@@ -57,33 +57,34 @@ structinit_tomap([], FieldNames, ExprMap) ->
 %% in function expressions, the init code of defvar can not be simply
 %% fetched out from the code, it should be replaced as assignment in the
 %% same place.
-fetch_vars([#vardef{name = Name, type = Type, line = Line, initval = Initval}
-            | Rest],
+fetch_vars([#vardef{name = Name, type = Type, line = Line,
+                    initval = Initval} | Rest],
            NewAst,
            {VarTypes, InitCode, CollectInitCode}) ->
     ensure_no_conflict(Name, VarTypes, Line),
     case CollectInitCode of
         true ->
-            fetch_vars(Rest, NewAst, {VarTypes#{Name => Type},
+            fetch_vars(Rest, NewAst,
+                       {VarTypes#{Name => Type},
                         append_to_ast(InitCode, Name, Initval, Line),
                         CollectInitCode});
         _ ->
             fetch_vars(Rest, append_to_ast(NewAst, Name, Initval, Line),
-                       {VarTypes#{Name => Type}, InitCode, CollectInitCode})
+                       {VarTypes#{Name => Type},
+                        InitCode,
+                        CollectInitCode})
     end;
 fetch_vars([#function_raw{name = Name, ret = Ret, params = Params,
                           exprs = Exprs, line = Line} | Rest],
            NewAst,
            {GlobalVars, _, _} = Ctx) ->
-    {[], ParamVars, ParamInitCode} = fetch_vars(Params,
-                                                [],
-                                                {#{}, [], true}),
+    {[], ParamVars, ParamInitCode} =
+        fetch_vars(Params, [], {#{}, [], true}),
     ecompiler_util:assert(ParamInitCode =:= [],
                           {Line,
                            "function parameters can not have default value"}),
-    {NewExprs, FunVarTypes, []} = fetch_vars(Exprs,
-                                             [],
-                                             {ParamVars, [], false}),
+    {NewExprs, FunVarTypes, []} =
+        fetch_vars(Exprs, [], {ParamVars, [], false}),
     %% local variables should have different names from global variables
     check_varconflict(GlobalVars, FunVarTypes),
     %% lable names should be different from variables,

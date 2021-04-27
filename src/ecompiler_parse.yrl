@@ -57,8 +57,8 @@ typeanno -> 'fun' '(' ')' :
 typeanno -> '{' typeanno ',' expr '}' :
     #array_type{elemtype = '$2', len = '$4', line = tok_line('$1')}.
 typeanno -> integer_type pointer_depth :
-    #basic_type{class = integer, pdepth = '$2',
-                tag = tok_val('$1'), line = tok_line('$1')}.
+    #basic_type{class = integer, pdepth = '$2', tag = tok_val('$1'),
+                line = tok_line('$1')}.
 typeanno -> integer_type :
     #basic_type{class = integer, pdepth = 0, tag = tok_val('$1'),
                 line = tok_line('$1')}.
@@ -95,13 +95,11 @@ defvar -> identifier ':' typeanno '=' expr :
             line = tok_line('$1')}.
 
 defvar -> identifier ':' typeanno :
-    #vardef{name = tok_val('$1'), type = '$3',
-            line = tok_line('$1')}.
+    #vardef{name = tok_val('$1'), type = '$3', line = tok_line('$1')}.
 
 %% struct definition
 defstruct -> struct identifier defvars 'end' :
-    #struct_raw{name = tok_val('$2'), fields = '$3',
-                line = tok_line('$2')}.
+    #struct_raw{name = tok_val('$2'), fields = '$3', line = tok_line('$2')}.
 
 %% function definition
 defun -> 'fun' identifier '(' defvars ')' ':' typeanno exprs 'end' :
@@ -151,7 +149,8 @@ array_init_elements -> expr :
 
 Unary 2000 struct_init_expr.
 struct_init_expr -> identifier '{' struct_init_fields '}' :
-    #struct_init_raw{name = tok_val('$1'), fields = '$3', line = tok_line('$1')}.
+    #struct_init_raw{name = tok_val('$1'), fields = '$3',
+                     line = tok_line('$1')}.
 
 struct_init_fields -> struct_init_assign ',' struct_init_fields :
     ['$1' | '$3'].
@@ -303,8 +302,12 @@ Erlang code.
 str_to_inttks({string, Line, Str}) ->
     lists:map(fun (Char) -> {integer, Line, Char} end, Str).
 
-tok_val({_, _, Val}) -> Val.
+tok_val({_, _, Val}) ->
+    Val.
 
-tok_sym({Sym, _}) -> Sym.
+tok_sym({Sym, _}) ->
+    Sym.
 
-tok_line(T) -> element(2, T).
+tok_line(T) ->
+    element(2, T).
+
