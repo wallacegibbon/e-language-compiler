@@ -46,8 +46,8 @@ default_options() ->
     #{pointer_width => 8}.
 
 check_struct_recursion(StructMap) ->
-    lists:map(fun (S) -> check_struct_rec(S, StructMap, []) end,
-              maps:values(StructMap)).
+    maps:map(fun (_, S) -> check_struct_rec(S, StructMap, []) end,
+             StructMap).
 
 check_struct_rec(#struct{name = Name, field_types = FieldTypes, line = Line},
                  StructMap, UsedStructs) ->
