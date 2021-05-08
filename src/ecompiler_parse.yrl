@@ -17,7 +17,7 @@ Terminals
 '!' '!=' '==' '>=' '<='
 %% keywords
 const struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
-while 'if' elif else return sizeof goto
+while do 'if' then elif else return sizeof goto
 
 %% reserved keywords
 'cond' 'case' for break continue
@@ -118,16 +118,16 @@ defun -> 'fun' identifier '(' ')' exprs 'end' :
                   exprs = '$5', line = tok_line('$2')}.
 
 %% while
-while_expr -> while '(' expr ')' exprs 'end' :
-    #while_expr{condition = '$3', exprs = '$5', line = tok_line('$1')}.
+while_expr -> while expr do exprs 'end' :
+    #while_expr{condition = '$2', exprs = '$4', line = tok_line('$1')}.
 
 %% if
-if_expr -> 'if' '(' expr ')' exprs else_expr :
-    #if_expr{condition = '$3', then = '$5', else = '$6',
+if_expr -> 'if' expr then exprs else_expr :
+    #if_expr{condition = '$2', then = '$4', else = '$5',
              line = tok_line('$1')}.
 
-else_expr -> elif '(' expr ')' exprs else_expr :
-    [#if_expr{condition = '$3', then = '$5', else = '$6',
+else_expr -> elif expr then exprs else_expr :
+    [#if_expr{condition = '$2', then = '$4', else = '$5',
               line = tok_line('$1')}].
 else_expr -> else exprs 'end' :
     '$2'.

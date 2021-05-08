@@ -82,9 +82,9 @@ int main(int argc, char **argv)
 ### condition
 
 ```
-if (fn1(fn2(val1)) >= fn3(val2))
+if fn1(fn2(val1)) >= fn3(val2) then
     fn4();
-elif (val3)
+elif val3 > 100 then
     fn5();
 else
     fn6();

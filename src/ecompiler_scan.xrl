@@ -48,7 +48,7 @@ Rules.
 {Delim} :
     {token, {list_to_atom(TokenChars), TokenLine}}.
 
-const|struct|end|fun|return|if|elif|else|while|goto|sizeof :
+const|struct|end|fun|return|if|then|elif|else|while|do|goto|sizeof :
     {token, {list_to_atom(TokenChars), TokenLine}}.
 
 rem|and|or|band|bor|bxor|bsl|bsr :

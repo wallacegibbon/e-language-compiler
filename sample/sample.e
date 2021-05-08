@@ -106,20 +106,20 @@ end
 
 fun init_users(users: User^, size: i64)
     cnt: i64 = 30 + 52 * size / 2 + 100 / 10;
-%    while (cnt < size)
+%    while cnt < size do
 %        init_user((users + cnt)^, cnt, "test");
 %    end
 end
 
 fun init_user(user: User^, id: i64, desc: i64^)
-    if (id < 1)
+    if id < 1 then
         user^.id = 1;
         user^.id = user^.id + 1;
-    elif (id == 5)
+    elif id == 5 then
         user^.id = 0;
-    elif (id == 10)
+    elif id == 10 then
         user^.id = 20;
-    elif (id == 20)
+    elif id == 20 then
         user^.id = 10;
     else
         user^.id = id;
