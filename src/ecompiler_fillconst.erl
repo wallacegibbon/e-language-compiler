@@ -55,8 +55,8 @@ eval_constexpr(#op2{operator = 'bsl', op1 = Op1, op2 = Op2}, Constants) ->
 eval_constexpr(#varref{name = Name, line = Line}, Constants) ->
     case maps:find(Name, Constants) of
         error ->
-            throw({Line, ecompiler_util:flat_format("undefined constant ~s",
-                                                    [Name])});
+            throw({Line, ecompiler_util:flatfmt("undefined constant ~s",
+                                                [Name])});
         {ok, Val} ->
             Val
     end;
@@ -67,8 +67,7 @@ eval_constexpr(Num, _)
         when is_integer(Num); is_float(Num) ->
     Num;
 eval_constexpr(Any, _) ->
-    throw(ecompiler_util:flat_format("invalid const expression: ~p",
-                                     [Any])).
+    throw(ecompiler_util:flatfmt("invalid const expression: ~p", [Any])).
 
 %% replace constants in AST
 replace_constants([#function_raw{params = Params, exprs = Exprs} = Fn | Rest],
@@ -98,8 +97,8 @@ replace_inexpr(#vardef{name = Name, initval = Initval, type = Type,
                Constants) ->
     case maps:find(Name, Constants) of
         {ok, _} ->
-            throw({Line, ecompiler_util:flat_format("~s conflicts with const",
-                                                    [Name])});
+            throw({Line, ecompiler_util:flatfmt("~s conflicts with const",
+                                                [Name])});
         error ->
             Expr#vardef{initval = replace_inexpr(Initval, Constants),
                         type = replace_intype(Type, Constants)}

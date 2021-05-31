@@ -27,8 +27,7 @@ compile_from_rawast(Ast, CustomOptions) ->
     Ast4 = ecompiler_fillsize:expand_sizeof(Ast3, Ctx1),
 
     %% initcode is not in main ast, do not forget it
-    InitCode1 =
-        ecompiler_fillsize:expand_sizeof_inexprs(InitCode0, Ctx1),
+    InitCode1 = ecompiler_fillsize:expand_sizeof_inexprs(InitCode0, Ctx1),
     %% sizeof expressions are expanded, so StructMap needs to be updated
     {_, StructMap2} = ecompiler_util:fn_struct_map(Ast4),
     %% type checking
@@ -38,8 +37,7 @@ compile_from_rawast(Ast, CustomOptions) ->
     %% expand init exprs like A{a=1} and {1,2,3}
     Ast5 = ecompiler_expandinit:expand_initexpr_infun(Ast4, StructMap2),
 
-    InitCode2 =
-        ecompiler_expandinit:expand_initexprs(InitCode1, StructMap2),
+    InitCode2 = ecompiler_expandinit:expand_initexprs(InitCode1, StructMap2),
     {Ast5, Vars, InitCode2, FnMap}.
 
 default_options() ->
@@ -57,8 +55,8 @@ check_struct_rec(#struct{name = Name, field_types = FieldTypes, line = Line},
     catch
         {recur, Chain} ->
             throw({Line,
-                   ecompiler_util:flat_format("recursive struct ~s -> ~w",
-                                              [Name, Chain])})
+                   ecompiler_util:flatfmt("recursive struct ~s -> ~w",
+                                          [Name, Chain])})
     end;
 check_struct_rec(_, _, _) ->
     ok.

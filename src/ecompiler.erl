@@ -83,15 +83,15 @@ init_modmap() ->
     CommonIntType = #basic_type{class = integer, tag = isize, pdepth = 0},
     CommonStrType = #basic_type{class = integer, tag = i8, pdepth = 1},
     #{c =>
-          #{printf =>
-                #fun_type{params = [CommonStrType, CommonIntType],
-                          ret = CommonIntType},
-            puts =>
-                #fun_type{params = [CommonStrType],
-                          ret = CommonIntType},
-            malloc =>
-                #fun_type{params = [CommonIntType],
-                          ret = CommonStrType}}}.
+        #{printf =>
+            #fun_type{params = [CommonStrType, CommonIntType],
+                      ret = CommonIntType},
+          puts =>
+            #fun_type{params = [CommonStrType],
+                      ret = CommonIntType},
+          malloc =>
+            #fun_type{params = [CommonIntType],
+                      ret = CommonStrType}}}.
 
 stop_compilercd() ->
     try

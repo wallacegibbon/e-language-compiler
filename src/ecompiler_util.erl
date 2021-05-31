@@ -1,6 +1,6 @@
 -module(ecompiler_util).
 
--export([expr2str/1, exprsmap/2, filter_varref_inmaps/2, flat_format/2,
+-export([expr2str/1, exprsmap/2, filter_varref_inmaps/2, flatfmt/2,
          getvalues_bykeys/2, names_of_vardefs/1, names_of_varrefs/1,
          value_inlist/2]).
 
@@ -62,7 +62,7 @@ expr2str({Immi, _, Val}) when Immi =:= string ->
 expr2str(Any) ->
     Any.
 
-flat_format(FmtStr, Args) ->
+flatfmt(FmtStr, Args) ->
     lists:flatten(io_lib:format(FmtStr, Args)).
 
 -spec getvalues_bykeys([atom()], #{atom() => any()}) -> [any()].
@@ -89,7 +89,7 @@ fn_struct_map(Ast) ->
     {Fns, Structs} = lists:partition(Ck1, Ast),
     %% FnMap stores function type only
     F2 = fun (#function{name = Name} = Fn) ->
-                 {Name, Fn#function.type}
+                {Name, Fn#function.type}
          end,
     FnMap = maps:from_list(lists:map(F2, Fns)),
     F3 = fun (#struct{name = Name} = S) -> {Name, S} end,
@@ -119,29 +119,30 @@ primitive_size(i8) -> 1;
 primitive_size(f64) -> 8;
 primitive_size(f32) -> 4;
 primitive_size(T) ->
-    throw(flat_format("size of ~p is not defined", [T])).
+    throw(flatfmt("size of ~p is not defined", [T])).
 
 void_type(Line) ->
     #basic_type{class = void, tag = void, pdepth = 0, line = Line}.
 
 names_of_varrefs(VarRefs) ->
-    lists:map(fun (#varref{name = N}) -> N end, VarRefs).
+    lists:map(fun (#varref{name = N}) -> N end,
+              VarRefs).
 
 names_of_vardefs(VarDefs) ->
-    lists:map(fun (#vardef{name = N}) -> N end, VarDefs).
+    lists:map(fun (#vardef{name = N}) -> N end,
+              VarDefs).
 
 assert(false, Info) -> throw(Info);
 assert(true, _) -> ok.
 
 value_inlist(Value, List) ->
-    lists:any(fun (V) -> V =:= Value end, List).
+    lists:any(fun (V) -> V =:= Value end,
+              List).
 
 %% filter_varref_inmaps([#varref{name=a}, #varref{name=b}], #{a => 1})
 %% > [#varref{name=a}].
 filter_varref_inmaps(Varrefs, TargetMap) ->
-    lists:filter(fun (#varref{name = N}) ->
-                         exist_inmap(N, TargetMap)
-                 end,
+    lists:filter(fun (#varref{name = N}) -> exist_inmap(N, TargetMap) end,
                  Varrefs).
 
 -ifdef(EUNIT).

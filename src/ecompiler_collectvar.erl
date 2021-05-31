@@ -95,9 +95,8 @@ fetch_vars([#function_raw{name = Name, ret = Ret, params = Params,
     ParamsForType = getvalues_bydefs(Params, ParamVars),
     Fn = #function{name = Name, var_types = FunVarTypes, exprs = NewExprs,
                    param_names = varrefs_from_vardefs(Params), line = Line,
-                   type =
-                       #fun_type{params = ParamsForType, ret = Ret,
-                                 line = Line}},
+                   type = #fun_type{params = ParamsForType, ret = Ret,
+                                    line = Line}},
     fetch_vars(Rest, [Fn | NewAst], Ctx);
 fetch_vars([#struct_raw{name = Name, fields = Fields, line = Line} | Rest],
            NewAst, Ctx) ->
@@ -132,7 +131,7 @@ check_labelconflict([], _, _) ->
 check_varconflict(GlobalVars, LocalVars) ->
     ConflictMap = maps:with(maps:keys(GlobalVars), LocalVars),
     maps:map(fun (Name, T) ->
-                     throw_name_conflict(Name, element(2, T))
+                    throw_name_conflict(Name, element(2, T))
              end,
              ConflictMap).
 
@@ -145,8 +144,8 @@ ensure_no_conflict(Name, VarMap, Line) ->
     end.
 
 throw_name_conflict(Name, Line) ->
-    throw({Line, ecompiler_util:flat_format("name ~s has already been used",
-                                            [Name])}).
+    throw({Line, ecompiler_util:flatfmt("name ~s has already been used",
+                                        [Name])}).
 
 getvalues_bydefs(DefList, Map) ->
     ecompiler_util:getvalues_bykeys(ecompiler_util:names_of_vardefs(DefList),
@@ -154,7 +153,7 @@ getvalues_bydefs(DefList, Map) ->
 
 varrefs_from_vardefs(Vardefs) ->
     lists:map(fun (#vardef{name = N, line = Line}) ->
-                      #varref{name = N, line = Line}
+                        #varref{name = N, line = Line}
               end,
               Vardefs).
 

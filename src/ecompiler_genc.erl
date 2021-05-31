@@ -76,10 +76,10 @@ statements_tostr([#function{name = Name, param_names = ParamNames,
                            params_to_str(PureParams),
                            Fntype#fun_type.ret),
     Exprs2 = case Name =:= main of
-                 true ->
-                     InitCode ++ Exprs;
-                 _ ->
-                     Exprs
+                true ->
+                    InitCode ++ Exprs;
+                _ ->
+                    Exprs
              end,
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n",
                       [Declar, mapvars_to_str(PureVars), exprs_tostr(Exprs2)]),
@@ -92,8 +92,7 @@ statements_tostr([#struct{name = Name, field_types = FieldTypes,
                  InitCode,
                  StatementStrs,
                  FnDeclars) ->
-    FieldList = kvlist_frommap(get_names(FieldNames),
-                               FieldTypes),
+    FieldList = kvlist_frommap(get_names(FieldNames), FieldTypes),
     S = io_lib:format("struct ~s {~n~s~n};~n~n",
                       [Name, listvars_to_str(FieldList)]),
     statements_tostr(Rest, InitCode, [S | StatementStrs], FnDeclars);
@@ -112,7 +111,8 @@ params_to_str(NameTypePairs) ->
                               NameTypePairs)).
 
 params_to_str_noname(Types) ->
-    lists:join(",", lists:map(fun (T) -> type_tostr(T, "") end, Types)).
+    lists:join(",", lists:map(fun (T) -> type_tostr(T, "") end,
+                              Types)).
 
 %% order is not necessary for vars
 mapvars_to_str(VarsMap) when is_map(VarsMap) ->
@@ -129,7 +129,8 @@ vars_to_str([], Strs) ->
     lists:reverse(Strs).
 
 get_names(VarrefList) ->
-    lists:map(fun (#varref{name = N}) -> N end, VarrefList).
+    lists:map(fun (#varref{name = N}) -> N end,
+              VarrefList).
 
 kvlist_frommap(NameAtoms, ValueMap) ->
     lists:zip(NameAtoms, ecompiler_util:getvalues_bykeys(NameAtoms, ValueMap)).

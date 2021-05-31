@@ -18,9 +18,7 @@ expand_sizeof_inmap(Map, Ctx) ->
              Map).
 
 expand_sizeof_inexprs(Exprs, Ctx) ->
-    ecompiler_util:exprsmap(fun (E) ->
-                                    expand_sizeof_inexpr(E, Ctx)
-                            end,
+    ecompiler_util:exprsmap(fun (E) -> expand_sizeof_inexpr(E, Ctx) end,
                             Exprs).
 
 expand_sizeof_inexpr(#sizeof{type = T, line = Line}, Ctx) ->
@@ -74,9 +72,8 @@ offsetsof_struct(#struct{field_names = FieldNames,
 
 sizeof_struct(#struct{size = Size}, _) when is_integer(Size) ->
     Size;
-sizeof_struct(#struct{field_names = FieldNames, field_types = FieldTypes},
-              Ctx) ->
-    FieldTypeList = getkvs_byrefs(FieldNames, FieldTypes),
+sizeof_struct(#struct{field_names = Names, field_types = Types}, Ctx) ->
+    FieldTypeList = getkvs_byrefs(Names, Types),
     {Size, _} = sizeof_fields(FieldTypeList, 0, #{}, Ctx),
     Size.
 
@@ -140,7 +137,7 @@ sizeof(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
         {ok, S} ->
             sizeof_struct(S, Ctx);
         error ->
-            throw(ecompiler_util:flat_format("~s is not found", [Tag]))
+            throw(ecompiler_util:flatfmt("~s is not found", [Tag]))
     end;
 sizeof(#basic_type{class = C, tag = Tag}, {_, PointerWidth})
         when C =:= integer; C =:= float ->
@@ -150,12 +147,11 @@ sizeof(#basic_type{class = C, tag = Tag}, {_, PointerWidth})
         V when is_integer(V) ->
             V;
         _ ->
-            throw(ecompiler_util:flat_format("primitive_size(~s) is invalid",
-                                             [Tag]))
+            throw(ecompiler_util:flatfmt("primitive_size(~s) is invalid",
+                                         [Tag]))
     end;
 sizeof(#fun_type{}, {_, PointerWidth}) ->
     PointerWidth;
 sizeof(A, _) ->
-    throw(ecompiler_util:flat_format("invalid type ~p on sizeof",
-                                     [A])).
+    throw(ecompiler_util:flatfmt("invalid type ~p on sizeof", [A])).
 

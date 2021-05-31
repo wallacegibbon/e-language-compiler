@@ -47,9 +47,8 @@ expand_init([], NewAst, _) ->
     lists:reverse(NewAst).
 
 replace_init_ops(#op2{operator = assign, op1 = Op1,
-                      op2 =
-                          #struct_init{name = Name, field_values = FieldValues,
-                                       line = Line}},
+                      op2 = #struct_init{name = Name, line = Line,
+                                         field_values = FieldValues}},
                  StructMap) ->
     case maps:find(Name, StructMap) of
         {ok, #struct{field_names = FieldNames, field_types = FieldTypes,
@@ -58,8 +57,8 @@ replace_init_ops(#op2{operator = assign, op1 = Op1,
             structinit_to_op(Op1, FieldNames, FieldValueMap, FieldTypes, [],
                              StructMap);
         error ->
-            throw({Line, ecompiler_util:flat_format("struct ~s is not found",
-                                                    [Name])})
+            throw({Line, ecompiler_util:flatfmt("struct ~s is not found",
+                                                [Name])})
     end;
 replace_init_ops(#op2{operator = assign, op1 = Op1,
                       op2 = #array_init{elements = Elements, line = Line}},

@@ -15,8 +15,7 @@ checktype_ast([#function{var_types = VarTypes, exprs = Exprs, type = Fntype}
     typeof_exprs(Exprs, Ctx),
     checktype_ast(Rest, GlobalVarTypes, Maps);
 checktype_ast([#struct{name = Name, field_types = FieldTypes,
-                       field_names = FieldNames,
-                       field_defaults = FieldDefaults}
+                       field_names = FieldNames, field_defaults = FieldDefaults}
                | Rest],
               GlobalVarTypes,
               {FunctionMap, StructMap} = Maps) ->
@@ -52,17 +51,17 @@ typeof_expr(#op2{operator = assign, op1 = Op1, op2 = Op2, line = Line},
                         typeof_expr(Op1, Ctx);
                     Any ->
                         throw({Line,
-                               ecompiler_util:flat_format(
-                                    "invalid left value (~s)",
-                                    [ecompiler_util:expr2str(Any)])})
+                               ecompiler_util:flatfmt(
+                                   "invalid left value (~s)",
+                                   [ecompiler_util:expr2str(Any)])})
                 end,
     TypeofOp2 = typeof_expr(Op2, Ctx),
     case compare_type(TypeofOp1, TypeofOp2) of
         false ->
             throw({Line,
-                   ecompiler_util:flat_format("type mismatch in \"~s = ~s\"",
-                                              [fmt_type(TypeofOp1),
-                                               fmt_type(TypeofOp2)])});
+                   ecompiler_util:flatfmt("type mismatch in \"~s = ~s\"",
+                                          [fmt_type(TypeofOp1),
+                                           fmt_type(TypeofOp2)])});
         _ ->
             TypeofOp1
     end;
@@ -83,11 +82,11 @@ typeof_expr(#op2{operator = '::', op1 = Op1, op2 = Op2, line = Line}, _) ->
         ecompiler:query_modulefun(ModName, FunName)
     of
         {error, module_notfound, _} ->
-            throw({Line, ecompiler_util:flat_format("module ~s is not found",
-                                                    [ModName])});
+            throw({Line, ecompiler_util:flatfmt("module ~s is not found",
+                                                [ModName])});
         {error, function_notfound} ->
-            throw({Line, ecompiler_util:flat_format("~s:~s is not found",
-                                                    [ModName, FunName])});
+            throw({Line, ecompiler_util:flatfmt("~s:~s is not found",
+                                                [ModName, FunName])});
         {ok, Type} ->
             Type
     catch
@@ -101,8 +100,7 @@ typeof_expr(#op2{operator = '+', op1 = Op1, op2 = Op2, line = Line}, Ctx) ->
         false ->
             case is_pointer_and_int(TypeofOp1, TypeofOp2) of
                 false ->
-                    throw({Line,
-                           type_mismatchinfo_op2('+', TypeofOp1, TypeofOp2)});
+                    throw({Line, type_err_op2('+', TypeofOp1, TypeofOp2)});
                 {true, Ptype} ->
                     Ptype
             end;
@@ -117,8 +115,7 @@ typeof_expr(#op2{operator = '-', op1 = Op1, op2 = Op2, line = Line}, Ctx) ->
         false ->
             case is_pointer_and_int_order(TypeofOp1, TypeofOp2) of
                 false ->
-                    throw({Line,
-                           type_mismatchinfo_op2('-', TypeofOp1, TypeofOp2)});
+                    throw({Line, type_err_op2('-', TypeofOp1, TypeofOp2)});
                 {true, Ptype} ->
                     Ptype
             end;
@@ -131,7 +128,7 @@ typeof_expr(#op2{operator = Op, op1 = Op1, op2 = Op2, line = Line}, Ctx)
     TypeofOp2 = typeof_expr(Op2, Ctx),
     case is_bothnumber_sametype(TypeofOp1, TypeofOp2) of
         false ->
-            throw({Line, type_mismatchinfo_op2(Op, TypeofOp1, TypeofOp2)});
+            throw({Line, type_err_op2(Op, TypeofOp1, TypeofOp2)});
         {true, T} ->
             T
     end;
@@ -141,7 +138,7 @@ typeof_expr(#op2{operator = Op, op1 = Op1, op2 = Op2, line = Line}, Ctx) ->
     TypeofOp2 = typeof_expr(Op2, Ctx),
     case is_bothinteger(TypeofOp1, TypeofOp2) of
         false ->
-            throw({Line, type_mismatchinfo_op2(Op, TypeofOp1, TypeofOp2)});
+            throw({Line, type_err_op2(Op, TypeofOp1, TypeofOp2)});
         true ->
             TypeofOp1
     end;
@@ -150,7 +147,7 @@ typeof_expr(#op1{operator = '^', operand = Operand, line = Line}, Ctx) ->
         #basic_type{} = T ->
             decr_pdepth(T, Line);
         _ ->
-            throw({Line, ecompiler_util:flat_format(
+            throw({Line, ecompiler_util:flatfmt(
                                 "invalid \"^\" on operand ~s",
                                 [ecompiler_util:expr2str(Operand)])})
     end;
@@ -163,7 +160,7 @@ typeof_expr(#op1{operator = '@', operand = Operand, line = Line},
         #varref{} ->
             incr_pdepth(typeof_expr(Operand, Ctx), Line);
         _ ->
-            throw({Line, ecompiler_util:flat_format(
+            throw({Line, ecompiler_util:flatfmt(
                                 "invalid \"@\" on operand ~s",
                                 [ecompiler_util:expr2str(Operand)])})
     end;
@@ -181,8 +178,8 @@ typeof_expr(#call{fn = FunExpr, args = Args, line = Line}, Ctx) ->
             end;
         T ->
             throw({Line,
-                   ecompiler_util:flat_format("invalid function expr: ~s",
-                                              [fmt_type(T)])})
+                   ecompiler_util:flatfmt("invalid function expr: ~s",
+                                          [fmt_type(T)])})
     end;
 typeof_expr(#if_expr{condition = Condition, then = Then, else = Else,
                      line = Line},
@@ -200,7 +197,7 @@ typeof_expr(#return{expr = Expr, line = Line}, {_, _, _, FnRetType} = Ctx) ->
     RealRet = typeof_expr(Expr, Ctx),
     case compare_type(RealRet, FnRetType) of
         false ->
-            throw({Line, ecompiler_util:flat_format(
+            throw({Line, ecompiler_util:flatfmt(
                                 "ret type should be (~s), not (~s)",
                                 [fmt_type(FnRetType), fmt_type(RealRet)])});
         true ->
@@ -209,17 +206,16 @@ typeof_expr(#return{expr = Expr, line = Line}, {_, _, _, FnRetType} = Ctx) ->
 typeof_expr(#varref{name = Name, line = Line},
             {VarTypes, FunctionMap, StructMap, _}) ->
     Type = case maps:find(Name, VarTypes) of
-               error ->
-                   case maps:find(Name, FunctionMap) of
-                       error ->
-                           throw({Line,
-                                  ecompiler_util:flat_format(
+            error ->
+                case maps:find(Name, FunctionMap) of
+                    error ->
+                        throw({Line, ecompiler_util:flatfmt(
                                         "variable ~s is undefined", [Name])});
-                       {ok, T} ->
-                           T
-                   end;
-               {ok, T} ->
-                   T
+                    {ok, T} ->
+                        T
+                end;
+            {ok, T} ->
+                T
            end,
     checktype_type(Type, StructMap),
     Type;
@@ -231,8 +227,8 @@ typeof_expr(#array_init{elements = Elements, line = Line}, Ctx) ->
                         len = length(ElementTypes), line = Line};
         _ ->
             throw({Line,
-                   ecompiler_util:flat_format("array init type conflict: {~s}",
-                                              [fmt_types_join(ElementTypes)])})
+                   ecompiler_util:flatfmt("array init type conflict: {~s}",
+                                          [fmt_types_join(ElementTypes)])})
     end;
 typeof_expr(#struct_init{name = StructName, field_names = InitFieldNames,
                          field_values = InitFieldValues, line = Line},
@@ -244,8 +240,8 @@ typeof_expr(#struct_init{name = StructName, field_names = InitFieldNames,
             #basic_type{class = struct, tag = StructName, pdepth = 0,
                         line = Line};
         _ ->
-            throw({Line, ecompiler_util:flat_format("struct ~s is not found",
-                                                    [StructName])})
+            throw({Line, ecompiler_util:flatfmt("struct ~s is not found",
+                                                [StructName])})
     end;
 typeof_expr(#sizeof{line = Line}, _) ->
     #basic_type{class = integer, pdepth = 0, tag = i64, line = Line};
@@ -261,27 +257,27 @@ typeof_expr({string, Line, _}, _) ->
     #basic_type{class = integer, pdepth = 1, tag = i8, line = Line}.
 
 args_errorinfo(FnParamTypes, ArgsTypes) ->
-    ecompiler_util:flat_format("args should be (~s), not (~s)",
-                               [fmt_types_join(FnParamTypes),
-                                fmt_types_join(ArgsTypes)]).
+    ecompiler_util:flatfmt("args should be (~s), not (~s)",
+                           [fmt_types_join(FnParamTypes),
+                            fmt_types_join(ArgsTypes)]).
 
 incr_pdepth(#basic_type{pdepth = Pdepth} = T, _) ->
     T#basic_type{pdepth = Pdepth + 1};
 incr_pdepth(#array_type{elemtype = #basic_type{} = T}, OpLine) ->
     incr_pdepth(T, OpLine);
 incr_pdepth(T, OpLine) ->
-    throw({OpLine, ecompiler_util:flat_format("'@' on type ~s is invalid",
-                                              [fmt_type(T)])}).
+    throw({OpLine, ecompiler_util:flatfmt("'@' on type ~s is invalid",
+                                          [fmt_type(T)])}).
 
 decr_pdepth(#basic_type{pdepth = Pdepth} = T, _) when Pdepth > 0 ->
     T#basic_type{pdepth = Pdepth - 1};
 decr_pdepth(T, OpLine) ->
-    throw({OpLine, ecompiler_util:flat_format("'^' on type ~s is invalid",
-                                              [fmt_type(T)])}).
+    throw({OpLine, ecompiler_util:flatfmt("'^' on type ~s is invalid",
+                                          [fmt_type(T)])}).
 
 check_structfields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
     lists:map(fun (V) ->
-                      check_structfield(V, FieldTypes, ValMap, StructName, Ctx)
+                    check_structfield(V, FieldTypes, ValMap, StructName, Ctx)
               end,
               FieldNames).
 
@@ -294,10 +290,10 @@ check_structfield(#varref{name = FieldName, line = Line}, FieldTypes, ValMap,
     case compare_type(ExpectedType, GivenType) of
         false ->
             throw({Line,
-                   ecompiler_util:flat_format("~s.~s type error: ~s = ~s",
-                                              [StructName, FieldName,
-                                               fmt_type(ExpectedType),
-                                               fmt_type(GivenType)])});
+                   ecompiler_util:flatfmt("~s.~s type error: ~s = ~s",
+                                          [StructName, FieldName,
+                                           fmt_type(ExpectedType),
+                                           fmt_type(GivenType)])});
         _ ->
             ok
     end.
@@ -315,18 +311,18 @@ typeof_structfield(#basic_type{class = struct, tag = StructName, pdepth = 0},
         {ok, #struct{field_types = FieldTypes}} ->
             get_field_type(FieldName, FieldTypes, StructName, Line);
         error ->
-            throw({Line, ecompiler_util:flat_format("struct ~s is not found",
-                                                    [StructName])})
+            throw({Line, ecompiler_util:flatfmt("struct ~s is not found",
+                                                [StructName])})
     end;
 typeof_structfield(T, _, _, Line) ->
-    throw({Line, ecompiler_util:flat_format("op1 for \".\" is not struct ~s",
-                                            [fmt_type(T)])}).
+    throw({Line, ecompiler_util:flatfmt("op1 for \".\" is not struct ~s",
+                                        [fmt_type(T)])}).
 
 get_field_type(FieldName, FieldTypes, StructName, Line) ->
     case maps:find(FieldName, FieldTypes) of
         error ->
-            throw({Line, ecompiler_util:flat_format("~s.~s does not exist",
-                                                    [StructName, FieldName])});
+            throw({Line, ecompiler_util:flatfmt("~s.~s does not exist",
+                                                [StructName, FieldName])});
         {ok, Type} ->
             Type
     end.
@@ -396,10 +392,10 @@ is_bothfloat(#basic_type{pdepth = 0, class = float},
 is_bothfloat(_, _) ->
     false.
 
-type_mismatchinfo_op2(Operator, TypeofOp1, TypeofOp2) ->
-    ecompiler_util:flat_format("type error in \"~s ~s ~s\"",
-                               [fmt_type(TypeofOp1), Operator,
-                                fmt_type(TypeofOp2)]).
+type_err_op2(Operator, TypeofOp1, TypeofOp2) ->
+    ecompiler_util:flatfmt("type error in \"~s ~s ~s\"",
+                           [fmt_type(TypeofOp1), Operator,
+                            fmt_type(TypeofOp2)]).
 
 checktype_types(TypeList, StructMap) ->
     lists:map(fun (T) -> checktype_type(T, StructMap) end,
@@ -410,8 +406,8 @@ checktype_type(#basic_type{class = struct, tag = Tag, line = Line},
                StructMap) ->
     case maps:find(Tag, StructMap) of
         error ->
-            throw({Line, ecompiler_util:flat_format("struct ~s is not found",
-                                                    [Tag])});
+            throw({Line, ecompiler_util:flatfmt("struct ~s is not found",
+                                                [Tag])});
         {ok, _} ->
             ok
     end;
