@@ -217,8 +217,8 @@ root_expr -> label_expr : '$1'.
 
 expr -> reserved_keyword :
     return_error(tok_line('$1'),
-                 ecompiler_util:flat_format("~s is reserved keyword",
-                                            [tok_sym('$1')])).
+                 ecompiler_util:flatfmt("~s is reserved keyword",
+                                        [tok_sym('$1')])).
 expr -> expr op30 expr :
     #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
 expr -> expr op29 expr :
