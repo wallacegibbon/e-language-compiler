@@ -1,8 +1,6 @@
 -module(ecompiler_util).
 
--export([expr2str/1, exprsmap/2, filter_varref_inmaps/2, flatfmt/2,
-         getvalues_bykeys/2, names_of_vardefs/1, names_of_varrefs/1,
-         value_inlist/2]).
+-export([expr2str/1, exprsmap/2, filter_varref_inmaps/2, flatfmt/2, getvalues_bykeys/2, names_of_vardefs/1, names_of_varrefs/1, value_inlist/2]).
 
 -export([primitive_size/1, void_type/1]).
 
@@ -22,17 +20,12 @@
 
 %% when do simple convertions, this function can be used to avoid boilerplate
 %% code for if, while, return, call...,  so you can concentrate on op1, op2...
-exprsmap(Fn, [#if_expr{condition = Cond, then = Then, else = Else} = If
-              | Rest]) ->
-    [If#if_expr{condition = Fn(Cond), then = exprsmap(Fn, Then),
-                else = exprsmap(Fn, Else)}
-     | exprsmap(Fn, Rest)];
+exprsmap(Fn, [#if_expr{condition = Cond, then = Then, else = Else} = If | Rest]) ->
+    [If#if_expr{condition = Fn(Cond), then = exprsmap(Fn, Then), else = exprsmap(Fn, Else)} | exprsmap(Fn, Rest)];
 exprsmap(Fn, [#while_expr{condition = Cond, exprs = Exprs} = While | Rest]) ->
-    [While#while_expr{condition = Fn(Cond), exprs = exprsmap(Fn, Exprs)}
-     | exprsmap(Fn, Rest)];
+    [While#while_expr{condition = Fn(Cond), exprs = exprsmap(Fn, Exprs)} | exprsmap(Fn, Rest)];
 exprsmap(Fn, [#call{fn = Callee, args = Args} = Fncall | Rest]) ->
-    [Fncall#call{fn = Fn(Callee), args = exprsmap(Fn, Args)}
-     | exprsmap(Fn, Rest)];
+    [Fncall#call{fn = Fn(Callee), args = exprsmap(Fn, Args)} | exprsmap(Fn, Rest)];
 exprsmap(Fn, [#return{expr = Retexpr} = Return | Rest]) ->
     [Return#return{expr = Fn(Retexpr)} | exprsmap(Fn, Rest)];
 exprsmap(Fn, [Any | Rest]) ->
@@ -41,8 +34,7 @@ exprsmap(_, []) ->
     [].
 
 expr2str(#if_expr{condition = Cond, then = Then, else = Else}) ->
-    io_lib:format("if (~s) ~s else ~s end",
-                  [expr2str(Cond), expr2str(Then), expr2str(Else)]);
+    io_lib:format("if (~s) ~s else ~s end", [expr2str(Cond), expr2str(Then), expr2str(Else)]);
 expr2str(#while_expr{condition = Cond, exprs = Exprs}) ->
     io_lib:format("while (~s) ~s end", [expr2str(Cond), expr2str(Exprs)]);
 expr2str(#call{fn = Callee, args = Args}) ->
@@ -88,9 +80,7 @@ fn_struct_map(Ast) ->
     Ck1 = fun (A) -> element(1, A) =:= function end,
     {Fns, Structs} = lists:partition(Ck1, Ast),
     %% FnMap stores function type only
-    F2 = fun (#function{name = Name} = Fn) ->
-                {Name, Fn#function.type}
-         end,
+    F2 = fun (#function{name = Name} = Fn) -> {Name, Fn#function.type} end,
     FnMap = maps:from_list(lists:map(F2, Fns)),
     F3 = fun (#struct{name = Name} = S) -> {Name, S} end,
     StructMap = maps:from_list(lists:map(F3, Structs)),
@@ -125,25 +115,21 @@ void_type(Line) ->
     #basic_type{class = void, tag = void, pdepth = 0, line = Line}.
 
 names_of_varrefs(VarRefs) ->
-    lists:map(fun (#varref{name = N}) -> N end,
-              VarRefs).
+    lists:map(fun (#varref{name = N}) -> N end, VarRefs).
 
 names_of_vardefs(VarDefs) ->
-    lists:map(fun (#vardef{name = N}) -> N end,
-              VarDefs).
+    lists:map(fun (#vardef{name = N}) -> N end, VarDefs).
 
 assert(false, Info) -> throw(Info);
 assert(true, _) -> ok.
 
 value_inlist(Value, List) ->
-    lists:any(fun (V) -> V =:= Value end,
-              List).
+    lists:any(fun (V) -> V =:= Value end, List).
 
 %% filter_varref_inmaps([#varref{name=a}, #varref{name=b}], #{a => 1})
 %% > [#varref{name=a}].
 filter_varref_inmaps(Varrefs, TargetMap) ->
-    lists:filter(fun (#varref{name = N}) -> exist_inmap(N, TargetMap) end,
-                 Varrefs).
+    lists:filter(fun (#varref{name = N}) -> exist_inmap(N, TargetMap) end, Varrefs).
 
 -ifdef(EUNIT).
 

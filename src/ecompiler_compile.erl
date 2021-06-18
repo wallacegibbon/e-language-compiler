@@ -44,19 +44,14 @@ default_options() ->
     #{pointer_width => 8}.
 
 check_struct_recursion(StructMap) ->
-    maps:map(fun (_, S) -> check_struct_rec(S, StructMap, []) end,
-             StructMap).
+    maps:map(fun (_, S) -> check_struct_rec(S, StructMap, []) end, StructMap).
 
-check_struct_rec(#struct{name = Name, field_types = FieldTypes, line = Line},
-                 StructMap, UsedStructs) ->
+check_struct_rec(#struct{name = Name, field_types = FieldTypes, line = Line}, StructMap, UsedStructs) ->
     try
-        check_field_rec1(maps:to_list(FieldTypes), StructMap,
-                         [Name | UsedStructs])
+        check_field_rec1(maps:to_list(FieldTypes), StructMap, [Name | UsedStructs])
     catch
         {recur, Chain} ->
-            throw({Line,
-                   ecompiler_util:flatfmt("recursive struct ~s -> ~w",
-                                          [Name, Chain])})
+            throw({Line, ecompiler_util:flatfmt("recursive struct ~s -> ~w", [Name, Chain])})
     end;
 check_struct_rec(_, _, _) ->
     ok.

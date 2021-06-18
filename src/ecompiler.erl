@@ -83,15 +83,9 @@ init_modmap() ->
     CommonIntType = #basic_type{class = integer, tag = isize, pdepth = 0},
     CommonStrType = #basic_type{class = integer, tag = i8, pdepth = 1},
     #{c =>
-        #{printf =>
-            #fun_type{params = [CommonStrType, CommonIntType],
-                      ret = CommonIntType},
-          puts =>
-            #fun_type{params = [CommonStrType],
-                      ret = CommonIntType},
-          malloc =>
-            #fun_type{params = [CommonIntType],
-                      ret = CommonStrType}}}.
+        #{printf => #fun_type{params = [CommonStrType, CommonIntType], ret = CommonIntType},
+          puts => #fun_type{params = [CommonStrType], ret = CommonIntType},
+          malloc => #fun_type{params = [CommonIntType], ret = CommonStrType}}}.
 
 stop_compilercd() ->
     try
@@ -152,8 +146,7 @@ compilercd_loop(State) ->
             throw(Any)
     end.
 
-compilercd_handle({query_funret, ModName, FunName},
-                  #{modmap := ModuleFnMap, searchdir := SearchDir} = State) ->
+compilercd_handle({query_funret, ModName, FunName}, #{modmap := ModuleFnMap, searchdir := SearchDir} = State) ->
     case maps:find(ModName, ModuleFnMap) of
         {ok, FnMap} ->
             case maps:find(FunName, FnMap) of
@@ -165,8 +158,7 @@ compilercd_handle({query_funret, ModName, FunName},
         error ->
             {reply, {error, module_notfound, SearchDir}, State}
     end;
-compilercd_handle({record_compileop, ModName},
-                  #{modchain := ModuleChain} = State) ->
+compilercd_handle({record_compileop, ModName}, #{modchain := ModuleChain} = State) ->
     NewModuleChain = [ModName | ModuleChain],
     case ecompiler_util:value_inlist(ModName, ModuleChain) of
         true ->
@@ -175,16 +167,13 @@ compilercd_handle({record_compileop, ModName},
         _ ->
             {reply, ok, State#{modchain := NewModuleChain}}
     end;
-compilercd_handle({unrecord_compileop, ModName},
-                  #{modchain := [ModName | Rest]} = State) ->
+compilercd_handle({unrecord_compileop, ModName}, #{modchain := [ModName | Rest]} = State) ->
     {reply, ok, State#{modchain := Rest}};
-compilercd_handle({record_module, ModName, FnMap},
-                  #{modmap := ModuleFnMap} = State) ->
+compilercd_handle({record_module, ModName, FnMap}, #{modmap := ModuleFnMap} = State) ->
     {reply, ok, State#{modmap := ModuleFnMap#{ModName => FnMap}}};
 compilercd_handle({change_searchdir, NewDir}, State) ->
     {reply, ok, State#{searchdir := NewDir}};
-compilercd_handle(debug, #{modmap := ModuleFnMap,
-                           modchain := ModuleChain} = State) ->
+compilercd_handle(debug, #{modmap := ModuleFnMap, modchain := ModuleChain} = State) ->
     {reply, {ModuleFnMap, ModuleChain}, State};
 compilercd_handle(stop, _) ->
     stop.
@@ -202,16 +191,13 @@ record_test() ->
     ok = record_compileop("./a/b/c/file1.e"),
     ok = record_compileop("./a/b/c/file2.e"),
     R3 = record_compileop("./a/b/c/file1.e"),
-    ?assertEqual(R3,
-                 {error, module_loop, [file1, file2, file1]}),
+    ?assertEqual(R3, {error, module_loop, [file1, file2, file1]}),
     ok.
 
 get_uncompiled_module_test() ->
     start_beforetest("./sample"),
     R = query_modulefun(simplemod, test),
-    ?assertEqual(R,
-                 {ok,
-                  {fun_type, 3, [], {basic_type, 3, 0, integer, isize}}}),
+    ?assertEqual(R, {ok, {fun_type, 3, [], {basic_type, 3, 0, integer, isize}}}),
     ok.
 
 -endif.
