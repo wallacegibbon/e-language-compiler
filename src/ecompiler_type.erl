@@ -238,12 +238,9 @@ check_structfield(#varref{name = FieldName, line = Line}, FieldTypes, ValMap, St
             ok
     end.
 
-are_sametype([TargetType, TargetType | Rest]) ->
-    are_sametype([TargetType | Rest]);
-are_sametype([_]) ->
-    true;
-are_sametype(_) ->
-    false.
+are_sametype([TargetType, TargetType | Rest]) -> are_sametype([TargetType | Rest]);
+are_sametype([_]) -> true;
+are_sametype(_) -> false.
 
 typeof_structfield(#basic_type{class = struct, tag = StructName, pdepth = 0}, #varref{name = FieldName}, StructMap, Line) ->
     case maps:find(StructName, StructMap) of
@@ -338,12 +335,7 @@ checktype_type(#fun_type{params = Params, ret = Rettype}, StructMap) ->
     checktype_types(Params, StructMap),
     checktype_type(Rettype, StructMap).
 
-fmt_types_join(Types) -> lists:join(",", fmt_types(Types)).
-
-fmt_types(Types) -> fmt_types(Types, []).
-
-fmt_types([Type | Rest], Result) -> fmt_types(Rest, [fmt_type(Type) | Result]);
-fmt_types([], Result) -> lists:reverse(Result).
+fmt_types_join(Types) -> lists:join(",", lists:map(fun fmt_type/1, Types)).
 
 fmt_type(#fun_type{params = Params, ret = Rettype}) ->
     io_lib:format("fun(~s): ~s", [fmt_types_join(Params), fmt_type(Rettype)]);
