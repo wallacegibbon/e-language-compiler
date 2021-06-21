@@ -46,15 +46,11 @@ fill_structinfo(Ast, {_, PointerWidth} = Ctx) ->
     Ast2 = lists:map(fun (E) -> fill_structoffsets(E, Ctx1) end, Ast1),
     Ast2.
 
-fill_structsize(#struct{} = S, Ctx) ->
-    S#struct{size = sizeof_struct(S, Ctx)};
-fill_structsize(Any, _) ->
-    Any.
+fill_structsize(#struct{} = S, Ctx) -> S#struct{size = sizeof_struct(S, Ctx)};
+fill_structsize(Any, _) -> Any.
 
-fill_structoffsets(#struct{} = S, Ctx) ->
-    S#struct{field_offsets = offsetsof_struct(S, Ctx)};
-fill_structoffsets(Any, _) ->
-    Any.
+fill_structoffsets(#struct{} = S, Ctx) -> S#struct{field_offsets = offsetsof_struct(S, Ctx)};
+fill_structoffsets(Any, _) -> Any.
 
 offsetsof_struct(#struct{field_names = FieldNames, field_types = FieldTypes}, Ctx) ->
     FieldTypeList = getkvs_byrefs(FieldNames, FieldTypes),

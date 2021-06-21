@@ -27,8 +27,7 @@ checktype_exprs(Exprs, GlobalVarTypes, {FunctionMap, StructMap}) ->
     Ctx = {GlobalVarTypes, FunctionMap, StructMap, none},
     typeof_exprs(Exprs, Ctx).
 
-typeof_exprs(Exprs, Ctx) ->
-    lists:map(fun (Expr) -> typeof_expr(Expr, Ctx) end, Exprs).
+typeof_exprs(Exprs, Ctx) -> lists:map(fun (Expr) -> typeof_expr(Expr, Ctx) end, Exprs).
 
 typeof_expr(#op2{operator = assign, op1 = Op1, op2 = Op2, line = Line}, {_, _, StructMap, _} = Ctx) ->
     TypeofOp1 = case Op1 of
@@ -225,10 +224,7 @@ decr_pdepth(T, OpLine) ->
     throw({OpLine, ecompiler_util:flatfmt("'^' on type ~s is invalid", [fmt_type(T)])}).
 
 check_structfields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
-    lists:map(fun (V) ->
-                    check_structfield(V, FieldTypes, ValMap, StructName, Ctx)
-              end,
-              FieldNames).
+    lists:map(fun (V) -> check_structfield(V, FieldTypes, ValMap, StructName, Ctx) end, FieldNames).
 
 check_structfield(#varref{name = FieldName, line = Line}, FieldTypes, ValMap, StructName, {_, _, StructMap, _} = Ctx) ->
     {ok, Val} = maps:find(FieldName, ValMap),
@@ -310,21 +306,16 @@ is_bothnumber_sametype(T1, T2) ->
             false
     end.
 
-is_bothinteger(#basic_type{pdepth = 0, class = integer}, #basic_type{pdepth = 0, class = integer}) ->
-    true;
-is_bothinteger(_, _) ->
-    false.
+is_bothinteger(#basic_type{pdepth = 0, class = integer}, #basic_type{pdepth = 0, class = integer}) -> true;
+is_bothinteger(_, _) -> false.
 
-is_bothfloat(#basic_type{pdepth = 0, class = float}, #basic_type{pdepth = 0, class = float}) ->
-    true;
-is_bothfloat(_, _) ->
-    false.
+is_bothfloat(#basic_type{pdepth = 0, class = float}, #basic_type{pdepth = 0, class = float}) -> true;
+is_bothfloat(_, _) -> false.
 
 type_err_op2(Operator, TypeofOp1, TypeofOp2) ->
     ecompiler_util:flatfmt("type error in \"~s ~s ~s\"", [fmt_type(TypeofOp1), Operator, fmt_type(TypeofOp2)]).
 
-checktype_types(TypeList, StructMap) ->
-    lists:map(fun (T) -> checktype_type(T, StructMap) end, TypeList).
+checktype_types(TypeList, StructMap) -> lists:map(fun (T) -> checktype_type(T, StructMap) end, TypeList).
 
 %% check type, ensure that all struct used by type exists.
 checktype_type(#basic_type{class = struct, tag = Tag, line = Line}, StructMap) ->
@@ -347,16 +338,12 @@ checktype_type(#fun_type{params = Params, ret = Rettype}, StructMap) ->
     checktype_types(Params, StructMap),
     checktype_type(Rettype, StructMap).
 
-fmt_types_join(Types) ->
-    lists:join(",", fmt_types(Types)).
+fmt_types_join(Types) -> lists:join(",", fmt_types(Types)).
 
-fmt_types(Types) ->
-    fmt_types(Types, []).
+fmt_types(Types) -> fmt_types(Types, []).
 
-fmt_types([Type | Rest], Result) ->
-    fmt_types(Rest, [fmt_type(Type) | Result]);
-fmt_types([], Result) ->
-    lists:reverse(Result).
+fmt_types([Type | Rest], Result) -> fmt_types(Rest, [fmt_type(Type) | Result]);
+fmt_types([], Result) -> lists:reverse(Result).
 
 fmt_type(#fun_type{params = Params, ret = Rettype}) ->
     io_lib:format("fun(~s): ~s", [fmt_types_join(Params), fmt_type(Rettype)]);

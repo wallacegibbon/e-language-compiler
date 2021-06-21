@@ -22,8 +22,7 @@ expand_initexpr_infun([Any | Rest], StructMap) ->
 expand_initexpr_infun([], _) ->
     [].
 
-expand_initexprs(Exprs, StructMap) ->
-    expand_init(Exprs, [], StructMap).
+expand_initexprs(Exprs, StructMap) -> expand_init(Exprs, [], StructMap).
 
 expand_init([#if_expr{then = Then, else = Else} = E | Rest], NewAst, StructMap) ->
     expand_init(Rest, [E#if_expr{then = expand_init(Then, [], StructMap), else = expand_init(Else, [], StructMap)} | NewAst], StructMap);

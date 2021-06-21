@@ -54,18 +54,14 @@ expr2str({Immi, _, Val}) when Immi =:= string ->
 expr2str(Any) ->
     Any.
 
-flatfmt(FmtStr, Args) ->
-    lists:flatten(io_lib:format(FmtStr, Args)).
+flatfmt(FmtStr, Args) -> lists:flatten(io_lib:format(FmtStr, Args)).
 
 -spec getvalues_bykeys([atom()], #{atom() => any()}) -> [any()].
 
-getvalues_bykeys(Fields, Map) when is_map(Map) ->
-    getvalues_bykeys(Fields, Map, []).
+getvalues_bykeys(Fields, Map) when is_map(Map) -> getvalues_bykeys(Fields, Map, []).
 
-getvalues_bykeys([Field | Rest], Map, Result) ->
-    getvalues_bykeys(Rest, Map, [maps:get(Field, Map) | Result]);
-getvalues_bykeys([], _, Result) ->
-    lists:reverse(Result).
+getvalues_bykeys([Field | Rest], Map, Result) -> getvalues_bykeys(Rest, Map, [maps:get(Field, Map) | Result]);
+getvalues_bykeys([], _, Result) -> lists:reverse(Result).
 
 -ifdef(EUNIT).
 
@@ -87,14 +83,11 @@ fn_struct_map(Ast) ->
     {FnMap, StructMap}.
 
 %% address calculations
-fillto_pointerwidth(Num, PointerWidth) ->
-    (Num + PointerWidth - 1) div PointerWidth * PointerWidth.
+fillto_pointerwidth(Num, PointerWidth) -> (Num + PointerWidth - 1) div PointerWidth * PointerWidth.
 
-fill_offset(Offset, PointerWidth) ->
-    (Offset + PointerWidth) div PointerWidth * PointerWidth.
+fill_offset(Offset, PointerWidth) -> (Offset + PointerWidth) div PointerWidth * PointerWidth.
 
-cut_extra(Offset, PointerWidth) ->
-    Offset div PointerWidth * PointerWidth.
+cut_extra(Offset, PointerWidth) -> Offset div PointerWidth * PointerWidth.
 
 primitive_size(usize) -> pwidth;
 primitive_size(isize) -> pwidth;
@@ -108,28 +101,22 @@ primitive_size(u8) -> 1;
 primitive_size(i8) -> 1;
 primitive_size(f64) -> 8;
 primitive_size(f32) -> 4;
-primitive_size(T) ->
-    throw(flatfmt("size of ~p is not defined", [T])).
+primitive_size(T) -> throw(flatfmt("size of ~p is not defined", [T])).
 
-void_type(Line) ->
-    #basic_type{class = void, tag = void, pdepth = 0, line = Line}.
+void_type(Line) -> #basic_type{class = void, tag = void, pdepth = 0, line = Line}.
 
-names_of_varrefs(VarRefs) ->
-    lists:map(fun (#varref{name = N}) -> N end, VarRefs).
+names_of_varrefs(VarRefs) -> lists:map(fun (#varref{name = N}) -> N end, VarRefs).
 
-names_of_vardefs(VarDefs) ->
-    lists:map(fun (#vardef{name = N}) -> N end, VarDefs).
+names_of_vardefs(VarDefs) -> lists:map(fun (#vardef{name = N}) -> N end, VarDefs).
 
 assert(false, Info) -> throw(Info);
 assert(true, _) -> ok.
 
-value_inlist(Value, List) ->
-    lists:any(fun (V) -> V =:= Value end, List).
+value_inlist(Value, List) -> lists:any(fun (V) -> V =:= Value end, List).
 
 %% filter_varref_inmaps([#varref{name=a}, #varref{name=b}], #{a => 1})
 %% > [#varref{name=a}].
-filter_varref_inmaps(Varrefs, TargetMap) ->
-    lists:filter(fun (#varref{name = N}) -> exist_inmap(N, TargetMap) end, Varrefs).
+filter_varref_inmaps(Varrefs, TargetMap) -> lists:filter(fun (#varref{name = N}) -> exist_inmap(N, TargetMap) end, Varrefs).
 
 -ifdef(EUNIT).
 

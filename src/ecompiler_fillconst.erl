@@ -14,8 +14,7 @@ parse_and_remove_const(Ast) ->
     Ast3.
 
 %% fetch constants
-fetch_constants(Ast) ->
-    fetch_constants(Ast, [], #{}).
+fetch_constants(Ast) -> fetch_constants(Ast, [], #{}).
 
 fetch_constants([#const{name = Name, val = Expr} | Rest], Statements, Constants) ->
     fetch_constants(Rest, Statements, Constants#{Name => eval_constexpr(Expr, Constants)});
@@ -73,10 +72,7 @@ replace_constants([], _) ->
     [].
 
 replace_inexprs(Exprs, Constants) ->
-    ecompiler_util:exprsmap(fun (E) ->
-                                    replace_inexpr(E, Constants)
-                            end,
-                            Exprs).
+    ecompiler_util:exprsmap(fun (E) -> replace_inexpr(E, Constants) end, Exprs).
 
 replace_inexpr(#vardef{name = Name, initval = Initval, type = Type, line = Line} = Expr, Constants) ->
     case maps:find(Name, Constants) of
@@ -103,10 +99,8 @@ replace_inexpr(#op1{operand = Operand} = Expr, Constants) ->
 replace_inexpr(Any, _) ->
     Any.
 
-constnum_to_token(Num, Line) when is_float(Num) ->
-    #float{val = Num, line = Line};
-constnum_to_token(Num, Line) when is_integer(Num) ->
-    #integer{val = Num, line = Line}.
+constnum_to_token(Num, Line) when is_float(Num) -> #float{val = Num, line = Line};
+constnum_to_token(Num, Line) when is_integer(Num) -> #integer{val = Num, line = Line}.
 
 replace_intype(#array_type{elemtype = ElementType, len = Len} = T, Constants) ->
     T#array_type{elemtype = replace_intype(ElementType, Constants), len = eval_constexpr(replace_inexpr(Len, Constants), Constants)};

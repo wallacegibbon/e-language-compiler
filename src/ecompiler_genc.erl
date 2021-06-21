@@ -51,8 +51,7 @@ common_code() ->
     "typedef unsigned long u64;\ntypedef long i64;\n"
     "typedef double f64;\ntypedef float f32;\n\n".
 
-statements_tostr(Statements, InitCode) ->
-    statements_tostr(Statements, InitCode, [], []).
+statements_tostr(Statements, InitCode) -> statements_tostr(Statements, InitCode, [], []).
 
 statements_tostr([#function{name = Name, param_names = ParamNames, type = Fntype, var_types = VarTypes, exprs = Exprs} | Rest], InitCode, StatementStrs, FnDeclars) ->
     ParamNameAtoms = get_names(ParamNames),
@@ -60,10 +59,8 @@ statements_tostr([#function{name = Name, param_names = ParamNames, type = Fntype
     PureVars = maps:without(ParamNameAtoms, VarTypes),
     Declar = fn_declar_str(Name, params_to_str(PureParams), Fntype#fun_type.ret),
     Exprs2 = case Name =:= main of
-                true ->
-                    InitCode ++ Exprs;
-                _ ->
-                    Exprs
+                true -> InitCode ++ Exprs;
+                _ -> Exprs
              end,
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declar, mapvars_to_str(PureVars), exprs_tostr(Exprs2)]),
     statements_tostr(Rest, InitCode, [S | StatementStrs], [Declar ++ ";\n" | FnDeclars]);
@@ -94,16 +91,12 @@ mapvars_to_str(VarsMap) when is_map(VarsMap) ->
 listvars_to_str(VarList) when is_list(VarList) ->
     lists:flatten(lists:join(";\n", vars_to_str(VarList, [])), ";").
 
-vars_to_str([{Name, Type} | Rest], Strs) ->
-    vars_to_str(Rest, [type_tostr(Type, Name) | Strs]);
-vars_to_str([], Strs) ->
-    lists:reverse(Strs).
+vars_to_str([{Name, Type} | Rest], Strs) -> vars_to_str(Rest, [type_tostr(Type, Name) | Strs]);
+vars_to_str([], Strs) -> lists:reverse(Strs).
 
-get_names(VarrefList) ->
-    lists:map(fun (#varref{name = N}) -> N end, VarrefList).
+get_names(VarrefList) -> lists:map(fun (#varref{name = N}) -> N end, VarrefList).
 
-kvlist_frommap(NameAtoms, ValueMap) ->
-    lists:zip(NameAtoms, ecompiler_util:getvalues_bykeys(NameAtoms, ValueMap)).
+kvlist_frommap(NameAtoms, ValueMap) -> lists:zip(NameAtoms, ecompiler_util:getvalues_bykeys(NameAtoms, ValueMap)).
 
 fnret_type_tostr(#fun_type{params = Params, ret = Rettype}, NameParams) ->
     Paramstr = params_to_str_noname(Params),
@@ -124,19 +117,14 @@ type_tostr(#fun_type{params = Params, ret = Rettype}, Varname) ->
     NameParams = io_lib:format("(*~s)(~s)", [Varname, Paramstr]),
     type_tostr(Rettype, NameParams).
 
-typetag_tostr(struct, Name) ->
-    io_lib:format("struct ~s", [Name]);
-typetag_tostr(_, Name) ->
-    atom_to_list(Name).
+typetag_tostr(struct, Name) -> io_lib:format("struct ~s", [Name]);
+typetag_tostr(_, Name) -> atom_to_list(Name).
 
 %% convert expression to C string
-exprs_tostr(Exprs) ->
-    [lists:join("\n", exprs_tostr(Exprs, []))].
+exprs_tostr(Exprs) -> [lists:join("\n", exprs_tostr(Exprs, []))].
 
-exprs_tostr([Expr | Rest], ExprList) ->
-    exprs_tostr(Rest, [expr_tostr(Expr, $;) | ExprList]);
-exprs_tostr([], ExprList) ->
-    lists:reverse(ExprList).
+exprs_tostr([Expr | Rest], ExprList) -> exprs_tostr(Rest, [expr_tostr(Expr, $;) | ExprList]);
+exprs_tostr([], ExprList) -> lists:reverse(ExprList).
 
 expr_tostr(#if_expr{condition = Condition, then = Then, else = Else}, _) ->
     io_lib:format("if (~s) {\n~s\n} else {\n~s}", [expr_tostr(Condition, $\s), exprs_tostr(Then), exprs_tostr(Else)]);
@@ -164,8 +152,7 @@ expr_tostr({Any, _Line, Value}, Endchar) when Any =:= integer; Any =:= float ->
 expr_tostr({Any, _Line, S}, Endchar) when Any =:= string ->
     io_lib:format("\"~s\"~c", [handle_special_char_instr(S), Endchar]).
 
--define(SPECIAL_CHARMAP,
-        #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}).
+-define(SPECIAL_CHARMAP, #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}).
 
 handle_special_char_instr(Str) ->
     lists:map(fun (C) -> maps:get(C, ?SPECIAL_CHARMAP, C) end, Str).

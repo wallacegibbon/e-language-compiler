@@ -40,8 +40,7 @@ compile_from_rawast(Ast, CustomOptions) ->
     InitCode2 = ecompiler_expandinit:expand_initexprs(InitCode1, StructMap2),
     {Ast5, Vars, InitCode2, FnMap}.
 
-default_options() ->
-    #{pointer_width => 8}.
+default_options() -> #{pointer_width => 8}.
 
 check_struct_recursion(StructMap) ->
     maps:map(fun (_, S) -> check_struct_rec(S, StructMap, []) end, StructMap).
@@ -75,10 +74,7 @@ check_field_rec2(Name, StructMap, UsedStructs) ->
             throw({recur, lists:reverse(UsedStructs)})
     end.
 
-contain_struct(#basic_type{class = struct, pdepth = 0, tag = Name}) ->
-    {yes, Name};
-contain_struct(#array_type{elemtype = BaseT}) ->
-    contain_struct(BaseT);
-contain_struct(_) ->
-    no.
+contain_struct(#basic_type{class = struct, pdepth = 0, tag = Name}) -> {yes, Name};
+contain_struct(#array_type{elemtype = BaseT}) -> contain_struct(BaseT);
+contain_struct(_) -> no.
 

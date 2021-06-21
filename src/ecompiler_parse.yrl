@@ -268,15 +268,11 @@ Erlang code.
 
 -include("./ecompiler_frame.hrl").
 
-str_to_inttks({string, Line, Str}) ->
-    lists:map(fun (Char) -> {integer, Line, Char} end, Str).
+str_to_inttks({string, Line, Str}) -> lists:map(fun (Char) -> {integer, Line, Char} end, Str).
 
-tok_val({_, _, Val}) ->
-    Val.
+tok_val({_, _, Val}) -> Val.
 
-tok_sym({Sym, _}) ->
-    Sym.
+tok_sym({Sym, _}) -> Sym.
 
-tok_line(T) ->
-    element(2, T).
+tok_line(T) -> element(2, T).
 

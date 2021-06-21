@@ -5,9 +5,7 @@
 -compile({nowarn_unused_function, [{record_details, 0}]}).
 
 -include("./ecompiler_frame.hrl").
-
 -ifdef(EUNIT).
-
 -include_lib("eunit/include/eunit.hrl").
 
 -endif.
@@ -95,20 +93,15 @@ stop_compilercd() ->
         error:_ -> ok
     end.
 
-record_compileop(Filename) ->
-    compilercd_cmd({record_compileop, filename_tomod(Filename)}).
+record_compileop(Filename) -> compilercd_cmd({record_compileop, filename_tomod(Filename)}).
 
-unrecord_compileop(Filename) ->
-    compilercd_cmd({unrecord_compileop, filename_tomod(Filename)}).
+unrecord_compileop(Filename) -> compilercd_cmd({unrecord_compileop, filename_tomod(Filename)}).
 
-record_module(Filename, FnMap) ->
-    compilercd_cmd({record_module, filename_tomod(Filename), FnMap}).
+record_module(Filename, FnMap) -> compilercd_cmd({record_module, filename_tomod(Filename), FnMap}).
 
-change_searchdir(NewDir) ->
-    compilercd_cmd({change_searchdir, NewDir}).
+change_searchdir(NewDir) -> compilercd_cmd({change_searchdir, NewDir}).
 
-filename_tomod(Filename) when is_list(Filename) ->
-    list_to_atom(filename:basename(Filename, ".e")).
+filename_tomod(Filename) when is_list(Filename) -> list_to_atom(filename:basename(Filename, ".e")).
 
 query_modulefun(ModName, FunName) ->
     case compilercd_cmd({query_funret, ModName, FunName}) of
@@ -121,11 +114,9 @@ query_modulefun(ModName, FunName) ->
             R
     end.
 
-mk_filename(SearchDir, ModName) ->
-    lists:flatten(io_lib:format("~s/~s.e", [SearchDir, ModName])).
+mk_filename(SearchDir, ModName) -> lists:flatten(io_lib:format("~s/~s.e", [SearchDir, ModName])).
 
-record_details() ->
-    compilercd_cmd(debug).
+record_details() -> compilercd_cmd(debug).
 
 compilercd_cmd(Command) ->
     Ref = make_ref(),

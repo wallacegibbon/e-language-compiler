@@ -20,8 +20,7 @@ prepare_structinit_expr([#vardef{initval = Initval} = V | Rest]) ->
 prepare_structinit_expr([]) ->
     [].
 
-fix_structinit_ast(Lst) ->
-    ecompiler_util:exprsmap(fun fix_structinit/1, Lst).
+fix_structinit_ast(Lst) -> ecompiler_util:exprsmap(fun fix_structinit/1, Lst).
 
 fix_structinit(#struct_init_raw{name = Name, fields = Fields, line = Line}) ->
     {FieldNames, InitExprMap} = structinit_tomap(Fields),
@@ -37,11 +36,9 @@ fix_structinit(#op1{operand = Operand} = O) ->
 fix_structinit(Any) ->
     Any.
 
-structinit_tomap(Exprs) ->
-    structinit_tomap(Exprs, [], #{}).
+-define(ASSIGN_OP(Op1, Op2), #op2{operator = assign, op1 = Op1, op2 = Op2}).
 
--define(ASSIGN_OP(Op1, Op2),
-        #op2{operator = assign, op1 = Op1, op2 = Op2}).
+structinit_tomap(Exprs) -> structinit_tomap(Exprs, [], #{}).
 
 structinit_tomap([?ASSIGN_OP((#varref{name = Field} = Op1), Val) | Rest], FieldNames, ExprMap) ->
     structinit_tomap(Rest, [Op1 | FieldNames], ExprMap#{Field => fix_structinit(Val)});
@@ -99,10 +96,7 @@ check_labelconflict([], _, _) ->
 
 check_varconflict(GlobalVars, LocalVars) ->
     ConflictMap = maps:with(maps:keys(GlobalVars), LocalVars),
-    maps:map(fun (Name, T) ->
-                    throw_name_conflict(Name, element(2, T))
-             end,
-             ConflictMap).
+    maps:map(fun (Name, T) -> throw_name_conflict(Name, element(2, T)) end, ConflictMap).
 
 ensure_no_conflict(Name, VarMap, Line) ->
     case maps:find(Name, VarMap) of
@@ -119,8 +113,5 @@ getvalues_bydefs(DefList, Map) ->
     ecompiler_util:getvalues_bykeys(ecompiler_util:names_of_vardefs(DefList), Map).
 
 varrefs_from_vardefs(Vardefs) ->
-    lists:map(fun (#vardef{name = N, line = Line}) ->
-                        #varref{name = N, line = Line}
-              end,
-              Vardefs).
+    lists:map(fun (#vardef{name = N, line = Line}) -> #varref{name = N, line = Line} end, Vardefs).
 
