@@ -43,8 +43,7 @@ compileFromRawAST(Ast, CustomCompileOptions) ->
 
 prvDefaultCompileOptions() -> #{pointer_width => 8}.
 
-prvCheckStructRecursive(StructMap) ->
-    maps:map(fun (_, S) -> prvCheckStructObject(S, StructMap, []) end, StructMap).
+prvCheckStructRecursive(StructMap) -> maps:map(fun (_, S) -> prvCheckStructObject(S, StructMap, []) end, StructMap).
 
 prvCheckStructObject(#struct{name = Name, field_types = FieldTypes, line = Line}, StructMap, UsedStructs) ->
     try

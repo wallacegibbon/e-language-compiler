@@ -8,8 +8,7 @@ I haven't given it a name yet, so for convenience, I will call it the E language
 
 ## What is it ?
 
-The E language is a simplified C language, they have similar semantics, but the
-syntax of E language is more compact.
+The E language is a simplified C language, they have similar semantics, but the syntax of E language is more compact.
 
 Here are some comparisons:
 
@@ -130,8 +129,9 @@ cp -r ./misc/elang.vim/ ~/.vim/pack/my/start/
 ```
 
 
-## TODO
+## Plans
 
 This compiler only compile E language to C language for now, in the future,
-it will be compiled directly to machine language.
+it will be compiled directly to machine language. (RISC-V may be the only target)
 
+A macro system like C and Erlang may be introduced. (not decided yet)
