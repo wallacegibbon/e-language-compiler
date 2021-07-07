@@ -1,8 +1,8 @@
 -module(ecompiler).
 
--export([compile_to_ast/1, compile_to_c/2, query_modulefun/2]).
+-export([compileToAST/1, compileToC/2, prvQueryFunctionInModule/2]).
 
--compile({nowarn_unused_function, [{record_details, 0}]}).
+-compile({nowarn_unused_function, [{prvCompilerRecordingDetails, 0}]}).
 
 -include("./ecompiler_frame.hrl").
 -ifdef(EUNIT).
@@ -10,49 +10,49 @@
 
 -endif.
 
-compile_to_c(InputFilename, OutputFilename) ->
-    start_compilercd(filename:dirname(InputFilename)),
+compileToC(InputFilename, OutputFilename) ->
+    prvStartCompilerRecordingProcess(filename:dirname(InputFilename)),
     try
-        {Ast, Vars, InitCode} = parse_and_compile(InputFilename),
+        {Ast, Vars, InitCode} = prvParseAndCompile(InputFilename),
         %io:format(">> ~p~n~n", [Ast]),
-        ecompiler_genc:generate_ccode(Ast, Vars, InitCode, OutputFilename)
+        ecompiler_genc:generateCCode(Ast, Vars, InitCode, OutputFilename)
     catch
         {Filename, Errinfo} ->
             io:format("~s: ~p~n", [Filename, Errinfo])
     end,
-    stop_compilercd().
+    prvStopCompilerRecordingProcess().
 
-compile_to_ast(Filename) ->
-    start_compilercd(filename:dirname(Filename)),
-    R = parse_and_compile(Filename),
-    stop_compilercd(),
+compileToAST(Filename) ->
+    prvStartCompilerRecordingProcess(filename:dirname(Filename)),
+    R = prvParseAndCompile(Filename),
+    prvStopCompilerRecordingProcess(),
     R.
 
-parse_and_compile(Filename) ->
-    ok = record_compileop(Filename),
+prvParseAndCompile(Filename) ->
+    ok = prvRecordCompileFile(Filename),
     try
-        {ok, Ast} = parse_file(Filename),
-        Ret = ecompiler_compile:compile_from_rawast(Ast, #{}),
+        {ok, Ast} = prvParseFile(Filename),
+        Ret = ecompiler_compile:compileFromRawAST(Ast, #{}),
         {Ast1, Vars, InitCode, FnMap} = Ret,
-        ok = record_module(Filename, FnMap),
+        ok = recordModule(Filename, FnMap),
         {Ast1, Vars, InitCode}
     catch
         E ->
-            ok = unrecord_compileop(Filename),
+            ok = prvUnRecordCompileFile(Filename),
             throw({Filename, E})
     end.
 
-parse_file(Filename) when is_list(Filename) ->
+prvParseFile(Filename) when is_list(Filename) ->
     case file:read_file(Filename) of
         {ok, RawContent} ->
-            parse_content(RawContent);
+            prvParseContent(RawContent);
         {error, enoent} ->
             throw("module not found");
         {error, Reason} ->
             throw(Reason)
     end.
 
-parse_content(RawContent) ->
+prvParseContent(RawContent) ->
     case ecompiler_scan:string(binary_to_list(RawContent)) of
         {ok, Tokens, _} ->
             case ecompiler_parse:parse(Tokens) of
@@ -66,18 +66,18 @@ parse_content(RawContent) ->
     end.
 
 %% start the recording process (record fnmap for module)
-start_compilercd(SearchDir) ->
-    State = #{searchdir => SearchDir, modmap => init_modmap(), modchain => []},
-    case whereis(ecompiler_helper) of
+prvStartCompilerRecordingProcess(SearchDir) ->
+    State = #{searchdir => SearchDir, modmap => prvInitialModuleASTMap(), moduleChain => []},
+    case whereis(ecompilerHelper) of
         undefined ->
-            Pid = spawn_link(fun () -> compilercd_loop(State) end),
-            register(ecompiler_helper, Pid);
+            Pid = spawn_link(fun () -> prvCompilerRecordingLoop(State) end),
+            register(ecompilerHelper, Pid);
         _ ->
-            ok = change_searchdir(SearchDir)
+            ok = prvChangeSearchDirectory(SearchDir)
     end.
 
 %% some c functions like printf, puts, malloc
-init_modmap() ->
+prvInitialModuleASTMap() ->
     CommonIntType = #basic_type{class = integer, tag = isize, pdepth = 0},
     CommonStrType = #basic_type{class = integer, tag = i8, pdepth = 1},
     #{c =>
@@ -85,51 +85,51 @@ init_modmap() ->
           puts => #fun_type{params = [CommonStrType], ret = CommonIntType},
           malloc => #fun_type{params = [CommonIntType], ret = CommonStrType}}}.
 
-stop_compilercd() ->
+prvStopCompilerRecordingProcess() ->
     try
-        ok = compilercd_cmd(stop),
-        unregister(ecompiler_helper)
+        ok = prvCompileRecordingCmd(stop),
+        unregister(ecompilerHelper)
     catch
         error:_ -> ok
     end.
 
-record_compileop(Filename) -> compilercd_cmd({record_compileop, filename_tomod(Filename)}).
+prvRecordCompileFile(Filename) -> prvCompileRecordingCmd({recordCompileOp, prvFileNameToModuleAtom(Filename)}).
 
-unrecord_compileop(Filename) -> compilercd_cmd({unrecord_compileop, filename_tomod(Filename)}).
+prvUnRecordCompileFile(Filename) -> prvCompileRecordingCmd({unRecordCompileOp, prvFileNameToModuleAtom(Filename)}).
 
-record_module(Filename, FnMap) -> compilercd_cmd({record_module, filename_tomod(Filename), FnMap}).
+recordModule(Filename, FnMap) -> prvCompileRecordingCmd({recordModule, prvFileNameToModuleAtom(Filename), FnMap}).
 
-change_searchdir(NewDir) -> compilercd_cmd({change_searchdir, NewDir}).
+prvChangeSearchDirectory(NewDir) -> prvCompileRecordingCmd({change_searchdir, NewDir}).
 
-filename_tomod(Filename) when is_list(Filename) -> list_to_atom(filename:basename(Filename, ".e")).
+prvFileNameToModuleAtom(Filename) when is_list(Filename) -> list_to_atom(filename:basename(Filename, ".e")).
 
-query_modulefun(ModName, FunName) ->
-    case compilercd_cmd({query_funret, ModName, FunName}) of
-        {error, module_notfound, SearchDir} ->
-            parse_and_compile(mk_filename(SearchDir, ModName)),
-            query_modulefun(ModName, FunName);
-        {error, function_notfound} = R ->
+prvQueryFunctionInModule(ModName, FunName) ->
+    case prvCompileRecordingCmd({queryFunctionReturnType, ModName, FunName}) of
+        {error, moduleNotFound, SearchDir} ->
+            prvParseAndCompile(prvMakeFileName(SearchDir, ModName)),
+            prvQueryFunctionInModule(ModName, FunName);
+        {error, functionNotFound} = R ->
             R;
         {ok, _Type} = R ->
             R
     end.
 
-mk_filename(SearchDir, ModName) -> lists:flatten(io_lib:format("~s/~s.e", [SearchDir, ModName])).
+prvMakeFileName(SearchDir, ModName) -> lists:flatten(io_lib:format("~s/~s.e", [SearchDir, ModName])).
 
-record_details() -> compilercd_cmd(debug).
+prvCompilerRecordingDetails() -> prvCompileRecordingCmd(debug).
 
-compilercd_cmd(Command) ->
-    Ref = make_ref(),
-    ecompiler_helper ! {{self(), Ref}, Command},
+prvCompileRecordingCmd(Command) ->
+    Ref = erlang:make_ref(),
+    ecompilerHelper ! {{self(), Ref}, Command},
     receive {Ref, Result} -> Result end.
 
-compilercd_loop(State) ->
+prvCompilerRecordingLoop(State) ->
     receive
         {{Pid, Ref}, Command} ->
-            case compilercd_handle(Command, State) of
+            case prvCompileRecordingHandle(Command, State) of
                 {reply, Result, NewState} ->
                     Pid ! {Ref, Result},
-                    compilercd_loop(NewState);
+                    prvCompilerRecordingLoop(NewState);
                 stop ->
                     Pid ! {Ref, ok}
             end;
@@ -137,57 +137,57 @@ compilercd_loop(State) ->
             throw(Any)
     end.
 
-compilercd_handle({query_funret, ModName, FunName}, #{modmap := ModuleFnMap, searchdir := SearchDir} = State) ->
+prvCompileRecordingHandle({queryFunctionReturnType, ModName, FunName}, #{modmap := ModuleFnMap, searchdir := SearchDir} = State) ->
     case maps:find(ModName, ModuleFnMap) of
         {ok, FnMap} ->
             case maps:find(FunName, FnMap) of
                 {ok, _Type} = D ->
                     {reply, D, State};
                 error ->
-                    {reply, {error, function_notfound}, State}
+                    {reply, {error, functionNotFound}, State}
             end;
         error ->
-            {reply, {error, module_notfound, SearchDir}, State}
+            {reply, {error, moduleNotFound, SearchDir}, State}
     end;
-compilercd_handle({record_compileop, ModName}, #{modchain := ModuleChain} = State) ->
+prvCompileRecordingHandle({recordCompileOp, ModName}, #{moduleChain := ModuleChain} = State) ->
     NewModuleChain = [ModName | ModuleChain],
-    case ecompiler_util:value_inlist(ModName, ModuleChain) of
+    case ecompiler_util:valueInList(ModName, ModuleChain) of
         true ->
-            {reply, {error, module_loop, lists:reverse(NewModuleChain)},
+            {reply, {error, moduleRecursive, lists:reverse(NewModuleChain)},
              State};
         _ ->
-            {reply, ok, State#{modchain := NewModuleChain}}
+            {reply, ok, State#{moduleChain := NewModuleChain}}
     end;
-compilercd_handle({unrecord_compileop, ModName}, #{modchain := [ModName | Rest]} = State) ->
-    {reply, ok, State#{modchain := Rest}};
-compilercd_handle({record_module, ModName, FnMap}, #{modmap := ModuleFnMap} = State) ->
+prvCompileRecordingHandle({unRecordCompileOp, ModName}, #{moduleChain := [ModName | Rest]} = State) ->
+    {reply, ok, State#{moduleChain := Rest}};
+prvCompileRecordingHandle({recordModule, ModName, FnMap}, #{modmap := ModuleFnMap} = State) ->
     {reply, ok, State#{modmap := ModuleFnMap#{ModName => FnMap}}};
-compilercd_handle({change_searchdir, NewDir}, State) ->
+prvCompileRecordingHandle({change_searchdir, NewDir}, State) ->
     {reply, ok, State#{searchdir := NewDir}};
-compilercd_handle(debug, #{modmap := ModuleFnMap, modchain := ModuleChain} = State) ->
+prvCompileRecordingHandle(debug, #{modmap := ModuleFnMap, moduleChain := ModuleChain} = State) ->
     {reply, {ModuleFnMap, ModuleChain}, State};
-compilercd_handle(stop, _) ->
+prvCompileRecordingHandle(stop, _) ->
     stop.
 
 -ifdef(EUNIT).
 
-start_beforetest(SearchDir) ->
-    stop_compilercd(),
-    start_compilercd(SearchDir),
-    R = record_details(),
-    ?assertEqual(R, {init_modmap(), []}).
+testStartBeforeTest(SearchDir) ->
+    prvStopCompilerRecordingProcess(),
+    prvStartCompilerRecordingProcess(SearchDir),
+    R = prvCompilerRecordingDetails(),
+    ?assertEqual(R, {prvInitialModuleASTMap(), []}).
 
 record_test() ->
-    start_beforetest("/tmp"),
-    ok = record_compileop("./a/b/c/file1.e"),
-    ok = record_compileop("./a/b/c/file2.e"),
-    R3 = record_compileop("./a/b/c/file1.e"),
-    ?assertEqual(R3, {error, module_loop, [file1, file2, file1]}),
+    testStartBeforeTest("/tmp"),
+    ok = prvRecordCompileFile("./a/b/c/file1.e"),
+    ok = prvRecordCompileFile("./a/b/c/file2.e"),
+    R3 = prvRecordCompileFile("./a/b/c/file1.e"),
+    ?assertEqual(R3, {error, moduleRecursive, [file1, file2, file1]}),
     ok.
 
-get_uncompiled_module_test() ->
-    start_beforetest("./sample"),
-    R = query_modulefun(simplemod, test),
+getUncompiledModule_test() ->
+    testStartBeforeTest("./sample"),
+    R = prvQueryFunctionInModule(simplemod, test),
     ?assertEqual(R, {ok, {fun_type, 3, [], {basic_type, 3, 0, integer, isize}}}),
     ok.
 

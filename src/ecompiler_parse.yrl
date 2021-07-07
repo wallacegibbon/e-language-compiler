@@ -1,8 +1,8 @@
 Nonterminals
 
-statements statement defconst defstruct defun defvars defvar params exprs expr root_expr call_expr if_expr else_expr while_expr preminusplus_expr
-return_expr sizeof_expr assign_expr label_expr goto_expr op19 op30 op29 op28 op27 op26 op25 op2_withassign typeanno_list typeanno
-pointer_depth atomic_literal array_init_expr array_init_elements struct_init_expr struct_init_fields struct_init_assign reserved_keyword
+statements statement constDefinition structDefinition functionDefinition variableDefinitions variableDefinition params exprs expr rootExpression callExpression ifExpression elseExpression whileExpression preMinusPlusExpression
+returnExpression sizeofExpression assignExpression labelExpression gotoExpression op19 op30 op29 op28 op27 op26 op25 op2WithAssignment typeanno_list typeAnnotation
+pointerDepth atomicLiteralValues arrayInitExpression arrayInitElements structInitExpression structInitFields structInitAssignment reservedKeyword
 
 .
 
@@ -17,7 +17,7 @@ const struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr' while 
 'cond' 'case' for break continue
 
 %%
-identifier integer float string integer_type float_type void_type any_type
+identifier integer float string integerType floatType voidType anyType
 
 .
 
@@ -26,204 +26,196 @@ Rootsymbol statements.
 statements -> statement statements : ['$1'|'$2'].
 statements -> statement : ['$1'].
 
-statement -> defconst : '$1'.
-statement -> defstruct : '$1'.
-statement -> defun : '$1'.
-statement -> defvar ';' : '$1'.
+statement -> constDefinition : '$1'.
+statement -> structDefinition : '$1'.
+statement -> functionDefinition : '$1'.
+statement -> variableDefinition ';' : '$1'.
 
-defconst -> const identifier '=' expr ';' :
-    #const{name = tok_val('$2'), val = '$4', line = tok_line('$2')}.
+constDefinition -> const identifier '=' expr ';' :
+    #const{name = tokenValue('$2'), val = '$4', line = tokenLine('$2')}.
 
 %% type annotation inside array or function
-typeanno_list -> typeanno ',' typeanno_list : ['$1'|'$3'].
-typeanno_list -> typeanno : ['$1'].
+typeanno_list -> typeAnnotation ',' typeanno_list : ['$1'|'$3'].
+typeanno_list -> typeAnnotation : ['$1'].
 
-typeanno -> 'fun' '(' typeanno_list ')' ':' typeanno :
-    #fun_type{params = '$3', ret = '$6', line = tok_line('$1')}.
-typeanno -> 'fun' '(' typeanno_list ')' :
-    #fun_type{params = '$3', ret = ecompiler_util:void_type(tok_line('$4')), line = tok_line('$1')}.
-typeanno -> 'fun' '(' ')' ':' typeanno :
-    #fun_type{params = [], ret = '$5', line = tok_line('$1')}.
-typeanno -> 'fun' '(' ')' :
-    #fun_type{params = [], ret = ecompiler_util:void_type(tok_line('$3')), line = tok_line('$1')}.
-typeanno -> '{' typeanno ',' expr '}' :
-    #array_type{elemtype = '$2', len = '$4', line = tok_line('$1')}.
-typeanno -> integer_type pointer_depth :
-    #basic_type{class = integer, pdepth = '$2', tag = tok_val('$1'), line = tok_line('$1')}.
-typeanno -> integer_type :
-    #basic_type{class = integer, pdepth = 0, tag = tok_val('$1'), line = tok_line('$1')}.
-typeanno -> float_type pointer_depth :
-    #basic_type{class = float, pdepth = '$2', tag = tok_val('$1'), line = tok_line('$1')}.
-typeanno -> float_type :
-    #basic_type{class = float, pdepth = 0, tag = tok_val('$1'), line = tok_line('$1')}.
-typeanno -> identifier pointer_depth :
-    #basic_type{class = struct, pdepth = '$2', tag = tok_val('$1'), line = tok_line('$1')}.
-typeanno -> identifier :
-    #basic_type{class = struct,pdepth = 0, tag = tok_val('$1'), line = tok_line('$1')}.
-typeanno -> any_type pointer_depth :
-    #basic_type{class = any, pdepth = '$2', tag = void, line = tok_line('$1')}.
-typeanno -> any_type :
-    return_error(tok_line('$1'), "type any is not allowed here").
-typeanno -> void_type :
-    return_error(tok_line('$1'), "type void is not allowed here").
+typeAnnotation -> 'fun' '(' typeanno_list ')' ':' typeAnnotation :
+    #fun_type{params = '$3', ret = '$6', line = tokenLine('$1')}.
+typeAnnotation -> 'fun' '(' typeanno_list ')' :
+    #fun_type{params = '$3', ret = ecompiler_util:voidType(tokenLine('$4')), line = tokenLine('$1')}.
+typeAnnotation -> 'fun' '(' ')' ':' typeAnnotation :
+    #fun_type{params = [], ret = '$5', line = tokenLine('$1')}.
+typeAnnotation -> 'fun' '(' ')' :
+    #fun_type{params = [], ret = ecompiler_util:voidType(tokenLine('$3')), line = tokenLine('$1')}.
+typeAnnotation -> '{' typeAnnotation ',' expr '}' :
+    #array_type{elemtype = '$2', len = '$4', line = tokenLine('$1')}.
+typeAnnotation -> integerType pointerDepth :
+    #basic_type{class = integer, pdepth = '$2', tag = tokenValue('$1'), line = tokenLine('$1')}.
+typeAnnotation -> integerType :
+    #basic_type{class = integer, pdepth = 0, tag = tokenValue('$1'), line = tokenLine('$1')}.
+typeAnnotation -> floatType pointerDepth :
+    #basic_type{class = float, pdepth = '$2', tag = tokenValue('$1'), line = tokenLine('$1')}.
+typeAnnotation -> floatType :
+    #basic_type{class = float, pdepth = 0, tag = tokenValue('$1'), line = tokenLine('$1')}.
+typeAnnotation -> identifier pointerDepth :
+    #basic_type{class = struct, pdepth = '$2', tag = tokenValue('$1'), line = tokenLine('$1')}.
+typeAnnotation -> identifier :
+    #basic_type{class = struct,pdepth = 0, tag = tokenValue('$1'), line = tokenLine('$1')}.
+typeAnnotation -> anyType pointerDepth :
+    #basic_type{class = any, pdepth = '$2', tag = void, line = tokenLine('$1')}.
+typeAnnotation -> anyType :
+    return_error(tokenLine('$1'), "type any is not allowed here").
+typeAnnotation -> voidType :
+    return_error(tokenLine('$1'), "type void is not allowed here").
 
 %% pointer depth
-pointer_depth -> '^' pointer_depth : '$2' + 1.
-pointer_depth -> '^' : 1.
+pointerDepth -> '^' pointerDepth : '$2' + 1.
+pointerDepth -> '^' : 1.
 
-defvars -> defvar ',' defvars : ['$1'|'$3'].
-defvars -> defvar ',' : ['$1'].
-defvars -> defvar : ['$1'].
+variableDefinitions -> variableDefinition ',' variableDefinitions : ['$1'|'$3'].
+variableDefinitions -> variableDefinition ',' : ['$1'].
+variableDefinitions -> variableDefinition : ['$1'].
 
-defvar -> identifier ':' typeanno '=' expr :
-    #vardef{name = tok_val('$1'), type = '$3', initval = '$5', line = tok_line('$1')}.
+variableDefinition -> identifier ':' typeAnnotation '=' expr :
+    #vardef{name = tokenValue('$1'), type = '$3', initval = '$5', line = tokenLine('$1')}.
 
-defvar -> identifier ':' typeanno :
-    #vardef{name = tok_val('$1'), type = '$3', line = tok_line('$1')}.
+variableDefinition -> identifier ':' typeAnnotation :
+    #vardef{name = tokenValue('$1'), type = '$3', line = tokenLine('$1')}.
 
 %% struct definition
-defstruct -> struct identifier defvars 'end' :
-    #struct_raw{name = tok_val('$2'), fields = '$3', line = tok_line('$2')}.
+structDefinition -> struct identifier variableDefinitions 'end' :
+    #struct_raw{name = tokenValue('$2'), fields = '$3', line = tokenLine('$2')}.
 
 %% function definition
-defun -> 'fun' identifier '(' defvars ')' ':' typeanno exprs 'end' :
-    #function_raw{name = tok_val('$2'), params = '$4', ret = '$7', exprs = '$8', line = tok_line('$2')}.
-defun -> 'fun' identifier '(' ')' ':' typeanno exprs 'end' :
-    #function_raw{name = tok_val('$2'), params = [], ret = '$6', exprs = '$7', line = tok_line('$2')}.
-defun -> 'fun' identifier '(' defvars ')' exprs 'end' :
-    #function_raw{name = tok_val('$2'), params = '$4', ret = ecompiler_util:void_type(tok_line('$5')), exprs = '$6', line = tok_line('$2')}.
-defun -> 'fun' identifier '(' ')' exprs 'end' :
-    #function_raw{name = tok_val('$2'), params = [], ret = ecompiler_util:void_type(tok_line('$4')), exprs = '$5', line = tok_line('$2')}.
+functionDefinition -> 'fun' identifier '(' variableDefinitions ')' ':' typeAnnotation exprs 'end' :
+    #function_raw{name = tokenValue('$2'), params = '$4', ret = '$7', exprs = '$8', line = tokenLine('$2')}.
+functionDefinition -> 'fun' identifier '(' ')' ':' typeAnnotation exprs 'end' :
+    #function_raw{name = tokenValue('$2'), params = [], ret = '$6', exprs = '$7', line = tokenLine('$2')}.
+functionDefinition -> 'fun' identifier '(' variableDefinitions ')' exprs 'end' :
+    #function_raw{name = tokenValue('$2'), params = '$4', ret = ecompiler_util:voidType(tokenLine('$5')), exprs = '$6', line = tokenLine('$2')}.
+functionDefinition -> 'fun' identifier '(' ')' exprs 'end' :
+    #function_raw{name = tokenValue('$2'), params = [], ret = ecompiler_util:voidType(tokenLine('$4')), exprs = '$5', line = tokenLine('$2')}.
 
 %% while
-while_expr -> while expr do exprs 'end' :
-    #while_expr{condition = '$2', exprs = '$4', line = tok_line('$1')}.
+whileExpression -> while expr do exprs 'end' :
+    #while_expr{condition = '$2', exprs = '$4', line = tokenLine('$1')}.
 
 %% if
-if_expr -> 'if' expr then exprs else_expr :
-    #if_expr{condition = '$2', then = '$4', else = '$5', line = tok_line('$1')}.
+ifExpression -> 'if' expr then exprs elseExpression :
+    #if_expr{condition = '$2', then = '$4', else = '$5', line = tokenLine('$1')}.
 
-else_expr -> elif expr then exprs else_expr :
-    [#if_expr{condition = '$2', then = '$4', else = '$5', line = tok_line('$1')}].
-else_expr -> else exprs 'end' :
+elseExpression -> elif expr then exprs elseExpression :
+    [#if_expr{condition = '$2', then = '$4', else = '$5', line = tokenLine('$1')}].
+elseExpression -> else exprs 'end' :
     '$2'.
-else_expr -> 'end' :
+elseExpression -> 'end' :
     [].
 
-%% array_init_expr and struct_init_expr contains similar pattern '{' '}'.
-%% make the precedence of array_init_expr higher than struct_init_expr
-Unary 2100 array_init_expr.
-array_init_expr -> '{' array_init_elements '}' :
-    #array_init{elements = '$2', line = tok_line('$1')}.
-array_init_expr -> '{' string '}' :
-    #array_init{elements = str_to_inttks('$2'), line = tok_line('$1')}.
+%% arrayInitExpression and structInitExpression contains similar pattern '{' '}'.
+%% make the precedence of arrayInitExpression higher than structInitExpression
+Unary 2100 arrayInitExpression.
+arrayInitExpression -> '{' arrayInitElements '}' :
+    #array_init{elements = '$2', line = tokenLine('$1')}.
+arrayInitExpression -> '{' string '}' :
+    #array_init{elements = stringToIntegerTokens('$2'), line = tokenLine('$1')}.
 
-array_init_elements -> expr ',' array_init_elements :
+arrayInitElements -> expr ',' arrayInitElements :
     ['$1' | '$3'].
-array_init_elements -> expr :
+arrayInitElements -> expr :
     ['$1'].
 
-Unary 2000 struct_init_expr.
-struct_init_expr -> identifier '{' struct_init_fields '}' :
-    #struct_init_raw{name = tok_val('$1'), fields = '$3', line = tok_line('$1')}.
+Unary 2000 structInitExpression.
+structInitExpression -> identifier '{' structInitFields '}' :
+    #struct_init_raw{name = tokenValue('$1'), fields = '$3', line = tokenLine('$1')}.
 
-struct_init_fields -> struct_init_assign ',' struct_init_fields :
-    ['$1' | '$3'].
-struct_init_fields -> struct_init_assign :
-    ['$1'].
+structInitFields -> structInitAssignment ',' structInitFields : ['$1' | '$3'].
+structInitFields -> structInitAssignment : ['$1'].
 
-struct_init_assign -> identifier '=' expr :
-    #op2{operator = assign, op1 = #varref{name = tok_val('$1'), line = tok_line('$1')}, op2 = '$3', line = tok_line('$2')}.
+structInitAssignment -> identifier '=' expr :
+    #op2{operator = assign, op1 = #varref{name = tokenValue('$1'), line = tokenLine('$1')}, op2 = '$3', line = tokenLine('$2')}.
 
 %% return
-return_expr -> return expr :
-    #return{expr = '$2', line = tok_line('$1')}.
+returnExpression -> return expr : #return{expr = '$2', line = tokenLine('$1')}.
 
 %% goto
-goto_expr -> goto expr :
-    #goto{expr = '$2', line = tok_line('$1')}.
+gotoExpression -> goto expr : #goto{expr = '$2', line = tokenLine('$1')}.
 
 %% sizeof
-sizeof_expr -> sizeof '(' typeanno ')' :
-    #sizeof{type = '$3', line = tok_line('$2')}.
+sizeofExpression -> sizeof '(' typeAnnotation ')' : #sizeof{type = '$3', line = tokenLine('$2')}.
 
 %% function invocation
-call_expr -> expr '(' params ')' :
-    #call{fn = '$1', args = '$3', line = tok_line('$2')}.
-call_expr -> expr '(' ')' :
-    #call{fn = '$1', args = [], line = tok_line('$2')}.
+callExpression -> expr '(' params ')' : #call{fn = '$1', args = '$3', line = tokenLine('$2')}.
+callExpression -> expr '(' ')' : #call{fn = '$1', args = [], line = tokenLine('$2')}.
 
-assign_expr -> expr op2_withassign expr :
-    #op2{operator = assign, op1 = '$1', line = tok_line('$2'), op2 = #op2{operator = tok_sym('$2'), op1 = '$1', op2 = '$3', line = tok_line('$2')}}.
-assign_expr -> expr '=' expr :
-    #op2{operator = assign, op1 = '$1', op2 = '$3', line = tok_line('$2')}.
+assignExpression -> expr op2WithAssignment expr :
+    #op2{operator = assign, op1 = '$1', line = tokenLine('$2'), op2 = #op2{operator = tokenSymbol('$2'), op1 = '$1', op2 = '$3', line = tokenLine('$2')}}.
+assignExpression -> expr '=' expr :
+    #op2{operator = assign, op1 = '$1', op2 = '$3', line = tokenLine('$2')}.
 
-op2_withassign -> op29 '=' : '$1'.
-op2_withassign -> op28 '=' : '$1'.
-op2_withassign -> op27 '=' : '$1'.
+op2WithAssignment -> op29 '=' : '$1'.
+op2WithAssignment -> op28 '=' : '$1'.
+op2WithAssignment -> op27 '=' : '$1'.
 
 params -> expr ',' params : ['$1' | '$3'].
 params -> expr ',' : ['$1'].
 params -> expr : ['$1'].
 
-atomic_literal -> integer : '$1'.
-atomic_literal -> float : '$1'.
-atomic_literal -> string : '$1'.
+atomicLiteralValues -> integer : '$1'.
+atomicLiteralValues -> float : '$1'.
+atomicLiteralValues -> string : '$1'.
 
-label_expr -> '@' '@' identifier ':' :
-    #label{name = tok_val('$3'), line = tok_line('$3')}.
+labelExpression -> '@' '@' identifier ':' : #label{name = tokenValue('$3'), line = tokenLine('$3')}.
 
 %% expression
-exprs -> root_expr exprs : ['$1'|'$2'].
-exprs -> root_expr : ['$1'].
+exprs -> rootExpression exprs : ['$1'|'$2'].
+exprs -> rootExpression : ['$1'].
 
-root_expr -> defvar ';' : '$1'.
-root_expr -> expr ';' : '$1'.
-root_expr -> assign_expr ';' : '$1'.
-root_expr -> return_expr ';' : '$1'.
-root_expr -> goto_expr ';' : '$1'.
-root_expr -> if_expr : '$1'.
-root_expr -> while_expr : '$1'.
-root_expr -> label_expr : '$1'.
+rootExpression -> variableDefinition ';' : '$1'.
+rootExpression -> expr ';' : '$1'.
+rootExpression -> assignExpression ';' : '$1'.
+rootExpression -> returnExpression ';' : '$1'.
+rootExpression -> gotoExpression ';' : '$1'.
+rootExpression -> ifExpression : '$1'.
+rootExpression -> whileExpression : '$1'.
+rootExpression -> labelExpression : '$1'.
 
-expr -> reserved_keyword :
-    return_error(tok_line('$1'), ecompiler_util:flatfmt("~s is reserved keyword", [tok_sym('$1')])).
+expr -> reservedKeyword :
+    return_error(tokenLine('$1'), ecompiler_util:flatfmt("~s is reserved keyword", [tokenSymbol('$1')])).
 expr -> expr op30 expr :
-    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
+    #op2{operator = tokenSymbol('$2'), op1 = '$1', op2 = '$3', line=tokenLine('$2')}.
 expr -> expr op29 expr :
-    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
+    #op2{operator = tokenSymbol('$2'), op1 = '$1', op2 = '$3', line=tokenLine('$2')}.
 expr -> expr op28 expr :
-    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
+    #op2{operator = tokenSymbol('$2'), op1 = '$1', op2 = '$3', line = tokenLine('$2')}.
 expr -> expr op27 expr :
-    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
+    #op2{operator = tokenSymbol('$2'), op1 = '$1', op2 = '$3', line = tokenLine('$2')}.
 expr -> expr op26 expr :
-    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
+    #op2{operator = tokenSymbol('$2'), op1 = '$1', op2 = '$3', line = tokenLine('$2')}.
 expr -> expr op25 expr :
-    #op2{operator=tok_sym('$2'), op1='$1', op2='$3', line=tok_line('$2')}.
+    #op2{operator = tokenSymbol('$2'), op1 = '$1', op2 = '$3', line = tokenLine('$2')}.
 expr -> expr op19 :
-    #op1{operator=tok_sym('$2'), operand='$1', line=tok_line('$2')}.
+    #op1{operator = tokenSymbol('$2'), operand = '$1', line = tokenLine('$2')}.
 expr -> identifier :
-    #varref{name=tok_val('$1'), line=tok_line('$1')}.
-expr -> preminusplus_expr : '$1'.
-expr -> array_init_expr : '$1'.
-expr -> struct_init_expr : '$1'.
-expr -> atomic_literal : '$1'.
-expr -> call_expr : '$1'.
-expr -> sizeof_expr : '$1'.
+    #varref{name = tokenValue('$1'), line = tokenLine('$1')}.
+expr -> preMinusPlusExpression : '$1'.
+expr -> arrayInitExpression : '$1'.
+expr -> structInitExpression : '$1'.
+expr -> atomicLiteralValues : '$1'.
+expr -> callExpression : '$1'.
+expr -> sizeofExpression : '$1'.
 expr -> '(' expr ')' : '$2'.
 
-reserved_keyword -> 'cond' : '$1'.
-reserved_keyword -> 'case' : '$1'.
-reserved_keyword -> for : '$1'.
-reserved_keyword -> break : '$1'.
-reserved_keyword -> continue : '$1'.
+reservedKeyword -> 'cond' : '$1'.
+reservedKeyword -> 'case' : '$1'.
+reservedKeyword -> for : '$1'.
+reservedKeyword -> break : '$1'.
+reservedKeyword -> continue : '$1'.
 
-%% the precedence of 'preminusplus_expr' needs to be higher than "op2 -"
-Unary 300 preminusplus_expr.
-preminusplus_expr -> '-' expr :
-    #op1{operator = tok_sym('$1'), operand = '$2', line = tok_line('$1')}.
-preminusplus_expr -> '+' expr :
-    #op1{operator = tok_sym('$1'), operand = '$2', line = tok_line('$1')}.
+%% the precedence of 'preMinusPlusExpression' needs to be higher than "op2 -"
+Unary 300 preMinusPlusExpression.
+preMinusPlusExpression -> '-' expr :
+    #op1{operator = tokenSymbol('$1'), operand = '$2', line = tokenLine('$1')}.
+preMinusPlusExpression -> '+' expr :
+    #op1{operator = tokenSymbol('$1'), operand = '$2', line = tokenLine('$1')}.
 
 Unary 900 op19.
 op19 -> '^' : '$1'.
@@ -268,11 +260,10 @@ Erlang code.
 
 -include("./ecompiler_frame.hrl").
 
-str_to_inttks({string, Line, Str}) -> lists:map(fun (Char) -> {integer, Line, Char} end, Str).
+stringToIntegerTokens({string, Line, Str}) -> lists:map(fun (Char) -> {integer, Line, Char} end, Str).
 
-tok_val({_, _, Val}) -> Val.
+tokenValue({_, _, Val}) -> Val.
 
-tok_sym({Sym, _}) -> Sym.
+tokenSymbol({Sym, _}) -> Sym.
 
-tok_line(T) -> element(2, T).
-
+tokenLine(T) -> element(2, T).

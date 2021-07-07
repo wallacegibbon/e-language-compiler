@@ -25,20 +25,20 @@ Rules.
     {token, {string, TokenLine, ""}}.
 
 {StrQuote}({StrUnescapedChar}|{StrEscapedChar})+{StrQuote} :
-    {token, {string, TokenLine, fixchars(drop_quotes(TokenChars))}}.
+    {token, {string, TokenLine, fixCharacters(dropQuotes(TokenChars))}}.
 
 {CharQuote}{CharQuote} :
     {error, "empty char"}.
 
 {CharQuote}({CharUnescapedChar}|{CharEscapedChar}){CharQuote} :
-    {token, {integer, TokenLine, fixchar(drop_quotes(TokenChars))}}.
+    {token, {integer, TokenLine, fixCharacter(dropQuotes(TokenChars))}}.
 
 0x{HexDigit}+ :
-    {token, {integer, TokenLine, str_to_integer(TokenChars, 16)}}.
+    {token, {integer, TokenLine, stringToInteger(TokenChars, 16)}}.
 0o{OctallDigit}+ :
-    {token, {integer, TokenLine, str_to_integer(TokenChars, 8)}}.
+    {token, {integer, TokenLine, stringToInteger(TokenChars, 8)}}.
 0b{BinaryDigit}+ :
-    {token, {integer, TokenLine, str_to_integer(TokenChars, 2)}}.
+    {token, {integer, TokenLine, stringToInteger(TokenChars, 2)}}.
 {DecimalDigit}+ :
     {token, {integer, TokenLine, list_to_integer(TokenChars)}}.
 
@@ -58,16 +58,16 @@ cond|case|for|break|continue :
     {token, {list_to_atom(TokenChars), TokenLine}}.
 
 u8|i8|u16|i16|u32|i32|u64|i64|usize|isize :
-    {token, {integer_type, TokenLine, list_to_atom(TokenChars)}}.
+    {token, {integerType, TokenLine, list_to_atom(TokenChars)}}.
 
 f64|f32 :
-    {token, {float_type, TokenLine, list_to_atom(TokenChars)}}.
+    {token, {floatType, TokenLine, list_to_atom(TokenChars)}}.
 
 void :
-    {token, {void_type, TokenLine, void}}.
+    {token, {voidType, TokenLine, void}}.
 
 any :
-    {token, {any_type, TokenLine, any}}.
+    {token, {anyType, TokenLine, any}}.
 
 {Identifier} :
     {token, {identifier, TokenLine, list_to_atom(TokenChars)}}.
@@ -78,28 +78,28 @@ any :
 
 Erlang code.
 
-str_to_integer([$0, _ | Chars], Base) -> list_to_integer(Chars, Base).
+stringToInteger([$0, _ | Chars], Base) -> list_to_integer(Chars, Base).
 
-drop_quotes([_ | QuotedString]) -> lists:droplast(QuotedString).
+dropQuotes([_ | QuotedString]) -> lists:droplast(QuotedString).
 
-fixchars([$\\, $\\ | Rest]) -> [$\\ | fixchars(Rest)];
-fixchars([$\\, $/ | Rest]) -> [$/ | fixchars(Rest)];
-fixchars([$\\, $b | Rest]) -> [$\b | fixchars(Rest)];
-fixchars([$\\, $f | Rest]) -> [$\f | fixchars(Rest)];
-fixchars([$\\, $n | Rest]) -> [$\n | fixchars(Rest)];
-fixchars([$\\, $r | Rest]) -> [$\r | fixchars(Rest)];
-fixchars([$\\, $t | Rest]) -> [$\t | fixchars(Rest)];
-fixchars([$\\, $" | Rest]) -> [$" | fixchars(Rest)];
-fixchars([$\\, Any | Rest]) -> [Any | fixchars(Rest)];
-fixchars([C | Rest]) -> [C | fixchars(Rest)];
-fixchars([]) -> [].
+fixCharacters([$\\, $\\ | Rest]) -> [$\\ | fixCharacters(Rest)];
+fixCharacters([$\\, $/ | Rest]) -> [$/ | fixCharacters(Rest)];
+fixCharacters([$\\, $b | Rest]) -> [$\b | fixCharacters(Rest)];
+fixCharacters([$\\, $f | Rest]) -> [$\f | fixCharacters(Rest)];
+fixCharacters([$\\, $n | Rest]) -> [$\n | fixCharacters(Rest)];
+fixCharacters([$\\, $r | Rest]) -> [$\r | fixCharacters(Rest)];
+fixCharacters([$\\, $t | Rest]) -> [$\t | fixCharacters(Rest)];
+fixCharacters([$\\, $" | Rest]) -> [$" | fixCharacters(Rest)];
+fixCharacters([$\\, Any | Rest]) -> [Any | fixCharacters(Rest)];
+fixCharacters([C | Rest]) -> [C | fixCharacters(Rest)];
+fixCharacters([]) -> [].
 
-fixchar([$\\, $\\]) -> $\\;
-fixchar([$\\, $b]) -> $\b;
-fixchar([$\\, $f]) -> $\f;
-fixchar([$\\, $n]) -> $\n;
-fixchar([$\\, $r]) -> $\r;
-fixchar([$\\, $t]) -> $\t;
-fixchar([$\\, Any]) -> Any;
-fixchar([Any]) -> Any.
+fixCharacter([$\\, $\\]) -> $\\;
+fixCharacter([$\\, $b]) -> $\b;
+fixCharacter([$\\, $f]) -> $\f;
+fixCharacter([$\\, $n]) -> $\n;
+fixCharacter([$\\, $r]) -> $\r;
+fixCharacter([$\\, $t]) -> $\t;
+fixCharacter([$\\, Any]) -> Any;
+fixCharacter([Any]) -> Any.
 

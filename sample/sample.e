@@ -60,7 +60,7 @@ fun main(argc: i64, argv: i64^^): i64
     v0: i8 = -1;
     users@^.blah = Blah{id="b"};
     cnt: i64 = TOTOAL_USERCNT;
-    init_users(users@, TOTOAL_USERCNT);
+    initUsers(users@, TOTOAL_USERCNT);
 
     %goto a;
 
@@ -104,14 +104,14 @@ fun main(argc: i64, argv: i64^^): i64
     return 0;
 end
 
-fun init_users(users: User^, size: i64)
+fun initUsers(users: User^, size: i64)
     cnt: i64 = 30 + 52 * size / 2 + 100 / 10;
 %    while cnt < size do
-%        init_user((users + cnt)^, cnt, "test");
+%        initUser((users + cnt)^, cnt, "test");
 %    end
 end
 
-fun init_user(user: User^, id: i64, desc: i64^)
+fun initUser(user: User^, id: i64, desc: i64^)
     if id < 1 then
         user^.id = 1;
         user^.id = user^.id + 1;
