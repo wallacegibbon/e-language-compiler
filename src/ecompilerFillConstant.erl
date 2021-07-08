@@ -7,14 +7,14 @@
 -include("./ecompilerFrameDef.hrl").
 
 %% find all consts in AST, calculate it and replace all const references.
-parseAndRemoveConstants(Ast) ->
-    {Constants, Ast2} = prvFetchContants(Ast),
+parseAndRemoveConstants(AST) ->
+    {Constants, Ast2} = prvFetchContants(AST),
     Ast3 = prvReplaceContants(Ast2, Constants),
     %io:format(">>> ~p~n", [Ast3]),
     Ast3.
 
 %% fetch constants
-prvFetchContants(Ast) -> prvFetchContants(Ast, [], #{}).
+prvFetchContants(AST) -> prvFetchContants(AST, [], #{}).
 
 prvFetchContants([#const{name = Name, val = Expr} | Rest], Statements, Constants) ->
     prvFetchContants(Rest, Statements, Constants#{Name => prvEvaluateConstantExpression(Expr, Constants)});

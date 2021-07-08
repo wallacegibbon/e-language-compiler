@@ -5,9 +5,8 @@
 
 -include("./ecompilerFrameDef.hrl").
 
-fetchVariables(Ast) ->
-    Ast2 = prvPrepareStructInitExpression(Ast),
-    {Ast3, VarTypes, InitCode} = prvFetchVariables(Ast2, [], {#{}, [], true}),
+fetchVariables(AST) ->
+    {Ast3, VarTypes, InitCode} = prvFetchVariables(prvPrepareStructInitExpression(AST), [], {#{}, [], true}),
     {Ast3, VarTypes, InitCode}.
 
 prvPrepareStructInitExpression([#function_raw{exprs = Exprs} = F | Rest]) ->
@@ -61,30 +60,27 @@ prvFetchVariables([#function_raw{name = Name, ret = Ret, params = Params, exprs 
     {NewExprs, FunVarTypes, []} = prvFetchVariables(Exprs, [], {ParamVars, [], false}),
     %% local variables should have different names from global variables
     prvCheckVariableConflict(GlobalVars, FunVarTypes),
-    %% lable names should be different from variables,
-    %% because the operand of goto could be a pointer variable.
+    %% lable names should be different from variables, because the operand of goto could be a pointer variable.
     Labels = lists:filter(fun (E) -> element(1, E) =:= label end, Exprs),
     prvCheckLabelConflict(Labels, GlobalVars, FunVarTypes),
-    ParamsForType = prvGetValuesByDefinitions(Params, ParamVars),
-    Fn = #function{name = Name, var_types = FunVarTypes, exprs = NewExprs, param_names = prvVariableDefinitionToReference(Params), line = Line,
-                   type = #fun_type{params = ParamsForType, ret = Ret, line = Line}},
-    prvFetchVariables(Rest, [Fn | NewAst], Ctx);
+    FunctionType = #fun_type{params = prvGetValuesByDefinitions(Params, ParamVars), ret = Ret, line = Line},
+    Function = #function{name = Name, var_types = FunVarTypes, exprs = NewExprs, param_names = prvVariableDefinitionToReference(Params), line = Line, type = FunctionType},
+    prvFetchVariables(Rest, [Function | NewAst], Ctx);
 prvFetchVariables([#struct_raw{name = Name, fields = Fields, line = Line} | Rest], NewAst, Ctx) ->
     %% struct can have default value
     {[], FieldTypes, StructInitCode} = prvFetchVariables(Fields, [], {#{}, [], true}),
     {_, FieldInitMap} = prvStructInitToMap(StructInitCode),
-    FieldNames = prvVariableDefinitionToReference(Fields),
-    S = #struct{name = Name, field_types = FieldTypes, field_names = FieldNames, field_defaults = FieldInitMap, line = Line},
+    S = #struct{name = Name, field_types = FieldTypes, field_names = prvVariableDefinitionToReference(Fields), field_defaults = FieldInitMap, line = Line},
     prvFetchVariables(Rest, [S | NewAst], Ctx);
 prvFetchVariables([Any | Rest], NewAst, Ctx) ->
     prvFetchVariables(Rest, [Any | NewAst], Ctx);
 prvFetchVariables([], NewAst, {VarTypes, InitCode, _}) ->
     {lists:reverse(NewAst), VarTypes, lists:reverse(InitCode)}.
 
-prvAppendToAST(Ast, Varname, Initval, Line) when Initval =/= none ->
-    [#op2{operator = assign, op1 = #varref{name = Varname, line = Line}, op2 = Initval, line = Line} | Ast];
-prvAppendToAST(Ast, _, _, _) ->
-    Ast.
+prvAppendToAST(AST, Varname, Initval, Line) when Initval =/= none ->
+    [#op2{operator = assign, op1 = #varref{name = Varname, line = Line}, op2 = Initval, line = Line} | AST];
+prvAppendToAST(AST, _, _, _) ->
+    AST.
 
 prvCheckLabelConflict([#label{name = Name, line = Line} | Rest], GlobalVars, LocalVars) ->
     prvEnsureNoNameConflict(Name, LocalVars, Line),
@@ -111,4 +107,3 @@ prvGetValuesByDefinitions(DefList, Map) ->
 
 prvVariableDefinitionToReference(Vardefs) ->
     lists:map(fun (#vardef{name = N, line = Line}) -> #varref{name = N, line = Line} end, Vardefs).
-

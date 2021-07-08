@@ -4,10 +4,10 @@
 
 -include("./ecompilerFrameDef.hrl").
 
-generateCCode(Ast, GlobalVars, InitCode, OutputFile) ->
-    {FnMap, StructMap} = ecompilerUtil:makeFunctionAndStructMapFromAST(Ast),
+generateCCode(AST, GlobalVars, InitCode, OutputFile) ->
+    {FnMap, StructMap} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST),
     Ctx = {FnMap, StructMap, GlobalVars},
-    Ast2 = lists:map(fun (A) -> prvFixFunctionForC(A, Ctx) end, Ast),
+    Ast2 = lists:map(fun (A) -> prvFixFunctionForC(A, Ctx) end, AST),
     InitCode2 = prvFixExpressionsForC(InitCode, Ctx),
     %io:format(">>>~p~n", [Ast2]),
     %% struct definition have to be before function declarations

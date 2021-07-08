@@ -10,9 +10,9 @@
 compileToC(InputFilename, OutputFilename) ->
     prvStartCompilerRecordingProcess(filename:dirname(InputFilename)),
     try
-        {Ast, Vars, InitCode} = prvParseAndCompile(InputFilename),
-        %io:format(">> ~p~n~n", [Ast]),
-        ecompilerGenerateCCode:generateCCode(Ast, Vars, InitCode, OutputFilename)
+        {AST, Vars, InitCode} = prvParseAndCompile(InputFilename),
+        %io:format(">> ~p~n~n", [AST]),
+        ecompilerGenerateCCode:generateCCode(AST, Vars, InitCode, OutputFilename)
     catch
         {Filename, Errinfo} ->
             io:format("~s: ~p~n", [Filename, Errinfo])
@@ -28,8 +28,8 @@ compileToAST(Filename) ->
 prvParseAndCompile(Filename) ->
     ok = prvRecordCompileFile(Filename),
     try
-        {ok, Ast} = prvParseFile(Filename),
-        Ret = ecompilerCompile:compileFromRawAST(Ast, #{}),
+        {ok, AST} = prvParseFile(Filename),
+        Ret = ecompilerCompile:compileFromRawAST(AST, #{}),
         {Ast1, Vars, InitCode, FnMap} = Ret,
         ok = recordModule(Filename, FnMap),
         {Ast1, Vars, InitCode}

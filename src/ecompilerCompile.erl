@@ -4,10 +4,10 @@
 
 -include("./ecompilerFrameDef.hrl").
 
-compileFromRawAST(Ast, CustomCompileOptions) ->
+compileFromRawAST(AST, CustomCompileOptions) ->
     CompileOptions = maps:merge(prvDefaultCompileOptions(), CustomCompileOptions),
 
-    Ast1 = ecompilerFillConstant:parseAndRemoveConstants(Ast),
+    Ast1 = ecompilerFillConstant:parseAndRemoveConstants(AST),
     %io:format(">>> ~p~n", [Ast1]),
     {Ast2, Vars, InitCode0} = ecompilerCollectVariable:fetchVariables(Ast1),
 

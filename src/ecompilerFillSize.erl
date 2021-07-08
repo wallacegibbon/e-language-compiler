@@ -39,8 +39,8 @@ prvExpandSizeofInExpression(Any, _) ->
 %% I will just keep it as it is now.
 %% use a process to hold the calculated struct info when the speed really
 %% becomes a problem.
-fillStructInformation(Ast, {_, PointerWidth} = Ctx) ->
-    Ast1 = lists:map(fun (E) -> prvFillStructSize(E, Ctx) end, Ast),
+fillStructInformation(AST, {_, PointerWidth} = Ctx) ->
+    Ast1 = lists:map(fun (E) -> prvFillStructSize(E, Ctx) end, AST),
     {_, StructMap1} = ecompilerUtil:makeFunctionAndStructMapFromAST(Ast1),
     Ctx1 = {StructMap1, PointerWidth},
     Ast2 = lists:map(fun (E) -> prvFillStructOffsets(E, Ctx1) end, Ast1),

@@ -48,37 +48,37 @@ expressionToString(Any) ->
 flatfmt(FmtStr, Args) -> lists:flatten(io_lib:format(FmtStr, Args)).
 
 -spec getValuesByKeys([atom()], #{atom() => any()}) -> [any()].
-
 getValuesByKeys(Fields, Map) when is_map(Map) -> prvGetValuesByKeys(Fields, Map, []).
 
+-spec prvGetValuesByKeys([atom()], #{atom() => any()}, [any()]) -> [any()].
 prvGetValuesByKeys([Field | Rest], Map, Result) -> prvGetValuesByKeys(Rest, Map, [maps:get(Field, Map) | Result]);
 prvGetValuesByKeys([], _, Result) -> lists:reverse(Result).
 
 -ifdef(EUNIT).
 
 getValuesByKeys_test() ->
-    A = getValuesByKeys([a, b], #{c => 1, b => 2, a => 3}),
-    ?assertEqual(A, [3, 2]).
+    ?assertEqual([3, 2], getValuesByKeys([a, b], #{c => 1, b => 2, a => 3})).
 
 -endif.
 
-makeFunctionAndStructMapFromAST(Ast) ->
-    Ck1 = fun (A) -> element(1, A) =:= function end,
-    {Fns, Structs} = lists:partition(Ck1, Ast),
+makeFunctionAndStructMapFromAST(AST) ->
+    {Functions, Structs} = lists:partition(fun (A) -> element(1, A) =:= function end, AST),
     %% FnMap stores function type only
-    F2 = fun (#function{name = Name} = Fn) -> {Name, Fn#function.type} end,
-    FnMap = maps:from_list(lists:map(F2, Fns)),
-    F3 = fun (#struct{name = Name} = S) -> {Name, S} end,
-    StructMap = maps:from_list(lists:map(F3, Structs)),
-    {FnMap, StructMap}.
+    FunctionMap = maps:from_list(lists:map(fun (#function{name = Name} = Fn) -> {Name, Fn#function.type} end, Functions)),
+    StructMap = maps:from_list(lists:map(fun (#struct{name = Name} = S) -> {Name, S} end, Structs)),
+    {FunctionMap, StructMap}.
 
 %% address calculations
+-spec fillToPointerWidth(integer(), non_neg_integer()) -> integer().
 fillToPointerWidth(Num, PointerWidth) -> (Num + PointerWidth - 1) div PointerWidth * PointerWidth.
 
+-spec fillOffset(integer(), non_neg_integer()) -> integer().
 fillOffset(Offset, PointerWidth) -> (Offset + PointerWidth) div PointerWidth * PointerWidth.
 
+-spec cutExtra(integer(), non_neg_integer()) -> integer().
 cutExtra(Offset, PointerWidth) -> Offset div PointerWidth * PointerWidth.
 
+-spec primitiveSizeOf(atom()) -> pwidth | 1 | 2 | 4 | 8.
 primitiveSizeOf(usize) -> pwidth;
 primitiveSizeOf(isize) -> pwidth;
 primitiveSizeOf(u64) -> 8;
@@ -102,6 +102,7 @@ namesOfVariableDefinitiions(VarDefs) -> lists:map(fun (#vardef{name = N}) -> N e
 assert(false, Info) -> throw(Info);
 assert(true, _) -> ok.
 
+-spec valueInList(any(), [any()]) -> boolean().
 valueInList(Value, List) -> lists:any(fun (V) -> V =:= Value end, List).
 
 %% filter_varref_inmaps([#varref{name=a}, #varref{name=b}], #{a => 1})
