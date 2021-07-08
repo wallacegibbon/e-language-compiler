@@ -164,8 +164,7 @@ typeOfExpression(#return{expr = Expr, line = Line}, {_, _, _, FnRetType} = Ctx) 
         true ->
             RealRet
     end;
-typeOfExpression(#varref{name = Name, line = Line},
-            {VarTypes, FunctionMap, StructMap, _}) ->
+typeOfExpression(#varref{name = Name, line = Line}, {VarTypes, FunctionMap, StructMap, _}) ->
     Type = case maps:find(Name, VarTypes) of
             error ->
                 case maps:find(Name, FunctionMap) of

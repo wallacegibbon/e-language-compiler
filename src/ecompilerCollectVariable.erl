@@ -99,10 +99,8 @@ prvCheckVariableConflict(GlobalVars, LocalVars) ->
 
 prvEnsureNoNameConflict(Name, VarMap, Line) ->
     case maps:find(Name, VarMap) of
-        {ok, _} ->
-            prvThrowNameConflict(Name, Line);
-        _ ->
-            ok
+        {ok, _} -> prvThrowNameConflict(Name, Line);
+        _ -> ok
     end.
 
 prvThrowNameConflict(Name, Line) ->
