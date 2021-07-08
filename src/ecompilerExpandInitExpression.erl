@@ -1,8 +1,8 @@
--module(ecompiler_expandinit).
+-module(ecompilerExpandInitExpression).
 
 -export([expandInitExpressionInFunctions/2, expandInitExpressions/2]).
 
--include("./ecompiler_frame.hrl").
+-include("./ecompilerFrameDef.hrl").
 
 %% for now, array and struct init expression is only allowed in assignment
 prvCheckInitExpressionPosition(#op2{operator = assign, op2 = Op2}) when is_record(Op2, struct_init); is_record(Op2, array_init) ->
@@ -15,7 +15,7 @@ prvCheckInitExpressionPosition(_) ->
     ok.
 
 expandInitExpressionInFunctions([#function{exprs = Exprs} = F | Rest], StructMap) ->
-    ecompiler_util:expressionMap(fun prvCheckInitExpressionPosition/1, Exprs),
+    ecompilerUtil:expressionMap(fun prvCheckInitExpressionPosition/1, Exprs),
     [F#function{exprs = expandInitExpressions(Exprs, StructMap)} | expandInitExpressionInFunctions(Rest, StructMap)];
 expandInitExpressionInFunctions([Any | Rest], StructMap) ->
     [Any | expandInitExpressionInFunctions(Rest, StructMap)];
@@ -41,7 +41,7 @@ prvReplaceInitOps(#op2{operator = assign, op1 = Op1, op2 = #struct_init{name = N
             FieldValueMap = maps:merge(FieldDefaults, FieldValues),
             prvStructInitToOps(Op1, FieldNames, FieldValueMap, FieldTypes, [], StructMap);
         error ->
-            throw({Line, ecompiler_util:flatfmt("struct ~s is not found", [Name])})
+            throw({Line, ecompilerUtil:flatfmt("struct ~s is not found", [Name])})
     end;
 prvReplaceInitOps(#op2{operator = assign, op1 = Op1, op2 = #array_init{elements = Elements, line = Line}}, StructMap) ->
     prvArrayInitToOps(Op1, Elements, 0, Line, [], StructMap);

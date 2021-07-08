@@ -1,22 +1,13 @@
--module(ecompiler_util).
+-module(ecompilerUtil).
 
 -export([expressionToString/1, expressionMap/2, filterVariableReferenceInMap/2, flatfmt/2, getValuesByKeys/2, namesOfVariableDefinitiions/1, namesOfVariableReferences/1, valueInList/2]).
-
 -export([primitiveSizeOf/1, voidType/1]).
-
 -export([cutExtra/2, fillOffset/2, fillToPointerWidth/2]).
-
 -export([makeFunctionAndStructMapFromAST/1]).
-
 -export([assert/2]).
 
--include("./ecompiler_frame.hrl").
-
--ifdef(EUNIT).
-
 -include_lib("eunit/include/eunit.hrl").
-
--endif.
+-include("./ecompilerFrameDef.hrl").
 
 %% when do simple convertions, this function can be used to avoid boilerplate
 %% code for if, while, return, call...,  so you can concentrate on op1, op2...

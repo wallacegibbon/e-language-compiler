@@ -41,11 +41,11 @@ typeanno_list -> typeAnnotation : ['$1'].
 typeAnnotation -> 'fun' '(' typeanno_list ')' ':' typeAnnotation :
     #fun_type{params = '$3', ret = '$6', line = tokenLine('$1')}.
 typeAnnotation -> 'fun' '(' typeanno_list ')' :
-    #fun_type{params = '$3', ret = ecompiler_util:voidType(tokenLine('$4')), line = tokenLine('$1')}.
+    #fun_type{params = '$3', ret = ecompilerUtil:voidType(tokenLine('$4')), line = tokenLine('$1')}.
 typeAnnotation -> 'fun' '(' ')' ':' typeAnnotation :
     #fun_type{params = [], ret = '$5', line = tokenLine('$1')}.
 typeAnnotation -> 'fun' '(' ')' :
-    #fun_type{params = [], ret = ecompiler_util:voidType(tokenLine('$3')), line = tokenLine('$1')}.
+    #fun_type{params = [], ret = ecompilerUtil:voidType(tokenLine('$3')), line = tokenLine('$1')}.
 typeAnnotation -> '{' typeAnnotation ',' expr '}' :
     #array_type{elemtype = '$2', len = '$4', line = tokenLine('$1')}.
 typeAnnotation -> integerType pointerDepth :
@@ -91,9 +91,9 @@ functionDefinition -> 'fun' identifier '(' variableDefinitions ')' ':' typeAnnot
 functionDefinition -> 'fun' identifier '(' ')' ':' typeAnnotation exprs 'end' :
     #function_raw{name = tokenValue('$2'), params = [], ret = '$6', exprs = '$7', line = tokenLine('$2')}.
 functionDefinition -> 'fun' identifier '(' variableDefinitions ')' exprs 'end' :
-    #function_raw{name = tokenValue('$2'), params = '$4', ret = ecompiler_util:voidType(tokenLine('$5')), exprs = '$6', line = tokenLine('$2')}.
+    #function_raw{name = tokenValue('$2'), params = '$4', ret = ecompilerUtil:voidType(tokenLine('$5')), exprs = '$6', line = tokenLine('$2')}.
 functionDefinition -> 'fun' identifier '(' ')' exprs 'end' :
-    #function_raw{name = tokenValue('$2'), params = [], ret = ecompiler_util:voidType(tokenLine('$4')), exprs = '$5', line = tokenLine('$2')}.
+    #function_raw{name = tokenValue('$2'), params = [], ret = ecompilerUtil:voidType(tokenLine('$4')), exprs = '$5', line = tokenLine('$2')}.
 
 %% while
 whileExpression -> while expr do exprs 'end' :
@@ -179,7 +179,7 @@ rootExpression -> whileExpression : '$1'.
 rootExpression -> labelExpression : '$1'.
 
 expr -> reservedKeyword :
-    return_error(tokenLine('$1'), ecompiler_util:flatfmt("~s is reserved keyword", [tokenSymbol('$1')])).
+    return_error(tokenLine('$1'), ecompilerUtil:flatfmt("~s is reserved keyword", [tokenSymbol('$1')])).
 expr -> expr op30 expr :
     #op2{operator = tokenSymbol('$2'), op1 = '$1', op2 = '$3', line=tokenLine('$2')}.
 expr -> expr op29 expr :
@@ -258,7 +258,7 @@ op25 -> 'or' : '$1'.
 
 Erlang code.
 
--include("./ecompiler_frame.hrl").
+-include("./ecompilerFrameDef.hrl").
 
 stringToIntegerTokens({string, Line, Str}) -> lists:map(fun (Char) -> {integer, Line, Char} end, Str).
 

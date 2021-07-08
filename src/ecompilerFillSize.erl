@@ -1,8 +1,8 @@
--module(ecompiler_fillsize).
+-module(ecompilerFillSize).
 
 -export([expandSizeOf/2, expandSizeofInExpressions/2, fillStructInformation/2]).
 
--include("./ecompiler_frame.hrl").
+-include("./ecompilerFrameDef.hrl").
 
 expandSizeOf([#function{exprs = Exprs} = F | Rest], Ctx) ->
     [F#function{exprs = expandSizeofInExpressions(Exprs, Ctx)} | expandSizeOf(Rest, Ctx)];
@@ -15,7 +15,7 @@ prvExpandSizeofInMap(Map, Ctx) ->
     maps:map(fun (_, V1) -> prvExpandSizeofInExpression(V1, Ctx) end, Map).
 
 expandSizeofInExpressions(Exprs, Ctx) ->
-    ecompiler_util:expressionMap(fun (E) -> prvExpandSizeofInExpression(E, Ctx) end, Exprs).
+    ecompilerUtil:expressionMap(fun (E) -> prvExpandSizeofInExpression(E, Ctx) end, Exprs).
 
 prvExpandSizeofInExpression(#sizeof{type = T, line = Line}, Ctx) ->
     try {integer, Line, prvSizeOf(T, Ctx)} catch
@@ -41,7 +41,7 @@ prvExpandSizeofInExpression(Any, _) ->
 %% becomes a problem.
 fillStructInformation(Ast, {_, PointerWidth} = Ctx) ->
     Ast1 = lists:map(fun (E) -> prvFillStructSize(E, Ctx) end, Ast),
-    {_, StructMap1} = ecompiler_util:makeFunctionAndStructMapFromAST(Ast1),
+    {_, StructMap1} = ecompilerUtil:makeFunctionAndStructMapFromAST(Ast1),
     Ctx1 = {StructMap1, PointerWidth},
     Ast2 = lists:map(fun (E) -> prvFillStructOffsets(E, Ctx1) end, Ast1),
     Ast2.
@@ -65,8 +65,8 @@ prvSizeOfStruct(#struct{field_names = Names, field_types = Types}, Ctx) ->
     Size.
 
 prvGetKVsByReferences(RefList, Map) ->
-    Keys = ecompiler_util:namesOfVariableReferences(RefList),
-    Values = ecompiler_util:getValuesByKeys(Keys, Map),
+    Keys = ecompilerUtil:namesOfVariableReferences(RefList),
+    Values = ecompilerUtil:getValuesByKeys(Keys, Map),
     lists:zip(Keys, Values).
 
 %% this is the function that calculate size and offsets
@@ -84,9 +84,9 @@ prvSizeOfStructFields([], CurrentOffset, OffsetMap, _) ->
     {CurrentOffset, OffsetMap}.
 
 prvFixStructFieldOffset(CurrentOffset, NextOffset, PointerWidth) ->
-    case ecompiler_util:cutExtra(NextOffset, PointerWidth) > ecompiler_util:cutExtra(CurrentOffset, PointerWidth) of
+    case ecompilerUtil:cutExtra(NextOffset, PointerWidth) > ecompilerUtil:cutExtra(CurrentOffset, PointerWidth) of
         true ->
-            ecompiler_util:fillOffset(CurrentOffset, PointerWidth);
+            ecompilerUtil:fillOffset(CurrentOffset, PointerWidth);
         _ ->
             CurrentOffset
     end.
@@ -103,7 +103,7 @@ prvSizeOf(#array_type{elemtype = T, len = Len}, {_, PointerWidth} = Ctx) ->
                                 PointerWidth
                         end;
                     _ ->
-                        ecompiler_util:fillToPointerWidth(ElemSize, PointerWidth)
+                        ecompilerUtil:fillToPointerWidth(ElemSize, PointerWidth)
                 end,
     FixedSize * Len;
 prvSizeOf(#basic_type{pdepth = N}, {_, PointerWidth}) when N > 0 ->
@@ -113,19 +113,19 @@ prvSizeOf(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
         {ok, S} ->
             prvSizeOfStruct(S, Ctx);
         error ->
-            throw(ecompiler_util:flatfmt("~s is not found", [Tag]))
+            throw(ecompilerUtil:flatfmt("~s is not found", [Tag]))
     end;
 prvSizeOf(#basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
-    case ecompiler_util:primitiveSizeOf(Tag) of
+    case ecompilerUtil:primitiveSizeOf(Tag) of
         pwidth ->
             PointerWidth;
         V when is_integer(V) ->
             V;
         _ ->
-            throw(ecompiler_util:flatfmt("primitiveSize(~s) is invalid", [Tag]))
+            throw(ecompilerUtil:flatfmt("primitiveSize(~s) is invalid", [Tag]))
     end;
 prvSizeOf(#fun_type{}, {_, PointerWidth}) ->
     PointerWidth;
 prvSizeOf(A, _) ->
-    throw(ecompiler_util:flatfmt("invalid type ~p on sizeof", [A])).
+    throw(ecompilerUtil:flatfmt("invalid type ~p on sizeof", [A])).
 

@@ -1,11 +1,11 @@
--module(ecompiler_genc).
+-module(ecompilerGenerateCCode).
 
 -export([generateCCode/4]).
 
--include("./ecompiler_frame.hrl").
+-include("./ecompilerFrameDef.hrl").
 
 generateCCode(Ast, GlobalVars, InitCode, OutputFile) ->
-    {FnMap, StructMap} = ecompiler_util:makeFunctionAndStructMapFromAST(Ast),
+    {FnMap, StructMap} = ecompilerUtil:makeFunctionAndStructMapFromAST(Ast),
     Ctx = {FnMap, StructMap, GlobalVars},
     Ast2 = lists:map(fun (A) -> prvFixFunctionForC(A, Ctx) end, Ast),
     InitCode2 = prvFixExpressionsForC(InitCode, Ctx),
@@ -26,10 +26,10 @@ prvFixFunctionForC(Any, _) ->
     Any.
 
 prvFixExpressionsForC(Exprs, Ctx) ->
-    ecompiler_util:expressionMap(fun (E) -> prvFixExpressionForC(E, Ctx) end, Exprs).
+    ecompilerUtil:expressionMap(fun (E) -> prvFixExpressionForC(E, Ctx) end, Exprs).
 
 prvFixExpressionForC(#op1{operator = '@', operand = Operand, line = Line} = E, {FnMap, StructMap, VarTypes} = Ctx) ->
-    case ecompiler_type:typeOfExpression(Operand, {VarTypes, FnMap, StructMap, none}) of
+    case ecompilerType:typeOfExpression(Operand, {VarTypes, FnMap, StructMap, none}) of
         #array_type{} ->
             #op2{operator = '.', op1 = prvFixExpressionForC(Operand, Ctx), op2 = #varref{name = val, line = Line}};
         _ ->
@@ -96,7 +96,7 @@ prvVariablesToString([], Strs) -> lists:reverse(Strs).
 
 prvFetchNamesFromVariableReferences(VarrefList) -> lists:map(fun (#varref{name = N}) -> N end, VarrefList).
 
-prvMapToKVList(NameAtoms, ValueMap) -> lists:zip(NameAtoms, ecompiler_util:getValuesByKeys(NameAtoms, ValueMap)).
+prvMapToKVList(NameAtoms, ValueMap) -> lists:zip(NameAtoms, ecompilerUtil:getValuesByKeys(NameAtoms, ValueMap)).
 
 prvFunctionReturnTypeToString(#fun_type{params = Params, ret = Rettype}, NameParams) ->
     Paramstr = prvFunctionParamsToStringNoFunctionNames(Params),

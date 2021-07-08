@@ -4,18 +4,15 @@
 
 -compile({nowarn_unused_function, [{prvCompilerRecordingDetails, 0}]}).
 
--include("./ecompiler_frame.hrl").
--ifdef(EUNIT).
 -include_lib("eunit/include/eunit.hrl").
-
--endif.
+-include("./ecompilerFrameDef.hrl").
 
 compileToC(InputFilename, OutputFilename) ->
     prvStartCompilerRecordingProcess(filename:dirname(InputFilename)),
     try
         {Ast, Vars, InitCode} = prvParseAndCompile(InputFilename),
         %io:format(">> ~p~n~n", [Ast]),
-        ecompiler_genc:generateCCode(Ast, Vars, InitCode, OutputFilename)
+        ecompilerGenerateCCode:generateCCode(Ast, Vars, InitCode, OutputFilename)
     catch
         {Filename, Errinfo} ->
             io:format("~s: ~p~n", [Filename, Errinfo])
@@ -32,7 +29,7 @@ prvParseAndCompile(Filename) ->
     ok = prvRecordCompileFile(Filename),
     try
         {ok, Ast} = prvParseFile(Filename),
-        Ret = ecompiler_compile:compileFromRawAST(Ast, #{}),
+        Ret = ecompilerCompile:compileFromRawAST(Ast, #{}),
         {Ast1, Vars, InitCode, FnMap} = Ret,
         ok = recordModule(Filename, FnMap),
         {Ast1, Vars, InitCode}
@@ -53,9 +50,9 @@ prvParseFile(Filename) when is_list(Filename) ->
     end.
 
 prvParseContent(RawContent) ->
-    case ecompiler_scan:string(binary_to_list(RawContent)) of
+    case ecompilerScan:string(binary_to_list(RawContent)) of
         {ok, Tokens, _} ->
-            case ecompiler_parse:parse(Tokens) of
+            case ecompilerParse:parse(Tokens) of
                 {ok, _Ast} = D ->
                     D;
                 {error, {Line, _, Errinfo}} ->
@@ -151,7 +148,7 @@ prvCompileRecordingHandle({queryFunctionReturnType, ModName, FunName}, #{modmap 
     end;
 prvCompileRecordingHandle({recordCompileOp, ModName}, #{moduleChain := ModuleChain} = State) ->
     NewModuleChain = [ModName | ModuleChain],
-    case ecompiler_util:valueInList(ModName, ModuleChain) of
+    case ecompilerUtil:valueInList(ModName, ModuleChain) of
         true ->
             {reply, {error, moduleRecursive, lists:reverse(NewModuleChain)},
              State};

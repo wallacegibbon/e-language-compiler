@@ -1,9 +1,9 @@
 %%% this is the 2nd pass, variable map will be created after this pass.
--module(ecompiler_collectvar).
+-module(ecompilerCollectVariable).
 
 -export([fetchVariables/1]).
 
--include("./ecompiler_frame.hrl").
+-include("./ecompilerFrameDef.hrl").
 
 fetchVariables(Ast) ->
     Ast2 = prvPrepareStructInitExpression(Ast),
@@ -19,7 +19,7 @@ prvPrepareStructInitExpression([#vardef{initval = Initval} = V | Rest]) ->
 prvPrepareStructInitExpression([]) ->
     [].
 
-prvFixStructInitAST(Lst) -> ecompiler_util:expressionMap(fun prvFixStructInit/1, Lst).
+prvFixStructInitAST(Lst) -> ecompilerUtil:expressionMap(fun prvFixStructInit/1, Lst).
 
 prvFixStructInit(#struct_init_raw{name = Name, fields = Fields, line = Line}) ->
     {FieldNames, InitExprMap} = prvStructInitToMap(Fields),
@@ -57,7 +57,7 @@ prvFetchVariables([#vardef{name = Name, type = Type, line = Line, initval = Init
     end;
 prvFetchVariables([#function_raw{name = Name, ret = Ret, params = Params, exprs = Exprs, line = Line} | Rest], NewAst, {GlobalVars, _, _} = Ctx) ->
     {[], ParamVars, ParamInitCode} = prvFetchVariables(Params, [], {#{}, [], true}),
-    ecompiler_util:assert(ParamInitCode =:= [], {Line, "function parameters can not have default value"}),
+    ecompilerUtil:assert(ParamInitCode =:= [], {Line, "function parameters can not have default value"}),
     {NewExprs, FunVarTypes, []} = prvFetchVariables(Exprs, [], {ParamVars, [], false}),
     %% local variables should have different names from global variables
     prvCheckVariableConflict(GlobalVars, FunVarTypes),
@@ -106,10 +106,10 @@ prvEnsureNoNameConflict(Name, VarMap, Line) ->
     end.
 
 prvThrowNameConflict(Name, Line) ->
-    throw({Line, ecompiler_util:flatfmt("name ~s has already been used", [Name])}).
+    throw({Line, ecompilerUtil:flatfmt("name ~s has already been used", [Name])}).
 
 prvGetValuesByDefinitions(DefList, Map) ->
-    ecompiler_util:getValuesByKeys(ecompiler_util:namesOfVariableDefinitiions(DefList), Map).
+    ecompilerUtil:getValuesByKeys(ecompilerUtil:namesOfVariableDefinitiions(DefList), Map).
 
 prvVariableDefinitionToReference(Vardefs) ->
     lists:map(fun (#vardef{name = N, line = Line}) -> #varref{name = N, line = Line} end, Vardefs).

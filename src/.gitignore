@@ -1,3 +1,3 @@
-ecompiler_parse.erl
-ecompiler_scan.erl
+ecompilerParse.erl
+ecompilerScan.erl
 
