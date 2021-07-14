@@ -1,7 +1,7 @@
--record(function, {line :: integer(), name :: atom(), type :: any(), param_names :: [atom()], var_types :: #{atom() := e_type()},
+-record(function, { line :: integer(), name :: atom(), type :: any(), param_names :: [atom()], var_types :: #{atom() := e_type()},
                     labels :: [e_expr()], exprs :: [e_expr()]}).
 
--record(struct, {line :: integer(), name :: atom(), size :: integer(), field_types :: [any()], field_offsets :: #{atom() := integer()},
+-record(struct, {   line :: integer(), name :: atom(), size :: integer(), field_types :: [any()], field_offsets :: #{atom() := integer()},
                     field_names :: [any()], field_defaults :: #{atom() := e_expr()}}).
 
 -record(basic_type, {line :: integer(), pdepth = 0 :: integer(), class :: struct | integer | float | void | any, tag :: atom()}).

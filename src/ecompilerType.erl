@@ -165,17 +165,17 @@ typeOfExpression(#return{expr = Expr, line = Line}, {_, _, _, FnRetType} = Ctx) 
             RealRet
     end;
 typeOfExpression(#varref{name = Name, line = Line}, {VarTypes, FunctionMap, StructMap, _}) ->
-    Type = case maps:find(Name, VarTypes) of
-            error ->
-                case maps:find(Name, FunctionMap) of
-                    error ->
-                        throw({Line, ecompilerUtil:flatfmt("variable ~s is undefined", [Name])});
-                    {ok, T} ->
-                        T
-                end;
-            {ok, T} ->
-                T
-           end,
+    Type =  case maps:find(Name, VarTypes) of
+                error ->
+                    case maps:find(Name, FunctionMap) of
+                        error ->
+                            throw({Line, ecompilerUtil:flatfmt("variable ~s is undefined", [Name])});
+                        {ok, T} ->
+                            T
+                    end;
+                {ok, T} ->
+                    T
+            end,
     prvCheckType(Type, StructMap),
     Type;
 typeOfExpression(#array_init{elements = Elements, line = Line}, Ctx) ->
