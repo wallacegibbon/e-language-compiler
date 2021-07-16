@@ -4,32 +4,37 @@
 
 -include("./ecompilerFrameDef.hrl").
 
+-type genCContext() :: {functionTypeMap(), structTypeMap(), variableTypeMap()}.
+
+-spec generateCCode(eAST(), variableTypeMap(), eAST(), string()) -> ok.
 generateCCode(AST, GlobalVars, InitCode, OutputFile) ->
-    {FnMap, StructMap} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST),
-    Ctx = {FnMap, StructMap, GlobalVars},
+    {FunctionTypeMap, StructMap} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST),
+    Ctx = {FunctionTypeMap, StructMap, GlobalVars},
     Ast2 = lists:map(fun (A) -> prvFixFunctionForC(A, Ctx) end, AST),
     InitCode2 = prvFixExpressionsForC(InitCode, Ctx),
     %io:format(">>>~p~n", [Ast2]),
     %% struct definition have to be before function declarations
     CheckStruct = fun (A) -> element(1, A) =:= struct end,
-    {StructAst, FnAst} = lists:partition(CheckStruct, Ast2),
-    {StructStatements, []} = prvStatementsToString(StructAst, []),
-    {FnStatements, FnDeclars} = prvStatementsToString(FnAst, InitCode2),
+    {StructAST, FunctionAST} = lists:partition(CheckStruct, Ast2),
+    {StructStatements, []} = prvStatementsToString(StructAST, []),
+    {FnStatements, FnDeclars} = prvStatementsToString(FunctionAST, InitCode2),
     VarStatements = prvVariableMapToString(GlobalVars),
-    Code = [prvCommonCCodes(), "\n\n", StructStatements, "\n\n", VarStatements, "\n\n", FnDeclars, "\n\n", FnStatements],
-    file:write_file(OutputFile, Code).
+    Code = lists:join("\n\n", [prvCommonCCodes(), StructStatements, VarStatements, FnDeclars, FnStatements]),
+    ok = file:write_file(OutputFile, Code).
 
-prvFixFunctionForC(#function{exprs = Exprs, var_types = VarTypes} = F, {FnMap, StructMap, GlobalVars}) ->
-    Ctx1 = {FnMap, StructMap, maps:merge(GlobalVars, VarTypes)},
-    F#function{exprs = prvFixExpressionsForC(Exprs, Ctx1)};
+-spec prvFixFunctionForC(eExpression(), genCContext()) -> eExpression().
+prvFixFunctionForC(#function{exprs = Expressions, var_types = VarTypes} = F, {FunctionTypeMap, StructMap, GlobalVars}) ->
+    F#function{exprs = prvFixExpressionsForC(Expressions, {FunctionTypeMap, StructMap, maps:merge(GlobalVars, VarTypes)})};
 prvFixFunctionForC(Any, _) ->
     Any.
 
-prvFixExpressionsForC(Exprs, Ctx) ->
-    ecompilerUtil:expressionMap(fun (E) -> prvFixExpressionForC(E, Ctx) end, Exprs).
+-spec prvFixExpressionsForC(eAST(), genCContext()) -> eAST().
+prvFixExpressionsForC(Expressions, Ctx) ->
+    ecompilerUtil:expressionMap(fun (E) -> prvFixExpressionForC(E, Ctx) end, Expressions).
 
-prvFixExpressionForC(#op1{operator = '@', operand = Operand, line = Line} = E, {FnMap, StructMap, VarTypes} = Ctx) ->
-    case ecompilerType:typeOfExpression(Operand, {VarTypes, FnMap, StructMap, none}) of
+-spec prvFixExpressionForC(eExpression(), genCContext()) -> eExpression().
+prvFixExpressionForC(#op1{operator = '@', operand = Operand, line = Line} = E, {FunctionTypeMap, StructMap, VarTypes} = Ctx) ->
+    case ecompilerType:typeOfExpression(Operand, {VarTypes, FunctionTypeMap, StructMap, none}) of
         #array_type{} ->
             #op2{operator = '.', op1 = prvFixExpressionForC(Operand, Ctx), op2 = #varref{name = val, line = Line}};
         _ ->
@@ -37,30 +42,28 @@ prvFixExpressionForC(#op1{operator = '@', operand = Operand, line = Line} = E, {
     end;
 prvFixExpressionForC(#op1{operand = Operand} = E, Ctx) ->
     E#op1{operand = prvFixExpressionForC(Operand, Ctx)};
-prvFixExpressionForC(#op2{op1 = Op1, op2 = Op2} = E, Ctx) ->
-    E#op2{op1 = prvFixExpressionForC(Op1, Ctx), op2 = prvFixExpressionForC(Op2, Ctx)};
+prvFixExpressionForC(#op2{op1 = Operand1, op2 = Operand2} = E, Ctx) ->
+    E#op2{op1 = prvFixExpressionForC(Operand1, Ctx), op2 = prvFixExpressionForC(Operand2, Ctx)};
 prvFixExpressionForC(Any, _) ->
     Any.
 
+-spec prvCommonCCodes() -> string().
 prvCommonCCodes() ->
     "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\n"
-    "typedef unsigned int usize;\ntypedef int isize;\n"
-    "typedef unsigned char u8;\ntypedef char i8;\n"
-    "typedef unsigned short u16;\ntypedef short i16;\n"
-    "typedef unsigned int u32;\ntypedef int i32;\n"
-    "typedef unsigned long u64;\ntypedef long i64;\n"
-    "typedef double f64;\ntypedef float f32;\n\n".
+    "typedef unsigned int usize;\ntypedef int isize;\ntypedef unsigned char u8;\ntypedef char i8;\n"
+    "typedef unsigned short u16;\ntypedef short i16;\ntypedef unsigned int u32;\ntypedef int i32;\n"
+    "typedef unsigned long u64;\ntypedef long i64;\ntypedef double f64;\ntypedef float f32;\n\n".
 
 prvStatementsToString(Statements, InitCode) -> prvStatementsToString(Statements, InitCode, [], []).
 
-prvStatementsToString([#function{name = Name, param_names = ParamNames, type = Fntype, var_types = VarTypes, exprs = Exprs} | Rest], InitCode, StatementStrs, FnDeclars) ->
+prvStatementsToString([#function{name = Name, param_names = ParamNames, type = Fntype, var_types = VarTypes, exprs = Expressions} | Rest], InitCode, StatementStrs, FnDeclars) ->
     ParamNameAtoms = prvFetchNamesFromVariableReferences(ParamNames),
     PureParams = prvMapToKVList(ParamNameAtoms, maps:with(ParamNameAtoms, VarTypes)),
     PureVars = maps:without(ParamNameAtoms, VarTypes),
     Declar = prvFunctioinDeclarationToString(Name, prvFunctionParametersToString(PureParams), Fntype#fun_type.ret),
     Exprs2 =    case Name =:= main of
-                    true -> InitCode ++ Exprs;
-                    _ -> Exprs
+                    true -> InitCode ++ Expressions;
+                    _ -> Expressions
                 end,
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declar, prvVariableMapToString(PureVars), prvExpressionsToString(Exprs2)]),
     prvStatementsToString(Rest, InitCode, [S | StatementStrs], [Declar ++ ";\n" | FnDeclars]);
@@ -106,6 +109,7 @@ prvFunctionReturnTypeToString(#basic_type{pdepth = N} = T, NameParams) when N > 
     prvTypeToCString(T#basic_type{pdepth = N - 1}, NameParams).
 
 %% convert type to C string
+-spec prvTypeToCString(eExpression(), iolist()) -> iolist().
 prvTypeToCString(#array_type{len = Len, elemtype = ElementType}, Varname) ->
     io_lib:format("struct {~s val[~w];} ~s", [prvTypeToCString(ElementType, ""), Len, Varname]);
 prvTypeToCString(#basic_type{class = Class, tag = Tag, pdepth = Depth}, Varname) when Depth > 0 ->
@@ -121,28 +125,29 @@ prvTypeTagToString(struct, Name) -> io_lib:format("struct ~s", [Name]);
 prvTypeTagToString(_, Name) -> atom_to_list(Name).
 
 %% convert expression to C string
-prvExpressionsToString(Exprs) -> [lists:join("\n", prvExpressionsToString(Exprs, []))].
+prvExpressionsToString(Expressions) -> [lists:join("\n", prvExpressionsToString(Expressions, []))].
 
-prvExpressionsToString([Expr | Rest], ExprList) -> prvExpressionsToString(Rest, [prvExpressionToString(Expr, $;) | ExprList]);
+prvExpressionsToString([Expression | Rest], ExprList) -> prvExpressionsToString(Rest, [prvExpressionToString(Expression, $;) | ExprList]);
 prvExpressionsToString([], ExprList) -> lists:reverse(ExprList).
 
+-spec prvExpressionToString(eExpression(), string()) -> iolist().
 prvExpressionToString(#if_expr{condition = Condition, then = Then, else = Else}, _) ->
     io_lib:format("if (~s) {\n~s\n} else {\n~s}", [prvExpressionToString(Condition, $\s), prvExpressionsToString(Then), prvExpressionsToString(Else)]);
-prvExpressionToString(#while_expr{condition = Condition, exprs = Exprs}, _) ->
-    io_lib:format("while (~s) {\n~s\n}\n", [prvExpressionToString(Condition, $\s), prvExpressionsToString(Exprs)]);
-prvExpressionToString(#op2{operator = '::', op1 = #varref{name = c}, op2 = Op2}, Endchar) ->
-    prvExpressionToString(Op2, Endchar);
-prvExpressionToString(#op2{operator = Operator, op1 = Op1, op2 = Op2}, Endchar) ->
-    io_lib:format("(~s ~s ~s)~c", [prvExpressionToString(Op1, $\s), prvTranslateOperator(Operator), prvExpressionToString(Op2, $\s), Endchar]);
+prvExpressionToString(#while_expr{condition = Condition, exprs = Expressions}, _) ->
+    io_lib:format("while (~s) {\n~s\n}\n", [prvExpressionToString(Condition, $\s), prvExpressionsToString(Expressions)]);
+prvExpressionToString(#op2{operator = '::', op1 = #varref{name = c}, op2 = Operand2}, Endchar) ->
+    prvExpressionToString(Operand2, Endchar);
+prvExpressionToString(#op2{operator = Operator, op1 = Operand1, op2 = Operand2}, Endchar) ->
+    io_lib:format("(~s ~s ~s)~c", [prvExpressionToString(Operand1, $\s), prvTranslateOperator(Operator), prvExpressionToString(Operand2, $\s), Endchar]);
 prvExpressionToString(#op1{operator = Operator, operand = Operand}, Endchar) ->
     io_lib:format("(~s ~s)~c", [prvTranslateOperator(Operator), prvExpressionToString(Operand, $\s), Endchar]);
-prvExpressionToString(#call{fn = Fn, args = Args}, Endchar) ->
-    ArgStr = lists:join(",", lists:map(fun (E) -> prvExpressionToString(E, $\s) end, Args)),
-    io_lib:format("~s(~s)~c", [prvExpressionToString(Fn, $\s), ArgStr, Endchar]);
-prvExpressionToString(#return{expr = Expr}, Endchar) ->
-    io_lib:format("return ~s~c", [prvExpressionToString(Expr, $\s), Endchar]);
-prvExpressionToString(#goto{expr = Expr}, Endchar) ->
-    io_lib:format("goto ~s~c", [prvExpressionToString(Expr, $\s), Endchar]);
+prvExpressionToString(#call{fn = Fn, args = Arguments}, Endchar) ->
+    ArgumentString = lists:join(",", lists:map(fun (E) -> prvExpressionToString(E, $\s) end, Arguments)),
+    io_lib:format("~s(~s)~c", [prvExpressionToString(Fn, $\s), ArgumentString, Endchar]);
+prvExpressionToString(#return{expr = Expression}, Endchar) ->
+    io_lib:format("return ~s~c", [prvExpressionToString(Expression, $\s), Endchar]);
+prvExpressionToString(#goto{expr = Expression}, Endchar) ->
+    io_lib:format("goto ~s~c", [prvExpressionToString(Expression, $\s), Endchar]);
 prvExpressionToString(#label{name = Name}, _) ->
     io_lib:format("~s:", [Name]);
 prvExpressionToString(#varref{name = Name}, Endchar) ->
@@ -154,9 +159,10 @@ prvExpressionToString({Any, _Line, S}, Endchar) when Any =:= string ->
 
 -define(SPECIAL_CHARMAP, #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}).
 
-prvHandleSpecialCharactersInString(Str) ->
-    lists:map(fun (C) -> maps:get(C, ?SPECIAL_CHARMAP, C) end, Str).
+prvHandleSpecialCharactersInString(String) ->
+    lists:map(fun (C) -> maps:get(C, ?SPECIAL_CHARMAP, C) end, String).
 
+-spec prvTranslateOperator(atom()) -> string() | atom().
 prvTranslateOperator(assign) -> "=";
 prvTranslateOperator('rem') -> "%";
 prvTranslateOperator('bxor') -> "^";

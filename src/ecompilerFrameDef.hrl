@@ -1,18 +1,22 @@
+-record(fun_type,                   {   line                            :: integer(),
+                                        params                          :: [eType()],
+                                        ret                             :: eType()}).
+
 -record(function,                   {   line                            :: integer(),
                                         name                            :: atom(),
-                                        type                            :: any(),
+                                        type                            :: #fun_type{},
                                         param_names                     :: [atom()],
-                                        var_types                       :: #{atom() := e_type()},
-                                        labels                          :: [e_expr()],
-                                        exprs                           :: [e_expr()]}).
+                                        var_types                       :: variableTypeMap(),
+                                        labels                          :: [eExpression()],
+                                        exprs                           :: [eAST()]}).
 
 -record(struct,                     {   line                            :: integer(),
                                         name                            :: atom(),
                                         size                            :: integer(),
-                                        field_types                     :: [any()],
+                                        field_types                     :: variableTypeMap(),
                                         field_offsets                   :: #{atom() := integer()},
                                         field_names                     :: [any()],
-                                        field_defaults                  :: #{atom() := e_expr()}}).
+                                        field_defaults                  :: #{atom() := eExpression()}}).
 
 -record(basic_type,                 {   line                            :: integer(),
                                         pdepth = 0                      :: integer(),
@@ -20,46 +24,42 @@
                                         tag                             :: atom()}).
 
 -record(array_type,                 {   line                            :: integer(),
-                                        elemtype                        :: e_type(),
+                                        elemtype                        :: eType(),
                                         len                             :: integer()}).
-
--record(fun_type,                   {   line                            :: integer(),
-                                        params                          :: [e_type()],
-                                        ret                             :: e_type()}).
 
 -record(struct_init,                {   line                            :: integer(),
                                         name                            :: atom(),
                                         field_names                     :: [any()],
-                                        field_values                    :: #{atom() := e_expr()}}).
+                                        field_values                    :: #{atom() := eExpression()}}).
 
 -record(array_init,                 {   line                            :: integer(),
-                                        elements                        :: [e_expr()]}).
+                                        elements                        :: [eExpression()]}).
 
 -record(struct_init_raw,            {   line                            :: integer(),
                                         name                            :: atom(),
-                                        fields                          :: [e_expr()]}).
+                                        fields                          :: [eExpression()]}).
 
 -record(function_raw,               {   line                            :: integer(),
                                         name                            :: atom(),
-                                        params                          :: [e_expr()],
-                                        ret                             :: e_type(),
-                                        exprs                           :: [e_expr()]}).
+                                        params                          :: [eExpression()],
+                                        ret                             :: eType(),
+                                        exprs                           :: [eExpression()]}).
 
 -record(struct_raw,                 {   line                            :: integer(),
                                         name                            :: atom(),
-                                        fields                          :: [e_expr()]}).
+                                        fields                          :: [eExpression()]}).
 
 -record(return,                     {   line                            :: integer(),
-                                        expr                            :: e_expr()}).
+                                        expr                            :: eExpression()}).
 
 -record(while_expr,                 {   line                            :: integer(),
-                                        condition                       :: e_expr(),
-                                        exprs                           :: [e_expr()]}).
+                                        condition                       :: eExpression(),
+                                        exprs                           :: [eExpression()]}).
 
 -record(if_expr,                    {   line                            :: integer(),
-                                        condition                       :: e_expr(),
-                                        then                            :: [e_expr()],
-                                        else                            :: [e_expr()]}).
+                                        condition                       :: eExpression(),
+                                        then                            :: [eExpression()],
+                                        else                            :: [eExpression()]}).
 
 -record(const,                      {   line                            :: integer(),
                                         name                            :: atom(),
@@ -67,7 +67,7 @@
 
 -record(vardef,                     {   line                            :: integer(),
                                         name                            :: atom(),
-                                        type                            :: e_type(),
+                                        type                            :: eType(),
                                         initval = none                  :: any()}).
 
 -record(varref,                     {   line                            :: integer(),
@@ -84,26 +84,34 @@
 
 -record(op1,                        {   line                            :: integer(),
                                         operator                        :: atom(),
-                                        operand                         :: e_expr()}).
+                                        operand                         :: eExpression()}).
 
 -record(op2,                        {   line                            :: integer(),
                                         operator                        :: atom(),
-                                        op1                             :: e_expr(),
-                                        op2                             :: e_expr()}).
+                                        op1                             :: eExpression(),
+                                        op2                             :: eExpression()}).
 
 -record(call,                       {   line                            :: integer(),
-                                        fn                              :: e_expr(),
-                                        args                            :: [e_expr()]}).
+                                        fn                              :: eExpression(),
+                                        args                            :: [eExpression()]}).
 
 -record(sizeof,                     {   line                            :: integer(),
-                                        type                            :: e_type()}).
+                                        type                            :: eType()}).
 
 -record(label,                      {   line                            :: integer(),
                                         name                            :: atom()}).
 
 -record(goto,                       {   line                            :: integer(),
-                                        expr                            :: e_expr()}).
+                                        expr                            :: eExpression()}).
 
 % primitive types: u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
--type e_type()                                                          :: any().
--type e_expr()                                                          :: any().
+-type eType()                                                           :: any().
+-type eExpression()                                                     :: any().
+
+-type structTypeMap()                                                   :: #{atom() := #struct{}}.
+-type functionTypeMap()                                                 :: #{atom() := #fun_type{}}.
+-type functionReturnTypeMap()                                           :: #{atom() := eType()}.
+-type variableTypeMap()                                                 :: #{atom() := eType()}.
+-type eAST()                                                            :: [eExpression()].
+
+-type compilePassCtx1()                                                 :: {#struct{}, functionTypeMap()}.

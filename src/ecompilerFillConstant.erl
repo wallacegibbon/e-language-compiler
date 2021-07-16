@@ -16,37 +16,37 @@ parseAndRemoveConstants(AST) ->
 %% fetch constants
 prvFetchContants(AST) -> prvFetchContants(AST, [], #{}).
 
-prvFetchContants([#const{name = Name, val = Expr} | Rest], Statements, Constants) ->
-    prvFetchContants(Rest, Statements, Constants#{Name => prvEvaluateConstantExpression(Expr, Constants)});
+prvFetchContants([#const{name = Name, val = Expression} | Rest], Statements, Constants) ->
+    prvFetchContants(Rest, Statements, Constants#{Name => prvEvaluateConstantExpression(Expression, Constants)});
 prvFetchContants([Any | Rest], Statements, Constants) ->
     prvFetchContants(Rest, [Any | Statements], Constants);
 prvFetchContants([], Statements, Constants) ->
     {Constants, lists:reverse(Statements)}.
 
-prvEvaluateConstantExpression(#op2{operator = '+', op1 = Op1, op2 = Op2}, Constants) ->
-    prvEvaluateConstantExpression(Op1, Constants) + prvEvaluateConstantExpression(Op2, Constants);
-prvEvaluateConstantExpression(#op2{operator = '-', op1 = Op1, op2 = Op2}, Constants) ->
-    prvEvaluateConstantExpression(Op1, Constants) - prvEvaluateConstantExpression(Op2, Constants);
-prvEvaluateConstantExpression(#op2{operator = '*', op1 = Op1, op2 = Op2}, Constants) ->
-    prvEvaluateConstantExpression(Op1, Constants) * prvEvaluateConstantExpression(Op2, Constants);
-prvEvaluateConstantExpression(#op2{operator = '/', op1 = Op1, op2 = Op2}, Constants) ->
-    prvEvaluateConstantExpression(Op1, Constants) / prvEvaluateConstantExpression(Op2, Constants);
-prvEvaluateConstantExpression(#op2{operator = 'rem', op1 = Op1, op2 = Op2}, Constants) ->
-    prvEvaluateConstantExpression(Op1, Constants) rem prvEvaluateConstantExpression(Op2, Constants);
-prvEvaluateConstantExpression(#op2{operator = 'and', op1 = Op1, op2 = Op2}, Constants) ->
-    (prvEvaluateConstantExpression(Op1, Constants) =/= 0) and (prvEvaluateConstantExpression(Op2, Constants) =/= 0);
-prvEvaluateConstantExpression(#op2{operator = 'or', op1 = Op1, op2 = Op2}, Constants) ->
-    (prvEvaluateConstantExpression(Op1, Constants) =:= 1) or (prvEvaluateConstantExpression(Op2, Constants) =:= 1);
-prvEvaluateConstantExpression(#op2{operator = 'band', op1 = Op1, op2 = Op2}, Constants) ->
-    prvEvaluateConstantExpression(Op1, Constants) band prvEvaluateConstantExpression(Op2, Constants);
-prvEvaluateConstantExpression(#op2{operator = 'bor', op1 = Op1, op2 = Op2}, Constants) ->
-    prvEvaluateConstantExpression(Op1, Constants) bor prvEvaluateConstantExpression(Op2, Constants);
-prvEvaluateConstantExpression(#op2{operator = 'bxor', op1 = Op1, op2 = Op2}, Constants) ->
-    prvEvaluateConstantExpression(Op1, Constants) bxor prvEvaluateConstantExpression(Op2, Constants);
-prvEvaluateConstantExpression(#op2{operator = 'bsr', op1 = Op1, op2 = Op2}, Constants) ->
-    prvEvaluateConstantExpression(Op1, Constants) bsr prvEvaluateConstantExpression(Op2, Constants);
-prvEvaluateConstantExpression(#op2{operator = 'bsl', op1 = Op1, op2 = Op2}, Constants) ->
-    prvEvaluateConstantExpression(Op1, Constants) bsl prvEvaluateConstantExpression(Op2, Constants);
+prvEvaluateConstantExpression(#op2{operator = '+', op1 = Operand1, op2 = Operand2}, Constants) ->
+    prvEvaluateConstantExpression(Operand1, Constants) + prvEvaluateConstantExpression(Operand2, Constants);
+prvEvaluateConstantExpression(#op2{operator = '-', op1 = Operand1, op2 = Operand2}, Constants) ->
+    prvEvaluateConstantExpression(Operand1, Constants) - prvEvaluateConstantExpression(Operand2, Constants);
+prvEvaluateConstantExpression(#op2{operator = '*', op1 = Operand1, op2 = Operand2}, Constants) ->
+    prvEvaluateConstantExpression(Operand1, Constants) * prvEvaluateConstantExpression(Operand2, Constants);
+prvEvaluateConstantExpression(#op2{operator = '/', op1 = Operand1, op2 = Operand2}, Constants) ->
+    prvEvaluateConstantExpression(Operand1, Constants) / prvEvaluateConstantExpression(Operand2, Constants);
+prvEvaluateConstantExpression(#op2{operator = 'rem', op1 = Operand1, op2 = Operand2}, Constants) ->
+    prvEvaluateConstantExpression(Operand1, Constants) rem prvEvaluateConstantExpression(Operand2, Constants);
+prvEvaluateConstantExpression(#op2{operator = 'and', op1 = Operand1, op2 = Operand2}, Constants) ->
+    (prvEvaluateConstantExpression(Operand1, Constants) =/= 0) and (prvEvaluateConstantExpression(Operand2, Constants) =/= 0);
+prvEvaluateConstantExpression(#op2{operator = 'or', op1 = Operand1, op2 = Operand2}, Constants) ->
+    (prvEvaluateConstantExpression(Operand1, Constants) =:= 1) or (prvEvaluateConstantExpression(Operand2, Constants) =:= 1);
+prvEvaluateConstantExpression(#op2{operator = 'band', op1 = Operand1, op2 = Operand2}, Constants) ->
+    prvEvaluateConstantExpression(Operand1, Constants) band prvEvaluateConstantExpression(Operand2, Constants);
+prvEvaluateConstantExpression(#op2{operator = 'bor', op1 = Operand1, op2 = Operand2}, Constants) ->
+    prvEvaluateConstantExpression(Operand1, Constants) bor prvEvaluateConstantExpression(Operand2, Constants);
+prvEvaluateConstantExpression(#op2{operator = 'bxor', op1 = Operand1, op2 = Operand2}, Constants) ->
+    prvEvaluateConstantExpression(Operand1, Constants) bxor prvEvaluateConstantExpression(Operand2, Constants);
+prvEvaluateConstantExpression(#op2{operator = 'bsr', op1 = Operand1, op2 = Operand2}, Constants) ->
+    prvEvaluateConstantExpression(Operand1, Constants) bsr prvEvaluateConstantExpression(Operand2, Constants);
+prvEvaluateConstantExpression(#op2{operator = 'bsl', op1 = Operand1, op2 = Operand2}, Constants) ->
+    prvEvaluateConstantExpression(Operand1, Constants) bsl prvEvaluateConstantExpression(Operand2, Constants);
 prvEvaluateConstantExpression(#varref{name = Name, line = Line}, Constants) ->
     case maps:find(Name, Constants) of
         error ->
@@ -62,8 +62,8 @@ prvEvaluateConstantExpression(Any, _) ->
     throw(ecompilerUtil:flatfmt("invalid const expression: ~p", [Any])).
 
 %% replace constants in AST
-prvReplaceContants([#function_raw{params = Params, exprs = Exprs} = Fn | Rest], Constants) ->
-    [Fn#function_raw{params = prvReplaceContantsInExpressions(Params, Constants), exprs = prvReplaceContantsInExpressions(Exprs, Constants)} | prvReplaceContants(Rest, Constants)];
+prvReplaceContants([#function_raw{params = Params, exprs = Expressions} = Fn | Rest], Constants) ->
+    [Fn#function_raw{params = prvReplaceContantsInExpressions(Params, Constants), exprs = prvReplaceContantsInExpressions(Expressions, Constants)} | prvReplaceContants(Rest, Constants)];
 prvReplaceContants([#struct_raw{fields = Fields} = S | Rest], Constants) ->
     [S#struct_raw{fields = prvReplaceContantsInExpressions(Fields, Constants)} | prvReplaceContants(Rest, Constants)];
 prvReplaceContants([#vardef{type = Type, initval = Initval} = V | Rest], Constants) ->
@@ -71,31 +71,31 @@ prvReplaceContants([#vardef{type = Type, initval = Initval} = V | Rest], Constan
 prvReplaceContants([], _) ->
     [].
 
-prvReplaceContantsInExpressions(Exprs, Constants) ->
-    ecompilerUtil:expressionMap(fun (E) -> prvReplaceContantsInExpression(E, Constants) end, Exprs).
+prvReplaceContantsInExpressions(Expressions, Constants) ->
+    ecompilerUtil:expressionMap(fun (E) -> prvReplaceContantsInExpression(E, Constants) end, Expressions).
 
-prvReplaceContantsInExpression(#vardef{name = Name, initval = Initval, type = Type, line = Line} = Expr, Constants) ->
+prvReplaceContantsInExpression(#vardef{name = Name, initval = Initval, type = Type, line = Line} = Expression, Constants) ->
     case maps:find(Name, Constants) of
         {ok, _} ->
             throw({Line, ecompilerUtil:flatfmt("~s conflicts with const", [Name])});
         error ->
-            Expr#vardef{initval = prvReplaceContantsInExpression(Initval, Constants), type = prvReplaceConstantsInType(Type, Constants)}
+            Expression#vardef{initval = prvReplaceContantsInExpression(Initval, Constants), type = prvReplaceConstantsInType(Type, Constants)}
     end;
-prvReplaceContantsInExpression(#varref{name = Name, line = Line} = Expr, Constants) ->
+prvReplaceContantsInExpression(#varref{name = Name, line = Line} = Expression, Constants) ->
     case maps:find(Name, Constants) of
         {ok, Val} ->
             prvConstantNumberToToken(Val, Line);
         error ->
-            Expr
+            Expression
     end;
-prvReplaceContantsInExpression(#struct_init_raw{fields = Fields} = Expr, Constants) ->
-    Expr#struct_init_raw{fields = prvReplaceContantsInExpressions(Fields, Constants)};
-prvReplaceContantsInExpression(#array_init{elements = Elements} = Expr, Constants) ->
-    Expr#array_init{elements = prvReplaceContantsInExpressions(Elements, Constants)};
-prvReplaceContantsInExpression(#op2{op1 = Op1, op2 = Op2} = Expr, Constants) ->
-    Expr#op2{op1 = prvReplaceContantsInExpression(Op1, Constants), op2 = prvReplaceContantsInExpression(Op2, Constants)};
-prvReplaceContantsInExpression(#op1{operand = Operand} = Expr, Constants) ->
-    Expr#op1{operand = prvReplaceContantsInExpression(Operand, Constants)};
+prvReplaceContantsInExpression(#struct_init_raw{fields = Fields} = Expression, Constants) ->
+    Expression#struct_init_raw{fields = prvReplaceContantsInExpressions(Fields, Constants)};
+prvReplaceContantsInExpression(#array_init{elements = Elements} = Expression, Constants) ->
+    Expression#array_init{elements = prvReplaceContantsInExpressions(Elements, Constants)};
+prvReplaceContantsInExpression(#op2{op1 = Operand1, op2 = Operand2} = Expression, Constants) ->
+    Expression#op2{op1 = prvReplaceContantsInExpression(Operand1, Constants), op2 = prvReplaceContantsInExpression(Operand2, Constants)};
+prvReplaceContantsInExpression(#op1{operand = Operand} = Expression, Constants) ->
+    Expression#op1{operand = prvReplaceContantsInExpression(Operand, Constants)};
 prvReplaceContantsInExpression(Any, _) ->
     Any.
 

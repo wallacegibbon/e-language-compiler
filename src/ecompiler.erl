@@ -30,8 +30,8 @@ prvParseAndCompile(Filename) ->
     try
         {ok, AST} = prvParseFile(Filename),
         Ret = ecompilerCompile:compileFromRawAST(AST, #{}),
-        {Ast1, Vars, InitCode, FnMap} = Ret,
-        ok = recordModule(Filename, FnMap),
+        {Ast1, Vars, InitCode, FunctionTypeMap} = Ret,
+        ok = recordModule(Filename, FunctionTypeMap),
         {Ast1, Vars, InitCode}
     catch
         E ->
@@ -94,7 +94,7 @@ prvRecordCompileFile(Filename) -> prvCompileRecordingCmd({recordCompileOp, prvFi
 
 prvUnRecordCompileFile(Filename) -> prvCompileRecordingCmd({unRecordCompileOp, prvFileNameToModuleAtom(Filename)}).
 
-recordModule(Filename, FnMap) -> prvCompileRecordingCmd({recordModule, prvFileNameToModuleAtom(Filename), FnMap}).
+recordModule(Filename, FunctionTypeMap) -> prvCompileRecordingCmd({recordModule, prvFileNameToModuleAtom(Filename), FunctionTypeMap}).
 
 prvChangeSearchDirectory(NewDir) -> prvCompileRecordingCmd({change_searchdir, NewDir}).
 
@@ -136,8 +136,8 @@ prvCompilerRecordingLoop(State) ->
 
 prvCompileRecordingHandle({queryFunctionReturnType, ModName, FunName}, #{modmap := ModuleFnMap, searchdir := SearchDir} = State) ->
     case maps:find(ModName, ModuleFnMap) of
-        {ok, FnMap} ->
-            case maps:find(FunName, FnMap) of
+        {ok, FunctionTypeMap} ->
+            case maps:find(FunName, FunctionTypeMap) of
                 {ok, _Type} = D ->
                     {reply, D, State};
                 error ->
@@ -157,8 +157,8 @@ prvCompileRecordingHandle({recordCompileOp, ModName}, #{moduleChain := ModuleCha
     end;
 prvCompileRecordingHandle({unRecordCompileOp, ModName}, #{moduleChain := [ModName | Rest]} = State) ->
     {reply, ok, State#{moduleChain := Rest}};
-prvCompileRecordingHandle({recordModule, ModName, FnMap}, #{modmap := ModuleFnMap} = State) ->
-    {reply, ok, State#{modmap := ModuleFnMap#{ModName => FnMap}}};
+prvCompileRecordingHandle({recordModule, ModName, FunctionTypeMap}, #{modmap := ModuleFnMap} = State) ->
+    {reply, ok, State#{modmap := ModuleFnMap#{ModName => FunctionTypeMap}}};
 prvCompileRecordingHandle({change_searchdir, NewDir}, State) ->
     {reply, ok, State#{searchdir := NewDir}};
 prvCompileRecordingHandle(debug, #{modmap := ModuleFnMap, moduleChain := ModuleChain} = State) ->
