@@ -49,10 +49,8 @@ prvEvaluateConstantExpression(#op2{operator = 'bsl', op1 = Operand1, op2 = Opera
     prvEvaluateConstantExpression(Operand1, Constants) bsl prvEvaluateConstantExpression(Operand2, Constants);
 prvEvaluateConstantExpression(#varref{name = Name, line = Line}, Constants) ->
     case maps:find(Name, Constants) of
-        error ->
-            throw({Line, ecompilerUtil:flatfmt("undefined constant ~s", [Name])});
-        {ok, Val} ->
-            Val
+        error ->        throw({Line, ecompilerUtil:flatfmt("undefined constant ~s", [Name])});
+        {ok, Val} ->    Val
     end;
 prvEvaluateConstantExpression({ImmiType, _, Val}, _) when ImmiType =:= integer; ImmiType =:= float ->
     Val;
@@ -76,17 +74,13 @@ prvReplaceContantsInExpressions(Expressions, Constants) ->
 
 prvReplaceContantsInExpression(#vardef{name = Name, initval = Initval, type = Type, line = Line} = Expression, Constants) ->
     case maps:find(Name, Constants) of
-        {ok, _} ->
-            throw({Line, ecompilerUtil:flatfmt("~s conflicts with const", [Name])});
-        error ->
-            Expression#vardef{initval = prvReplaceContantsInExpression(Initval, Constants), type = prvReplaceConstantsInType(Type, Constants)}
+        {ok, _} ->      throw({Line, ecompilerUtil:flatfmt("~s conflicts with const", [Name])});
+        error ->        Expression#vardef{initval = prvReplaceContantsInExpression(Initval, Constants), type = prvReplaceConstantsInType(Type, Constants)}
     end;
 prvReplaceContantsInExpression(#varref{name = Name, line = Line} = Expression, Constants) ->
     case maps:find(Name, Constants) of
-        {ok, Val} ->
-            prvConstantNumberToToken(Val, Line);
-        error ->
-            Expression
+        {ok, Val} ->    prvConstantNumberToToken(Val, Line);
+        error ->        Expression
     end;
 prvReplaceContantsInExpression(#struct_init_raw{fields = Fields} = Expression, Constants) ->
     Expression#struct_init_raw{fields = prvReplaceContantsInExpressions(Fields, Constants)};
@@ -99,11 +93,10 @@ prvReplaceContantsInExpression(#op1{operand = Operand} = Expression, Constants) 
 prvReplaceContantsInExpression(Any, _) ->
     Any.
 
-prvConstantNumberToToken(Num, Line) when is_float(Num) -> #float{val = Num, line = Line};
+prvConstantNumberToToken(Num, Line) when is_float(Num) ->   #float{val = Num, line = Line};
 prvConstantNumberToToken(Num, Line) when is_integer(Num) -> #integer{val = Num, line = Line}.
 
 prvReplaceConstantsInType(#array_type{elemtype = ElementType, len = Len} = T, Constants) ->
     T#array_type{elemtype = prvReplaceConstantsInType(ElementType, Constants), len = prvEvaluateConstantExpression(prvReplaceContantsInExpression(Len, Constants), Constants)};
 prvReplaceConstantsInType(Any, _) ->
     Any.
-

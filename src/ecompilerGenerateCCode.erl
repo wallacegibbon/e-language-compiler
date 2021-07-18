@@ -35,10 +35,8 @@ prvFixExpressionsForC(Expressions, Ctx) ->
 -spec prvFixExpressionForC(eExpression(), genCContext()) -> eExpression().
 prvFixExpressionForC(#op1{operator = '@', operand = Operand, line = Line} = E, {FunctionTypeMap, StructMap, VarTypes} = Ctx) ->
     case ecompilerType:typeOfExpression(Operand, {VarTypes, FunctionTypeMap, StructMap, none}) of
-        #array_type{} ->
-            #op2{operator = '.', op1 = prvFixExpressionForC(Operand, Ctx), op2 = #varref{name = val, line = Line}};
-        _ ->
-            E
+        #array_type{} ->    #op2{operator = '.', op1 = prvFixExpressionForC(Operand, Ctx), op2 = #varref{name = val, line = Line}};
+        _ ->                E
     end;
 prvFixExpressionForC(#op1{operand = Operand} = E, Ctx) ->
     E#op1{operand = prvFixExpressionForC(Operand, Ctx)};
@@ -62,8 +60,8 @@ prvStatementsToString([#function{name = Name, param_names = ParamNames, type = F
     PureVars = maps:without(ParamNameAtoms, VarTypes),
     Declar = prvFunctioinDeclarationToString(Name, prvFunctionParametersToString(PureParams), Fntype#fun_type.ret),
     Exprs2 =    case Name =:= main of
-                    true -> InitCode ++ Expressions;
-                    _ -> Expressions
+                    true ->     InitCode ++ Expressions;
+                    _ ->        Expressions
                 end,
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declar, prvVariableMapToString(PureVars), prvExpressionsToString(Exprs2)]),
     prvStatementsToString(Rest, InitCode, [S | StatementStrs], [Declar ++ ";\n" | FnDeclars]);
@@ -94,8 +92,8 @@ prvVariableMapToString(VarsMap) when is_map(VarsMap) ->
 prvVariableListToString(VarList) when is_list(VarList) ->
     lists:flatten(lists:join(";\n", prvVariablesToString(VarList, [])), ";").
 
-prvVariablesToString([{Name, Type} | Rest], Strs) -> prvVariablesToString(Rest, [prvTypeToCString(Type, Name) | Strs]);
-prvVariablesToString([], Strs) -> lists:reverse(Strs).
+prvVariablesToString([{Name, Type} | Rest], Strs) ->    prvVariablesToString(Rest, [prvTypeToCString(Type, Name) | Strs]);
+prvVariablesToString([], Strs) ->                       lists:reverse(Strs).
 
 prvFetchNamesFromVariableReferences(VarrefList) -> lists:map(fun (#varref{name = N}) -> N end, VarrefList).
 
@@ -121,14 +119,14 @@ prvTypeToCString(#fun_type{params = Params, ret = Rettype}, Varname) ->
     NameParams = io_lib:format("(*~s)(~s)", [Varname, Paramstr]),
     prvTypeToCString(Rettype, NameParams).
 
-prvTypeTagToString(struct, Name) -> io_lib:format("struct ~s", [Name]);
-prvTypeTagToString(_, Name) -> atom_to_list(Name).
+prvTypeTagToString(struct, Name) ->     io_lib:format("struct ~s", [Name]);
+prvTypeTagToString(_, Name) ->          atom_to_list(Name).
 
 %% convert expression to C string
-prvExpressionsToString(Expressions) -> [lists:join("\n", prvExpressionsToString(Expressions, []))].
+prvExpressionsToString(Expressions) ->  [lists:join("\n", prvExpressionsToString(Expressions, []))].
 
-prvExpressionsToString([Expression | Rest], ExprList) -> prvExpressionsToString(Rest, [prvExpressionToString(Expression, $;) | ExprList]);
-prvExpressionsToString([], ExprList) -> lists:reverse(ExprList).
+prvExpressionsToString([Expression | Rest], ExprList) ->    prvExpressionsToString(Rest, [prvExpressionToString(Expression, $;) | ExprList]);
+prvExpressionsToString([], ExprList) ->                     lists:reverse(ExprList).
 
 -spec prvExpressionToString(eExpression(), string()) -> iolist().
 prvExpressionToString(#if_expr{condition = Condition, then = Then, else = Else}, _) ->
@@ -163,16 +161,16 @@ prvHandleSpecialCharactersInString(String) ->
     lists:map(fun (C) -> maps:get(C, ?SPECIAL_CHARMAP, C) end, String).
 
 -spec prvTranslateOperator(atom()) -> string() | atom().
-prvTranslateOperator(assign) -> "=";
-prvTranslateOperator('rem') -> "%";
-prvTranslateOperator('bxor') -> "^";
-prvTranslateOperator('bsr') -> ">>";
-prvTranslateOperator('bsl') -> "<<";
-prvTranslateOperator('band') -> "&";
-prvTranslateOperator('bor') -> "|";
-prvTranslateOperator('and') -> "&&";
-prvTranslateOperator('or') -> "||";
-prvTranslateOperator('@') -> "&";
-prvTranslateOperator('^') -> "*";
-prvTranslateOperator(Any) -> Any.
+prvTranslateOperator(assign) ->         "=";
+prvTranslateOperator('rem') ->          "%";
+prvTranslateOperator('bxor') ->         "^";
+prvTranslateOperator('bsr') ->          ">>";
+prvTranslateOperator('bsl') ->          "<<";
+prvTranslateOperator('band') ->         "&";
+prvTranslateOperator('bor') ->          "|";
+prvTranslateOperator('and') ->          "&&";
+prvTranslateOperator('or') ->           "||";
+prvTranslateOperator('@') ->            "&";
+prvTranslateOperator('^') ->            "*";
+prvTranslateOperator(Any) ->            Any.
 

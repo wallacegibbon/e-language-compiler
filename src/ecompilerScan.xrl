@@ -82,24 +82,23 @@ stringToInteger([$0, _ | Chars], Base) -> list_to_integer(Chars, Base).
 
 dropQuotes([_ | QuotedString]) -> lists:droplast(QuotedString).
 
-fixCharacters([$\\, $\\ | Rest]) -> [$\\ | fixCharacters(Rest)];
-fixCharacters([$\\, $/ | Rest]) -> [$/ | fixCharacters(Rest)];
-fixCharacters([$\\, $b | Rest]) -> [$\b | fixCharacters(Rest)];
-fixCharacters([$\\, $f | Rest]) -> [$\f | fixCharacters(Rest)];
-fixCharacters([$\\, $n | Rest]) -> [$\n | fixCharacters(Rest)];
-fixCharacters([$\\, $r | Rest]) -> [$\r | fixCharacters(Rest)];
-fixCharacters([$\\, $t | Rest]) -> [$\t | fixCharacters(Rest)];
-fixCharacters([$\\, $" | Rest]) -> [$" | fixCharacters(Rest)];
-fixCharacters([$\\, Any | Rest]) -> [Any | fixCharacters(Rest)];
-fixCharacters([C | Rest]) -> [C | fixCharacters(Rest)];
-fixCharacters([]) -> [].
+fixCharacters([$\\, $\\ | Rest]) ->     [$\\ | fixCharacters(Rest)];
+fixCharacters([$\\, $/ | Rest]) ->      [$/ | fixCharacters(Rest)];
+fixCharacters([$\\, $b | Rest]) ->      [$\b | fixCharacters(Rest)];
+fixCharacters([$\\, $f | Rest]) ->      [$\f | fixCharacters(Rest)];
+fixCharacters([$\\, $n | Rest]) ->      [$\n | fixCharacters(Rest)];
+fixCharacters([$\\, $r | Rest]) ->      [$\r | fixCharacters(Rest)];
+fixCharacters([$\\, $t | Rest]) ->      [$\t | fixCharacters(Rest)];
+fixCharacters([$\\, $" | Rest]) ->      [$" | fixCharacters(Rest)];
+fixCharacters([$\\, Any | Rest]) ->     [Any | fixCharacters(Rest)];
+fixCharacters([C | Rest]) ->            [C | fixCharacters(Rest)];
+fixCharacters([]) ->                    [].
 
-fixCharacter([$\\, $\\]) -> $\\;
-fixCharacter([$\\, $b]) -> $\b;
-fixCharacter([$\\, $f]) -> $\f;
-fixCharacter([$\\, $n]) -> $\n;
-fixCharacter([$\\, $r]) -> $\r;
-fixCharacter([$\\, $t]) -> $\t;
-fixCharacter([$\\, Any]) -> Any;
-fixCharacter([Any]) -> Any.
-
+fixCharacter([$\\, $\\]) ->             $\\;
+fixCharacter([$\\, $b]) ->              $\b;
+fixCharacter([$\\, $f]) ->              $\f;
+fixCharacter([$\\, $n]) ->              $\n;
+fixCharacter([$\\, $r]) ->              $\r;
+fixCharacter([$\\, $t]) ->              $\t;
+fixCharacter([$\\, Any]) ->             Any;
+fixCharacter([Any]) ->                  Any.
