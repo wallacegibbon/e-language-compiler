@@ -8,7 +8,7 @@
 
 -spec compileFromRawAST(eAST(), compileOptions()) -> {eAST(), variableTypeMap(), eAST(), functionTypeMap()}.
 compileFromRawAST(AST, CustomCompileOptions) ->
-    CompileOptions = maps:merge(prvDefaultCompileOptions(), CustomCompileOptions),
+    CompileOptions = maps:merge( prvDefaultCompileOptions(), CustomCompileOptions ),
 
     AST1 = ecompilerFillConstant:parseAndRemoveConstants(AST),
     %io:format(">>> ~p~n", [Ast1]),
@@ -48,12 +48,13 @@ compileFromRawAST(AST, CustomCompileOptions) ->
 prvDefaultCompileOptions() -> #{pointer_width => 8}.
 
 -spec prvCheckStructRecursive(structTypeMap()) -> ok.
-prvCheckStructRecursive(StructTypeMap) -> maps:foreach(fun (_, S) -> prvCheckStructObject(S, StructTypeMap, []) end, StructTypeMap).
+prvCheckStructRecursive(StructTypeMap) ->
+    maps:foreach( fun (_, S) -> prvCheckStructObject(S, StructTypeMap, []) end,     StructTypeMap ).
 
 -spec prvCheckStructObject(#struct{}, structTypeMap(), [atom()]) -> ok.
 prvCheckStructObject(#struct{name = Name, field_types = FieldTypes, line = Line}, StructMap, UsedStructs) ->
     try
-        prvCheckStructField(maps:to_list(FieldTypes), StructMap, [Name | UsedStructs])
+        prvCheckStructField( maps:to_list(FieldTypes),  StructMap,  [Name | UsedStructs] )
     catch
         {recur, Chain} ->
             throw({Line, ecompilerUtil:flatfmt("recursive struct ~s -> ~w", [Name, Chain])})
@@ -66,8 +67,8 @@ prvCheckStructField([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
     case prvContainStruct(FieldType) of
         {yes, StructName} ->
             case ecompilerUtil:valueInList(StructName, UsedStructs) of
-                false ->    prvCheckStructObject(maps:get(StructName, StructMap), StructMap, UsedStructs);
-                true ->     throw({recur, lists:reverse(UsedStructs)})
+                false ->        prvCheckStructObject( maps:get(StructName, StructMap), StructMap, UsedStructs );
+                true ->         throw({recur, lists:reverse(UsedStructs)})
             end;
         no ->
             ok

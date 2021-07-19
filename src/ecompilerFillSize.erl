@@ -22,7 +22,7 @@ expandSizeofInExpressions(Expressions, Ctx) ->
 -spec prvExpandSizeofInExpression(eExpression(), compilePassCtx1()) -> eExpression().
 prvExpandSizeofInExpression(#sizeof{type = T, line = Line}, Ctx) ->
     try {integer, Line, prvSizeOf(T, Ctx)} catch
-        I -> throw({Line, I})
+        I ->    throw({Line, I})
     end;
 prvExpandSizeofInExpression(#op2{op1 = Operand1, op2 = Operand2} = O, Ctx) ->
     O#op2{op1 = prvExpandSizeofInExpression(Operand1, Ctx), op2 = prvExpandSizeofInExpression(Operand2, Ctx)};
@@ -116,13 +116,13 @@ prvSizeOf(#basic_type{pdepth = N}, {_, PointerWidth}) when N > 0 ->
 prvSizeOf(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
     case maps:find(Tag, StructMap) of
         {ok, S} ->      prvSizeOfStruct(S, Ctx);
-        error ->        throw(ecompilerUtil:flatfmt("~s is not found", [Tag]))
+        error ->        throw( ecompilerUtil:flatfmt("~s is not found", [Tag]) )
     end;
 prvSizeOf(#basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
     case ecompilerUtil:primitiveSizeOf(Tag) of
         pwidth ->                   PointerWidth;
         V when is_integer(V) ->     V;
-        _ ->                        throw(ecompilerUtil:flatfmt("primitiveSize(~s) is invalid", [Tag]))
+        _ ->                        throw( ecompilerUtil:flatfmt("primitiveSize(~s) is invalid", [Tag]) )
     end;
 prvSizeOf(#fun_type{}, {_, PointerWidth}) ->
     PointerWidth;

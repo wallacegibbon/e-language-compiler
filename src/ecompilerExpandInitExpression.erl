@@ -15,7 +15,7 @@ prvCheckInitExpressionPosition(_) ->
     ok.
 
 expandInitExpressionInFunctions([#function{exprs = Expressions} = F | Rest], StructMap) ->
-    ecompilerUtil:expressionMap(fun prvCheckInitExpressionPosition/1, Expressions),
+    ecompilerUtil:expressionMap( fun prvCheckInitExpressionPosition/1,  Expressions ),
     [F#function{exprs = expandInitExpressions(Expressions, StructMap)} | expandInitExpressionInFunctions(Rest, StructMap)];
 expandInitExpressionInFunctions([Any | Rest], StructMap) ->
     [Any | expandInitExpressionInFunctions(Rest, StructMap)];
@@ -50,8 +50,8 @@ prvReplaceInitOps(Any, _) ->
 
 prvStructInitToOps(Target, [#varref{line = Line, name = Fname} = Field | Rest], FieldInitMap, FieldTypes, Newcode, StructMap) ->
     Operand2 =  case maps:find(Fname, FieldInitMap) of
-                    error ->            prvDefaultInitValueOf(maps:get(Fname, FieldTypes), Line);
-                    {ok, InitOp} ->     InitOp
+                    {ok, InitOp} ->     InitOp;
+                    error ->            prvDefaultInitValueOf( maps:get(Fname, FieldTypes),  Line )
                 end,
     NewAssign = #op2{operator = assign, op2 = Operand2, line = Line, op1 = #op2{operator = '.', op1 = Target, op2 = Field, line = Line}},
     Ops = prvReplaceInitOps(NewAssign, StructMap),
@@ -60,7 +60,7 @@ prvStructInitToOps(_, [], _, _, Newcode, _) ->
     Newcode.
 
 prvDefaultInitValueOf(#array_type{elemtype = Etype, len = Len}, Line) ->
-    #array_init{elements = lists:duplicate(Len, prvDefaultInitValueOf(Etype, Line)), line = Line};
+    #array_init{elements = lists:duplicate( Len, prvDefaultInitValueOf(Etype, Line) ),  line = Line};
 prvDefaultInitValueOf(#basic_type{class = struct, tag = Tag, pdepth = 0}, Line) ->
     #struct_init{name = Tag, line = Line, field_values = #{}, field_names = []};
 prvDefaultInitValueOf(#basic_type{class = integer, pdepth = 0}, Line) ->

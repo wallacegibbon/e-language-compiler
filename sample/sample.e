@@ -1,42 +1,42 @@
 %% vim: ft=elang :
 
 struct Blah
-    id: i8^,
-    a: Administrator^,
-    %b: Administrator,
+    id:         i8^,
+    a:          Administrator^,
+    %b:          Administrator,
 end
 
 struct Blah1
-    id: i8^,
-    blob: u64 = sizeof(Blah),
+    id:         i8^,
+    blob:       u64         = sizeof(Blah),
 end
 
 struct User
-    id: i64 = 10 * 20 + 3 * 4 + TOTOAL_USERCNT,
-    %desc: {i64, 10} = {"hello"},
-    desc: {i64, 10} = {1,2,3,4,5,6,7,8,9,TOTOAL_USERCNT},
-    count: u32,
-    blah: Blah,
-    b2: {Blah,3},
-    a: any^,
+    id:         i64         = 10 * 20 + 3 * 4 + TOTOAL_USERCNT,
+    %desc:      {i64, 10}   = {"hello"},
+    desc:       {i64, 10}   = {1,2,3,4,5,6,7,8,9,TOTOAL_USERCNT},
+    count:      u32,
+    blah:       Blah,
+    b2:         {Blah,3},
+    a:          any^,
 end
 
 struct List
-    next: List^,
-    val: any^,
-    ok: User = User{id=1, count=TOTOAL_USERCNT},
-    %invalid: List,
+    next:       List^,
+    val:        any^,
+    ok:         User        = User{id=1, count=TOTOAL_USERCNT},
+    %invalid:   List,
 end
 
 struct Administrator
-    users: {User, TOTAL_ADMIN_LIMIT + 1},
-    level: i64,
+    users:      {User, TOTAL_ADMIN_LIMIT + 1},
+    level:      i64,
 end
 
 % global variable
-mod_info: {i64, 100};
-blah: i64 = 10;
-blah1: i64 = sizeof(Blah1);
+mod_info:   {i64, 100};
+blah:       i64             = 10;
+blah1:      i64             = sizeof(Blah1);
 
 const TOTAL_ADMIN_LIMIT = 10 + 2;
 
@@ -46,10 +46,10 @@ const TOTAL_ADMIN_LIMIT = 10 + 2;
 % t: {User, 2} = {User{id=1, desc={"a"}}, User{id=2, desc={"b"}}};
 % struct {User val[2];} t = {{1, 0, {"a"}}, {2, 0, {"b"}}};
 
-const BASE_MUL = 12;
-const TOTOAL_USERCNT = 10 + 3 * BASE_MUL - 1;
-const blah1 = 1 bsl 8;
-const blah2 = 1 bsr 8;
+const BASE_MUL =                12;
+const TOTOAL_USERCNT =          10 + 3 * BASE_MUL - 1;
+const blah1 =                   1 bsl 8;
+const blah2 =                   1 bsr 8;
 
 u1: User = User{id=8};
 

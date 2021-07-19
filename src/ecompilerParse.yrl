@@ -260,7 +260,7 @@ Erlang code.
 
 -include("./ecompilerFrameDef.hrl").
 
-stringToIntegerTokens({string, Line, Str}) -> lists:map(fun (Char) -> {integer, Line, Char} end, Str).
+stringToIntegerTokens({string, Line, Str}) -> lists:map(fun (Char) -> {integer, Line, Char} end,    Str).
 
 tokenValue({_, _, Val}) ->  Val.
 

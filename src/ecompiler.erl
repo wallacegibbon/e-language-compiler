@@ -8,7 +8,7 @@
 -include("./ecompilerFrameDef.hrl").
 
 compileToC(InputFilename, OutputFilename) ->
-    prvStartCompilerRecordingProcess(filename:dirname(InputFilename)),
+    prvStartCompilerRecordingProcess( filename:dirname(InputFilename) ),
     try
         {AST, Vars, InitCode} = prvParseAndCompile(InputFilename),
         %io:format(">> ~p~n~n", [AST]),
@@ -20,7 +20,7 @@ compileToC(InputFilename, OutputFilename) ->
     prvStopCompilerRecordingProcess().
 
 compileToAST(Filename) ->
-    prvStartCompilerRecordingProcess(filename:dirname(Filename)),
+    prvStartCompilerRecordingProcess( filename:dirname(Filename) ),
     R = prvParseAndCompile(Filename),
     prvStopCompilerRecordingProcess(),
     R.
@@ -29,8 +29,7 @@ prvParseAndCompile(Filename) ->
     ok = prvRecordCompileFile(Filename),
     try
         {ok, AST} = prvParseFile(Filename),
-        Ret = ecompilerCompile:compileFromRawAST(AST, #{}),
-        {Ast1, Vars, InitCode, FunctionTypeMap} = Ret,
+        {Ast1, Vars, InitCode, FunctionTypeMap} = ecompilerCompile:compileFromRawAST(AST, #{}),
         ok = recordModule(Filename, FunctionTypeMap),
         {Ast1, Vars, InitCode}
     catch
@@ -41,16 +40,16 @@ prvParseAndCompile(Filename) ->
 
 prvParseFile(Filename) when is_list(Filename) ->
     case file:read_file(Filename) of
-        {ok, RawContent} ->     prvParseContent(RawContent);
+        {ok,    RawContent} ->  prvParseContent(RawContent);
         {error, enoent} ->      throw("module not found");
         {error, Reason} ->      throw(Reason)
     end.
 
 prvParseContent(RawContent) ->
     case ecompilerScan:string(binary_to_list(RawContent)) of
-        {ok, Tokens, _} ->
+        {ok,    Tokens, _} ->
             case ecompilerParse:parse(Tokens) of
-                {ok, _Ast} = D ->                   D;
+                {ok,    _Ast} = D ->                D;
                 {error, {Line, _, Errinfo}} ->      throw({Line, Errinfo})
             end;
         {error, Errors, Warnings} ->
@@ -85,20 +84,20 @@ prvStopCompilerRecordingProcess() ->
         error:_ -> ok
     end.
 
-prvRecordCompileFile(Filename) -> prvCompileRecordingCmd({recordCompileOp, prvFileNameToModuleAtom(Filename)}).
+prvRecordCompileFile(Filename) -> prvCompileRecordingCmd( {recordCompileOp, prvFileNameToModuleAtom(Filename)} ).
 
-prvUnRecordCompileFile(Filename) -> prvCompileRecordingCmd({unRecordCompileOp, prvFileNameToModuleAtom(Filename)}).
+prvUnRecordCompileFile(Filename) -> prvCompileRecordingCmd( {unRecordCompileOp, prvFileNameToModuleAtom(Filename)} ).
 
-recordModule(Filename, FunctionTypeMap) -> prvCompileRecordingCmd({recordModule, prvFileNameToModuleAtom(Filename), FunctionTypeMap}).
+recordModule(Filename, FunctionTypeMap) -> prvCompileRecordingCmd( {recordModule, prvFileNameToModuleAtom(Filename), FunctionTypeMap} ).
 
-prvChangeSearchDirectory(NewDir) -> prvCompileRecordingCmd({change_searchdir, NewDir}).
+prvChangeSearchDirectory(NewDir) -> prvCompileRecordingCmd( {change_searchdir, NewDir} ).
 
 prvFileNameToModuleAtom(Filename) when is_list(Filename) -> list_to_atom(filename:basename(Filename, ".e")).
 
 prvQueryFunctionInModule(ModName, FunName) ->
     case prvCompileRecordingCmd({queryFunctionReturnType, ModName, FunName}) of
         {error, moduleNotFound, SearchDir} ->
-            prvParseAndCompile(prvMakeFileName(SearchDir, ModName)),
+            prvParseAndCompile( prvMakeFileName(SearchDir, ModName) ),
             prvQueryFunctionInModule(ModName, FunName);
         {error, functionNotFound} = R ->
             R;
@@ -106,7 +105,7 @@ prvQueryFunctionInModule(ModName, FunName) ->
             R
     end.
 
-prvMakeFileName(SearchDir, ModName) -> lists:flatten(io_lib:format("~s/~s.e", [SearchDir, ModName])).
+prvMakeFileName(SearchDir, ModName) -> lists:flatten( io_lib:format("~s/~s.e", [SearchDir, ModName]) ).
 
 prvCompilerRecordingDetails() -> prvCompileRecordingCmd(debug).
 
@@ -133,8 +132,8 @@ prvCompileRecordingHandle({queryFunctionReturnType, ModName, FunName}, #{modmap 
     case maps:find(ModName, ModuleFnMap) of
         {ok, FunctionTypeMap} ->
             case maps:find(FunName, FunctionTypeMap) of
-                {ok, _Type} = D ->  {reply, D, State};
-                error ->            {reply, {error, functionNotFound}, State}
+                {ok, _Type} = D ->  {reply, D,                          State};
+                error ->            {reply, {error, functionNotFound},  State}
             end;
         error ->
             {reply, {error, moduleNotFound, SearchDir}, State}
@@ -143,8 +142,7 @@ prvCompileRecordingHandle({recordCompileOp, ModName}, #{moduleChain := ModuleCha
     NewModuleChain = [ModName | ModuleChain],
     case ecompilerUtil:valueInList(ModName, ModuleChain) of
         true ->
-            {reply, {error, moduleRecursive, lists:reverse(NewModuleChain)},
-             State};
+            {reply, {error, moduleRecursive, lists:reverse(NewModuleChain)}, State};
         _ ->
             {reply, ok, State#{moduleChain := NewModuleChain}}
     end;

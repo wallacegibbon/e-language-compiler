@@ -7,7 +7,7 @@
 
 -spec fetchVariables(eAST()) -> {eAST(), variableTypeMap(), eAST()}.
 fetchVariables(AST) ->
-    {Ast3, VarTypes, InitCode} = prvFetchVariables(prvPrepareStructInitExpression(AST), [], {#{}, [], true}),
+    {Ast3, VarTypes, InitCode} = prvFetchVariables( prvPrepareStructInitExpression(AST), [], {#{}, [], true} ),
     {Ast3, VarTypes, InitCode}.
 
 -spec prvPrepareStructInitExpression(eAST()) -> eAST().
@@ -54,12 +54,12 @@ prvStructInitToMap([], FieldNames, ExprMap) ->
 prvFetchVariables([#vardef{name = Name, type = Type, line = Line, initval = Initval} | Rest], NewAst, {VarTypes, InitCode, CollectInitCode}) ->
     prvEnsureNoNameConflict(Name, VarTypes, Line),
     case CollectInitCode of
-        true -> prvFetchVariables(Rest, NewAst, {VarTypes#{Name => Type}, prvAppendToAST(InitCode, Name, Initval, Line), CollectInitCode});
-        _ ->    prvFetchVariables(Rest, prvAppendToAST(NewAst, Name, Initval, Line), {VarTypes#{Name => Type}, InitCode, CollectInitCode})
+        true -> prvFetchVariables(Rest, NewAst,                                         {VarTypes#{Name => Type}, prvAppendToAST(InitCode, Name, Initval, Line),    CollectInitCode});
+        _ ->    prvFetchVariables(Rest, prvAppendToAST(NewAst, Name, Initval, Line),    {VarTypes#{Name => Type}, InitCode,                                         CollectInitCode})
     end;
 prvFetchVariables([#function_raw{name = Name, ret = Ret, params = Params, exprs = Expressions, line = Line} | Rest], NewAst, {GlobalVars, _, _} = Ctx) ->
     {[], ParamVars, ParamInitCode} = prvFetchVariables(Params, [], {#{}, [], true}),
-    ecompilerUtil:assert(ParamInitCode =:= [], {Line, "function parameters can not have default value"}),
+    ecompilerUtil:assert( ParamInitCode =:= [], {Line, "function parameters can not have default value"} ),
     {NewExprs, FunVarTypes, []} = prvFetchVariables(Expressions, [], {ParamVars, [], false}),
     %% local variables should have different names from global variables
     prvCheckVariableConflict(GlobalVars, FunVarTypes),
@@ -96,14 +96,14 @@ prvCheckLabelConflict([], _, _) ->
 
 -spec prvCheckVariableConflict(variableTypeMap(), variableTypeMap()) -> ok.
 prvCheckVariableConflict(GlobalVars, LocalVars) ->
-    ConflictMap = maps:with(maps:keys(GlobalVars), LocalVars),
-    maps:foreach(fun (Name, T) -> prvThrowNameConflict(Name, element(2, T)) end, ConflictMap).
+    ConflictMap = maps:with( maps:keys(GlobalVars), LocalVars ),
+    maps:foreach(fun (Name, T) -> prvThrowNameConflict( Name, element(2, T) ) end,  ConflictMap).
 
 -spec prvEnsureNoNameConflict(atom(), variableTypeMap(), integer()) -> ok.
 prvEnsureNoNameConflict(Name, VarMap, Line) ->
     case maps:find(Name, VarMap) of
-        {ok, _} ->  prvThrowNameConflict(Name, Line);
-        _ ->        ok
+        {ok, _} ->      prvThrowNameConflict(Name, Line);
+        _ ->            ok
     end.
 
 -spec prvThrowNameConflict(atom(), integer()) -> no_return().
@@ -112,8 +112,8 @@ prvThrowNameConflict(Name, Line) ->
 
 -spec prvGetValuesByDefinitions([#vardef{}], #{atom() => any()}) -> [any()].
 prvGetValuesByDefinitions(DefList, Map) ->
-    ecompilerUtil:getValuesByKeys(ecompilerUtil:namesOfVariableDefinitiions(DefList), Map).
+    ecompilerUtil:getValuesByKeys( ecompilerUtil:namesOfVariableDefinitiions(DefList),  Map ).
 
 -spec prvVariableDefinitionToReference([#vardef{}]) -> [#varref{}].
 prvVariableDefinitionToReference(Vardefs) ->
-    lists:map(fun (#vardef{name = N, line = Line}) -> #varref{name = N, line = Line} end, Vardefs).
+    lists:map( fun (#vardef{name = N, line = Line}) -> #varref{name = N, line = Line} end,  Vardefs ).

@@ -114,4 +114,4 @@
 -type variableTypeMap()                                                     :: #{atom() := eType()}.
 -type eAST()                                                                :: [eExpression()].
 
--type compilePassCtx1()                                                     :: {#struct{}, functionTypeMap()}.
+-type compilePassCtx1()                                                     :: {structTypeMap(), functionTypeMap()}.

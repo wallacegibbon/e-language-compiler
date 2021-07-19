@@ -6,23 +6,22 @@
 
 -spec checkTypesInAST(eAST(), variableTypeMap(), {functionTypeMap(), structTypeMap()}) -> ok.
 checkTypesInAST([#function{var_types = VarTypes, exprs = Expressions, type = Fntype} | Rest], GlobalVarTypes, {FunctionTypeMap, StructMap} = Maps) ->
-    prvCheckTypes(maps:values(VarTypes), StructMap),
-    prvCheckType(Fntype#fun_type.ret, StructMap),
+    prvCheckTypes( maps:values(VarTypes), StructMap ),
+    prvCheckType( Fntype#fun_type.ret, StructMap ),
     CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
-    Ctx = {CurrentVars, FunctionTypeMap, StructMap, Fntype#fun_type.ret},
-    typeOfExpressions(Expressions, Ctx),
+    typeOfExpressions(Expressions, {CurrentVars, FunctionTypeMap, StructMap, Fntype#fun_type.ret}),
     checkTypesInAST(Rest, GlobalVarTypes, Maps);
 checkTypesInAST([#struct{name = Name, field_types = FieldTypes, field_names = FieldNames, field_defaults = FieldDefaults} | Rest], GlobalVarTypes, {FunctionTypeMap, StructMap} = Maps) ->
     prvCheckTypes(maps:values(FieldTypes), StructMap),
-    Ctx = {GlobalVarTypes, FunctionTypeMap, StructMap, none},
     %% check the default values for fields
     InitFieldNames = ecompilerUtil:filterVariableReferenceInMap(FieldNames, FieldDefaults),
-    prvCheckTypesInStructFields(InitFieldNames, FieldTypes, FieldDefaults, Name, Ctx),
+    prvCheckTypesInStructFields(InitFieldNames, FieldTypes, FieldDefaults, Name, {GlobalVarTypes, FunctionTypeMap, StructMap, none}),
     checkTypesInAST(Rest, GlobalVarTypes, Maps);
 checkTypesInAST([_ | Rest], GlobalVarTypes, Maps) ->
     checkTypesInAST(Rest, GlobalVarTypes, Maps);
 checkTypesInAST([], _, _) ->
     ok.
+
 
 -type typeOfContext() :: {variableTypeMap(), functionTypeMap(), structTypeMap(), functionReturnTypeMap()}.
 
@@ -33,34 +32,35 @@ checkTypesInExpressions(Expressions, GlobalVarTypes, {FunctionTypeMap, StructMap
     ok.
 
 -spec typeOfExpressions([eExpression()], typeOfContext()) -> [eType()].
-typeOfExpressions(Expressions, Ctx) -> lists:map(fun (Expression) -> typeOfExpression(Expression, Ctx) end, Expressions).
+typeOfExpressions(Expressions, Ctx) ->
+    lists:map( fun (Expression) -> typeOfExpression(Expression, Ctx) end,   Expressions ).
 
 -spec typeOfExpression(eExpression(), typeOfContext()) -> eType().
 typeOfExpression(#op2{operator = assign, op1 = Operand1, op2 = Operand2, line = Line}, {_, _, StructMap, _} = Ctx) ->
     TypeofOp1 = case Operand1 of
-                    #op2{operator = '.', op1 = SubOp1, op2 = SubOp2} ->     prvTypeOfStructField(typeOfExpression(SubOp1, Ctx), SubOp2, StructMap, Line);
-                    #op1{operator = '^', operand = SubOp} ->                prvDecreasePointerDepth(typeOfExpression(SubOp, Ctx), Line);
+                    #op2{operator = '.', op1 = SubOp1, op2 = SubOp2} ->     prvTypeOfStructField( typeOfExpression(SubOp1, Ctx), SubOp2, StructMap, Line );
+                    #op1{operator = '^', operand = SubOp} ->                prvDecreasePointerDepth( typeOfExpression(SubOp, Ctx), Line );
                     #varref{} ->                                            typeOfExpression(Operand1, Ctx);
                     Any ->                                                  throw({Line, ecompilerUtil:flatfmt("invalid left value (~s)", [ecompilerUtil:expressionToString(Any)])})
                 end,
     TypeofOp2 = typeOfExpression(Operand2, Ctx),
     case prvCompareType(TypeofOp1, TypeofOp2) of
-        false ->    throw({Line, ecompilerUtil:flatfmt("type mismatch in \"~s = ~s\"", [prvTypeToString(TypeofOp1), prvTypeToString(TypeofOp2)])});
-        _ ->        TypeofOp1
+        true ->     TypeofOp1;
+        false ->    throw({Line, ecompilerUtil:flatfmt("type mismatch in \"~s = ~s\"", [prvTypeToString(TypeofOp1), prvTypeToString(TypeofOp2)])})
     end;
 typeOfExpression(#op2{operator = '.', op1 = Operand1, op2 = Operand2, line = Line}, {_, _, StructMap, _} = Ctx) ->
-    prvTypeOfStructField(typeOfExpression(Operand1, Ctx), Operand2, StructMap, Line);
+    prvTypeOfStructField( typeOfExpression(Operand1, Ctx), Operand2, StructMap, Line );
 typeOfExpression(#op2{operator = '::', op1 = #varref{name = self}, op2 = Operand2}, Ctx) ->
     typeOfExpression(Operand2, Ctx);
 typeOfExpression(#op2{operator = '::', op1 = Operand1, op2 = Operand2, line = Line}, _) ->
-    ecompilerUtil:assert(is_record(Operand1, varref), {Line, "invalid usage on ::"}),
-    ecompilerUtil:assert(is_record(Operand2, varref), {Line, "invalid usage on ::"}),
+    ecompilerUtil:assert( is_record(Operand1, varref), {Line, "invalid usage on ::"} ),
+    ecompilerUtil:assert( is_record(Operand2, varref), {Line, "invalid usage on ::"} ),
     #varref{name = ModName} = Operand1,
     #varref{name = FunName} = Operand2,
     try ecompiler:prvQueryFunctionInModule(ModName, FunName) of
+        {ok, Type} ->                   Type;
         {error, moduleNotFound, _} ->   throw({Line, ecompilerUtil:flatfmt("module ~s is not found", [ModName])});
-        {error, functionNotFound} ->    throw({Line, ecompilerUtil:flatfmt("~s:~s is not found", [ModName, FunName])});
-        {ok, Type} ->                   Type
+        {error, functionNotFound} ->    throw({Line, ecompilerUtil:flatfmt("~s:~s is not found", [ModName, FunName])})
     catch
         E ->
             throw({Line, E})
@@ -71,8 +71,8 @@ typeOfExpression(#op2{operator = '+', op1 = Operand1, op2 = Operand2, line = Lin
     case prvAreBothNumberSameType(TypeofOp1, TypeofOp2) of
         false ->
             case prvIsPointerAndInt(TypeofOp1, TypeofOp2) of
-                false ->            throw({Line, prvTypeErrorOfOp2('+', TypeofOp1, TypeofOp2)});
-                {true, Ptype} ->    Ptype
+                {true, Ptype} ->    Ptype;
+                false ->            throw({Line, prvTypeErrorOfOp2('+', TypeofOp1, TypeofOp2)})
             end;
         {true, T} ->
             T
@@ -84,8 +84,8 @@ typeOfExpression(#op2{operator = '-', op1 = Operand1, op2 = Operand2, line = Lin
     case prvAreBothNumberSameType(TypeofOp1, TypeofOp2) of
         false ->
             case prvIsPointerAndIntOrdered(TypeofOp1, TypeofOp2) of
-                false ->            throw({Line, prvTypeErrorOfOp2('-', TypeofOp1, TypeofOp2)});
-                {true, Ptype} ->    Ptype
+                {true, Ptype} ->    Ptype;
+                false ->            throw({Line, prvTypeErrorOfOp2('-', TypeofOp1, TypeofOp2)})
             end;
         {true, T} ->
             T
@@ -94,16 +94,16 @@ typeOfExpression(#op2{operator = Operator, op1 = Operand1, op2 = Operand2, line 
     TypeofOp1 = typeOfExpression(Operand1, Ctx),
     TypeofOp2 = typeOfExpression(Operand2, Ctx),
     case prvAreBothNumberSameType(TypeofOp1, TypeofOp2) of
-        false ->        throw({Line, prvTypeErrorOfOp2(Operator, TypeofOp1, TypeofOp2)});
-        {true, T} ->    T
+        {true, T} ->    T;
+        false ->        throw({Line, prvTypeErrorOfOp2(Operator, TypeofOp1, TypeofOp2)})
     end;
 %% the left operators are: and, or, band, bor, bxor, bsl, bsr, >, <, ...
 typeOfExpression(#op2{operator = Operator, op1 = Operand1, op2 = Operand2, line = Line}, Ctx) ->
     TypeofOp1 = typeOfExpression(Operand1, Ctx),
     TypeofOp2 = typeOfExpression(Operand2, Ctx),
     case prvAreBothIntegers(TypeofOp1, TypeofOp2) of
-        false ->        throw({Line, prvTypeErrorOfOp2(Operator, TypeofOp1, TypeofOp2)});
-        true ->         TypeofOp1
+        true ->         TypeofOp1;
+        false ->        throw({Line, prvTypeErrorOfOp2(Operator, TypeofOp1, TypeofOp2)})
     end;
 typeOfExpression(#op1{operator = '^', operand = Operand, line = Line}, Ctx) ->
     case typeOfExpression(Operand, Ctx) of
@@ -113,10 +113,10 @@ typeOfExpression(#op1{operator = '^', operand = Operand, line = Line}, Ctx) ->
 typeOfExpression(#op1{operator = '@', operand = Operand, line = Line}, {_, _, StructMap, _} = Ctx) ->
     case Operand of
         #op2{operator = '.', op1 = Operand1, op2 = Operand2} ->
-            T = prvTypeOfStructField(typeOfExpression(Operand1, Ctx), Operand2, StructMap, Line),
+            T = prvTypeOfStructField( typeOfExpression(Operand1, Ctx), Operand2, StructMap, Line ),
             prvIncreasePointerDepth(T, Line);
         #varref{} ->
-            prvIncreasePointerDepth(typeOfExpression(Operand, Ctx), Line);
+            prvIncreasePointerDepth( typeOfExpression(Operand, Ctx), Line );
         _ ->
             throw({Line, ecompilerUtil:flatfmt("invalid \"@\" on operand ~s", [ecompilerUtil:expressionToString(Operand)])})
     end;
@@ -127,8 +127,8 @@ typeOfExpression(#call{fn = FunExpr, args = Arguments, line = Line}, Ctx) ->
     case typeOfExpression(FunExpr, Ctx) of
         #fun_type{params = FnParamTypes, ret = FnRetType} ->
             case prvCompareTypes(ArgsTypes, FnParamTypes) of
-                false ->    throw({Line, prvArgumentsErrorInformation(FnParamTypes, ArgsTypes)});
-                true ->     FnRetType
+                true ->     FnRetType;
+                false ->    throw({Line, prvArgumentsErrorInformation(FnParamTypes, ArgsTypes)})
             end;
         T ->
             throw({Line, ecompilerUtil:flatfmt("invalid function expr: ~s", [prvTypeToString(T)])})
@@ -145,15 +145,15 @@ typeOfExpression(#while_expr{condition = Condition, exprs = Expressions, line = 
 typeOfExpression(#return{expr = Expression, line = Line}, {_, _, _, FnRetType} = Ctx) ->
     RealRet = typeOfExpression(Expression, Ctx),
     case prvCompareType(RealRet, FnRetType) of
-        false ->    throw({Line, ecompilerUtil:flatfmt("ret type should be (~s), not (~s)", [prvTypeToString(FnRetType), prvTypeToString(RealRet)])});
-        true ->     RealRet
+        true ->     RealRet;
+        false ->    throw({Line, ecompilerUtil:flatfmt("ret type should be (~s), not (~s)", [prvTypeToString(FnRetType), prvTypeToString(RealRet)])})
     end;
 typeOfExpression(#varref{name = Name, line = Line}, {VarTypes, FunctionTypeMap, StructMap, _}) ->
     Type =  case maps:find(Name, VarTypes) of
                 error ->
                     case maps:find(Name, FunctionTypeMap) of
-                        error ->        throw({Line, ecompilerUtil:flatfmt("variable ~s is undefined", [Name])});
-                        {ok, T} ->      T
+                        {ok, T} ->      T;
+                        error ->        throw({Line, ecompilerUtil:flatfmt("variable ~s is undefined", [Name])})
                     end;
                 {ok, T} ->
                     T
@@ -207,7 +207,7 @@ prvDecreasePointerDepth(T, OpLine) ->
 
 -spec prvCheckTypesInStructFields([#varref{}], variableTypeMap(), #{atom() := any()}, atom(), typeOfContext()) -> ok.
 prvCheckTypesInStructFields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
-    lists:foreach(fun (V) -> prvCheckStructField(V, FieldTypes, ValMap, StructName, Ctx) end, FieldNames).
+    lists:foreach( fun (V) -> prvCheckStructField(V, FieldTypes, ValMap, StructName, Ctx) end,  FieldNames ).
 
 -spec prvCheckStructField(#varref{}, variableTypeMap(), #{atom() := any()}, atom(), typeOfContext()) -> ok.
 prvCheckStructField(#varref{name = FieldName, line = Line}, FieldTypes, ValMap, StructName, {_, _, StructMap, _} = Ctx) ->
@@ -216,8 +216,8 @@ prvCheckStructField(#varref{name = FieldName, line = Line}, FieldTypes, ValMap, 
     prvCheckType(ExpectedType, StructMap),
     GivenType = typeOfExpression(Val, Ctx),
     case prvCompareType(ExpectedType, GivenType) of
-        false ->    throw({Line, ecompilerUtil:flatfmt("~s.~s type error: ~s = ~s", [StructName, FieldName, prvTypeToString(ExpectedType), prvTypeToString(GivenType)])});
-        _ ->        ok
+        true ->     ok;
+        false ->    throw({Line, ecompilerUtil:flatfmt("~s.~s type error: ~s = ~s", [StructName, FieldName, prvTypeToString(ExpectedType), prvTypeToString(GivenType)])})
     end.
 
 -spec areSameType([eType()]) -> boolean().
@@ -237,15 +237,15 @@ prvTypeOfStructField(T, _, _, Line) ->
 -spec prvGetFieldType(atom(), #{atom() => eType()}, atom(), integer()) -> eType().
 prvGetFieldType(FieldName, FieldTypes, StructName, Line) ->
     case maps:find(FieldName, FieldTypes) of
-        error ->        throw({Line, ecompilerUtil:flatfmt("~s.~s does not exist", [StructName, FieldName])});
-        {ok, Type} ->   Type
+        {ok, Type} ->   Type;
+        error ->        throw({Line, ecompilerUtil:flatfmt("~s.~s does not exist", [StructName, FieldName])})
     end.
 
 -spec prvCompareTypes([eType()], [eType()]) -> boolean().
 prvCompareTypes([T1 | Types1], [T2 | Types2]) ->
     case prvCompareType(T1, T2) of
         true ->     prvCompareTypes(Types1, Types2);
-        _ ->        false
+        false ->    false
     end;
 prvCompareTypes([], []) ->
     true;
@@ -304,8 +304,8 @@ prvCheckTypes(TypeList, StructMap) -> lists:foreach(fun (T) -> prvCheckType(T, S
 -spec prvCheckType(eType(), structTypeMap()) -> ok.
 prvCheckType(#basic_type{class = struct, tag = Tag, line = Line}, StructMap) ->
     case maps:find(Tag, StructMap) of
-        error ->        throw({Line, ecompilerUtil:flatfmt("struct ~s is not found", [Tag])});
-        {ok, _} ->      ok
+        {ok, _} ->      ok;
+        error ->        throw({Line, ecompilerUtil:flatfmt("struct ~s is not found", [Tag])})
     end;
 prvCheckType(#basic_type{}, _) ->
     ok;

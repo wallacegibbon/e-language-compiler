@@ -66,8 +66,8 @@ getValuesByKeys_test() -> ?assertEqual([3, 2], getValuesByKeys([a, b], #{c => 1,
 makeFunctionAndStructMapFromAST(AST) ->
     {Functions, Structs} = lists:partition(fun (A) -> element(1, A) =:= function end, AST),
     %% FunctionTypeMap stores function type only
-    FunctionTypeMap = maps:from_list(lists:map(fun (#function{name = Name} = Fn) -> {Name, Fn#function.type} end, Functions)),
-    StructMap = maps:from_list(lists:map(fun (#struct{name = Name} = S) -> {Name, S} end, Structs)),
+    FunctionTypeMap = maps:from_list( lists:map( fun (#function{name = Name} = Fn) -> {Name, Fn#function.type} end,     Functions ) ),
+    StructMap = maps:from_list( lists:map( fun (#struct{name = Name} = S) -> {Name, S} end,     Structs ) ),
     {FunctionTypeMap, StructMap}.
 
 %% address calculations
@@ -98,14 +98,14 @@ primitiveSizeOf(T) ->           throw( flatfmt("size of ~p is not defined", [T])
 voidType(Line) -> #basic_type{class = void, tag = void, pdepth = 0, line = Line}.
 
 -spec namesOfVariableReferences([#varref{}]) -> [atom()].
-namesOfVariableReferences(VarRefs) -> lists:map(fun (#varref{name = Name}) -> Name end, VarRefs).
+namesOfVariableReferences(VarRefs) -> lists:map(fun (#varref{name = Name}) -> Name end,     VarRefs).
 
 -spec namesOfVariableDefinitiions([#vardef{}]) -> [atom()].
-namesOfVariableDefinitiions(VarDefs) -> lists:map(fun (#vardef{name = Name}) -> Name end, VarDefs).
+namesOfVariableDefinitiions(VarDefs) -> lists:map(fun (#vardef{name = Name}) -> Name end,   VarDefs).
 
 -spec assert(boolean(), any()) -> ok.
-assert(false, Info) ->      throw(Info);
-assert(true, _) ->          ok.
+assert(true, _) ->          ok;
+assert(false, Info) ->      throw(Info).
 
 -spec valueInList(any(), [any()]) -> boolean().
 valueInList(Value, List) -> lists:any(fun (V) -> V =:= Value end, List).
@@ -114,7 +114,7 @@ valueInList(Value, List) -> lists:any(fun (V) -> V =:= Value end, List).
 %% > [#varref{name=a}].
 -spec filterVariableReferenceInMap([#varref{}], #{atom() := any()}) -> [#varref{}].
 filterVariableReferenceInMap(Varrefs, TargetMap) ->
-    lists:filter(fun (#varref{name = Name}) -> prvExistsInMap(Name, TargetMap) end, Varrefs).
+    lists:filter( fun (#varref{name = Name}) -> prvExistsInMap(Name, TargetMap) end,    Varrefs ).
 
 -ifdef(EUNIT).
 
