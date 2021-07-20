@@ -67,8 +67,8 @@ prvCheckStructField([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
     case prvContainStruct(FieldType) of
         {yes, StructName} ->
             case ecompilerUtil:valueInList(StructName, UsedStructs) of
-                false ->        prvCheckStructObject( maps:get(StructName, StructMap), StructMap, UsedStructs );
-                true ->         throw({recur, lists:reverse(UsedStructs)})
+                true ->         throw({recur, lists:reverse(UsedStructs)});
+                false ->        prvCheckStructObject( maps:get(StructName, StructMap), StructMap, UsedStructs )
             end;
         no ->
             ok

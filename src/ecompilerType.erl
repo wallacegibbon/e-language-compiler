@@ -69,26 +69,26 @@ typeOfExpression(#op2{operator = '+', op1 = Operand1, op2 = Operand2, line = Lin
     TypeofOp1 = typeOfExpression(Operand1, Ctx),
     TypeofOp2 = typeOfExpression(Operand2, Ctx),
     case prvAreBothNumberSameType(TypeofOp1, TypeofOp2) of
+        {true, T} ->
+            T;
         false ->
             case prvIsPointerAndInt(TypeofOp1, TypeofOp2) of
                 {true, Ptype} ->    Ptype;
                 false ->            throw({Line, prvTypeErrorOfOp2('+', TypeofOp1, TypeofOp2)})
-            end;
-        {true, T} ->
-            T
+            end
     end;
 %% integer + pointer is valid, but integer - pointer is invalid
 typeOfExpression(#op2{operator = '-', op1 = Operand1, op2 = Operand2, line = Line}, Ctx) ->
     TypeofOp1 = typeOfExpression(Operand1, Ctx),
     TypeofOp2 = typeOfExpression(Operand2, Ctx),
     case prvAreBothNumberSameType(TypeofOp1, TypeofOp2) of
+        {true, T} ->
+            T;
         false ->
             case prvIsPointerAndIntOrdered(TypeofOp1, TypeofOp2) of
                 {true, Ptype} ->    Ptype;
                 false ->            throw({Line, prvTypeErrorOfOp2('-', TypeofOp1, TypeofOp2)})
-            end;
-        {true, T} ->
-            T
+            end
     end;
 typeOfExpression(#op2{operator = Operator, op1 = Operand1, op2 = Operand2, line = Line}, Ctx) when Operator =:= '*'; Operator =:= '/' ->
     TypeofOp1 = typeOfExpression(Operand1, Ctx),
@@ -164,7 +164,7 @@ typeOfExpression(#array_init{elements = Elements, line = Line}, Ctx) ->
     ElementTypes = typeOfExpressions(Elements, Ctx),
     case areSameType(ElementTypes) of
         true ->     #array_type{elemtype = hd(ElementTypes), len = length(ElementTypes), line = Line};
-        _ ->        throw({Line, ecompilerUtil:flatfmt("array init type conflict: {~s}", [prvJoinTypesToString(ElementTypes)])})
+        false ->    throw({Line, ecompilerUtil:flatfmt("array init type conflict: {~s}", [prvJoinTypesToString(ElementTypes)])})
     end;
 typeOfExpression(#struct_init{name = StructName, field_names = InitFieldNames, field_values = InitFieldValues, line = Line}, {_, _, StructMap, _} = Ctx) ->
     case maps:find(StructName, StructMap) of

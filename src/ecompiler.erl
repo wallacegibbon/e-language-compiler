@@ -96,12 +96,12 @@ prvFileNameToModuleAtom(Filename) when is_list(Filename) -> list_to_atom(filenam
 
 prvQueryFunctionInModule(ModName, FunName) ->
     case prvCompileRecordingCmd({queryFunctionReturnType, ModName, FunName}) of
+        {ok, _Type} = R ->
+            R;
         {error, moduleNotFound, SearchDir} ->
             prvParseAndCompile( prvMakeFileName(SearchDir, ModName) ),
             prvQueryFunctionInModule(ModName, FunName);
         {error, functionNotFound} = R ->
-            R;
-        {ok, _Type} = R ->
             R
     end.
 
@@ -141,10 +141,8 @@ prvCompileRecordingHandle({queryFunctionReturnType, ModName, FunName}, #{modmap 
 prvCompileRecordingHandle({recordCompileOp, ModName}, #{moduleChain := ModuleChain} = State) ->
     NewModuleChain = [ModName | ModuleChain],
     case ecompilerUtil:valueInList(ModName, ModuleChain) of
-        true ->
-            {reply, {error, moduleRecursive, lists:reverse(NewModuleChain)}, State};
-        _ ->
-            {reply, ok, State#{moduleChain := NewModuleChain}}
+        true ->     {reply, {error, moduleRecursive, lists:reverse(NewModuleChain)},    State};
+        false ->    {reply, ok,                                                         State#{moduleChain := NewModuleChain}}
     end;
 prvCompileRecordingHandle({unRecordCompileOp, ModName}, #{moduleChain := [ModName | Rest]} = State) ->
     {reply, ok, State#{moduleChain := Rest}};

@@ -49,8 +49,8 @@ prvEvaluateConstantExpression(#op2{operator = 'bsl', op1 = Operand1, op2 = Opera
     prvEvaluateConstantExpression(Operand1, Constants) bsl prvEvaluateConstantExpression(Operand2, Constants);
 prvEvaluateConstantExpression(#varref{name = Name, line = Line}, Constants) ->
     case maps:find(Name, Constants) of
-        error ->        throw({Line, ecompilerUtil:flatfmt("undefined constant ~s", [Name])});
-        {ok, Val} ->    Val
+        {ok, Val} ->    Val;
+        error ->        throw({Line, ecompilerUtil:flatfmt("undefined constant ~s", [Name])})
     end;
 prvEvaluateConstantExpression({ImmiType, _, Val}, _) when ImmiType =:= integer; ImmiType =:= float ->
     Val;

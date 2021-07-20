@@ -85,7 +85,7 @@ prvSizeOfStructFields([{Fname, Ftype} | Rest], CurrentOffset, OffsetMap, {_, Poi
         true ->
             OffsetFixed = prvFixStructFieldOffset(CurrentOffset, NextOffset, PointerWidth),
             prvSizeOfStructFields(Rest, OffsetFixed + FieldSize, OffsetMap#{Fname => OffsetFixed}, Ctx);
-        _ ->
+        false ->
             prvSizeOfStructFields(Rest, NextOffset, OffsetMap#{Fname => CurrentOffset}, Ctx)
     end;
 prvSizeOfStructFields([], CurrentOffset, OffsetMap, _) ->
@@ -95,7 +95,7 @@ prvSizeOfStructFields([], CurrentOffset, OffsetMap, _) ->
 prvFixStructFieldOffset(CurrentOffset, NextOffset, PointerWidth) ->
     case ecompilerUtil:cutExtra(NextOffset, PointerWidth) > ecompilerUtil:cutExtra(CurrentOffset, PointerWidth) of
         true ->     ecompilerUtil:fillOffset(CurrentOffset, PointerWidth);
-        _ ->        CurrentOffset
+        false ->    CurrentOffset
     end.
 
 -spec prvSizeOf(eType(), compilePassCtx1()) -> non_neg_integer().
@@ -107,7 +107,7 @@ prvSizeOf(#array_type{elemtype = T, len = Len}, {_, PointerWidth} = Ctx) ->
                             0 ->    ElemSize;
                             _ ->    PointerWidth
                         end;
-                    _ ->
+                    false ->
                         ecompilerUtil:fillToPointerWidth(ElemSize, PointerWidth)
                 end,
     FixedSize * Len;

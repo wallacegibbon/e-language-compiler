@@ -14,20 +14,20 @@ Here are some comparisons:
 
 ### basic operations
 
-|       C language        |     E language      |
-|-------------------------|---------------------|
-|&p                       | p@                  |
-|*p                       | p^                  |
-|***p                     | p^^^                |
-|p[3]                     | (p+3)^              |
-|p.m                      | p.m                 |
-|(*p).m                   | p^.m                |
-|p->m                     | p^.m                |
-|&p[3]                    | p+3                 |
-|uint8_t *p               | p: u8^              |
-|void **p                 | p: any^^            |
-|sizeof (struct Blah *)   | sizeof(Blah^)       |
-|malloc(sizeof(struct A)) | malloc(sizeof(A))   |
+|        C language          |     E language           |
+|----------------------------|--------------------------|
+| &p                         | p@                       |
+| *p                         | p^                       |
+| ***p                       | p^^^                     |
+| p[3]                       | (p+3)^                   |
+| p.m                        | p.m                      |
+| (*p).m                     | p^.m                     |
+| p->m                       | p^.m                     |
+| &p[3]                      | p+3                      |
+| uint8_t *p                 | p: u8^                   |
+| void **p                   | p: any^^                 |
+| sizeof (struct Blah *)     | sizeof(Blah^)            |
+| malloc(sizeof(struct A))   | malloc(sizeof(A))        |
 
 ### array and struct
 
@@ -35,8 +35,8 @@ Here are some comparisons:
 arr: {i32, 3} = {1, 2, 3};
 
 struct Blah
-    id: i32,
-    name: i8^,
+    id:         i32,
+    name:       i8^,
 end
 
 b: Blah = Blah{id=1, name="hello"};
@@ -48,8 +48,8 @@ c: {Blah, 2} = { Blah{id=1, name="a"}, Blah{id=2, name="b"} };
 i32 arr[3] = {1, 2, 3};
 
 struct Blah {
-    i32 id;
-    char *name;
+    i32         id;
+    char        *name;
 }
 
 Blah b = {1, "hello"};
@@ -121,7 +121,7 @@ void (*(*(*myfn1)())())(u8* ) = get_incfn1;
 
 ## vim plugin
 
-A simple vim plugin is ready to use, install with this command
+A simple vim plugin (only syntax highlight is supported) is ready to use, install with this command
 
 ```sh
 mkdir -p ~/.vim/pack/my/start/

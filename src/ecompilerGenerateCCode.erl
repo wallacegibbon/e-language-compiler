@@ -61,7 +61,7 @@ prvStatementsToString([#function{name = Name, param_names = ParamNames, type = F
     Declar = prvFunctioinDeclarationToString(Name, prvFunctionParametersToString(PureParams), Fntype#fun_type.ret),
     Exprs2 =    case Name =:= main of
                     true ->     InitCode ++ Expressions;
-                    _ ->        Expressions
+                    false ->    Expressions
                 end,
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declar, prvVariableMapToString(PureVars), prvExpressionsToString(Exprs2)]),
     prvStatementsToString(Rest, InitCode, [S | StatementStrs], [Declar ++ ";\n" | FnDeclars]);
