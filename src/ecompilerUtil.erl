@@ -11,6 +11,7 @@
 
 %% when do simple convertions, this function can be used to avoid boilerplate
 %% code for if, while, return, call...,  so you can concentrate on op1, op2...
+-spec expressionMap(fun((eExpression()) -> eExpression()), [eExpression()]) -> eExpression().
 expressionMap(Fn, [#if_expr{condition = Cond, then = Then, else = Else} = If | Rest]) ->
     [If#if_expr{condition = Fn(Cond), then = expressionMap(Fn, Then), else = expressionMap(Fn, Else)} | expressionMap(Fn, Rest)];
 expressionMap(Fn, [#while_expr{condition = Cond, exprs = Expressions} = While | Rest]) ->
