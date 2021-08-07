@@ -54,8 +54,8 @@ prvStructInitToMap([], FieldNames, ExprMap) ->
 prvFetchVariables([#vardef{name = Name, type = Type, line = Line, initval = Initval} | Rest], NewAst, {VarTypes, InitCode, CollectInitCode}) ->
     prvEnsureNoNameConflict(Name, VarTypes, Line),
     case CollectInitCode of
-        true ->     prvFetchVariables(Rest, NewAst,                                         {VarTypes#{Name => Type}, prvAppendToAST(InitCode, Name, Initval, Line),    CollectInitCode});
-        false ->    prvFetchVariables(Rest, prvAppendToAST(NewAst, Name, Initval, Line),    {VarTypes#{Name => Type}, InitCode,                                         CollectInitCode})
+        true    -> prvFetchVariables(Rest, NewAst,                                      {VarTypes#{Name => Type}, prvAppendToAST(InitCode, Name, Initval, Line),    CollectInitCode});
+        false   -> prvFetchVariables(Rest, prvAppendToAST(NewAst, Name, Initval, Line), {VarTypes#{Name => Type}, InitCode,                                         CollectInitCode})
     end;
 prvFetchVariables([#function_raw{name = Name, ret = Ret, params = Params, exprs = Expressions, line = Line} | Rest], NewAst, {GlobalVars, _, _} = Ctx) ->
     {[], ParamVars, ParamInitCode} = prvFetchVariables(Params, [], {#{}, [], true}),
@@ -102,8 +102,8 @@ prvCheckVariableConflict(GlobalVars, LocalVars) ->
 -spec prvEnsureNoNameConflict(atom(), variableTypeMap(), integer()) -> ok.
 prvEnsureNoNameConflict(Name, VarMap, Line) ->
     case maps:find(Name, VarMap) of
-        {ok, _} ->      prvThrowNameConflict(Name, Line);
-        _ ->            ok
+        {ok, _}         -> prvThrowNameConflict(Name, Line);
+        _               -> ok
     end.
 
 -spec prvThrowNameConflict(atom(), integer()) -> no_return().
