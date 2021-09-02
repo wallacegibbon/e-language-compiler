@@ -62,7 +62,7 @@ prvOffsetOfStruct(#struct{field_names = FieldNames, field_types = FieldTypes}, C
     OffsetMap.
 
 -spec prvSizeOfStruct(#struct{}, compilePassCtx1()) -> non_neg_integer().
-prvSizeOfStruct(#struct{size = Size}, _) when is_integer(Size) ->
+prvSizeOfStruct(#struct{size = Size}, _) when is_integer(Size), Size > 0 ->
     Size;
 prvSizeOfStruct(#struct{field_names = Names, field_types = Types}, Ctx) ->
     FieldTypeList = prvGetKVsByReferences(Names, Types),
@@ -121,8 +121,7 @@ prvSizeOf(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
 prvSizeOf(#basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
     case ecompilerUtil:primitiveSizeOf(Tag) of
         pwidth                  -> PointerWidth;
-        V when is_integer(V)    -> V;
-        _                       -> throw( ecompilerUtil:flatfmt("primitiveSize(~s) is invalid", [Tag]) )
+        V when is_integer(V)    -> V
     end;
 prvSizeOf(#fun_type{}, {_, PointerWidth}) ->
     PointerWidth;

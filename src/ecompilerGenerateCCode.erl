@@ -34,7 +34,7 @@ prvFixExpressionsForC(Expressions, Ctx) ->
 
 -spec prvFixExpressionForC(eExpression(), genCContext()) -> eExpression().
 prvFixExpressionForC(#op1{operator = '@', operand = Operand, line = Line} = E, {FunctionTypeMap, StructMap, VarTypes} = Ctx) ->
-    case ecompilerType:typeOfExpression(Operand, {VarTypes, FunctionTypeMap, StructMap, none}) of
+    case ecompilerType:typeOfExpression(Operand, {VarTypes, FunctionTypeMap, StructMap, #{}}) of
         #array_type{}   -> #op2{operator = '.', op1 = prvFixExpressionForC(Operand, Ctx), op2 = #varref{name = val, line = Line}};
         _               -> E
     end;
@@ -128,7 +128,7 @@ prvExpressionsToString(Expressions) -> [lists:join("\n", prvExpressionsToString(
 prvExpressionsToString([Expression | Rest], ExprList)   -> prvExpressionsToString(Rest, [prvExpressionToString(Expression, $;) | ExprList]);
 prvExpressionsToString([], ExprList)                    -> lists:reverse(ExprList).
 
--spec prvExpressionToString(eExpression(), string()) -> iolist().
+-spec prvExpressionToString(eExpression(), char()) -> iolist().
 prvExpressionToString(#if_expr{condition = Condition, then = Then, else = Else}, _) ->
     io_lib:format("if (~s) {\n~s\n} else {\n~s}", [prvExpressionToString(Condition, $\s), prvExpressionsToString(Then), prvExpressionsToString(Else)]);
 prvExpressionToString(#while_expr{condition = Condition, exprs = Expressions}, _) ->

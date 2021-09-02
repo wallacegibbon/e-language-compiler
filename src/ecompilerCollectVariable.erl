@@ -50,7 +50,7 @@ prvStructInitToMap([], FieldNames, ExprMap) ->
 %% in function expressions, the init code of defvar can not be simply
 %% fetched out from the code, it should be replaced as assignment in the
 %% same place.
--spec prvFetchVariables([eExpression()], eAST(), {variableTypeMap(), eAST(), eAST()}) -> {eAST(), variableTypeMap(), eAST()}.
+-spec prvFetchVariables(eAST(), eAST(), {variableTypeMap(), eAST(), boolean()}) -> {eAST(), variableTypeMap(), eAST()}.
 prvFetchVariables([#vardef{name = Name, type = Type, line = Line, initval = Initval} | Rest], NewAst, {VarTypes, InitCode, CollectInitCode}) ->
     prvEnsureNoNameConflict(Name, VarTypes, Line),
     case CollectInitCode of
@@ -96,8 +96,10 @@ prvCheckLabelConflict([], _, _) ->
 
 -spec prvCheckVariableConflict(variableTypeMap(), variableTypeMap()) -> ok.
 prvCheckVariableConflict(GlobalVars, LocalVars) ->
-    ConflictMap = maps:with( maps:keys(GlobalVars), LocalVars ),
-    maps:foreach(fun (Name, T) -> prvThrowNameConflict( Name, element(2, T) ) end,  ConflictMap).
+    case maps:to_list( maps:with( maps:keys(GlobalVars), LocalVars ) ) of
+        [{Name, T} | _] -> prvThrowNameConflict( Name, element(2, T) );
+        []              -> ok
+    end.
 
 -spec prvEnsureNoNameConflict(atom(), variableTypeMap(), integer()) -> ok.
 prvEnsureNoNameConflict(Name, VarMap, Line) ->

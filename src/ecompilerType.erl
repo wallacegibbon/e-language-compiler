@@ -15,7 +15,7 @@ checkTypesInAST([#struct{name = Name, field_types = FieldTypes, field_names = Fi
     prvCheckTypes(maps:values(FieldTypes), StructMap),
     %% check the default values for fields
     InitFieldNames = ecompilerUtil:filterVariableReferenceInMap(FieldNames, FieldDefaults),
-    prvCheckTypesInStructFields(InitFieldNames, FieldTypes, FieldDefaults, Name, {GlobalVarTypes, FunctionTypeMap, StructMap, none}),
+    prvCheckTypesInStructFields(InitFieldNames, FieldTypes, FieldDefaults, Name, {GlobalVarTypes, FunctionTypeMap, StructMap, #{}}),
     checkTypesInAST(Rest, GlobalVarTypes, Maps);
 checkTypesInAST([_ | Rest], GlobalVarTypes, Maps) ->
     checkTypesInAST(Rest, GlobalVarTypes, Maps);
@@ -28,7 +28,7 @@ checkTypesInAST([], _, _) ->
 
 -spec checkTypesInExpressions([eExpression()], variableTypeMap(), {functionTypeMap(), structTypeMap()}) -> ok.
 checkTypesInExpressions(Expressions, GlobalVarTypes, {FunctionTypeMap, StructMap}) ->
-    typeOfExpressions(Expressions, {GlobalVarTypes, FunctionTypeMap, StructMap, none}),
+    typeOfExpressions(Expressions, {GlobalVarTypes, FunctionTypeMap, StructMap, #{}}),
     ok.
 
 -spec typeOfExpressions([eExpression()], typeOfContext()) -> [eType()].
@@ -59,7 +59,6 @@ typeOfExpression(#op2{operator = '::', op1 = Operand1, op2 = Operand2, line = Li
     #varref{name = FunName} = Operand2,
     try ecompiler:prvQueryFunctionInModule(ModName, FunName) of
         {ok, Type}                      -> Type;
-        {error, moduleNotFound, _}      -> throw({Line, ecompilerUtil:flatfmt("module ~s is not found", [ModName])});
         {error, functionNotFound}       -> throw({Line, ecompilerUtil:flatfmt("~s:~s is not found", [ModName, FunName])})
     catch
         E ->
@@ -187,7 +186,7 @@ typeOfExpression({integer, Line, _}, _) ->
 typeOfExpression({string, Line, _}, _) ->
     #basic_type{class = integer, pdepth = 1, tag = i8, line = Line}.
 
--spec prvArgumentsErrorInformation(variableTypeMap(), variableTypeMap()) -> string().
+-spec prvArgumentsErrorInformation([eType()], [eType()]) -> string().
 prvArgumentsErrorInformation(FnParamTypes, ArgsTypes) ->
     ecompilerUtil:flatfmt("args should be (~s), not (~s)", [prvJoinTypesToString(FnParamTypes), prvJoinTypesToString(ArgsTypes)]).
 
