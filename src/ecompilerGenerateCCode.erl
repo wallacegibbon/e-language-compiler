@@ -54,7 +54,8 @@ prvCommonCCodes() ->
     "typedef unsigned short u16;\ntypedef short i16;\ntypedef unsigned int u32;\ntypedef int i32;\n"
     "typedef unsigned long u64;\ntypedef long i64;\ntypedef double f64;\ntypedef float f32;\n\n".
 
-prvStatementsToString(Statements, InitCode) -> prvStatementsToString(Statements, InitCode, [], []).
+prvStatementsToString(Statements, InitCode) ->
+    prvStatementsToString(Statements, InitCode, [], []).
 
 prvStatementsToString([#function{name = Name, param_names = ParamNames, type = Fntype, var_types = VarTypes, exprs = Expressions} | Rest], InitCode, StatementStrs, FnDeclars) ->
     ParamNameAtoms = prvFetchNamesFromVariableReferences(ParamNames),
@@ -133,7 +134,8 @@ prvTypeTagToString(_, Name) ->
     atom_to_list(Name).
 
 %% convert expression to C string
-prvExpressionsToString(Expressions) -> [lists:join("\n", prvExpressionsToString(Expressions, []))].
+prvExpressionsToString(Expressions) ->
+    [lists:join("\n", prvExpressionsToString(Expressions, []))].
 
 prvExpressionsToString([Expression | Rest], ExprList) ->
     prvExpressionsToString(Rest, [prvExpressionToString(Expression, $;) | ExprList]);
@@ -173,15 +175,27 @@ prvHandleSpecialCharactersInString(String) ->
     lists:map( fun (C) -> maps:get(C, ?SPECIAL_CHARMAP, C) end, String ).
 
 -spec prvTranslateOperator(atom()) -> string() | atom().
-prvTranslateOperator(assign)    -> "=";
-prvTranslateOperator('rem')     -> "%";
-prvTranslateOperator('bxor')    -> "^";
-prvTranslateOperator('bsr')     -> ">>";
-prvTranslateOperator('bsl')     -> "<<";
-prvTranslateOperator('band')    -> "&";
-prvTranslateOperator('bor')     -> "|";
-prvTranslateOperator('and')     -> "&&";
-prvTranslateOperator('or')      -> "||";
-prvTranslateOperator('@')       -> "&";
-prvTranslateOperator('^')       -> "*";
-prvTranslateOperator(Any)       -> Any.
+prvTranslateOperator(assign) ->
+    "=";
+prvTranslateOperator('rem') ->
+    "%";
+prvTranslateOperator('bxor') ->
+    "^";
+prvTranslateOperator('bsr') ->
+    ">>";
+prvTranslateOperator('bsl') ->
+    "<<";
+prvTranslateOperator('band') ->
+    "&";
+prvTranslateOperator('bor') ->
+    "|";
+prvTranslateOperator('and') ->
+    "&&";
+prvTranslateOperator('or') ->
+    "||";
+prvTranslateOperator('@') ->
+    "&";
+prvTranslateOperator('^') ->
+    "*";
+prvTranslateOperator(Any) ->
+    Any.

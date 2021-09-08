@@ -366,7 +366,8 @@ prvCheckType(#fun_type{params = Params, ret = Rettype}, StructMap) ->
     prvCheckType(Rettype, StructMap).
 
 -spec prvJoinTypesToString([eType()]) -> string().
-prvJoinTypesToString(Types) -> lists:join(",", lists:map(fun prvTypeToString/1, Types)).
+prvJoinTypesToString(Types) ->
+    lists:join(",", lists:map(fun prvTypeToString/1, Types)).
 
 -spec prvTypeToString(eType()) -> string().
 prvTypeToString(#fun_type{params = Params, ret = Rettype}) ->

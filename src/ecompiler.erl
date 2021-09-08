@@ -86,19 +86,25 @@ prvStopCompilerRecordingProcess() ->
         ok = prvCompileRecordingCmd(stop),
         unregister(ecompilerHelper)
     catch
-        error:_ -> ok
+        error:_ ->
+            ok
     end.
 
-prvRecordCompileFile(Filename) -> prvCompileRecordingCmd({recordCompileOp, prvFileNameToModuleAtom(Filename)}).
+prvRecordCompileFile(Filename) ->
+    prvCompileRecordingCmd({recordCompileOp, prvFileNameToModuleAtom(Filename)}).
 
-prvUnRecordCompileFile(Filename) -> prvCompileRecordingCmd({unRecordCompileOp, prvFileNameToModuleAtom(Filename)}).
+prvUnRecordCompileFile(Filename) ->
+    prvCompileRecordingCmd({unRecordCompileOp, prvFileNameToModuleAtom(Filename)}).
 
-recordModule(Filename, FunctionTypeMap) -> prvCompileRecordingCmd({recordModule, prvFileNameToModuleAtom(Filename), FunctionTypeMap}).
+recordModule(Filename, FunctionTypeMap) ->
+    prvCompileRecordingCmd({recordModule, prvFileNameToModuleAtom(Filename), FunctionTypeMap}).
 
-prvChangeSearchDirectory(NewDir) -> prvCompileRecordingCmd({change_searchdir, NewDir}).
+prvChangeSearchDirectory(NewDir) ->
+    prvCompileRecordingCmd({change_searchdir, NewDir}).
 
 -spec prvFileNameToModuleAtom(string()) -> atom().
-prvFileNameToModuleAtom(Filename) -> list_to_atom(filename:basename(Filename, ".e")).
+prvFileNameToModuleAtom(Filename) ->
+    list_to_atom(filename:basename(Filename, ".e")).
 
 prvQueryFunctionInModule(ModName, FunName) ->
     case prvCompileRecordingCmd({queryFunctionReturnType, ModName, FunName}) of
@@ -111,14 +117,19 @@ prvQueryFunctionInModule(ModName, FunName) ->
             R
     end.
 
-prvMakeFileName(SearchDir, ModName) -> lists:flatten( io_lib:format("~s/~s.e", [SearchDir, ModName]) ).
+prvMakeFileName(SearchDir, ModName) ->
+    lists:flatten( io_lib:format("~s/~s.e", [SearchDir, ModName]) ).
 
-prvCompilerRecordingDetails() -> prvCompileRecordingCmd(debug).
+prvCompilerRecordingDetails() ->
+    prvCompileRecordingCmd(debug).
 
 prvCompileRecordingCmd(Command) ->
     Ref = erlang:make_ref(),
     ecompilerHelper ! {{self(), Ref}, Command},
-    receive {Ref, Result} -> Result end.
+    receive
+        {Ref, Result} ->
+            Result
+    end.
 
 prvCompilerRecordingLoop(State) ->
     receive

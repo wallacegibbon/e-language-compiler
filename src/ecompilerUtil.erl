@@ -63,7 +63,8 @@ prvGetValuesByKeys([], _, Result) ->
 
 -ifdef(EUNIT).
 
-getValuesByKeys_test() -> ?assertEqual([3, 2], getValuesByKeys([a, b], #{c => 1, b => 2, a => 3})).
+getValuesByKeys_test() ->
+    ?assertEqual([3, 2], getValuesByKeys([a, b], #{c => 1, b => 2, a => 3})).
 
 -endif.
 
@@ -103,7 +104,8 @@ primitiveSizeOf(f64)        -> 8;
 primitiveSizeOf(f32)        -> 4;
 primitiveSizeOf(T)          -> throw( flatfmt("size of ~p is not defined", [T]) ).
 
-voidType(Line) -> #basic_type{class = void, tag = void, pdepth = 0, line = Line}.
+voidType(Line) ->
+    #basic_type{class = void, tag = void, pdepth = 0, line = Line}.
 
 -spec namesOfVariableReferences([#varref{}]) -> [atom()].
 namesOfVariableReferences(VarRefs) ->

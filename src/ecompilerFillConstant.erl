@@ -14,7 +14,8 @@ parseAndRemoveConstants(AST) ->
     Ast3.
 
 %% fetch constants
-prvFetchContants(AST) -> prvFetchContants(AST, [], #{}).
+prvFetchContants(AST) ->
+    prvFetchContants(AST, [], #{}).
 
 prvFetchContants([#const{name = Name, val = Expression} | Rest], Statements, Constants) ->
     prvFetchContants(Rest, Statements, Constants#{Name => prvEvaluateConstantExpression(Expression, Constants)});

@@ -21,7 +21,8 @@ prvPrepareStructInitExpression([]) ->
     [].
 
 -spec prvFixStructInitAST(eAST()) -> eAST().
-prvFixStructInitAST(Lst) -> ecompilerUtil:expressionMap(fun prvFixStructInit/1, Lst).
+prvFixStructInitAST(Lst) ->
+    ecompilerUtil:expressionMap(fun prvFixStructInit/1, Lst).
 
 -spec prvFixStructInit(eExpression()) -> eExpression().
 prvFixStructInit(#struct_init_raw{name = Name, fields = Fields, line = Line}) ->
@@ -39,7 +40,8 @@ prvFixStructInit(Any) ->
     Any.
 
 -spec prvStructInitToMap([eExpression()]) -> {[#varref{}], #{atom() := eExpression()}}.
-prvStructInitToMap(Expressions) -> prvStructInitToMap(Expressions, [], #{}).
+prvStructInitToMap(Expressions) ->
+    prvStructInitToMap(Expressions, [], #{}).
 
 -spec prvStructInitToMap([#op2{}], [#varref{}], #{atom() := eExpression()}) -> {[#varref{}], #{atom() := eExpression()}}.
 prvStructInitToMap([#op2{operator = assign, op1 = #varref{name = Field} = Operand1, op2 = Val} | Rest], FieldNames, ExprMap) ->

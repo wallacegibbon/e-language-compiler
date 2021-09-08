@@ -45,7 +45,8 @@ compileFromRawAST(AST, CustomCompileOptions) ->
     {AST5, VariableTypeMap, InitCode2, FunctionTypeMap}.
 
 -spec prvDefaultCompileOptions() -> compileOptions().
-prvDefaultCompileOptions() -> #{pointer_width => 8}.
+prvDefaultCompileOptions() ->
+    #{pointer_width => 8}.
 
 -spec prvCheckStructRecursive(structTypeMap()) -> ok.
 prvCheckStructRecursive(StructTypeMap) ->

@@ -22,7 +22,8 @@ expandInitExpressionInFunctions([Any | Rest], StructMap) ->
 expandInitExpressionInFunctions([], _) ->
     [].
 
-expandInitExpressions(Expressions, StructMap) -> prvExpandInitExpression(Expressions, [], StructMap).
+expandInitExpressions(Expressions, StructMap) ->
+    prvExpandInitExpression(Expressions, [], StructMap).
 
 prvExpandInitExpression([#if_expr{then = Then, else = Else} = E | Rest], NewAst, StructMap) ->
     prvExpandInitExpression(Rest, [E#if_expr{then = prvExpandInitExpression(Then, [], StructMap), else = prvExpandInitExpression(Else, [], StructMap)} | NewAst], StructMap);

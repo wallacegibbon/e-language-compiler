@@ -22,7 +22,8 @@ expandSizeofInExpressions(Expressions, Ctx) ->
 -spec prvExpandSizeofInExpression(eExpression(), compilePassCtx1()) -> eExpression().
 prvExpandSizeofInExpression(#sizeof{type = T, line = Line}, Ctx) ->
     try {integer, Line, prvSizeOf(T, Ctx)} catch
-        I -> throw({Line, I})
+        I ->
+            throw({Line, I})
     end;
 prvExpandSizeofInExpression(#op2{op1 = Operand1, op2 = Operand2} = O, Ctx) ->
     O#op2{op1 = prvExpandSizeofInExpression(Operand1, Ctx), op2 = prvExpandSizeofInExpression(Operand2, Ctx)};
