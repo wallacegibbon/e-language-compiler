@@ -48,12 +48,16 @@ fillStructInformation(AST, {_, PointerWidth} = Ctx) ->
     lists:map(fun (E) -> prvFillStructOffsets(E, {StructMap1, PointerWidth}) end, Ast1).
 
 -spec prvFillStructSize(eExpression(), compilePassCtx1()) -> eExpression().
-prvFillStructSize(#struct{} = S, Ctx)   -> S#struct{size = prvSizeOfStruct(S, Ctx)};
-prvFillStructSize(Any, _)               -> Any.
+prvFillStructSize(#struct{} = S, Ctx) ->
+    S#struct{size = prvSizeOfStruct(S, Ctx)};
+prvFillStructSize(Any, _) ->
+    Any.
 
 -spec prvFillStructOffsets(eExpression(), compilePassCtx1()) -> eExpression().
-prvFillStructOffsets(#struct{} = S, Ctx)    -> S#struct{field_offsets = prvOffsetOfStruct(S, Ctx)};
-prvFillStructOffsets(Any, _)                -> Any.
+prvFillStructOffsets(#struct{} = S, Ctx) ->
+    S#struct{field_offsets = prvOffsetOfStruct(S, Ctx)};
+prvFillStructOffsets(Any, _) ->
+    Any.
 
 -spec prvOffsetOfStruct(#struct{}, compilePassCtx1()) -> #{atom() := integer()}.
 prvOffsetOfStruct(#struct{field_names = FieldNames, field_types = FieldTypes}, Ctx) ->

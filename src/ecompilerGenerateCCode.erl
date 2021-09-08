@@ -96,12 +96,16 @@ prvVariableMapToString(VarsMap) when is_map(VarsMap) ->
 prvVariableListToString(VarList) when is_list(VarList) ->
     lists:flatten(lists:join(";\n", prvVariablesToString(VarList, [])), ";").
 
-prvVariablesToString([{Name, Type} | Rest], Strs)   -> prvVariablesToString(Rest, [prvTypeToCString(Type, Name) | Strs]);
-prvVariablesToString([], Strs)                      -> lists:reverse(Strs).
+prvVariablesToString([{Name, Type} | Rest], Strs) ->
+    prvVariablesToString(Rest, [prvTypeToCString(Type, Name) | Strs]);
+prvVariablesToString([], Strs) ->
+    lists:reverse(Strs).
 
-prvFetchNamesFromVariableReferences(VarrefList) -> lists:map( fun (#varref{name = N}) -> N end,     VarrefList ).
+prvFetchNamesFromVariableReferences(VarrefList) ->
+    lists:map( fun (#varref{name = N}) -> N end, VarrefList ).
 
-prvMapToKVList(NameAtoms, ValueMap) -> lists:zip( NameAtoms, ecompilerUtil:getValuesByKeys(NameAtoms, ValueMap) ).
+prvMapToKVList(NameAtoms, ValueMap) ->
+    lists:zip( NameAtoms, ecompilerUtil:getValuesByKeys(NameAtoms, ValueMap) ).
 
 prvFunctionReturnTypeToString(#fun_type{params = Params, ret = Rettype}, NameParams) ->
     Paramstr = prvFunctionParamsToStringNoFunctionNames(Params),
@@ -123,14 +127,18 @@ prvTypeToCString(#fun_type{params = Params, ret = Rettype}, Varname) ->
     NameParams = io_lib:format("(*~s)(~s)", [Varname, Paramstr]),
     prvTypeToCString(Rettype, NameParams).
 
-prvTypeTagToString(struct, Name)    -> io_lib:format("struct ~s", [Name]);
-prvTypeTagToString(_, Name)         -> atom_to_list(Name).
+prvTypeTagToString(struct, Name) ->
+    io_lib:format("struct ~s", [Name]);
+prvTypeTagToString(_, Name) ->
+    atom_to_list(Name).
 
 %% convert expression to C string
 prvExpressionsToString(Expressions) -> [lists:join("\n", prvExpressionsToString(Expressions, []))].
 
-prvExpressionsToString([Expression | Rest], ExprList)   -> prvExpressionsToString(Rest, [prvExpressionToString(Expression, $;) | ExprList]);
-prvExpressionsToString([], ExprList)                    -> lists:reverse(ExprList).
+prvExpressionsToString([Expression | Rest], ExprList) ->
+    prvExpressionsToString(Rest, [prvExpressionToString(Expression, $;) | ExprList]);
+prvExpressionsToString([], ExprList) ->
+    lists:reverse(ExprList).
 
 -spec prvExpressionToString(eExpression(), char()) -> iolist().
 prvExpressionToString(#if_expr{condition = Condition, then = Then, else = Else}, _) ->
