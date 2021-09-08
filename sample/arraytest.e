@@ -1,7 +1,7 @@
 %% vim: ft=elang :
 
-const TOTAL_NUM             = 10;
-testglobal: u32             = TOTAL_NUM;
+const TOTAL_NUM = 10;
+testglobal: u32 = TOTAL_NUM;
 
 fun main(argc: isize, argv: i64^^): i64
     blah: {u8, TOTAL_NUM};

@@ -2,7 +2,7 @@
 
 -export([compileFromRawAST/2]).
 
--include("./ecompilerFrameDef.hrl").
+-include("ecompilerFrameDef.hrl").
 
 -type compileOptions() :: map().
 
@@ -67,8 +67,8 @@ prvCheckStructField([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
     case prvContainStruct(FieldType) of
         {yes, StructName} ->
             case ecompilerUtil:valueInList(StructName, UsedStructs) of
-                true        -> throw({recur, lists:reverse(UsedStructs)});
-                false       -> prvCheckStructObject( maps:get(StructName, StructMap), StructMap, UsedStructs )
+                true    -> throw({recur, lists:reverse(UsedStructs)});
+                false   -> prvCheckStructObject( maps:get(StructName, StructMap), StructMap, UsedStructs )
             end;
         no ->
             ok

@@ -3,7 +3,7 @@
 
 -export([fetchVariables/1]).
 
--include("./ecompilerFrameDef.hrl").
+-include("ecompilerFrameDef.hrl").
 
 -spec fetchVariables(eAST()) -> {eAST(), variableTypeMap(), eAST()}.
 fetchVariables(AST) ->
@@ -104,8 +104,8 @@ prvCheckVariableConflict(GlobalVars, LocalVars) ->
 -spec prvEnsureNoNameConflict(atom(), variableTypeMap(), integer()) -> ok.
 prvEnsureNoNameConflict(Name, VarMap, Line) ->
     case maps:find(Name, VarMap) of
-        {ok, _}         -> prvThrowNameConflict(Name, Line);
-        _               -> ok
+        {ok, _} -> prvThrowNameConflict(Name, Line);
+        _       -> ok
     end.
 
 -spec prvThrowNameConflict(atom(), integer()) -> no_return().

@@ -233,7 +233,7 @@ op25 -> 'or'                                        : '$1'.
 
 Erlang code.
 
--include("./ecompilerFrameDef.hrl").
+-include("ecompilerFrameDef.hrl").
 
 stringToIntegerTokens({string, Line, Str}) -> lists:map(fun (Char) -> {integer, Line, Char} end,    Str).
 

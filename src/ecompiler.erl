@@ -5,7 +5,7 @@
 -compile({nowarn_unused_function, [{prvCompilerRecordingDetails, 0}]}).
 
 -include_lib("eunit/include/eunit.hrl").
--include("./ecompilerFrameDef.hrl").
+-include("ecompilerFrameDef.hrl").
 
 compileToC(InputFilename, OutputFilename) ->
     prvStartCompilerRecordingProcess( filename:dirname(InputFilename) ),
@@ -40,17 +40,17 @@ prvParseAndCompile(Filename) ->
 
 prvParseFile(Filename) when is_list(Filename) ->
     case file:read_file(Filename) of
-        {ok, RawContent}        -> prvParseContent(RawContent);
-        {error, enoent}         -> throw("module not found");
-        {error, Reason}         -> throw(Reason)
+        {ok, RawContent}    -> prvParseContent(RawContent);
+        {error, enoent}     -> throw("module not found");
+        {error, Reason}     -> throw(Reason)
     end.
 
 prvParseContent(RawContent) ->
     case ecompilerScan:string(binary_to_list(RawContent)) of
         {ok, Tokens, _} ->
             case ecompilerParse:parse(Tokens) of
-                {ok, _Ast} = D                      -> D;
-                {error, {Line, _, Errinfo}}         -> throw({Line, Errinfo})
+                {ok, _Ast} = D              -> D;
+                {error, {Line, _, Errinfo}} -> throw({Line, Errinfo})
             end;
         {error, Errors, Warnings} ->
             throw({Errors, Warnings})
@@ -72,9 +72,9 @@ prvInitialModuleASTMap() ->
     CommonIntType = #basic_type{class = integer, tag = isize    , pdepth = 0},
     CommonStrType = #basic_type{class = integer, tag = i8       , pdepth = 1},
     #{c =>
-        #{printf        => #fun_type{params = [CommonStrType, CommonIntType]    , ret = CommonIntType},
-          puts          => #fun_type{params = [CommonStrType]                   , ret = CommonIntType},
-          malloc        => #fun_type{params = [CommonIntType]                   , ret = CommonStrType}}}.
+        #{printf    => #fun_type{params = [CommonStrType, CommonIntType], ret = CommonIntType},
+          puts      => #fun_type{params = [CommonStrType]               , ret = CommonIntType},
+          malloc    => #fun_type{params = [CommonIntType]               , ret = CommonStrType}}}.
 
 prvStopCompilerRecordingProcess() ->
     try
@@ -84,15 +84,16 @@ prvStopCompilerRecordingProcess() ->
         error:_ -> ok
     end.
 
-prvRecordCompileFile(Filename) -> prvCompileRecordingCmd( {recordCompileOp, prvFileNameToModuleAtom(Filename)} ).
+prvRecordCompileFile(Filename) -> prvCompileRecordingCmd({recordCompileOp, prvFileNameToModuleAtom(Filename)}).
 
-prvUnRecordCompileFile(Filename) -> prvCompileRecordingCmd( {unRecordCompileOp, prvFileNameToModuleAtom(Filename)} ).
+prvUnRecordCompileFile(Filename) -> prvCompileRecordingCmd({unRecordCompileOp, prvFileNameToModuleAtom(Filename)}).
 
-recordModule(Filename, FunctionTypeMap) -> prvCompileRecordingCmd( {recordModule, prvFileNameToModuleAtom(Filename), FunctionTypeMap} ).
+recordModule(Filename, FunctionTypeMap) -> prvCompileRecordingCmd({recordModule, prvFileNameToModuleAtom(Filename), FunctionTypeMap}).
 
-prvChangeSearchDirectory(NewDir) -> prvCompileRecordingCmd( {change_searchdir, NewDir} ).
+prvChangeSearchDirectory(NewDir) -> prvCompileRecordingCmd({change_searchdir, NewDir}).
 
-prvFileNameToModuleAtom(Filename) when is_list(Filename) -> list_to_atom(filename:basename(Filename, ".e")).
+-spec prvFileNameToModuleAtom(string()) -> atom().
+prvFileNameToModuleAtom(Filename) -> list_to_atom(filename:basename(Filename, ".e")).
 
 prvQueryFunctionInModule(ModName, FunName) ->
     case prvCompileRecordingCmd({queryFunctionReturnType, ModName, FunName}) of
@@ -132,8 +133,8 @@ prvCompileRecordingHandle({queryFunctionReturnType, ModName, FunName}, #{modmap 
     case maps:find(ModName, ModuleFnMap) of
         {ok, FunctionTypeMap} ->
             case maps:find(FunName, FunctionTypeMap) of
-                {ok, _Type} = D     -> {reply, D                        , State};
-                error               -> {reply, {error, functionNotFound}, State}
+                {ok, _Type} = D -> {reply, D                        , State};
+                error           -> {reply, {error, functionNotFound}, State}
             end;
         error ->
             {reply, {error, moduleNotFound, SearchDir}, State}
@@ -141,8 +142,8 @@ prvCompileRecordingHandle({queryFunctionReturnType, ModName, FunName}, #{modmap 
 prvCompileRecordingHandle({recordCompileOp, ModName}, #{moduleChain := ModuleChain} = State) ->
     NewModuleChain = [ModName | ModuleChain],
     case ecompilerUtil:valueInList(ModName, ModuleChain) of
-        true        -> {reply, {error, moduleRecursive, lists:reverse(NewModuleChain)}  , State};
-        false       -> {reply, ok                                                       , State#{moduleChain := NewModuleChain}}
+        true    -> {reply, {error, moduleRecursive, lists:reverse(NewModuleChain)}  , State};
+        false   -> {reply, ok                                                       , State#{moduleChain := NewModuleChain}}
     end;
 prvCompileRecordingHandle({unRecordCompileOp, ModName}, #{moduleChain := [ModName | Rest]} = State) ->
     {reply, ok, State#{moduleChain := Rest}};

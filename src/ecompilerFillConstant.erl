@@ -4,7 +4,7 @@
 
 -export([parseAndRemoveConstants/1]).
 
--include("./ecompilerFrameDef.hrl").
+-include("ecompilerFrameDef.hrl").
 
 %% find all consts in AST, calculate it and replace all const references.
 parseAndRemoveConstants(AST) ->
@@ -74,8 +74,8 @@ prvReplaceContantsInExpressions(Expressions, Constants) ->
 
 prvReplaceContantsInExpression(#vardef{name = Name, initval = Initval, type = Type, line = Line} = Expression, Constants) ->
     case maps:find(Name, Constants) of
-        {ok, _}     -> throw({Line, ecompilerUtil:flatfmt("~s conflicts with const", [Name])});
-        error       -> Expression#vardef{initval = prvReplaceContantsInExpression(Initval, Constants), type = prvReplaceConstantsInType(Type, Constants)}
+        {ok, _} -> throw({Line, ecompilerUtil:flatfmt("~s conflicts with const", [Name])});
+        error   -> Expression#vardef{initval = prvReplaceContantsInExpression(Initval, Constants), type = prvReplaceConstantsInType(Type, Constants)}
     end;
 prvReplaceContantsInExpression(#varref{name = Name, line = Line} = Expression, Constants) ->
     case maps:find(Name, Constants) of

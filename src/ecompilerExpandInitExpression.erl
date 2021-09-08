@@ -2,7 +2,7 @@
 
 -export([expandInitExpressionInFunctions/2, expandInitExpressions/2]).
 
--include("./ecompilerFrameDef.hrl").
+-include("ecompilerFrameDef.hrl").
 
 %% for now, array and struct init expression is only allowed in assignment
 prvCheckInitExpressionPosition(#op2{operator = assign, op2 = Operand2}) when is_record(Operand2, struct_init); is_record(Operand2, array_init) ->

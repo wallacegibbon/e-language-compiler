@@ -2,7 +2,7 @@
 
 -export([expandSizeOf/2, expandSizeofInExpressions/2, fillStructInformation/2]).
 
--include("./ecompilerFrameDef.hrl").
+-include("ecompilerFrameDef.hrl").
 
 -spec expandSizeOf(eAST(), compilePassCtx1()) -> eAST().
 expandSizeOf([#function{exprs = Expressions} = F | Rest], Ctx) ->
@@ -22,7 +22,7 @@ expandSizeofInExpressions(Expressions, Ctx) ->
 -spec prvExpandSizeofInExpression(eExpression(), compilePassCtx1()) -> eExpression().
 prvExpandSizeofInExpression(#sizeof{type = T, line = Line}, Ctx) ->
     try {integer, Line, prvSizeOf(T, Ctx)} catch
-        I       -> throw({Line, I})
+        I -> throw({Line, I})
     end;
 prvExpandSizeofInExpression(#op2{op1 = Operand1, op2 = Operand2} = O, Ctx) ->
     O#op2{op1 = prvExpandSizeofInExpression(Operand1, Ctx), op2 = prvExpandSizeofInExpression(Operand2, Ctx)};
@@ -48,8 +48,8 @@ fillStructInformation(AST, {_, PointerWidth} = Ctx) ->
     lists:map(fun (E) -> prvFillStructOffsets(E, {StructMap1, PointerWidth}) end, Ast1).
 
 -spec prvFillStructSize(eExpression(), compilePassCtx1()) -> eExpression().
-prvFillStructSize(#struct{} = S, Ctx)       -> S#struct{size = prvSizeOfStruct(S, Ctx)};
-prvFillStructSize(Any, _)                   -> Any.
+prvFillStructSize(#struct{} = S, Ctx)   -> S#struct{size = prvSizeOfStruct(S, Ctx)};
+prvFillStructSize(Any, _)               -> Any.
 
 -spec prvFillStructOffsets(eExpression(), compilePassCtx1()) -> eExpression().
 prvFillStructOffsets(#struct{} = S, Ctx)    -> S#struct{field_offsets = prvOffsetOfStruct(S, Ctx)};
@@ -94,8 +94,8 @@ prvSizeOfStructFields([], CurrentOffset, OffsetMap, _) ->
 -spec prvFixStructFieldOffset(integer(), integer(), integer()) -> integer().
 prvFixStructFieldOffset(CurrentOffset, NextOffset, PointerWidth) ->
     case ecompilerUtil:cutExtra(NextOffset, PointerWidth) > ecompilerUtil:cutExtra(CurrentOffset, PointerWidth) of
-        true        -> ecompilerUtil:fillOffset(CurrentOffset, PointerWidth);
-        false       -> CurrentOffset
+        true    -> ecompilerUtil:fillOffset(CurrentOffset, PointerWidth);
+        false   -> CurrentOffset
     end.
 
 -spec prvSizeOf(eType(), compilePassCtx1()) -> non_neg_integer().
@@ -115,8 +115,8 @@ prvSizeOf(#basic_type{pdepth = N}, {_, PointerWidth}) when N > 0 ->
     PointerWidth;
 prvSizeOf(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
     case maps:find(Tag, StructMap) of
-        {ok, S}     -> prvSizeOfStruct(S, Ctx);
-        error       -> throw( ecompilerUtil:flatfmt("~s is not found", [Tag]) )
+        {ok, S} -> prvSizeOfStruct(S, Ctx);
+        error   -> throw( ecompilerUtil:flatfmt("~s is not found", [Tag]) )
     end;
 prvSizeOf(#basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
     case ecompilerUtil:primitiveSizeOf(Tag) of

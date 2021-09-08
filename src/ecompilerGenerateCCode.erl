@@ -2,7 +2,7 @@
 
 -export([generateCCode/4]).
 
--include("./ecompilerFrameDef.hrl").
+-include("ecompilerFrameDef.hrl").
 
 -type genCContext() :: {functionTypeMap(), structTypeMap(), variableTypeMap()}.
 
@@ -60,8 +60,8 @@ prvStatementsToString([#function{name = Name, param_names = ParamNames, type = F
     PureVars = maps:without(ParamNameAtoms, VarTypes),
     Declar = prvFunctioinDeclarationToString(Name, prvFunctionParametersToString(PureParams), Fntype#fun_type.ret),
     Exprs2 =    case Name =:= main of
-                    true        -> InitCode ++ Expressions;
-                    false       -> Expressions
+                    true    -> InitCode ++ Expressions;
+                    false   -> Expressions
                 end,
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declar, prvVariableMapToString(PureVars), prvExpressionsToString(Exprs2)]),
     prvStatementsToString(Rest, InitCode, [S | StatementStrs], [Declar ++ ";\n" | FnDeclars]);
@@ -158,18 +158,18 @@ prvExpressionToString({Any, _Line, S}, Endchar) when Any =:= string ->
 -define(SPECIAL_CHARMAP, #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}).
 
 prvHandleSpecialCharactersInString(String) ->
-    lists:map( fun (C) -> maps:get(C, ?SPECIAL_CHARMAP, C) end,     String ).
+    lists:map( fun (C) -> maps:get(C, ?SPECIAL_CHARMAP, C) end, String ).
 
 -spec prvTranslateOperator(atom()) -> string() | atom().
-prvTranslateOperator(assign)        -> "=";
-prvTranslateOperator('rem')         -> "%";
-prvTranslateOperator('bxor')        -> "^";
-prvTranslateOperator('bsr')         -> ">>";
-prvTranslateOperator('bsl')         -> "<<";
-prvTranslateOperator('band')        -> "&";
-prvTranslateOperator('bor')         -> "|";
-prvTranslateOperator('and')         -> "&&";
-prvTranslateOperator('or')          -> "||";
-prvTranslateOperator('@')           -> "&";
-prvTranslateOperator('^')           -> "*";
-prvTranslateOperator(Any)           -> Any.
+prvTranslateOperator(assign)    -> "=";
+prvTranslateOperator('rem')     -> "%";
+prvTranslateOperator('bxor')    -> "^";
+prvTranslateOperator('bsr')     -> ">>";
+prvTranslateOperator('bsl')     -> "<<";
+prvTranslateOperator('band')    -> "&";
+prvTranslateOperator('bor')     -> "|";
+prvTranslateOperator('and')     -> "&&";
+prvTranslateOperator('or')      -> "||";
+prvTranslateOperator('@')       -> "&";
+prvTranslateOperator('^')       -> "*";
+prvTranslateOperator(Any)       -> Any.
