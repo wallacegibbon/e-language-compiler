@@ -127,7 +127,7 @@ prvSizeOf(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
         {ok, S} ->
             prvSizeOfStruct(S, Ctx);
         error ->
-            throw( ecompilerUtil:flatfmt("~s is not found", [Tag]) )
+            throw(ecompilerUtil:flatfmt("~s is not found", [Tag]))
     end;
 prvSizeOf(#basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
     case ecompilerUtil:primitiveSizeOf(Tag) of

@@ -10,7 +10,7 @@
 generateCCode(AST, GlobalVars, InitCode, OutputFile) ->
     {FunctionTypeMap, StructMap} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST),
     Ctx = {FunctionTypeMap, StructMap, GlobalVars},
-    Ast2 = lists:map(fun (A) -> prvFixFunctionForC(A, Ctx) end,     AST),
+    Ast2 = lists:map(fun (A) -> prvFixFunctionForC(A, Ctx) end, AST),
     InitCode2 = prvFixExpressionsForC(InitCode, Ctx),
     %io:format(">>>~p~n", [Ast2]),
     %% struct definition have to be before function declarations
@@ -24,7 +24,7 @@ generateCCode(AST, GlobalVars, InitCode, OutputFile) ->
 
 -spec prvFixFunctionForC(eExpression(), genCContext()) -> eExpression().
 prvFixFunctionForC(#function{exprs = Expressions, var_types = VarTypes} = F, {FunctionTypeMap, StructMap, GlobalVars}) ->
-    F#function{exprs = prvFixExpressionsForC( Expressions, {FunctionTypeMap, StructMap, maps:merge(GlobalVars, VarTypes)} )};
+    F#function{exprs = prvFixExpressionsForC(Expressions, {FunctionTypeMap, StructMap, maps:merge(GlobalVars, VarTypes)})};
 prvFixFunctionForC(Any, _) ->
     Any.
 
@@ -103,10 +103,10 @@ prvVariablesToString([], Strs) ->
     lists:reverse(Strs).
 
 prvFetchNamesFromVariableReferences(VarrefList) ->
-    lists:map( fun (#varref{name = N}) -> N end, VarrefList ).
+    lists:map(fun (#varref{name = N}) -> N end, VarrefList).
 
 prvMapToKVList(NameAtoms, ValueMap) ->
-    lists:zip( NameAtoms, ecompilerUtil:getValuesByKeys(NameAtoms, ValueMap) ).
+    lists:zip(NameAtoms, ecompilerUtil:getValuesByKeys(NameAtoms, ValueMap)).
 
 prvFunctionReturnTypeToString(#fun_type{params = Params, ret = Rettype}, NameParams) ->
     Paramstr = prvFunctionParamsToStringNoFunctionNames(Params),
@@ -154,7 +154,7 @@ prvExpressionToString(#op2{operator = Operator, op1 = Operand1, op2 = Operand2},
 prvExpressionToString(#op1{operator = Operator, operand = Operand}, Endchar) ->
     io_lib:format("(~s ~s)~c", [prvTranslateOperator(Operator), prvExpressionToString(Operand, $\s), Endchar]);
 prvExpressionToString(#call{fn = Fn, args = Arguments}, Endchar) ->
-    ArgumentString = lists:join( ",", lists:map(fun (E) -> prvExpressionToString(E, $\s) end, Arguments) ),
+    ArgumentString = lists:join(",", lists:map(fun (E) -> prvExpressionToString(E, $\s) end, Arguments)),
     io_lib:format("~s(~s)~c", [prvExpressionToString(Fn, $\s), ArgumentString, Endchar]);
 prvExpressionToString(#return{expr = Expression}, Endchar) ->
     io_lib:format("return ~s~c", [prvExpressionToString(Expression, $\s), Endchar]);
@@ -172,7 +172,7 @@ prvExpressionToString({Any, _Line, S}, Endchar) when Any =:= string ->
 -define(SPECIAL_CHARMAP, #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}).
 
 prvHandleSpecialCharactersInString(String) ->
-    lists:map( fun (C) -> maps:get(C, ?SPECIAL_CHARMAP, C) end, String ).
+    lists:map(fun (C) -> maps:get(C, ?SPECIAL_CHARMAP, C) end, String).
 
 -spec prvTranslateOperator(atom()) -> string() | atom().
 prvTranslateOperator(assign) ->

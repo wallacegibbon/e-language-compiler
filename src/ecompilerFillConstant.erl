@@ -106,6 +106,6 @@ prvConstantNumberToToken(Num, Line) when is_integer(Num) ->
     #integer{val = Num, line = Line}.
 
 prvReplaceConstantsInType(#array_type{elemtype = ElementType, len = Len} = T, Constants) ->
-    T#array_type{elemtype = prvReplaceConstantsInType(ElementType, Constants), len = prvEvaluateConstantExpression( prvReplaceContantsInExpression(Len, Constants),  Constants )};
+    T#array_type{elemtype = prvReplaceConstantsInType(ElementType, Constants), len = prvEvaluateConstantExpression(prvReplaceContantsInExpression(Len, Constants), Constants)};
 prvReplaceConstantsInType(Any, _) ->
     Any.

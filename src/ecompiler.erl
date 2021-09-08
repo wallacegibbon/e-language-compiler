@@ -8,7 +8,7 @@
 -include("ecompilerFrameDef.hrl").
 
 compileToC(InputFilename, OutputFilename) ->
-    prvStartCompilerRecordingProcess( filename:dirname(InputFilename) ),
+    prvStartCompilerRecordingProcess(filename:dirname(InputFilename)),
     try
         {AST, Vars, InitCode} = prvParseAndCompile(InputFilename),
         %io:format(">> ~p~n~n", [AST]),
@@ -20,7 +20,7 @@ compileToC(InputFilename, OutputFilename) ->
     prvStopCompilerRecordingProcess().
 
 compileToAST(Filename) ->
-    prvStartCompilerRecordingProcess( filename:dirname(Filename) ),
+    prvStartCompilerRecordingProcess(filename:dirname(Filename)),
     R = prvParseAndCompile(Filename),
     prvStopCompilerRecordingProcess(),
     R.
@@ -74,12 +74,12 @@ prvStartCompilerRecordingProcess(SearchDir) ->
 
 %% some c functions like printf, puts, malloc
 prvInitialModuleASTMap() ->
-    CommonIntType = #basic_type{class = integer, tag = isize    , pdepth = 0},
-    CommonStrType = #basic_type{class = integer, tag = i8       , pdepth = 1},
+    CommonIntType = #basic_type{class = integer, tag = isize, pdepth = 0},
+    CommonStrType = #basic_type{class = integer, tag = i8, pdepth = 1},
     #{c =>
         #{printf    => #fun_type{params = [CommonStrType, CommonIntType], ret = CommonIntType},
-          puts      => #fun_type{params = [CommonStrType]               , ret = CommonIntType},
-          malloc    => #fun_type{params = [CommonIntType]               , ret = CommonStrType}}}.
+          puts      => #fun_type{params = [CommonStrType], ret = CommonIntType},
+          malloc    => #fun_type{params = [CommonIntType], ret = CommonStrType}}}.
 
 prvStopCompilerRecordingProcess() ->
     try
@@ -111,14 +111,14 @@ prvQueryFunctionInModule(ModName, FunName) ->
         {ok, _Type} = R ->
             R;
         {error, moduleNotFound, SearchDir} ->
-            prvParseAndCompile( prvMakeFileName(SearchDir, ModName) ),
+            prvParseAndCompile(prvMakeFileName(SearchDir, ModName)),
             prvQueryFunctionInModule(ModName, FunName);
         {error, functionNotFound} = R ->
             R
     end.
 
 prvMakeFileName(SearchDir, ModName) ->
-    lists:flatten( io_lib:format("~s/~s.e", [SearchDir, ModName]) ).
+    lists:flatten(io_lib:format("~s/~s.e", [SearchDir, ModName])).
 
 prvCompilerRecordingDetails() ->
     prvCompileRecordingCmd(debug).

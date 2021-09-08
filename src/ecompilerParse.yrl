@@ -235,10 +235,14 @@ Erlang code.
 
 -include("ecompilerFrameDef.hrl").
 
-stringToIntegerTokens({string, Line, Str}) -> lists:map(fun (Char) -> {integer, Line, Char} end,    Str).
+stringToIntegerTokens({string, Line, Str}) ->
+    lists:map(fun (Char) -> {integer, Line, Char} end, Str).
 
-tokenValue({_, _, Val}) -> Val.
+tokenValue({_, _, Val}) ->
+    Val.
 
-tokenSymbol({Sym, _}) -> Sym.
+tokenSymbol({Sym, _}) ->
+    Sym.
 
-tokenLine(T) -> element(2, T).
+tokenLine(T) ->
+    element(2, T).

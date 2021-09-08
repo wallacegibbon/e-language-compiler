@@ -107,7 +107,7 @@ myfn1: fun(): fun(): fun(u8^) = get_incfn1;
 ```
 
 ```c
-void (*(*(*myfn1)())())(u8* ) = get_incfn1;
+void (*(*(*myfn1)())())(u8*) = get_incfn1;
 ```
 
 ## Why another C ?

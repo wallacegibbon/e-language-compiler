@@ -10,7 +10,7 @@
 -include("ecompilerFrameDef.hrl").
 
 %% when do simple convertions, this function can be used to avoid boilerplate
-%% code for if, while, return, call...,  so you can concentrate on op1, op2...
+%% code for if, while, return, call..., so you can concentrate on op1, op2...
 -spec expressionMap(fun((eExpression()) -> eExpression()), [eExpression()]) -> eExpression().
 expressionMap(Fn, [#if_expr{condition = Cond, then = Then, else = Else} = If | Rest]) ->
     [If#if_expr{condition = Fn(Cond), then = expressionMap(Fn, Then), else = expressionMap(Fn, Else)} | expressionMap(Fn, Rest)];
@@ -72,8 +72,8 @@ getValuesByKeys_test() ->
 makeFunctionAndStructMapFromAST(AST) ->
     {Functions, Structs} = lists:partition(fun (A) -> element(1, A) =:= function end, AST),
     %% FunctionTypeMap stores function type only
-    FunctionTypeMap = maps:from_list( lists:map( fun (#function{name = Name} = Fn) -> {Name, Fn#function.type} end,     Functions ) ),
-    StructMap = maps:from_list( lists:map( fun (#struct{name = Name} = S) -> {Name, S} end,     Structs ) ),
+    FunctionTypeMap = maps:from_list(lists:map(fun (#function{name = Name} = Fn) -> {Name, Fn#function.type} end, Functions)),
+    StructMap = maps:from_list(lists:map(fun (#struct{name = Name} = S) -> {Name, S} end, Structs)),
     {FunctionTypeMap, StructMap}.
 
 %% address calculations
@@ -102,18 +102,18 @@ primitiveSizeOf(u8)         -> 1;
 primitiveSizeOf(i8)         -> 1;
 primitiveSizeOf(f64)        -> 8;
 primitiveSizeOf(f32)        -> 4;
-primitiveSizeOf(T)          -> throw( flatfmt("size of ~p is not defined", [T]) ).
+primitiveSizeOf(T)          -> throw(flatfmt("size of ~p is not defined", [T])).
 
 voidType(Line) ->
     #basic_type{class = void, tag = void, pdepth = 0, line = Line}.
 
 -spec namesOfVariableReferences([#varref{}]) -> [atom()].
 namesOfVariableReferences(VarRefs) ->
-    lists:map(fun (#varref{name = Name}) -> Name end,     VarRefs).
+    lists:map(fun (#varref{name = Name}) -> Name end, VarRefs).
 
 -spec namesOfVariableDefinitiions([#vardef{}]) -> [atom()].
 namesOfVariableDefinitiions(VarDefs) ->
-    lists:map(fun (#vardef{name = Name}) -> Name end,   VarDefs).
+    lists:map(fun (#vardef{name = Name}) -> Name end, VarDefs).
 
 -spec assert(boolean(), any()) -> ok.
 assert(true, _) ->
@@ -129,7 +129,7 @@ valueInList(Value, List) ->
 %% > [#varref{name=a}].
 -spec filterVariableReferenceInMap([#varref{}], #{atom() := any()}) -> [#varref{}].
 filterVariableReferenceInMap(Varrefs, TargetMap) ->
-    lists:filter( fun (#varref{name = Name}) -> prvExistsInMap(Name, TargetMap) end,    Varrefs ).
+    lists:filter(fun (#varref{name = Name}) -> prvExistsInMap(Name, TargetMap) end, Varrefs).
 
 -ifdef(EUNIT).
 

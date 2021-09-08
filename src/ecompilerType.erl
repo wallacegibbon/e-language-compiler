@@ -6,8 +6,8 @@
 
 -spec checkTypesInAST(eAST(), variableTypeMap(), {functionTypeMap(), structTypeMap()}) -> ok.
 checkTypesInAST([#function{var_types = VarTypes, exprs = Expressions, type = Fntype} | Rest], GlobalVarTypes, {FunctionTypeMap, StructMap} = Maps) ->
-    prvCheckTypes( maps:values(VarTypes), StructMap ),
-    prvCheckType( Fntype#fun_type.ret, StructMap ),
+    prvCheckTypes(maps:values(VarTypes), StructMap),
+    prvCheckType(Fntype#fun_type.ret, StructMap),
     CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
     typeOfExpressions(Expressions, {CurrentVars, FunctionTypeMap, StructMap, Fntype#fun_type.ret}),
     checkTypesInAST(Rest, GlobalVarTypes, Maps);
@@ -33,15 +33,15 @@ checkTypesInExpressions(Expressions, GlobalVarTypes, {FunctionTypeMap, StructMap
 
 -spec typeOfExpressions([eExpression()], typeOfContext()) -> [eType()].
 typeOfExpressions(Expressions, Ctx) ->
-    lists:map( fun (Expression) -> typeOfExpression(Expression, Ctx) end,   Expressions ).
+    lists:map(fun (Expression) -> typeOfExpression(Expression, Ctx) end, Expressions).
 
 -spec typeOfExpression(eExpression(), typeOfContext()) -> eType().
 typeOfExpression(#op2{operator = assign, op1 = Operand1, op2 = Operand2, line = Line}, {_, _, StructMap, _} = Ctx) ->
     TypeofOp1 = case Operand1 of
                     #op2{operator = '.', op1 = SubOp1, op2 = SubOp2} ->
-                        prvTypeOfStructField( typeOfExpression(SubOp1, Ctx), SubOp2, StructMap, Line );
+                        prvTypeOfStructField(typeOfExpression(SubOp1, Ctx), SubOp2, StructMap, Line);
                     #op1{operator = '^', operand = SubOp} ->
-                        prvDecreasePointerDepth( typeOfExpression(SubOp, Ctx), Line );
+                        prvDecreasePointerDepth(typeOfExpression(SubOp, Ctx), Line);
                     #varref{} ->
                         typeOfExpression(Operand1, Ctx);
                     Any ->
@@ -55,12 +55,12 @@ typeOfExpression(#op2{operator = assign, op1 = Operand1, op2 = Operand2, line = 
             throw({Line, ecompilerUtil:flatfmt("type mismatch in \"~s = ~s\"", [prvTypeToString(TypeofOp1), prvTypeToString(TypeofOp2)])})
     end;
 typeOfExpression(#op2{operator = '.', op1 = Operand1, op2 = Operand2, line = Line}, {_, _, StructMap, _} = Ctx) ->
-    prvTypeOfStructField( typeOfExpression(Operand1, Ctx), Operand2, StructMap, Line );
+    prvTypeOfStructField(typeOfExpression(Operand1, Ctx), Operand2, StructMap, Line);
 typeOfExpression(#op2{operator = '::', op1 = #varref{name = self}, op2 = Operand2}, Ctx) ->
     typeOfExpression(Operand2, Ctx);
 typeOfExpression(#op2{operator = '::', op1 = Operand1, op2 = Operand2, line = Line}, _) ->
-    ecompilerUtil:assert( is_record(Operand1, varref), {Line, "invalid usage on ::"} ),
-    ecompilerUtil:assert( is_record(Operand2, varref), {Line, "invalid usage on ::"} ),
+    ecompilerUtil:assert(is_record(Operand1, varref), {Line, "invalid usage on ::"}),
+    ecompilerUtil:assert(is_record(Operand2, varref), {Line, "invalid usage on ::"}),
     #varref{name = ModName} = Operand1,
     #varref{name = FunName} = Operand2,
     try ecompiler:prvQueryFunctionInModule(ModName, FunName) of
@@ -130,10 +130,10 @@ typeOfExpression(#op1{operator = '^', operand = Operand, line = Line}, Ctx) ->
 typeOfExpression(#op1{operator = '@', operand = Operand, line = Line}, {_, _, StructMap, _} = Ctx) ->
     case Operand of
         #op2{operator = '.', op1 = Operand1, op2 = Operand2} ->
-            T = prvTypeOfStructField( typeOfExpression(Operand1, Ctx), Operand2, StructMap, Line ),
+            T = prvTypeOfStructField(typeOfExpression(Operand1, Ctx), Operand2, StructMap, Line),
             prvIncreasePointerDepth(T, Line);
         #varref{} ->
-            prvIncreasePointerDepth( typeOfExpression(Operand, Ctx), Line );
+            prvIncreasePointerDepth(typeOfExpression(Operand, Ctx), Line);
         _ ->
             throw({Line, ecompilerUtil:flatfmt("invalid \"@\" on operand ~s", [ecompilerUtil:expressionToString(Operand)])})
     end;
@@ -232,7 +232,7 @@ prvDecreasePointerDepth(T, OpLine) ->
 
 -spec prvCheckTypesInStructFields([#varref{}], variableTypeMap(), #{atom() := any()}, atom(), typeOfContext()) -> ok.
 prvCheckTypesInStructFields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
-    lists:foreach( fun (V) -> prvCheckStructField(V, FieldTypes, ValMap, StructName, Ctx) end,  FieldNames ).
+    lists:foreach(fun (V) -> prvCheckStructField(V, FieldTypes, ValMap, StructName, Ctx) end, FieldNames).
 
 -spec prvCheckStructField(#varref{}, variableTypeMap(), #{atom() := any()}, atom(), typeOfContext()) -> ok.
 prvCheckStructField(#varref{name = FieldName, line = Line}, FieldTypes, ValMap, StructName, {_, _, StructMap, _} = Ctx) ->
