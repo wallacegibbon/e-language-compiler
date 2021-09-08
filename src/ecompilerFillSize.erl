@@ -94,8 +94,10 @@ prvSizeOfStructFields([], CurrentOffset, OffsetMap, _) ->
 -spec prvFixStructFieldOffset(integer(), integer(), integer()) -> integer().
 prvFixStructFieldOffset(CurrentOffset, NextOffset, PointerWidth) ->
     case ecompilerUtil:cutExtra(NextOffset, PointerWidth) > ecompilerUtil:cutExtra(CurrentOffset, PointerWidth) of
-        true    -> ecompilerUtil:fillOffset(CurrentOffset, PointerWidth);
-        false   -> CurrentOffset
+        true ->
+            ecompilerUtil:fillOffset(CurrentOffset, PointerWidth);
+        false ->
+            CurrentOffset
     end.
 
 -spec prvSizeOf(eType(), compilePassCtx1()) -> non_neg_integer().
@@ -104,8 +106,10 @@ prvSizeOf(#array_type{elemtype = T, len = Len}, {_, PointerWidth} = Ctx) ->
     FixedSize = case ElemSize < PointerWidth of
                     true ->
                         case PointerWidth rem ElemSize of
-                            0   -> ElemSize;
-                            _   -> PointerWidth
+                            0 ->
+                                ElemSize;
+                            _ ->
+                                PointerWidth
                         end;
                     false ->
                         ecompilerUtil:fillToPointerWidth(ElemSize, PointerWidth)
@@ -115,13 +119,17 @@ prvSizeOf(#basic_type{pdepth = N}, {_, PointerWidth}) when N > 0 ->
     PointerWidth;
 prvSizeOf(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
     case maps:find(Tag, StructMap) of
-        {ok, S} -> prvSizeOfStruct(S, Ctx);
-        error   -> throw( ecompilerUtil:flatfmt("~s is not found", [Tag]) )
+        {ok, S} ->
+            prvSizeOfStruct(S, Ctx);
+        error ->
+            throw( ecompilerUtil:flatfmt("~s is not found", [Tag]) )
     end;
 prvSizeOf(#basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
     case ecompilerUtil:primitiveSizeOf(Tag) of
-        pwidth                  -> PointerWidth;
-        V when is_integer(V)    -> V
+        pwidth ->
+            PointerWidth;
+        V when is_integer(V) ->
+            V
     end;
 prvSizeOf(#fun_type{}, {_, PointerWidth}) ->
     PointerWidth;

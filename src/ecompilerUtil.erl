@@ -48,14 +48,18 @@ expressionToString(Any) ->
     Any.
 
 -spec flatfmt(string(), [any()]) -> string().
-flatfmt(FmtStr, Arguments) -> lists:flatten(io_lib:format(FmtStr, Arguments)).
+flatfmt(FmtStr, Arguments) ->
+    lists:flatten(io_lib:format(FmtStr, Arguments)).
 
 -spec getValuesByKeys([atom()], #{atom() => any()}) -> [any()].
-getValuesByKeys(Fields, Map) when is_map(Map) -> prvGetValuesByKeys(Fields, Map, []).
+getValuesByKeys(Fields, Map) when is_map(Map) ->
+    prvGetValuesByKeys(Fields, Map, []).
 
 -spec prvGetValuesByKeys([atom()], #{atom() => any()}, [any()]) -> [any()].
-prvGetValuesByKeys([Field | Rest], Map, Result) -> prvGetValuesByKeys(Rest, Map, [maps:get(Field, Map) | Result]);
-prvGetValuesByKeys([], _, Result)               -> lists:reverse(Result).
+prvGetValuesByKeys([Field | Rest], Map, Result) ->
+    prvGetValuesByKeys(Rest, Map, [maps:get(Field, Map) | Result]);
+prvGetValuesByKeys([], _, Result) ->
+    lists:reverse(Result).
 
 -ifdef(EUNIT).
 
@@ -73,13 +77,16 @@ makeFunctionAndStructMapFromAST(AST) ->
 
 %% address calculations
 -spec fillToPointerWidth(integer(), non_neg_integer()) -> integer().
-fillToPointerWidth(Num, PointerWidth) -> (Num + PointerWidth - 1) div PointerWidth * PointerWidth.
+fillToPointerWidth(Num, PointerWidth) ->
+    (Num + PointerWidth - 1) div PointerWidth * PointerWidth.
 
 -spec fillOffset(integer(), non_neg_integer()) -> integer().
-fillOffset(Offset, PointerWidth) -> (Offset + PointerWidth) div PointerWidth * PointerWidth.
+fillOffset(Offset, PointerWidth) ->
+    (Offset + PointerWidth) div PointerWidth * PointerWidth.
 
 -spec cutExtra(integer(), non_neg_integer()) -> integer().
-cutExtra(Offset, PointerWidth) -> Offset div PointerWidth * PointerWidth.
+cutExtra(Offset, PointerWidth) ->
+    Offset div PointerWidth * PointerWidth.
 
 -spec primitiveSizeOf(atom()) -> pwidth | 1 | 2 | 4 | 8.
 primitiveSizeOf(usize)      -> pwidth;
@@ -99,17 +106,22 @@ primitiveSizeOf(T)          -> throw( flatfmt("size of ~p is not defined", [T]) 
 voidType(Line) -> #basic_type{class = void, tag = void, pdepth = 0, line = Line}.
 
 -spec namesOfVariableReferences([#varref{}]) -> [atom()].
-namesOfVariableReferences(VarRefs) -> lists:map(fun (#varref{name = Name}) -> Name end,     VarRefs).
+namesOfVariableReferences(VarRefs) ->
+    lists:map(fun (#varref{name = Name}) -> Name end,     VarRefs).
 
 -spec namesOfVariableDefinitiions([#vardef{}]) -> [atom()].
-namesOfVariableDefinitiions(VarDefs) -> lists:map(fun (#vardef{name = Name}) -> Name end,   VarDefs).
+namesOfVariableDefinitiions(VarDefs) ->
+    lists:map(fun (#vardef{name = Name}) -> Name end,   VarDefs).
 
 -spec assert(boolean(), any()) -> ok.
-assert(true, _)         -> ok;
-assert(false, Info)     -> throw(Info).
+assert(true, _) ->
+    ok;
+assert(false, Info) ->
+    throw(Info).
 
 -spec valueInList(any(), [any()]) -> boolean().
-valueInList(Value, List) -> lists:any(fun (V) -> V =:= Value end, List).
+valueInList(Value, List) ->
+    lists:any(fun (V) -> V =:= Value end, List).
 
 %% filter_varref_inmaps([#varref{name=a}, #varref{name=b}], #{a => 1})
 %% > [#varref{name=a}].
@@ -128,6 +140,8 @@ filterVariableReferenceInMap_test() ->
 -spec prvExistsInMap(atom(), #{atom() := any()}) -> boolean().
 prvExistsInMap(Keyname, Map) ->
     case maps:find(Keyname, Map) of
-        {ok, _} -> true;
-        _       -> false
+        {ok, _} ->
+            true;
+        _ ->
+            false
     end.

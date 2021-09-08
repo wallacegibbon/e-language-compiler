@@ -35,8 +35,10 @@ prvFixExpressionsForC(Expressions, Ctx) ->
 -spec prvFixExpressionForC(eExpression(), genCContext()) -> eExpression().
 prvFixExpressionForC(#op1{operator = '@', operand = Operand, line = Line} = E, {FunctionTypeMap, StructMap, VarTypes} = Ctx) ->
     case ecompilerType:typeOfExpression(Operand, {VarTypes, FunctionTypeMap, StructMap, #{}}) of
-        #array_type{}   -> #op2{operator = '.', op1 = prvFixExpressionForC(Operand, Ctx), op2 = #varref{name = val, line = Line}};
-        _               -> E
+        #array_type{} ->
+            #op2{operator = '.', op1 = prvFixExpressionForC(Operand, Ctx), op2 = #varref{name = val, line = Line}};
+        _ ->
+            E
     end;
 prvFixExpressionForC(#op1{operand = Operand} = E, Ctx) ->
     E#op1{operand = prvFixExpressionForC(Operand, Ctx)};
@@ -60,8 +62,10 @@ prvStatementsToString([#function{name = Name, param_names = ParamNames, type = F
     PureVars = maps:without(ParamNameAtoms, VarTypes),
     Declar = prvFunctioinDeclarationToString(Name, prvFunctionParametersToString(PureParams), Fntype#fun_type.ret),
     Exprs2 =    case Name =:= main of
-                    true    -> InitCode ++ Expressions;
-                    false   -> Expressions
+                    true ->
+                        InitCode ++ Expressions;
+                    false ->
+                        Expressions
                 end,
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declar, prvVariableMapToString(PureVars), prvExpressionsToString(Exprs2)]),
     prvStatementsToString(Rest, InitCode, [S | StatementStrs], [Declar ++ ";\n" | FnDeclars]);

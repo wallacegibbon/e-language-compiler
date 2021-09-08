@@ -67,8 +67,10 @@ prvCheckStructField([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
     case prvContainStruct(FieldType) of
         {yes, StructName} ->
             case ecompilerUtil:valueInList(StructName, UsedStructs) of
-                true    -> throw({recur, lists:reverse(UsedStructs)});
-                false   -> prvCheckStructObject( maps:get(StructName, StructMap), StructMap, UsedStructs )
+                true ->
+                    throw({recur, lists:reverse(UsedStructs)});
+                false ->
+                    prvCheckStructObject( maps:get(StructName, StructMap), StructMap, UsedStructs )
             end;
         no ->
             ok
@@ -78,6 +80,9 @@ prvCheckStructField([], _, _) ->
     ok.
 
 -spec prvContainStruct(eType()) -> {yes, atom()} | no.
-prvContainStruct(#basic_type{class = struct, pdepth = 0, tag = Name})   -> {yes, Name};
-prvContainStruct(#array_type{elemtype = BaseType})                      -> prvContainStruct(BaseType);
-prvContainStruct(_)                                                     -> no.
+prvContainStruct(#basic_type{class = struct, pdepth = 0, tag = Name}) ->
+    {yes, Name};
+prvContainStruct(#array_type{elemtype = BaseType}) ->
+    prvContainStruct(BaseType);
+prvContainStruct(_) ->
+    no.
