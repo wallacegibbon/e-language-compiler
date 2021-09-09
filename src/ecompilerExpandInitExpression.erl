@@ -50,12 +50,12 @@ prvReplaceInitOps(Any, _) ->
     [Any].
 
 prvStructInitToOps(Target, [#varref{line = Line, name = Fname} = Field | Rest], FieldInitMap, FieldTypes, Newcode, StructMap) ->
-    Operand2 =  case maps:find(Fname, FieldInitMap) of
+    Operand2 = case maps:find(Fname, FieldInitMap) of
                     {ok, InitOp} ->
                         InitOp;
                     error ->
                         prvDefaultInitValueOf(maps:get(Fname, FieldTypes), Line)
-                end,
+               end,
     NewAssign = #op2{operator = assign, op2 = Operand2, line = Line, op1 = #op2{operator = '.', op1 = Target, op2 = Field, line = Line}},
     Ops = prvReplaceInitOps(NewAssign, StructMap),
     prvStructInitToOps(Target, Rest, FieldInitMap, FieldTypes, Ops ++ Newcode, StructMap);

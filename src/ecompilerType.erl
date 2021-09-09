@@ -170,7 +170,7 @@ typeOfExpression(#return{expr = Expression, line = Line}, {_, _, _, FnRetType} =
             throw({Line, ecompilerUtil:flatfmt("ret type should be (~s), not (~s)", [prvTypeToString(FnRetType), prvTypeToString(RealRet)])})
     end;
 typeOfExpression(#varref{name = Name, line = Line}, {VarTypes, FunctionTypeMap, StructMap, _}) ->
-    Type =  case maps:find(Name, VarTypes) of
+    Type = case maps:find(Name, VarTypes) of
                 error ->
                     case maps:find(Name, FunctionTypeMap) of
                         {ok, T} ->
@@ -180,7 +180,7 @@ typeOfExpression(#varref{name = Name, line = Line}, {VarTypes, FunctionTypeMap, 
                     end;
                 {ok, T} ->
                     T
-            end,
+           end,
     prvCheckType(Type, StructMap),
     Type;
 typeOfExpression(#array_init{elements = Elements, line = Line}, Ctx) ->

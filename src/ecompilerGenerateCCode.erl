@@ -62,12 +62,12 @@ prvStatementsToString([#function{name = Name, param_names = ParamNames, type = F
     PureParams = prvMapToKVList(ParamNameAtoms, maps:with(ParamNameAtoms, VarTypes)),
     PureVars = maps:without(ParamNameAtoms, VarTypes),
     Declar = prvFunctioinDeclarationToString(Name, prvFunctionParametersToString(PureParams), Fntype#fun_type.ret),
-    Exprs2 =    case Name =:= main of
-                    true ->
-                        InitCode ++ Expressions;
-                    false ->
-                        Expressions
-                end,
+    Exprs2 = case Name =:= main of
+                true ->
+                    InitCode ++ Expressions;
+                false ->
+                    Expressions
+             end,
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declar, prvVariableMapToString(PureVars), prvExpressionsToString(Exprs2)]),
     prvStatementsToString(Rest, InitCode, [S | StatementStrs], [Declar ++ ";\n" | FnDeclars]);
 prvStatementsToString([#struct{name = Name, field_types = FieldTypes, field_names = FieldNames} | Rest], InitCode, StatementStrs, FnDeclars) ->

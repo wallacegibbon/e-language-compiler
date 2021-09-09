@@ -46,10 +46,10 @@ const TOTAL_ADMIN_LIMIT = 10 + 2;
 % t: {User, 2} = {User{id=1, desc={"a"}}, User{id=2, desc={"b"}}};
 % struct {User val[2];} t = {{1, 0, {"a"}}, {2, 0, {"b"}}};
 
-const BASE_MUL =        12;
-const TOTOAL_USERCNT =  10 + 3 * BASE_MUL - 1;
-const blah1 =           1 bsl 8;
-const blah2 =           1 bsr 8;
+const BASE_MUL = 12;
+const TOTOAL_USERCNT = 10 + 3 * BASE_MUL - 1;
+const blah1 = 1 bsl 8;
+const blah2 = 1 bsr 8;
 
 u1: User = User{id=8};
 
