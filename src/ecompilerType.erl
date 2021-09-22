@@ -340,7 +340,7 @@ prvTypeErrorOfOp2(Operator, TypeofOp1, TypeofOp2) ->
     ecompilerUtil:flatfmt("type error in \"~s ~s ~s\"", [prvTypeToString(TypeofOp1), Operator, prvTypeToString(TypeofOp2)]).
 
 -spec prvCheckTypes([eType()], structTypeMap()) -> ok.
-prvCheckTypes(TypeList, StructMap)  ->
+prvCheckTypes(TypeList, StructMap) ->
     lists:foreach(fun (T) -> prvCheckType(T, StructMap) end, TypeList).
 
 %% check type, ensure that all struct used by type exists.

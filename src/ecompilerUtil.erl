@@ -90,19 +90,19 @@ cutExtra(Offset, PointerWidth) ->
     Offset div PointerWidth * PointerWidth.
 
 -spec primitiveSizeOf(atom()) -> pwidth | 1 | 2 | 4 | 8.
-primitiveSizeOf(usize)      -> pwidth;
-primitiveSizeOf(isize)      -> pwidth;
-primitiveSizeOf(u64)        -> 8;
-primitiveSizeOf(i64)        -> 8;
-primitiveSizeOf(u32)        -> 4;
-primitiveSizeOf(i32)        -> 4;
-primitiveSizeOf(u16)        -> 2;
-primitiveSizeOf(i16)        -> 2;
-primitiveSizeOf(u8)         -> 1;
-primitiveSizeOf(i8)         -> 1;
-primitiveSizeOf(f64)        -> 8;
-primitiveSizeOf(f32)        -> 4;
-primitiveSizeOf(T)          -> throw(flatfmt("size of ~p is not defined", [T])).
+primitiveSizeOf(usize) -> pwidth;
+primitiveSizeOf(isize) -> pwidth;
+primitiveSizeOf(u64) -> 8;
+primitiveSizeOf(i64) -> 8;
+primitiveSizeOf(u32) -> 4;
+primitiveSizeOf(i32) -> 4;
+primitiveSizeOf(u16) -> 2;
+primitiveSizeOf(i16) -> 2;
+primitiveSizeOf(u8) -> 1;
+primitiveSizeOf(i8) -> 1;
+primitiveSizeOf(f64) -> 8;
+primitiveSizeOf(f32) -> 4;
+primitiveSizeOf(T) -> throw(flatfmt("size of ~p is not defined", [T])).
 
 voidType(Line) ->
     #basic_type{class = void, tag = void, pdepth = 0, line = Line}.
