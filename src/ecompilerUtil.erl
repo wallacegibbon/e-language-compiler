@@ -1,6 +1,6 @@
 -module(ecompilerUtil).
 
--export([expressionToString/1, expressionMap/2, filterVariableReferenceInMap/2, flatfmt/2, getValuesByKeys/2, namesOfVariableDefinitiions/1, namesOfVariableReferences/1, valueInList/2]).
+-export([expressionToString/1, expressionMap/2, filterVariableReferenceInMap/2, flatfmt/2, getValuesByKeys/2, namesOfVariableDefinitions/1, namesOfVariableReferences/1, valueInList/2]).
 -export([primitiveSizeOf/1, voidType/1]).
 -export([cutExtra/2, fillOffset/2, fillToPointerWidth/2]).
 -export([makeFunctionAndStructMapFromAST/1]).
@@ -111,8 +111,8 @@ voidType(Line) ->
 namesOfVariableReferences(VarRefs) ->
     lists:map(fun (#varref{name = Name}) -> Name end, VarRefs).
 
--spec namesOfVariableDefinitiions([#vardef{}]) -> [atom()].
-namesOfVariableDefinitiions(VarDefs) ->
+-spec namesOfVariableDefinitions([#vardef{}]) -> [atom()].
+namesOfVariableDefinitions(VarDefs) ->
     lists:map(fun (#vardef{name = Name}) -> Name end, VarDefs).
 
 -spec assert(boolean(), any()) -> ok.

@@ -122,7 +122,7 @@ prvThrowNameConflict(Name, Line) ->
 
 -spec prvGetValuesByDefinitions([#vardef{}], #{atom() => any()}) -> [any()].
 prvGetValuesByDefinitions(DefList, Map) ->
-    ecompilerUtil:getValuesByKeys(ecompilerUtil:namesOfVariableDefinitiions(DefList), Map).
+    ecompilerUtil:getValuesByKeys(ecompilerUtil:namesOfVariableDefinitions(DefList), Map).
 
 -spec prvVariableDefinitionToReference([#vardef{}]) -> [#varref{}].
 prvVariableDefinitionToReference(Vardefs) ->
