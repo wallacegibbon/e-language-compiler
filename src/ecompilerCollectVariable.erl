@@ -7,123 +7,123 @@
 
 -spec fetchVariables(eAST()) -> {eAST(), variableTypeMap(), eAST()}.
 fetchVariables(AST) ->
-    {Ast3, VarTypes, InitCode} = prvFetchVariables(prvPrepareStructInitExpression(AST), [], {#{}, [], true}),
+    {Ast3, VarTypes, InitCode} = fetchVariables(prepareStructInitExpression(AST), [], {#{}, [], true}),
     {Ast3, VarTypes, InitCode}.
 
--spec prvPrepareStructInitExpression(eAST()) -> eAST().
-prvPrepareStructInitExpression([#function_raw{exprs = Expressions} = F | Rest]) ->
-    [F#function_raw{exprs = prvFixStructInitAST(Expressions)} | prvPrepareStructInitExpression(Rest)];
-prvPrepareStructInitExpression([#struct_raw{fields = Expressions} = S | Rest]) ->
-    [S#struct_raw{fields = prvFixStructInitAST(Expressions)} | prvPrepareStructInitExpression(Rest)];
-prvPrepareStructInitExpression([#vardef{initval = Initval} = V | Rest]) ->
-    [V#vardef{initval = prvFixStructInit(Initval)} | prvPrepareStructInitExpression(Rest)];
-prvPrepareStructInitExpression([]) ->
+-spec prepareStructInitExpression(eAST()) -> eAST().
+prepareStructInitExpression([#function_raw{exprs = Expressions} = F | Rest]) ->
+    [F#function_raw{exprs = fixStructInitAST(Expressions)} | prepareStructInitExpression(Rest)];
+prepareStructInitExpression([#struct_raw{fields = Expressions} = S | Rest]) ->
+    [S#struct_raw{fields = fixStructInitAST(Expressions)} | prepareStructInitExpression(Rest)];
+prepareStructInitExpression([#vardef{initval = Initval} = V | Rest]) ->
+    [V#vardef{initval = fixStructInit(Initval)} | prepareStructInitExpression(Rest)];
+prepareStructInitExpression([]) ->
     [].
 
--spec prvFixStructInitAST(eAST()) -> eAST().
-prvFixStructInitAST(Lst) ->
-    ecompilerUtil:expressionMap(fun prvFixStructInit/1, Lst).
+-spec fixStructInitAST(eAST()) -> eAST().
+fixStructInitAST(Lst) ->
+    ecompilerUtil:expressionMap(fun fixStructInit/1, Lst).
 
--spec prvFixStructInit(eExpression()) -> eExpression().
-prvFixStructInit(#struct_init_raw{name = Name, fields = Fields, line = Line}) ->
-    {FieldNames, InitExprMap} = prvStructInitToMap(Fields),
+-spec fixStructInit(eExpression()) -> eExpression().
+fixStructInit(#struct_init_raw{name = Name, fields = Fields, line = Line}) ->
+    {FieldNames, InitExprMap} = structInitToMap(Fields),
     #struct_init{name = Name, field_names = FieldNames, field_values = InitExprMap, line = Line};
-prvFixStructInit(#array_init{elements = Elements} = A) ->
-    A#array_init{elements = prvFixStructInitAST(Elements)};
-prvFixStructInit(#vardef{initval = Initval} = V) ->
-    V#vardef{initval = prvFixStructInit(Initval)};
-prvFixStructInit(#op2{op1 = Operand1, op2 = Operand2} = O) ->
-    O#op2{op1 = prvFixStructInit(Operand1), op2 = prvFixStructInit(Operand2)};
-prvFixStructInit(#op1{operand = Operand} = O) ->
-    O#op1{operand = prvFixStructInit(Operand)};
-prvFixStructInit(Any) ->
+fixStructInit(#array_init{elements = Elements} = A) ->
+    A#array_init{elements = fixStructInitAST(Elements)};
+fixStructInit(#vardef{initval = Initval} = V) ->
+    V#vardef{initval = fixStructInit(Initval)};
+fixStructInit(#op2{op1 = Operand1, op2 = Operand2} = O) ->
+    O#op2{op1 = fixStructInit(Operand1), op2 = fixStructInit(Operand2)};
+fixStructInit(#op1{operand = Operand} = O) ->
+    O#op1{operand = fixStructInit(Operand)};
+fixStructInit(Any) ->
     Any.
 
--spec prvStructInitToMap([eExpression()]) -> {[#varref{}], #{atom() := eExpression()}}.
-prvStructInitToMap(Expressions) ->
-    prvStructInitToMap(Expressions, [], #{}).
+-spec structInitToMap([eExpression()]) -> {[#varref{}], #{atom() := eExpression()}}.
+structInitToMap(Expressions) ->
+    structInitToMap(Expressions, [], #{}).
 
--spec prvStructInitToMap([#op2{}], [#varref{}], #{atom() := eExpression()}) -> {[#varref{}], #{atom() := eExpression()}}.
-prvStructInitToMap([#op2{operator = assign, op1 = #varref{name = Field} = Operand1, op2 = Val} | Rest], FieldNames, ExprMap) ->
-    prvStructInitToMap(Rest, [Operand1 | FieldNames], ExprMap#{Field => prvFixStructInit(Val)});
-prvStructInitToMap([], FieldNames, ExprMap) ->
+-spec structInitToMap([#op2{}], [#varref{}], #{atom() := eExpression()}) -> {[#varref{}], #{atom() := eExpression()}}.
+structInitToMap([#op2{operator = assign, op1 = #varref{name = Field} = Operand1, op2 = Val} | Rest], FieldNames, ExprMap) ->
+    structInitToMap(Rest, [Operand1 | FieldNames], ExprMap#{Field => fixStructInit(Val)});
+structInitToMap([], FieldNames, ExprMap) ->
     {FieldNames, ExprMap}.
 
 %% in function expressions, the init code of defvar can not be simply
 %% fetched out from the code, it should be replaced as assignment in the
 %% same place.
--spec prvFetchVariables(eAST(), eAST(), {variableTypeMap(), eAST(), boolean()}) -> {eAST(), variableTypeMap(), eAST()}.
-prvFetchVariables([#vardef{name = Name, type = Type, line = Line, initval = Initval} | Rest], NewAst, {VarTypes, InitCode, CollectInitCode}) ->
-    prvEnsureNoNameConflict(Name, VarTypes, Line),
+-spec fetchVariables(eAST(), eAST(), {variableTypeMap(), eAST(), boolean()}) -> {eAST(), variableTypeMap(), eAST()}.
+fetchVariables([#vardef{name = Name, type = Type, line = Line, initval = Initval} | Rest], NewAst, {VarTypes, InitCode, CollectInitCode}) ->
+    ensureNoNameConflict(Name, VarTypes, Line),
     case CollectInitCode of
         true ->
-            prvFetchVariables(Rest, NewAst, {VarTypes#{Name => Type}, prvAppendToAST(InitCode, Name, Initval, Line), CollectInitCode});
+            fetchVariables(Rest, NewAst, {VarTypes#{Name => Type}, appendToAST(InitCode, Name, Initval, Line), CollectInitCode});
         false ->
-            prvFetchVariables(Rest, prvAppendToAST(NewAst, Name, Initval, Line), {VarTypes#{Name => Type}, InitCode, CollectInitCode})
+            fetchVariables(Rest, appendToAST(NewAst, Name, Initval, Line), {VarTypes#{Name => Type}, InitCode, CollectInitCode})
     end;
-prvFetchVariables([#function_raw{name = Name, ret = Ret, params = Params, exprs = Expressions, line = Line} | Rest], NewAst, {GlobalVars, _, _} = Ctx) ->
-    {[], ParamVars, ParamInitCode} = prvFetchVariables(Params, [], {#{}, [], true}),
+fetchVariables([#function_raw{name = Name, ret = Ret, params = Params, exprs = Expressions, line = Line} | Rest], NewAst, {GlobalVars, _, _} = Ctx) ->
+    {[], ParamVars, ParamInitCode} = fetchVariables(Params, [], {#{}, [], true}),
     ecompilerUtil:assert(ParamInitCode =:= [], {Line, "function parameters can not have default value"}),
-    {NewExprs, FunVarTypes, []} = prvFetchVariables(Expressions, [], {ParamVars, [], false}),
+    {NewExprs, FunVarTypes, []} = fetchVariables(Expressions, [], {ParamVars, [], false}),
     %% local variables should have different names from global variables
-    prvCheckVariableConflict(GlobalVars, FunVarTypes),
+    checkVariableConflict(GlobalVars, FunVarTypes),
     %% lable names should be different from variables, because the operand of goto could be a pointer variable.
     Labels = lists:filter(fun (E) -> element(1, E) =:= label end, Expressions),
-    prvCheckLabelConflict(Labels, GlobalVars, FunVarTypes),
-    FunctionType = #fun_type{params = prvGetValuesByDefinitions(Params, ParamVars), ret = Ret, line = Line},
-    Function = #function{name = Name, var_types = FunVarTypes, exprs = NewExprs, param_names = prvVariableDefinitionToReference(Params), line = Line, type = FunctionType},
-    prvFetchVariables(Rest, [Function | NewAst], Ctx);
-prvFetchVariables([#struct_raw{name = Name, fields = Fields, line = Line} | Rest], NewAst, Ctx) ->
+    checkLabelConflict(Labels, GlobalVars, FunVarTypes),
+    FunctionType = #fun_type{params = getValuesByDefinitions(Params, ParamVars), ret = Ret, line = Line},
+    Function = #function{name = Name, var_types = FunVarTypes, exprs = NewExprs, param_names = variableDefinitionToReference(Params), line = Line, type = FunctionType},
+    fetchVariables(Rest, [Function | NewAst], Ctx);
+fetchVariables([#struct_raw{name = Name, fields = Fields, line = Line} | Rest], NewAst, Ctx) ->
     %% struct can have default value
-    {[], FieldTypes, StructInitCode} = prvFetchVariables(Fields, [], {#{}, [], true}),
-    {_, FieldInitMap} = prvStructInitToMap(StructInitCode),
-    S = #struct{name = Name, field_types = FieldTypes, field_names = prvVariableDefinitionToReference(Fields), field_defaults = FieldInitMap, line = Line},
-    prvFetchVariables(Rest, [S | NewAst], Ctx);
-prvFetchVariables([Any | Rest], NewAst, Ctx) ->
-    prvFetchVariables(Rest, [Any | NewAst], Ctx);
-prvFetchVariables([], NewAst, {VarTypes, InitCode, _}) ->
+    {[], FieldTypes, StructInitCode} = fetchVariables(Fields, [], {#{}, [], true}),
+    {_, FieldInitMap} = structInitToMap(StructInitCode),
+    S = #struct{name = Name, field_types = FieldTypes, field_names = variableDefinitionToReference(Fields), field_defaults = FieldInitMap, line = Line},
+    fetchVariables(Rest, [S | NewAst], Ctx);
+fetchVariables([Any | Rest], NewAst, Ctx) ->
+    fetchVariables(Rest, [Any | NewAst], Ctx);
+fetchVariables([], NewAst, {VarTypes, InitCode, _}) ->
     {lists:reverse(NewAst), VarTypes, lists:reverse(InitCode)}.
 
--spec prvAppendToAST(eAST(), atom(), eExpression(), integer()) -> eAST().
-prvAppendToAST(AST, Varname, Initval, Line) when Initval =/= none ->
+-spec appendToAST(eAST(), atom(), eExpression(), integer()) -> eAST().
+appendToAST(AST, Varname, Initval, Line) when Initval =/= none ->
     [#op2{operator = assign, op1 = #varref{name = Varname, line = Line}, op2 = Initval, line = Line} | AST];
-prvAppendToAST(AST, _, _, _) ->
+appendToAST(AST, _, _, _) ->
     AST.
 
--spec prvCheckLabelConflict([eExpression()], variableTypeMap(), variableTypeMap()) -> ok.
-prvCheckLabelConflict([#label{name = Name, line = Line} | Rest], GlobalVars, LocalVars) ->
-    prvEnsureNoNameConflict(Name, LocalVars, Line),
-    prvEnsureNoNameConflict(Name, GlobalVars, Line),
-    prvCheckLabelConflict(Rest, GlobalVars, LocalVars);
-prvCheckLabelConflict([], _, _) ->
+-spec checkLabelConflict([eExpression()], variableTypeMap(), variableTypeMap()) -> ok.
+checkLabelConflict([#label{name = Name, line = Line} | Rest], GlobalVars, LocalVars) ->
+    ensureNoNameConflict(Name, LocalVars, Line),
+    ensureNoNameConflict(Name, GlobalVars, Line),
+    checkLabelConflict(Rest, GlobalVars, LocalVars);
+checkLabelConflict([], _, _) ->
     ok.
 
--spec prvCheckVariableConflict(variableTypeMap(), variableTypeMap()) -> ok.
-prvCheckVariableConflict(GlobalVars, LocalVars) ->
+-spec checkVariableConflict(variableTypeMap(), variableTypeMap()) -> ok.
+checkVariableConflict(GlobalVars, LocalVars) ->
     case maps:to_list(maps:with(maps:keys(GlobalVars), LocalVars)) of
         [{Name, T} | _] ->
-            prvThrowNameConflict(Name, element(2, T));
+            throwNameConflict(Name, element(2, T));
         [] ->
             ok
     end.
 
--spec prvEnsureNoNameConflict(atom(), variableTypeMap(), integer()) -> ok.
-prvEnsureNoNameConflict(Name, VarMap, Line) ->
+-spec ensureNoNameConflict(atom(), variableTypeMap(), integer()) -> ok.
+ensureNoNameConflict(Name, VarMap, Line) ->
     case maps:find(Name, VarMap) of
         {ok, _} ->
-            prvThrowNameConflict(Name, Line);
+            throwNameConflict(Name, Line);
         _ ->
             ok
     end.
 
--spec prvThrowNameConflict(atom(), integer()) -> no_return().
-prvThrowNameConflict(Name, Line) ->
+-spec throwNameConflict(atom(), integer()) -> no_return().
+throwNameConflict(Name, Line) ->
     throw({Line, ecompilerUtil:flatfmt("name ~s has already been used", [Name])}).
 
--spec prvGetValuesByDefinitions([#vardef{}], #{atom() => any()}) -> [any()].
-prvGetValuesByDefinitions(DefList, Map) ->
+-spec getValuesByDefinitions([#vardef{}], #{atom() => any()}) -> [any()].
+getValuesByDefinitions(DefList, Map) ->
     ecompilerUtil:getValuesByKeys(ecompilerUtil:namesOfVariableDefinitions(DefList), Map).
 
--spec prvVariableDefinitionToReference([#vardef{}]) -> [#varref{}].
-prvVariableDefinitionToReference(Vardefs) ->
+-spec variableDefinitionToReference([#vardef{}]) -> [#varref{}].
+variableDefinitionToReference(Vardefs) ->
     lists:map(fun (#vardef{name = N, line = Line}) -> #varref{name = N, line = Line} end, Vardefs).

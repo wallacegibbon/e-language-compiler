@@ -53,12 +53,12 @@ flatfmt(FmtStr, Arguments) ->
 
 -spec getValuesByKeys([atom()], #{atom() => any()}) -> [any()].
 getValuesByKeys(Fields, Map) when is_map(Map) ->
-    prvGetValuesByKeys(Fields, Map, []).
+    getValuesByKeys(Fields, Map, []).
 
--spec prvGetValuesByKeys([atom()], #{atom() => any()}, [any()]) -> [any()].
-prvGetValuesByKeys([Field | Rest], Map, Result) ->
-    prvGetValuesByKeys(Rest, Map, [maps:get(Field, Map) | Result]);
-prvGetValuesByKeys([], _, Result) ->
+-spec getValuesByKeys([atom()], #{atom() => any()}, [any()]) -> [any()].
+getValuesByKeys([Field | Rest], Map, Result) ->
+    getValuesByKeys(Rest, Map, [maps:get(Field, Map) | Result]);
+getValuesByKeys([], _, Result) ->
     lists:reverse(Result).
 
 -ifdef(EUNIT).
@@ -129,7 +129,7 @@ valueInList(Value, List) ->
 %% > [#varref{name=a}].
 -spec filterVariableReferenceInMap([#varref{}], #{atom() := any()}) -> [#varref{}].
 filterVariableReferenceInMap(Varrefs, TargetMap) ->
-    lists:filter(fun (#varref{name = Name}) -> prvExistsInMap(Name, TargetMap) end, Varrefs).
+    lists:filter(fun (#varref{name = Name}) -> existsInMap(Name, TargetMap) end, Varrefs).
 
 -ifdef(EUNIT).
 
@@ -139,8 +139,8 @@ filterVariableReferenceInMap_test() ->
 
 -endif.
 
--spec prvExistsInMap(atom(), #{atom() := any()}) -> boolean().
-prvExistsInMap(Keyname, Map) ->
+-spec existsInMap(atom(), #{atom() := any()}) -> boolean().
+existsInMap(Keyname, Map) ->
     case maps:find(Keyname, Map) of
         {ok, _} ->
             true;

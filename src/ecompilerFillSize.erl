@@ -8,32 +8,32 @@
 expandSizeOf([#function{exprs = Expressions} = F | Rest], Ctx) ->
     [F#function{exprs = expandSizeofInExpressions(Expressions, Ctx)} | expandSizeOf(Rest, Ctx)];
 expandSizeOf([#struct{field_defaults = FieldDefaults} = S | Rest], Ctx) ->
-    [S#struct{field_defaults = prvExpandSizeofInMap(FieldDefaults, Ctx)} | expandSizeOf(Rest, Ctx)];
+    [S#struct{field_defaults = expandSizeofInMap(FieldDefaults, Ctx)} | expandSizeOf(Rest, Ctx)];
 expandSizeOf([], _) ->
     [].
 
-prvExpandSizeofInMap(Map, Ctx) ->
-    maps:map(fun (_, V1) -> prvExpandSizeofInExpression(V1, Ctx) end, Map).
+expandSizeofInMap(Map, Ctx) ->
+    maps:map(fun (_, V1) -> expandSizeofInExpression(V1, Ctx) end, Map).
 
 -spec expandSizeofInExpressions(eAST(), compilePassCtx1()) -> [eExpression()].
 expandSizeofInExpressions(Expressions, Ctx) ->
-    ecompilerUtil:expressionMap(fun (E) -> prvExpandSizeofInExpression(E, Ctx) end, Expressions).
+    ecompilerUtil:expressionMap(fun (E) -> expandSizeofInExpression(E, Ctx) end, Expressions).
 
--spec prvExpandSizeofInExpression(eExpression(), compilePassCtx1()) -> eExpression().
-prvExpandSizeofInExpression(#sizeof{type = T, line = Line}, Ctx) ->
-    try {integer, Line, prvSizeOf(T, Ctx)} catch
+-spec expandSizeofInExpression(eExpression(), compilePassCtx1()) -> eExpression().
+expandSizeofInExpression(#sizeof{type = T, line = Line}, Ctx) ->
+    try {integer, Line, sizeOf(T, Ctx)} catch
         I ->
             throw({Line, I})
     end;
-prvExpandSizeofInExpression(#op2{op1 = Operand1, op2 = Operand2} = O, Ctx) ->
-    O#op2{op1 = prvExpandSizeofInExpression(Operand1, Ctx), op2 = prvExpandSizeofInExpression(Operand2, Ctx)};
-prvExpandSizeofInExpression(#op1{operand = Operand} = O, Ctx) ->
-    O#op1{operand = prvExpandSizeofInExpression(Operand, Ctx)};
-prvExpandSizeofInExpression(#struct_init{field_values = ExprMap} = Si, Ctx) ->
-    Si#struct_init{field_values = prvExpandSizeofInMap(ExprMap, Ctx)};
-prvExpandSizeofInExpression(#array_init{elements = Elements} = Ai, Ctx) ->
+expandSizeofInExpression(#op2{op1 = Operand1, op2 = Operand2} = O, Ctx) ->
+    O#op2{op1 = expandSizeofInExpression(Operand1, Ctx), op2 = expandSizeofInExpression(Operand2, Ctx)};
+expandSizeofInExpression(#op1{operand = Operand} = O, Ctx) ->
+    O#op1{operand = expandSizeofInExpression(Operand, Ctx)};
+expandSizeofInExpression(#struct_init{field_values = ExprMap} = Si, Ctx) ->
+    Si#struct_init{field_values = expandSizeofInMap(ExprMap, Ctx)};
+expandSizeofInExpression(#array_init{elements = Elements} = Ai, Ctx) ->
     Ai#array_init{elements = expandSizeofInExpressions(Elements, Ctx)};
-prvExpandSizeofInExpression(Any, _) ->
+expandSizeofInExpression(Any, _) ->
     Any.
 
 %% calculate struct size and collect field offsets.
@@ -44,60 +44,60 @@ prvExpandSizeofInExpression(Any, _) ->
 -spec fillStructInformation(eAST(), compilePassCtx1()) -> eAST().
 fillStructInformation(AST, {_, PointerWidth} = Ctx) ->
     %% struct definition are only allowed in top level of an AST.
-    Ast1 = lists:map(fun (E) -> prvFillStructSize(E, Ctx) end, AST),
+    Ast1 = lists:map(fun (E) -> fillStructSize(E, Ctx) end, AST),
     {_, StructMap1} = ecompilerUtil:makeFunctionAndStructMapFromAST(Ast1),
-    lists:map(fun (E) -> prvFillStructOffsets(E, {StructMap1, PointerWidth}) end, Ast1).
+    lists:map(fun (E) -> fillStructOffsets(E, {StructMap1, PointerWidth}) end, Ast1).
 
--spec prvFillStructSize(eExpression(), compilePassCtx1()) -> eExpression().
-prvFillStructSize(#struct{} = S, Ctx) ->
-    S#struct{size = prvSizeOfStruct(S, Ctx)};
-prvFillStructSize(Any, _) ->
+-spec fillStructSize(eExpression(), compilePassCtx1()) -> eExpression().
+fillStructSize(#struct{} = S, Ctx) ->
+    S#struct{size = sizeOfStruct(S, Ctx)};
+fillStructSize(Any, _) ->
     Any.
 
--spec prvFillStructOffsets(eExpression(), compilePassCtx1()) -> eExpression().
-prvFillStructOffsets(#struct{} = S, Ctx) ->
-    S#struct{field_offsets = prvOffsetOfStruct(S, Ctx)};
-prvFillStructOffsets(Any, _) ->
+-spec fillStructOffsets(eExpression(), compilePassCtx1()) -> eExpression().
+fillStructOffsets(#struct{} = S, Ctx) ->
+    S#struct{field_offsets = offsetOfStruct(S, Ctx)};
+fillStructOffsets(Any, _) ->
     Any.
 
--spec prvOffsetOfStruct(#struct{}, compilePassCtx1()) -> #{atom() := integer()}.
-prvOffsetOfStruct(#struct{field_names = FieldNames, field_types = FieldTypes}, Ctx) ->
-    FieldTypeList = prvGetKVsByReferences(FieldNames, FieldTypes),
-    {_, OffsetMap} = prvSizeOfStructFields(FieldTypeList, 0, #{}, Ctx),
+-spec offsetOfStruct(#struct{}, compilePassCtx1()) -> #{atom() := integer()}.
+offsetOfStruct(#struct{field_names = FieldNames, field_types = FieldTypes}, Ctx) ->
+    FieldTypeList = getKVsByReferences(FieldNames, FieldTypes),
+    {_, OffsetMap} = sizeOfStructFields(FieldTypeList, 0, #{}, Ctx),
     OffsetMap.
 
--spec prvSizeOfStruct(#struct{}, compilePassCtx1()) -> non_neg_integer().
-prvSizeOfStruct(#struct{size = Size}, _) when is_integer(Size), Size > 0 ->
+-spec sizeOfStruct(#struct{}, compilePassCtx1()) -> non_neg_integer().
+sizeOfStruct(#struct{size = Size}, _) when is_integer(Size), Size > 0 ->
     Size;
-prvSizeOfStruct(#struct{field_names = Names, field_types = Types}, Ctx) ->
-    FieldTypeList = prvGetKVsByReferences(Names, Types),
-    {Size, _} = prvSizeOfStructFields(FieldTypeList, 0, #{}, Ctx),
+sizeOfStruct(#struct{field_names = Names, field_types = Types}, Ctx) ->
+    FieldTypeList = getKVsByReferences(Names, Types),
+    {Size, _} = sizeOfStructFields(FieldTypeList, 0, #{}, Ctx),
     Size.
 
--spec prvGetKVsByReferences([#varref{}], #{atom() := any()}) -> [{atom(), any()}].
-prvGetKVsByReferences(RefList, Map) ->
+-spec getKVsByReferences([#varref{}], #{atom() := any()}) -> [{atom(), any()}].
+getKVsByReferences(RefList, Map) ->
     Keys = ecompilerUtil:namesOfVariableReferences(RefList),
     Values = ecompilerUtil:getValuesByKeys(Keys, Map),
     lists:zip(Keys, Values).
 
 %% this is the function that calculate size and offsets
--spec prvSizeOfStructFields([{atom(), eType()}], integer(), OffsetMap, compilePassCtx1()) -> {integer(), OffsetMap}
+-spec sizeOfStructFields([{atom(), eType()}], integer(), OffsetMap, compilePassCtx1()) -> {integer(), OffsetMap}
         when OffsetMap :: #{atom() := integer()}.
-prvSizeOfStructFields([{Fname, Ftype} | Rest], CurrentOffset, OffsetMap, {_, PointerWidth} = Ctx) ->
-    FieldSize = prvSizeOf(Ftype, Ctx),
+sizeOfStructFields([{Fname, Ftype} | Rest], CurrentOffset, OffsetMap, {_, PointerWidth} = Ctx) ->
+    FieldSize = sizeOf(Ftype, Ctx),
     NextOffset = CurrentOffset + FieldSize,
     case CurrentOffset rem PointerWidth =/= 0 of
         true ->
-            OffsetFixed = prvFixStructFieldOffset(CurrentOffset, NextOffset, PointerWidth),
-            prvSizeOfStructFields(Rest, OffsetFixed + FieldSize, OffsetMap#{Fname => OffsetFixed}, Ctx);
+            OffsetFixed = fixStructFieldOffset(CurrentOffset, NextOffset, PointerWidth),
+            sizeOfStructFields(Rest, OffsetFixed + FieldSize, OffsetMap#{Fname => OffsetFixed}, Ctx);
         false ->
-            prvSizeOfStructFields(Rest, NextOffset, OffsetMap#{Fname => CurrentOffset}, Ctx)
+            sizeOfStructFields(Rest, NextOffset, OffsetMap#{Fname => CurrentOffset}, Ctx)
     end;
-prvSizeOfStructFields([], CurrentOffset, OffsetMap, _) ->
+sizeOfStructFields([], CurrentOffset, OffsetMap, _) ->
     {CurrentOffset, OffsetMap}.
 
--spec prvFixStructFieldOffset(integer(), integer(), integer()) -> integer().
-prvFixStructFieldOffset(CurrentOffset, NextOffset, PointerWidth) ->
+-spec fixStructFieldOffset(integer(), integer(), integer()) -> integer().
+fixStructFieldOffset(CurrentOffset, NextOffset, PointerWidth) ->
     case ecompilerUtil:cutExtra(NextOffset, PointerWidth) > ecompilerUtil:cutExtra(CurrentOffset, PointerWidth) of
         true ->
             ecompilerUtil:fillOffset(CurrentOffset, PointerWidth);
@@ -105,9 +105,9 @@ prvFixStructFieldOffset(CurrentOffset, NextOffset, PointerWidth) ->
             CurrentOffset
     end.
 
--spec prvSizeOf(eType(), compilePassCtx1()) -> non_neg_integer().
-prvSizeOf(#array_type{elemtype = T, len = Len}, {_, PointerWidth} = Ctx) ->
-    ElemSize = prvSizeOf(T, Ctx),
+-spec sizeOf(eType(), compilePassCtx1()) -> non_neg_integer().
+sizeOf(#array_type{elemtype = T, len = Len}, {_, PointerWidth} = Ctx) ->
+    ElemSize = sizeOf(T, Ctx),
     FixedSize = case ElemSize < PointerWidth of
                     true ->
                         case PointerWidth rem ElemSize of
@@ -120,23 +120,23 @@ prvSizeOf(#array_type{elemtype = T, len = Len}, {_, PointerWidth} = Ctx) ->
                         ecompilerUtil:fillToPointerWidth(ElemSize, PointerWidth)
                 end,
     FixedSize * Len;
-prvSizeOf(#basic_type{pdepth = N}, {_, PointerWidth}) when N > 0 ->
+sizeOf(#basic_type{pdepth = N}, {_, PointerWidth}) when N > 0 ->
     PointerWidth;
-prvSizeOf(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
+sizeOf(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
     case maps:find(Tag, StructMap) of
         {ok, S} ->
-            prvSizeOfStruct(S, Ctx);
+            sizeOfStruct(S, Ctx);
         error ->
             throw(ecompilerUtil:flatfmt("~s is not found", [Tag]))
     end;
-prvSizeOf(#basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
+sizeOf(#basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
     case ecompilerUtil:primitiveSizeOf(Tag) of
         pwidth ->
             PointerWidth;
         V when is_integer(V) ->
             V
     end;
-prvSizeOf(#fun_type{}, {_, PointerWidth}) ->
+sizeOf(#fun_type{}, {_, PointerWidth}) ->
     PointerWidth;
-prvSizeOf(A, _) ->
+sizeOf(A, _) ->
     throw(ecompilerUtil:flatfmt("invalid type ~p on sizeof", [A])).

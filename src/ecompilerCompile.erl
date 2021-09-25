@@ -8,7 +8,7 @@
 
 -spec compileFromRawAST(eAST(), compileOptions()) -> {eAST(), variableTypeMap(), eAST(), functionTypeMap()}.
 compileFromRawAST(AST, CustomCompileOptions) ->
-    CompileOptions = maps:merge(prvDefaultCompileOptions(), CustomCompileOptions),
+    CompileOptions = maps:merge(defaultCompileOptions(), CustomCompileOptions),
 
     AST1 = ecompilerFillConstant:parseAndRemoveConstants(AST),
     %io:format(">>> ~p~n", [Ast1]),
@@ -18,7 +18,7 @@ compileFromRawAST(AST, CustomCompileOptions) ->
     {FunctionTypeMap, StructMap0} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST2),
 
     %% struct recursion is not allowed.
-    prvCheckStructRecursive(StructMap0),
+    checkStructRecursive(StructMap0),
     #{pointer_width := PointerWidth} = CompileOptions,
     Ctx0 = {StructMap0, PointerWidth},
     %% calculate struct size, filed offsets
@@ -44,46 +44,46 @@ compileFromRawAST(AST, CustomCompileOptions) ->
     InitCode2 = ecompilerExpandInitExpression:expandInitExpressions(InitCode1, StructMap2),
     {AST5, VariableTypeMap, InitCode2, FunctionTypeMap}.
 
--spec prvDefaultCompileOptions() -> compileOptions().
-prvDefaultCompileOptions() ->
+-spec defaultCompileOptions() -> compileOptions().
+defaultCompileOptions() ->
     #{pointer_width => 8}.
 
--spec prvCheckStructRecursive(structTypeMap()) -> ok.
-prvCheckStructRecursive(StructTypeMap) ->
-    maps:foreach(fun (_, S) -> prvCheckStructObject(S, StructTypeMap, []) end, StructTypeMap).
+-spec checkStructRecursive(structTypeMap()) -> ok.
+checkStructRecursive(StructTypeMap) ->
+    maps:foreach(fun (_, S) -> checkStructObject(S, StructTypeMap, []) end, StructTypeMap).
 
--spec prvCheckStructObject(#struct{}, structTypeMap(), [atom()]) -> ok.
-prvCheckStructObject(#struct{name = Name, field_types = FieldTypes, line = Line}, StructMap, UsedStructs) ->
+-spec checkStructObject(#struct{}, structTypeMap(), [atom()]) -> ok.
+checkStructObject(#struct{name = Name, field_types = FieldTypes, line = Line}, StructMap, UsedStructs) ->
     try
-        prvCheckStructField(maps:to_list(FieldTypes), StructMap, [Name | UsedStructs])
+        checkStructField(maps:to_list(FieldTypes), StructMap, [Name | UsedStructs])
     catch
         {recur, Chain} ->
             throw({Line, ecompilerUtil:flatfmt("recursive struct ~s -> ~w", [Name, Chain])})
     end;
-prvCheckStructObject(_, _, _) ->
+checkStructObject(_, _, _) ->
     ok.
 
--spec prvCheckStructField([{atom(), eType()}], structTypeMap(), [atom()]) -> ok.
-prvCheckStructField([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
-    case prvContainStruct(FieldType) of
+-spec checkStructField([{atom(), eType()}], structTypeMap(), [atom()]) -> ok.
+checkStructField([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
+    case containStruct(FieldType) of
         {yes, StructName} ->
             case ecompilerUtil:valueInList(StructName, UsedStructs) of
                 true ->
                     throw({recur, lists:reverse(UsedStructs)});
                 false ->
-                    prvCheckStructObject(maps:get(StructName, StructMap), StructMap, UsedStructs)
+                    checkStructObject(maps:get(StructName, StructMap), StructMap, UsedStructs)
             end;
         no ->
             ok
     end,
-    prvCheckStructField(RestFields, StructMap, UsedStructs);
-prvCheckStructField([], _, _) ->
+    checkStructField(RestFields, StructMap, UsedStructs);
+checkStructField([], _, _) ->
     ok.
 
--spec prvContainStruct(eType()) -> {yes, atom()} | no.
-prvContainStruct(#basic_type{class = struct, pdepth = 0, tag = Name}) ->
+-spec containStruct(eType()) -> {yes, atom()} | no.
+containStruct(#basic_type{class = struct, pdepth = 0, tag = Name}) ->
     {yes, Name};
-prvContainStruct(#array_type{elemtype = BaseType}) ->
-    prvContainStruct(BaseType);
-prvContainStruct(_) ->
+containStruct(#array_type{elemtype = BaseType}) ->
+    containStruct(BaseType);
+containStruct(_) ->
     no.
