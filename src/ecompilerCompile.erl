@@ -18,11 +18,10 @@ compileFromRawAST(AST, CustomCompileOptions) ->
     {FunctionTypeMap, StructMap0} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST2),
 
     %% struct recursion is not allowed.
-    checkStructRecursive(StructMap0),
+    ensureNoRecursiveStruct(StructMap0),
     #{pointer_width := PointerWidth} = CompileOptions,
-    Ctx0 = {StructMap0, PointerWidth},
     %% calculate struct size, filed offsets
-    AST3 = ecompilerFillSize:fillStructInformation(AST2, Ctx0),
+    AST3 = ecompilerFillSize:fillStructInformation(AST2, {StructMap0, PointerWidth}),
 
     %% struct size is updated, so StructMap needs to be updated, too
     {_, StructMap1} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST3),
@@ -48,36 +47,42 @@ compileFromRawAST(AST, CustomCompileOptions) ->
 defaultCompileOptions() ->
     #{pointer_width => 8}.
 
--spec checkStructRecursive(structTypeMap()) -> ok.
-checkStructRecursive(StructTypeMap) ->
-    maps:foreach(fun (_, S) -> checkStructObject(S, StructTypeMap, []) end, StructTypeMap).
+-spec ensureNoRecursiveStruct(structTypeMap()) -> ok.
+ensureNoRecursiveStruct(StructTypeMap) ->
+    maps:foreach(fun (_, S) -> checkStructRecursive(S, StructTypeMap) end, StructTypeMap).
 
--spec checkStructObject(#struct{}, structTypeMap(), [atom()]) -> ok.
-checkStructObject(#struct{name = Name, field_types = FieldTypes, line = Line}, StructMap, UsedStructs) ->
-    try
-        checkStructField(maps:to_list(FieldTypes), StructMap, [Name | UsedStructs])
-    catch
+-spec checkStructRecursive(#struct{}, structTypeMap()) -> ok.
+checkStructRecursive(#struct{name = Name, line = Line} = Struct, StructTypeMap) ->
+    case checkStructObject(Struct, StructTypeMap, []) of
+        ok ->
+            ok;
         {recur, Chain} ->
             throw({Line, ecompilerUtil:flatfmt("recursive struct ~s -> ~w", [Name, Chain])})
-    end;
-checkStructObject(_, _, _) ->
-    ok.
+    end.
 
--spec checkStructField([{atom(), eType()}], structTypeMap(), [atom()]) -> ok.
-checkStructField([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
+-spec checkStructObject(#struct{}, structTypeMap(), [atom()]) -> ok | {recur, [any()]}.
+checkStructObject(#struct{name = Name, field_types = FieldTypes}, StructMap, UsedStructs) ->
+    checkStructFields(maps:to_list(FieldTypes), StructMap, [Name | UsedStructs]).
+
+-spec checkStructFields([{atom(), eType()}], structTypeMap(), [atom()]) -> ok | {recur, [any()]}.
+checkStructFields([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
     case containStruct(FieldType) of
         {yes, StructName} ->
             case ecompilerUtil:valueInList(StructName, UsedStructs) of
                 true ->
-                    throw({recur, lists:reverse(UsedStructs)});
+                    {recur, lists:reverse([StructName | UsedStructs])};
                 false ->
-                    checkStructObject(maps:get(StructName, StructMap), StructMap, UsedStructs)
+                    case checkStructObject(maps:get(StructName, StructMap), StructMap, UsedStructs) of
+                        ok ->
+                            checkStructFields(RestFields, StructMap, UsedStructs);
+                        {recur, _} = Any ->
+                            Any
+                    end
             end;
         no ->
-            ok
-    end,
-    checkStructField(RestFields, StructMap, UsedStructs);
-checkStructField([], _, _) ->
+            checkStructFields(RestFields, StructMap, UsedStructs)
+    end;
+checkStructFields([], _, _) ->
     ok.
 
 -spec containStruct(eType()) -> {yes, atom()} | no.
