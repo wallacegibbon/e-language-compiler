@@ -29,8 +29,8 @@
 
 -record(array_type,
         {line = 0 :: integer(),
-        elemtype :: eType(),
-        len :: integer()}).
+         elemtype :: eType(),
+         len :: integer()}).
 
 -record(struct_init,
         {line = 0 :: integer(),
@@ -130,9 +130,9 @@
          expr :: eExpression()}).
 
 % primitive types: u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
--type eType() :: any().
+-type eType() :: #basic_type{} | #array_type{} | #fun_type{} | any().
 
--type eExpression() :: any().
+-type eExpression() :: #op1{} | #op2{} | #if_expr{} | #while_expr{} | #goto{} | #return{} | any().
 
 -type structTypeMap() :: #{atom() := #struct{}}.
 

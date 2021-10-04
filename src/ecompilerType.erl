@@ -22,9 +22,7 @@ checkTypesInAST([_ | Rest], GlobalVarTypes, Maps) ->
 checkTypesInAST([], _, _) ->
     ok.
 
-
 -type typeOfContext() :: {variableTypeMap(), functionTypeMap(), structTypeMap(), functionReturnTypeMap()}.
-
 
 -spec checkTypesInExpressions([eExpression()], variableTypeMap(), {functionTypeMap(), structTypeMap()}) -> ok.
 checkTypesInExpressions(Expressions, GlobalVarTypes, {FunctionTypeMap, StructMap}) ->
