@@ -100,7 +100,7 @@ recordModule(Filename, FunctionTypeMap) ->
     compileRecordingCmd({recordModule, fileNameToModuleAtom(Filename), FunctionTypeMap}).
 
 changeSearchDirectory(NewDir) ->
-    compileRecordingCmd({change_searchdir, NewDir}).
+    compileRecordingCmd({changeSearchDirectory, NewDir}).
 
 -spec fileNameToModuleAtom(string()) -> atom().
 fileNameToModuleAtom(Filename) ->
@@ -169,7 +169,7 @@ compileRecordingHandle({unRecordCompileOp, ModName}, #{moduleChain := [ModName |
     {reply, ok, State#{moduleChain := Rest}};
 compileRecordingHandle({recordModule, ModName, FunctionTypeMap}, #{modmap := ModuleFnMap} = State) ->
     {reply, ok, State#{modmap := ModuleFnMap#{ModName => FunctionTypeMap}}};
-compileRecordingHandle({change_searchdir, NewDir}, State) ->
+compileRecordingHandle({changeSearchDirectory, NewDir}, State) ->
     {reply, ok, State#{searchdir := NewDir}};
 compileRecordingHandle(debug, #{modmap := ModuleFnMap, moduleChain := ModuleChain} = State) ->
     {reply, {ModuleFnMap, ModuleChain}, State};
