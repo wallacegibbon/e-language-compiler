@@ -107,16 +107,16 @@
          operand1 :: eExpression(),
          operand2 :: eExpression()}).
 
--record(call,
+-record(callExpression,
         {line = 0 :: integer(),
          fn :: eExpression(),
          args = [] :: [eExpression()]}).
 
--record(sizeof,
+-record(sizeofExpression,
         {line = 0 :: integer(),
          type :: eType()}).
 
--record(label,
+-record(gotoLabel,
         {line = 0 :: integer(),
          name :: atom()}).
 
@@ -127,7 +127,8 @@
 % primitive types: u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
 -type eType() :: #basicType{} | #arrayType{} | #functionType{} | any().
 
--type eExpression() :: #operatorExpression1{} | #operatorExpression2{} | #ifStatement{} | #whileStatement{} | #gotoStatement{} | #returnStatement{} | any().
+-type eStatement() :: #ifStatement{} | #whileStatement{} | #gotoStatement{} | #returnStatement{}.
+-type eExpression() :: #operatorExpression1{} | #operatorExpression2{} | #callExpression{} | #sizeofExpression{} | any().
 
 -type structTypeMap() :: #{atom() := #struct{}}.
 

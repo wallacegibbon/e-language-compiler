@@ -20,7 +20,7 @@ expandSizeofInExpressions(Expressions, Ctx) ->
     ecompilerUtil:expressionMap(fun (E) -> expandSizeofInExpression(E, Ctx) end, Expressions).
 
 -spec expandSizeofInExpression(eExpression(), compilePassCtx1()) -> eExpression().
-expandSizeofInExpression(#sizeof{type = T, line = Line}, Ctx) ->
+expandSizeofInExpression(#sizeofExpression{type = T, line = Line}, Ctx) ->
     try {integer, Line, sizeOf(T, Ctx)} catch
         I ->
             throw({Line, I})

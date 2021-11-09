@@ -121,7 +121,7 @@ typeOfExpression(#operatorExpression1{operator = '@', operand = Operand, line = 
     end;
 typeOfExpression(#operatorExpression1{operand = Operand}, Ctx) ->
     typeOfExpression(Operand, Ctx);
-typeOfExpression(#call{fn = FunExpr, args = Arguments, line = Line}, Ctx) ->
+typeOfExpression(#callExpression{fn = FunExpr, args = Arguments, line = Line}, Ctx) ->
     ArgsTypes = typeOfExpressions(Arguments, Ctx),
     case typeOfExpression(FunExpr, Ctx) of
         #functionType{parameters = FnParamTypes, ret = FnRetType} ->
@@ -181,11 +181,11 @@ typeOfExpression(#structInitializeExpression{name = StructName, fieldNames = Ini
         _ ->
             throw({Line, ecompilerUtil:fmt("struct ~s is not found", [StructName])})
     end;
-typeOfExpression(#sizeof{line = Line}, _) ->
+typeOfExpression(#sizeofExpression{line = Line}, _) ->
     #basicType{class = integer, pdepth = 0, tag = i64, line = Line};
 typeOfExpression(#gotoStatement{line = Line}, _) ->
     ecompilerUtil:voidType(Line);
-typeOfExpression(#label{line = Line}, _) ->
+typeOfExpression(#gotoLabel{line = Line}, _) ->
     ecompilerUtil:voidType(Line);
 typeOfExpression({float, Line, _}, _) ->
     #basicType{class = float, pdepth = 0, tag = f64, line = Line};

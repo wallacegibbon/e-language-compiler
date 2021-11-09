@@ -16,8 +16,8 @@ expressionMap(Fn, [#ifStatement{condition = Cond, then = Then, else = Else} = If
     [If#ifStatement{condition = Fn(Cond), then = expressionMap(Fn, Then), else = expressionMap(Fn, Else)} | expressionMap(Fn, Rest)];
 expressionMap(Fn, [#whileStatement{condition = Cond, statements = Expressions} = While | Rest]) ->
     [While#whileStatement{condition = Fn(Cond), statements = expressionMap(Fn, Expressions)} | expressionMap(Fn, Rest)];
-expressionMap(Fn, [#call{fn = Callee, args = Arguments} = Fncall | Rest]) ->
-    [Fncall#call{fn = Fn(Callee), args = expressionMap(Fn, Arguments)} | expressionMap(Fn, Rest)];
+expressionMap(Fn, [#callExpression{fn = Callee, args = Arguments} = Fncall | Rest]) ->
+    [Fncall#callExpression{fn = Fn(Callee), args = expressionMap(Fn, Arguments)} | expressionMap(Fn, Rest)];
 expressionMap(Fn, [#returnStatement{expression = Retexpr} = Return | Rest]) ->
     [Return#returnStatement{expression = Fn(Retexpr)} | expressionMap(Fn, Rest)];
 expressionMap(Fn, [Any | Rest]) ->
@@ -30,7 +30,7 @@ expressionToString(#ifStatement{condition = Cond, then = Then, else = Else}) ->
     io_lib:format("if (~s) ~s else ~s end", [expressionToString(Cond), expressionToString(Then), expressionToString(Else)]);
 expressionToString(#whileStatement{condition = Cond, statements = Expressions}) ->
     io_lib:format("while (~s) ~s end", [expressionToString(Cond), expressionToString(Expressions)]);
-expressionToString(#call{fn = Callee, args = Arguments}) ->
+expressionToString(#callExpression{fn = Callee, args = Arguments}) ->
     io_lib:format("(~s)(~s)", [expressionToString(Callee), expressionToString(Arguments)]);
 expressionToString(#returnStatement{expression = Retexpr}) ->
     io_lib:format("return (~s)", [expressionToString(Retexpr)]);

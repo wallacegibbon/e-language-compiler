@@ -35,7 +35,7 @@ functionCall_test() ->
                  Tokens),
     {ok, AST} = ecompilerParse:parse(Tokens),
     %?debugFmt("~p~n", [AST]),
-    ?assertEqual([{variableDefinition, 1, b, {basicType, 1, 0, integer, u8}, {call, 1, {variableReference, 1, a}, [{integer, 1, 13}]}}],
+    ?assertEqual([{variableDefinition, 1, b, {basicType, 1, 0, integer, u8}, {callExpression, 1, {variableReference, 1, a}, [{integer, 1, 13}]}}],
                  AST),
     ok.
 

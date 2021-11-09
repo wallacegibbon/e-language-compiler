@@ -131,11 +131,11 @@ structInitAssignment -> identifier '=' expression :
     #operatorExpression2{operator = assign, operand1 = #variableReference{name = tokenValue('$1'), line = tokenLine('$1')}, operand2 = '$3', line = tokenLine('$2')}.
 
 %% sizeof
-sizeofExpression -> sizeof '(' typeAnnotation ')' : #sizeof{type = '$3', line = tokenLine('$2')}.
+sizeofExpression -> sizeof '(' typeAnnotation ')' : #sizeofExpression{type = '$3', line = tokenLine('$2')}.
 
 %% function invocation
-callExpression -> expression '(' parameters ')' : #call{fn = '$1', args = '$3', line = tokenLine('$2')}.
-callExpression -> expression '(' ')' : #call{fn = '$1', args = [], line = tokenLine('$2')}.
+callExpression -> expression '(' parameters ')' : #callExpression{fn = '$1', args = '$3', line = tokenLine('$2')}.
+callExpression -> expression '(' ')' : #callExpression{fn = '$1', args = [], line = tokenLine('$2')}.
 
 assignExpression -> expression op2WithAssignment expression :
     #operatorExpression2{operator = assign, operand1 = '$1', operand2 = #operatorExpression2{operator = tokenSymbol('$2'), operand1 = '$1', operand2 = '$3', line = tokenLine('$2')}, line = tokenLine('$2')}.
@@ -164,7 +164,7 @@ functionStatement -> ifStatement : '$1'.
 functionStatement -> whileStatement : '$1'.
 functionStatement -> goto expression ';' : #gotoStatement{expression = '$2', line = tokenLine('$1')}.
 functionStatement -> return expression ';' : #returnStatement{expression = '$2', line = tokenLine('$1')}.
-functionStatement -> '@' '@' identifier ':' : #label{name = tokenValue('$3'), line = tokenLine('$3')}.
+functionStatement -> '@' '@' identifier ':' : #gotoLabel{name = tokenValue('$3'), line = tokenLine('$3')}.
 
 expression -> reservedKeyword : return_error(tokenLine('$1'), ecompilerUtil:fmt("~s is reserved keyword", [tokenSymbol('$1')])).
 expression -> expression op30 expression : #operatorExpression2{operator = tokenSymbol('$2'), operand1 = '$1', operand2 = '$3', line=tokenLine('$2')}.

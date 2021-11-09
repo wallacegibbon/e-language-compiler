@@ -153,14 +153,14 @@ expressionToString(#operatorExpression2{operator = Operator, operand1 = Operand1
     io_lib:format("(~s ~s ~s)~c", [expressionToString(Operand1, $\s), translateOperator(Operator), expressionToString(Operand2, $\s), Endchar]);
 expressionToString(#operatorExpression1{operator = Operator, operand = Operand}, Endchar) ->
     io_lib:format("(~s ~s)~c", [translateOperator(Operator), expressionToString(Operand, $\s), Endchar]);
-expressionToString(#call{fn = Fn, args = Arguments}, Endchar) ->
+expressionToString(#callExpression{fn = Fn, args = Arguments}, Endchar) ->
     ArgumentString = lists:join(",", lists:map(fun (E) -> expressionToString(E, $\s) end, Arguments)),
     io_lib:format("~s(~s)~c", [expressionToString(Fn, $\s), ArgumentString, Endchar]);
 expressionToString(#returnStatement{expression = Expression}, Endchar) ->
     io_lib:format("return ~s~c", [expressionToString(Expression, $\s), Endchar]);
 expressionToString(#gotoStatement{expression = Expression}, Endchar) ->
     io_lib:format("goto ~s~c", [expressionToString(Expression, $\s), Endchar]);
-expressionToString(#label{name = Name}, _) ->
+expressionToString(#gotoLabel{name = Name}, _) ->
     io_lib:format("~s:", [Name]);
 expressionToString(#variableReference{name = Name}, Endchar) ->
     io_lib:format("~s~c", [Name, Endchar]);

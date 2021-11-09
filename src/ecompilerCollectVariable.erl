@@ -91,7 +91,7 @@ appendToAST(AST, _, _, _) ->
     AST.
 
 -spec checkLabelConflict([eExpression()], variableTypeMap(), variableTypeMap()) -> ok.
-checkLabelConflict([#label{name = Name, line = Line} | Rest], GlobalVars, LocalVars) ->
+checkLabelConflict([#gotoLabel{name = Name, line = Line} | Rest], GlobalVars, LocalVars) ->
     ensureNoNameConflict(Name, LocalVars, Line),
     ensureNoNameConflict(Name, GlobalVars, Line),
     checkLabelConflict(Rest, GlobalVars, LocalVars);
