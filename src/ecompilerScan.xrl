@@ -1,6 +1,6 @@
 Definitions.
 
-Delim = [@^.~,;+\-*/(){}]|>=|<=|==|!=|!|>|<|=|::|:
+Delim = [@^.~,;+\-*/(){}]|>=|<=|==|!=|!|>|<|=|:|#
 Identifier = [_a-zA-Z][_a-zA-Z0-9]*
 StrQuote = "
 StrUnescapedChar = [^\"\\]
@@ -17,7 +17,6 @@ CommentStart = %
 
 Rules.
 
-{CommentStart}[^\n]* : skip_token.
 {StrQuote}{StrQuote} : {token, {string, TokenLine, ""}}.
 {StrQuote}({StrUnescapedChar}|{StrEscapedChar})+{StrQuote} : {token, {string, TokenLine, fixCharacters(dropQuotes(TokenChars))}}.
 {CharQuote}{CharQuote} : {error, "empty char"}.
@@ -27,8 +26,9 @@ Rules.
 0b{BinaryDigit}+ : {token, {integer, TokenLine, stringToInteger(TokenChars, 2)}}.
 {DecimalDigit}+ : {token, {integer, TokenLine, list_to_integer(TokenChars)}}.
 {DecimalDigit}+\.{DecimalDigit}+ : {token, {float, TokenLine, list_to_float(TokenChars)}}.
+{DecimalDigit}\.{DecimalDigit}+e{DecimalDigit}+ : {token, {float, TokenLine, list_to_float(TokenChars)}}.
 {Delim} : {token, {list_to_atom(TokenChars), TokenLine}}.
-const|struct|end|fun|return|if|then|elif|else|while|do|goto|sizeof : {token, {list_to_atom(TokenChars), TokenLine}}.
+struct|end|fun|return|if|then|elif|else|while|do|goto|sizeof : {token, {list_to_atom(TokenChars), TokenLine}}.
 rem|and|or|band|bor|bxor|bsl|bsr : {token, {list_to_atom(TokenChars), TokenLine}}.
 cond|case|for|break|continue : {token, {list_to_atom(TokenChars), TokenLine}}.
 u8|i8|u16|i16|u32|i32|u64|i64|usize|isize : {token, {integerType, TokenLine, list_to_atom(TokenChars)}}.
@@ -36,8 +36,9 @@ f64|f32 : {token, {floatType, TokenLine, list_to_atom(TokenChars)}}.
 void : {token, {voidType, TokenLine, void}}.
 any : {token, {anyType, TokenLine, any}}.
 {Identifier} : {token, {identifier, TokenLine, list_to_atom(TokenChars)}}.
-[\s\r\t\v\f\n]* : skip_token.
-
+[\s\r\t\v\f]* : skip_token.
+\n : {token, {newline, TokenLine}}.
+{CommentStart}[^\n]* : skip_token.
 
 Erlang code.
 

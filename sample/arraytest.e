@@ -1,12 +1,11 @@
 %% vim: ft=elang :
 
-const TOTAL_NUM = 10;
-testglobal: u32 = TOTAL_NUM;
+testglobal: u32 = 10;
 
 fun main(argc: isize, argv: i64^^): i64
-    blah: {u8, TOTAL_NUM};
+    blah: {u8, 10};
     tmp: u8^ = blah@;
-    tmp^ = TOTAL_NUM;
+    tmp^ = 10;
 
     print(tmp);
 
@@ -18,13 +17,13 @@ fun main(argc: isize, argv: i64^^): i64
 
     print(tmp);
 
-    c::puts("before goto");
+    puts("before goto");
     goto finish;
 
-    c::puts("after goto");
+    puts("after goto");
 
 @@finish:
-    c::puts("after label");
+    puts("after label");
 
     return (tmp + 11)^;
 end
@@ -39,20 +38,23 @@ end
 
 fun inc(val: u8^)
     cnt: u8 = 0;
-    while cnt < TOTAL_NUM do
+    while cnt < 10 do
         (val + cnt)^ = cnt * 2;
         cnt += 1;
     end
 end
 
+puts: fun (i8^): i8;
+printf: fun (i8^, usize);
+
 fun print(val: u8^)
     cnt: u8 = 0;
 
-    c::puts(">>>\t");
-    while cnt < TOTAL_NUM do
-        c::printf(" %02x", (val + cnt)^);
+    puts(">>>\t");
+    while cnt < 10 do
+        printf(" %02x", (val + cnt)^);
         cnt += 1;
     end
-    cnt = c::puts("");
+    cnt = puts("");
 end
 

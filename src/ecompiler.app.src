@@ -1,6 +1,6 @@
 {application, ecompiler,
  [{description, "An Compiler for the E programming language"},
-  {vsn, "0.1.0"},
+  {vsn, "0.1.1"},
   {applications, [kernel, stdlib]},
   {registered, [ecompilerHelper]},
   {licenses, ["Apache 2.0"]}]}.

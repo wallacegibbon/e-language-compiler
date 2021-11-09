@@ -6,13 +6,10 @@
 
 -type compileOptions() :: map().
 
--spec compileFromRawAST(eAST(), compileOptions()) -> {eAST(), variableTypeMap(), eAST(), functionTypeMap()}.
+-spec compileFromRawAST(eAST(), compileOptions()) -> {eAST(), variableTypeMap(), eAST()}.
 compileFromRawAST(AST, CustomCompileOptions) ->
     CompileOptions = maps:merge(defaultCompileOptions(), CustomCompileOptions),
-
-    AST1 = ecompilerFillConstant:parseAndRemoveConstants(AST),
-    %io:format(">>> ~p~n", [Ast1]),
-    {AST2, VariableTypeMap, InitCode0} = ecompilerCollectVariable:fetchVariables(AST1),
+    {AST2, VariableTypeMap, InitCode0} = ecompilerCollectVariable:fetchVariables(AST),
     %io:format(">>> ~p~n", [Ast2]),
 
     {FunctionTypeMap, StructMap0} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST2),
@@ -41,7 +38,7 @@ compileFromRawAST(AST, CustomCompileOptions) ->
     AST5 = ecompilerExpandInitExpression:expandInitExpressionInFunctions(AST4, StructMap2),
 
     InitCode2 = ecompilerExpandInitExpression:expandInitExpressions(InitCode1, StructMap2),
-    {AST5, VariableTypeMap, InitCode2, FunctionTypeMap}.
+    {AST5, VariableTypeMap, InitCode2}.
 
 -spec defaultCompileOptions() -> compileOptions().
 defaultCompileOptions() ->
@@ -57,11 +54,11 @@ checkStructRecursive(#struct{name = Name, line = Line} = Struct, StructTypeMap) 
         ok ->
             ok;
         {recur, Chain} ->
-            throw({Line, ecompilerUtil:flatfmt("recursive struct ~s -> ~w", [Name, Chain])})
+            throw({Line, ecompilerUtil:fmt("recursive struct ~s -> ~w", [Name, Chain])})
     end.
 
 -spec checkStructObject(#struct{}, structTypeMap(), [atom()]) -> ok | {recur, [any()]}.
-checkStructObject(#struct{name = Name, field_types = FieldTypes}, StructMap, UsedStructs) ->
+checkStructObject(#struct{name = Name, fieldTypeMap = FieldTypes}, StructMap, UsedStructs) ->
     checkStructFields(maps:to_list(FieldTypes), StructMap, [Name | UsedStructs]).
 
 -spec checkStructFields([{atom(), eType()}], structTypeMap(), [atom()]) -> ok | {recur, [any()]}.
@@ -86,9 +83,9 @@ checkStructFields([], _, _) ->
     ok.
 
 -spec containStruct(eType()) -> {yes, atom()} | no.
-containStruct(#basic_type{class = struct, pdepth = 0, tag = Name}) ->
+containStruct(#basicType{class = struct, pdepth = 0, tag = Name}) ->
     {yes, Name};
-containStruct(#array_type{elemtype = BaseType}) ->
+containStruct(#arrayType{elemtype = BaseType}) ->
     containStruct(BaseType);
 containStruct(_) ->
     no.

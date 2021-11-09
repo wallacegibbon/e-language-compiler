@@ -129,9 +129,13 @@ cp -r ./misc/elang.vim/ ~/.vim/pack/my/start/
 ```
 
 
+## Macro
+
+A macro system like C and Erlang (Token level) is supported (under developing...)
+
+
 ## Plans
 
 This compiler only compile E language to C language for now, in the future,
 it will be compiled directly to machine language. (RISC-V may be the only target)
 
-A macro system like C and Erlang may be introduced. (not decided yet)

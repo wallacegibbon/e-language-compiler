@@ -1,6 +1,6 @@
 -module(ecompilerUtil).
 
--export([expressionToString/1, expressionMap/2, filterVariableReferenceInMap/2, flatfmt/2, getValuesByKeys/2, namesOfVariableDefinitions/1, namesOfVariableReferences/1, valueInList/2]).
+-export([expressionToString/1, expressionMap/2, filterVariableReferenceInMap/2, fmt/2, getValuesByKeys/2, namesOfVariableDefinitions/1, namesOfVariableReferences/1, valueInList/2]).
 -export([primitiveSizeOf/1, voidType/1]).
 -export([cutExtra/2, fillOffset/2, fillToPointerWidth/2]).
 -export([makeFunctionAndStructMapFromAST/1]).
@@ -10,35 +10,35 @@
 -include("ecompilerFrameDef.hrl").
 
 %% when do simple convertions, this function can be used to avoid boilerplate
-%% code for if, while, return, call..., so you can concentrate on op1, op2...
+%% code for if, while, return, call..., so you can concentrate on operand1, operand2...
 -spec expressionMap(fun((eExpression()) -> eExpression()), [eExpression()]) -> eExpression().
-expressionMap(Fn, [#if_expr{condition = Cond, then = Then, else = Else} = If | Rest]) ->
-    [If#if_expr{condition = Fn(Cond), then = expressionMap(Fn, Then), else = expressionMap(Fn, Else)} | expressionMap(Fn, Rest)];
-expressionMap(Fn, [#while_expr{condition = Cond, exprs = Expressions} = While | Rest]) ->
-    [While#while_expr{condition = Fn(Cond), exprs = expressionMap(Fn, Expressions)} | expressionMap(Fn, Rest)];
+expressionMap(Fn, [#ifStatement{condition = Cond, then = Then, else = Else} = If | Rest]) ->
+    [If#ifStatement{condition = Fn(Cond), then = expressionMap(Fn, Then), else = expressionMap(Fn, Else)} | expressionMap(Fn, Rest)];
+expressionMap(Fn, [#whileStatement{condition = Cond, statements = Expressions} = While | Rest]) ->
+    [While#whileStatement{condition = Fn(Cond), statements = expressionMap(Fn, Expressions)} | expressionMap(Fn, Rest)];
 expressionMap(Fn, [#call{fn = Callee, args = Arguments} = Fncall | Rest]) ->
     [Fncall#call{fn = Fn(Callee), args = expressionMap(Fn, Arguments)} | expressionMap(Fn, Rest)];
-expressionMap(Fn, [#return{expr = Retexpr} = Return | Rest]) ->
-    [Return#return{expr = Fn(Retexpr)} | expressionMap(Fn, Rest)];
+expressionMap(Fn, [#returnStatement{expression = Retexpr} = Return | Rest]) ->
+    [Return#returnStatement{expression = Fn(Retexpr)} | expressionMap(Fn, Rest)];
 expressionMap(Fn, [Any | Rest]) ->
     [Fn(Any) | expressionMap(Fn, Rest)];
 expressionMap(_, []) ->
     [].
 
 -spec expressionToString(eExpression()) -> string().
-expressionToString(#if_expr{condition = Cond, then = Then, else = Else}) ->
+expressionToString(#ifStatement{condition = Cond, then = Then, else = Else}) ->
     io_lib:format("if (~s) ~s else ~s end", [expressionToString(Cond), expressionToString(Then), expressionToString(Else)]);
-expressionToString(#while_expr{condition = Cond, exprs = Expressions}) ->
+expressionToString(#whileStatement{condition = Cond, statements = Expressions}) ->
     io_lib:format("while (~s) ~s end", [expressionToString(Cond), expressionToString(Expressions)]);
 expressionToString(#call{fn = Callee, args = Arguments}) ->
     io_lib:format("(~s)(~s)", [expressionToString(Callee), expressionToString(Arguments)]);
-expressionToString(#return{expr = Retexpr}) ->
+expressionToString(#returnStatement{expression = Retexpr}) ->
     io_lib:format("return (~s)", [expressionToString(Retexpr)]);
-expressionToString(#varref{name = Name}) ->
+expressionToString(#variableReference{name = Name}) ->
     io_lib:format("~s", [expressionToString(Name)]);
-expressionToString(#op2{operator = Operator, op1 = Operand1, op2 = Operand2}) ->
+expressionToString(#operatorExpression2{operator = Operator, operand1 = Operand1, operand2 = Operand2}) ->
     io_lib:format("~s ~s ~s", [expressionToString(Operand1), Operator, expressionToString(Operand2)]);
-expressionToString(#op1{operator = Operator, operand = Operand}) ->
+expressionToString(#operatorExpression1{operator = Operator, operand = Operand}) ->
     io_lib:format("~s ~s", [expressionToString(Operand), Operator]);
 expressionToString({ImmediateValue, _, Val}) when ImmediateValue =:= integer; ImmediateValue =:= float ->
     io_lib:format("~w", [Val]);
@@ -47,8 +47,8 @@ expressionToString({ImmediateValue, _, Val}) when ImmediateValue =:= string ->
 expressionToString(Any) ->
     Any.
 
--spec flatfmt(string(), [any()]) -> string().
-flatfmt(FmtStr, Arguments) ->
+-spec fmt(string(), [any()]) -> string().
+fmt(FmtStr, Arguments) ->
     lists:flatten(io_lib:format(FmtStr, Arguments)).
 
 -spec getValuesByKeys([atom()], #{atom() => any()}) -> [any()].
@@ -102,18 +102,18 @@ primitiveSizeOf(u8) -> 1;
 primitiveSizeOf(i8) -> 1;
 primitiveSizeOf(f64) -> 8;
 primitiveSizeOf(f32) -> 4;
-primitiveSizeOf(T) -> throw(flatfmt("size of ~p is not defined", [T])).
+primitiveSizeOf(T) -> throw(fmt("size of ~p is not defined", [T])).
 
 voidType(Line) ->
-    #basic_type{class = void, tag = void, pdepth = 0, line = Line}.
+    #basicType{class = void, tag = void, pdepth = 0, line = Line}.
 
--spec namesOfVariableReferences([#varref{}]) -> [atom()].
+-spec namesOfVariableReferences([#variableReference{}]) -> [atom()].
 namesOfVariableReferences(VarRefs) ->
-    lists:map(fun (#varref{name = Name}) -> Name end, VarRefs).
+    lists:map(fun (#variableReference{name = Name}) -> Name end, VarRefs).
 
--spec namesOfVariableDefinitions([#vardef{}]) -> [atom()].
+-spec namesOfVariableDefinitions([#variableDefinition{}]) -> [atom()].
 namesOfVariableDefinitions(VarDefs) ->
-    lists:map(fun (#vardef{name = Name}) -> Name end, VarDefs).
+    lists:map(fun (#variableDefinition{name = Name}) -> Name end, VarDefs).
 
 -spec assert(boolean(), any()) -> ok.
 assert(true, _) ->
@@ -125,17 +125,17 @@ assert(false, Info) ->
 valueInList(Value, List) ->
     lists:any(fun (V) -> V =:= Value end, List).
 
-%% filter_varref_inmaps([#varref{name=a}, #varref{name=b}], #{a => 1})
-%% > [#varref{name=a}].
--spec filterVariableReferenceInMap([#varref{}], #{atom() := any()}) -> [#varref{}].
+%% filter_varref_inmaps([#variableReference{name=a}, #variableReference{name=b}], #{a => 1})
+%% > [#variableReference{name=a}].
+-spec filterVariableReferenceInMap([#variableReference{}], #{atom() := any()}) -> [#variableReference{}].
 filterVariableReferenceInMap(Varrefs, TargetMap) ->
-    lists:filter(fun (#varref{name = Name}) -> existsInMap(Name, TargetMap) end, Varrefs).
+    lists:filter(fun (#variableReference{name = Name}) -> existsInMap(Name, TargetMap) end, Varrefs).
 
 -ifdef(EUNIT).
 
 filterVariableReferenceInMap_test() ->
-    A = filterVariableReferenceInMap([#varref{name = a}, #varref{name = b}], #{a => 1}),
-    ?assertEqual(A, [#varref{name = a}]).
+    A = filterVariableReferenceInMap([#variableReference{name = a}, #variableReference{name = b}], #{a => 1}),
+    ?assertEqual(A, [#variableReference{name = a}]).
 
 -endif.
 

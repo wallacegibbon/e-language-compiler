@@ -23,8 +23,8 @@ generateCCode(AST, GlobalVars, InitCode, OutputFile) ->
     ok = file:write_file(OutputFile, Code).
 
 -spec fixFunctionForC(eExpression(), genCContext()) -> eExpression().
-fixFunctionForC(#function{exprs = Expressions, var_types = VarTypes} = F, {FunctionTypeMap, StructMap, GlobalVars}) ->
-    F#function{exprs = fixExpressionsForC(Expressions, {FunctionTypeMap, StructMap, maps:merge(GlobalVars, VarTypes)})};
+fixFunctionForC(#function{statements = Expressions, variableTypeMap = VarTypes} = F, {FunctionTypeMap, StructMap, GlobalVars}) ->
+    F#function{statements = fixExpressionsForC(Expressions, {FunctionTypeMap, StructMap, maps:merge(GlobalVars, VarTypes)})};
 fixFunctionForC(Any, _) ->
     Any.
 
@@ -33,17 +33,17 @@ fixExpressionsForC(Expressions, Ctx) ->
     ecompilerUtil:expressionMap(fun (E) -> fixExpressionForC(E, Ctx) end, Expressions).
 
 -spec fixExpressionForC(eExpression(), genCContext()) -> eExpression().
-fixExpressionForC(#op1{operator = '@', operand = Operand, line = Line} = E, {FunctionTypeMap, StructMap, VarTypes} = Ctx) ->
+fixExpressionForC(#operatorExpression1{operator = '@', operand = Operand, line = Line} = E, {FunctionTypeMap, StructMap, VarTypes} = Ctx) ->
     case ecompilerType:typeOfExpression(Operand, {VarTypes, FunctionTypeMap, StructMap, #{}}) of
-        #array_type{} ->
-            #op2{operator = '.', op1 = fixExpressionForC(Operand, Ctx), op2 = #varref{name = val, line = Line}};
+        #arrayType{} ->
+            #operatorExpression2{operator = '.', operand1 = fixExpressionForC(Operand, Ctx), operand2 = #variableReference{name = value, line = Line}};
         _ ->
             E
     end;
-fixExpressionForC(#op1{operand = Operand} = E, Ctx) ->
-    E#op1{operand = fixExpressionForC(Operand, Ctx)};
-fixExpressionForC(#op2{op1 = Operand1, op2 = Operand2} = E, Ctx) ->
-    E#op2{op1 = fixExpressionForC(Operand1, Ctx), op2 = fixExpressionForC(Operand2, Ctx)};
+fixExpressionForC(#operatorExpression1{operand = Operand} = E, Ctx) ->
+    E#operatorExpression1{operand = fixExpressionForC(Operand, Ctx)};
+fixExpressionForC(#operatorExpression2{operand1 = Operand1, operand2 = Operand2} = E, Ctx) ->
+    E#operatorExpression2{operand1 = fixExpressionForC(Operand1, Ctx), operand2 = fixExpressionForC(Operand2, Ctx)};
 fixExpressionForC(Any, _) ->
     Any.
 
@@ -57,11 +57,11 @@ commonCCodes() ->
 statementsToString(Statements, InitCode) ->
     statementsToString(Statements, InitCode, [], []).
 
-statementsToString([#function{name = Name, param_names = ParamNames, type = Fntype, var_types = VarTypes, exprs = Expressions} | Rest], InitCode, StatementStrs, FnDeclars) ->
+statementsToString([#function{name = Name, parameterNames = ParamNames, type = Fntype, variableTypeMap = VarTypes, statements = Expressions} | Rest], InitCode, StatementStrs, FnDeclars) ->
     ParamNameAtoms = fetchNamesFromVariableReferences(ParamNames),
     PureParams = mapToKVList(ParamNameAtoms, maps:with(ParamNameAtoms, VarTypes)),
     PureVars = maps:without(ParamNameAtoms, VarTypes),
-    Declar = functioinDeclarationToString(Name, functionParametersToString(PureParams), Fntype#fun_type.ret),
+    Declar = functioinDeclarationToString(Name, functionParametersToString(PureParams), Fntype#functionType.ret),
     Exprs2 = case Name =:= main of
                  true ->
                      InitCode ++ Expressions;
@@ -70,16 +70,16 @@ statementsToString([#function{name = Name, param_names = ParamNames, type = Fnty
              end,
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declar, variableMapToString(PureVars), expressionsToString(Exprs2)]),
     statementsToString(Rest, InitCode, [S | StatementStrs], [Declar ++ ";\n" | FnDeclars]);
-statementsToString([#struct{name = Name, field_types = FieldTypes, field_names = FieldNames} | Rest], InitCode, StatementStrs, FnDeclars) ->
+statementsToString([#struct{name = Name, fieldTypeMap = FieldTypes, fieldNames = FieldNames} | Rest], InitCode, StatementStrs, FnDeclars) ->
     FieldList = mapToKVList(fetchNamesFromVariableReferences(FieldNames), FieldTypes),
     S = io_lib:format("struct ~s {~n~s~n};~n~n", [Name, variableListToString(FieldList)]),
     statementsToString(Rest, InitCode, [S | StatementStrs], FnDeclars);
 statementsToString([], _, StatementStrs, FnDeclars) ->
     {lists:reverse(StatementStrs), lists:reverse(FnDeclars)}.
 
-functioinDeclarationToString(Name, ParamStr, #basic_type{pdepth = N} = Rettype) when N > 0 ->
+functioinDeclarationToString(Name, ParamStr, #basicType{pdepth = N} = Rettype) when N > 0 ->
     functionReturnTypeToString(Rettype, io_lib:format("(*~s(~s))", [Name, ParamStr]));
-functioinDeclarationToString(Name, ParamStr, #fun_type{} = Rettype) ->
+functioinDeclarationToString(Name, ParamStr, #functionType{} = Rettype) ->
     functionReturnTypeToString(Rettype, io_lib:format("(*~s(~s))", [Name, ParamStr]));
 functioinDeclarationToString(Name, ParamStr, Rettype) ->
     typeToCString(Rettype, io_lib:format("~s(~s)", [Name, ParamStr])).
@@ -103,27 +103,27 @@ variablesToString([], Strs) ->
     lists:reverse(Strs).
 
 fetchNamesFromVariableReferences(VarrefList) ->
-    lists:map(fun (#varref{name = N}) -> N end, VarrefList).
+    lists:map(fun (#variableReference{name = N}) -> N end, VarrefList).
 
 mapToKVList(NameAtoms, ValueMap) ->
     lists:zip(NameAtoms, ecompilerUtil:getValuesByKeys(NameAtoms, ValueMap)).
 
-functionReturnTypeToString(#fun_type{params = Params, ret = Rettype}, NameParams) ->
+functionReturnTypeToString(#functionType{parameters = Params, ret = Rettype}, NameParams) ->
     Paramstr = functionParamsToStringNoFunctionNames(Params),
     NewNameParams = io_lib:format("~s(~s)", [NameParams, Paramstr]),
     typeToCString(Rettype, NewNameParams);
-functionReturnTypeToString(#basic_type{pdepth = N} = T, NameParams) when N > 0 ->
-    typeToCString(T#basic_type{pdepth = N - 1}, NameParams).
+functionReturnTypeToString(#basicType{pdepth = N} = T, NameParams) when N > 0 ->
+    typeToCString(T#basicType{pdepth = N - 1}, NameParams).
 
 %% convert type to C string
 -spec typeToCString(eExpression(), iolist()) -> iolist().
-typeToCString(#array_type{len = Len, elemtype = ElementType}, Varname) ->
-    io_lib:format("struct {~s val[~w];} ~s", [typeToCString(ElementType, ""), Len, Varname]);
-typeToCString(#basic_type{class = Class, tag = Tag, pdepth = Depth}, Varname) when Depth > 0 ->
+typeToCString(#arrayType{length = Len, elemtype = ElementType}, Varname) ->
+    io_lib:format("struct {~s value[~w];} ~s", [typeToCString(ElementType, ""), Len, Varname]);
+typeToCString(#basicType{class = Class, tag = Tag, pdepth = Depth}, Varname) when Depth > 0 ->
     io_lib:format("~s~s ~s", [typeTagToString(Class, Tag), lists:duplicate(Depth, "*"), Varname]);
-typeToCString(#basic_type{class = Class, tag = Tag, pdepth = 0}, Varname) ->
+typeToCString(#basicType{class = Class, tag = Tag, pdepth = 0}, Varname) ->
     io_lib:format("~s ~s", [typeTagToString(Class, Tag), Varname]);
-typeToCString(#fun_type{params = Params, ret = Rettype}, Varname) ->
+typeToCString(#functionType{parameters = Params, ret = Rettype}, Varname) ->
     Paramstr = functionParamsToStringNoFunctionNames(Params),
     NameParams = io_lib:format("(*~s)(~s)", [Varname, Paramstr]),
     typeToCString(Rettype, NameParams).
@@ -143,26 +143,26 @@ expressionsToString([], ExprList) ->
     lists:reverse(ExprList).
 
 -spec expressionToString(eExpression(), char()) -> iolist().
-expressionToString(#if_expr{condition = Condition, then = Then, else = Else}, _) ->
+expressionToString(#ifStatement{condition = Condition, then = Then, else = Else}, _) ->
     io_lib:format("if (~s) {\n~s\n} else {\n~s}", [expressionToString(Condition, $\s), expressionsToString(Then), expressionsToString(Else)]);
-expressionToString(#while_expr{condition = Condition, exprs = Expressions}, _) ->
+expressionToString(#whileStatement{condition = Condition, statements = Expressions}, _) ->
     io_lib:format("while (~s) {\n~s\n}\n", [expressionToString(Condition, $\s), expressionsToString(Expressions)]);
-expressionToString(#op2{operator = '::', op1 = #varref{name = c}, op2 = Operand2}, Endchar) ->
+expressionToString(#operatorExpression2{operator = '::', operand1 = #variableReference{name = c}, operand2 = Operand2}, Endchar) ->
     expressionToString(Operand2, Endchar);
-expressionToString(#op2{operator = Operator, op1 = Operand1, op2 = Operand2}, Endchar) ->
+expressionToString(#operatorExpression2{operator = Operator, operand1 = Operand1, operand2 = Operand2}, Endchar) ->
     io_lib:format("(~s ~s ~s)~c", [expressionToString(Operand1, $\s), translateOperator(Operator), expressionToString(Operand2, $\s), Endchar]);
-expressionToString(#op1{operator = Operator, operand = Operand}, Endchar) ->
+expressionToString(#operatorExpression1{operator = Operator, operand = Operand}, Endchar) ->
     io_lib:format("(~s ~s)~c", [translateOperator(Operator), expressionToString(Operand, $\s), Endchar]);
 expressionToString(#call{fn = Fn, args = Arguments}, Endchar) ->
     ArgumentString = lists:join(",", lists:map(fun (E) -> expressionToString(E, $\s) end, Arguments)),
     io_lib:format("~s(~s)~c", [expressionToString(Fn, $\s), ArgumentString, Endchar]);
-expressionToString(#return{expr = Expression}, Endchar) ->
+expressionToString(#returnStatement{expression = Expression}, Endchar) ->
     io_lib:format("return ~s~c", [expressionToString(Expression, $\s), Endchar]);
-expressionToString(#goto{expr = Expression}, Endchar) ->
+expressionToString(#gotoStatement{expression = Expression}, Endchar) ->
     io_lib:format("goto ~s~c", [expressionToString(Expression, $\s), Endchar]);
 expressionToString(#label{name = Name}, _) ->
     io_lib:format("~s:", [Name]);
-expressionToString(#varref{name = Name}, Endchar) ->
+expressionToString(#variableReference{name = Name}, Endchar) ->
     io_lib:format("~s~c", [Name, Endchar]);
 expressionToString({Any, _Line, Value}, Endchar) when Any =:= integer; Any =:= float ->
     io_lib:format("~w~c", [Value, Endchar]);

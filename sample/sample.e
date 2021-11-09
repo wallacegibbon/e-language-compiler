@@ -12,9 +12,9 @@ struct Blah1
 end
 
 struct User
-    id:         i64         = 10 * 20 + 3 * 4 + TOTOAL_USERCNT,
+    id:         i64         = 10 * 20 + 3 * 4 + 22,
     %desc:      {i64, 10}   = {"hello"},
-    desc:       {i64, 10}   = {1,2,3,4,5,6,7,8,9,TOTOAL_USERCNT},
+    desc:       {i64, 10}   = {1,2,3,4,5,6,7,8,9,22},
     count:      u32,
     blah:       Blah,
     b2:         {Blah,3},
@@ -24,12 +24,12 @@ end
 struct List
     next:       List^,
     val:        any^,
-    ok:         User = User{id=1, count=TOTOAL_USERCNT},
+    ok:         User = User{id=1, count=22},
     %invalid:   List,
 end
 
 struct Administrator
-    users:      {User, TOTAL_ADMIN_LIMIT + 1},
+    users:      {User, 12},
     level:      i64,
 end
 
@@ -38,29 +38,22 @@ mod_info:   {i64, 100};
 blah:       i64 = 10;
 blah1:      i64 = sizeof(Blah1);
 
-const TOTAL_ADMIN_LIMIT = 10 + 2;
-
 % t: {i64, 3} = {0, 1, 2}; % t@^
 % struct {i64 val[8];} t = {{0, 1, 2}}; // *(t.val)
 
 % t: {User, 2} = {User{id=1, desc={"a"}}, User{id=2, desc={"b"}}};
 % struct {User val[2];} t = {{1, 0, {"a"}}, {2, 0, {"b"}}};
 
-const BASE_MUL = 12;
-const TOTOAL_USERCNT = 10 + 3 * BASE_MUL - 1;
-const blah1 = 1 bsl 8;
-const blah2 = 1 bsr 8;
-
 u1: User = User{id=8};
 
 fun main(argc: i64, argv: i64^^): i64
-    %users: {User, TOTOAL_USERCNT} = {User{nameref=1}, User{id=1}};
+    %users: {User, 22} = {User{nameref=1}, User{id=1}};
     %users: {User, 2} = {User{non=1}, User{id=1}};
     users: {User, 2} = {User{id=1, blah=Blah{id="a"}}, User{id=1}};
     v0: i8 = -1;
     users@^.blah = Blah{id="b"};
-    cnt: i64 = TOTOAL_USERCNT;
-    initUsers(users@, TOTOAL_USERCNT);
+    cnt: i64 = 22;
+    initUsers(users@, 22);
 
     %goto a;
 
@@ -68,7 +61,7 @@ fun main(argc: i64, argv: i64^^): i64
     v1 = v1 + 10;
 
     cnt = v1 + 2;
-    cnt = TOTOAL_USERCNT;
+    cnt = 22;
 
     v2: u8 = 2;
     v2 = v2 + 1;
@@ -77,9 +70,6 @@ fun main(argc: i64, argv: i64^^): i64
 
     f: fun(i64^) = myfn;
     f(v1@);
-
-    %mym::f();
-    c::malloc(30);
 
     goto finish;
 
@@ -95,9 +85,6 @@ fun main(argc: i64, argv: i64^^): i64
     %1 - x@;
 
     %c::blah(Blah1{id="a"});
-
-    %t: u8^ = simplemod::test();
-    t: u8 = simplemod::test();
 
 @@finish:
 

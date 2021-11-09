@@ -5,10 +5,10 @@
 -include("ecompilerFrameDef.hrl").
 
 -spec expandSizeOf(eAST(), compilePassCtx1()) -> eAST().
-expandSizeOf([#function{exprs = Expressions} = F | Rest], Ctx) ->
-    [F#function{exprs = expandSizeofInExpressions(Expressions, Ctx)} | expandSizeOf(Rest, Ctx)];
-expandSizeOf([#struct{field_defaults = FieldDefaults} = S | Rest], Ctx) ->
-    [S#struct{field_defaults = expandSizeofInMap(FieldDefaults, Ctx)} | expandSizeOf(Rest, Ctx)];
+expandSizeOf([#function{statements = Expressions} = F | Rest], Ctx) ->
+    [F#function{statements = expandSizeofInExpressions(Expressions, Ctx)} | expandSizeOf(Rest, Ctx)];
+expandSizeOf([#struct{fieldDefaultValueMap = FieldDefaults} = S | Rest], Ctx) ->
+    [S#struct{fieldDefaultValueMap = expandSizeofInMap(FieldDefaults, Ctx)} | expandSizeOf(Rest, Ctx)];
 expandSizeOf([], _) ->
     [].
 
@@ -25,14 +25,14 @@ expandSizeofInExpression(#sizeof{type = T, line = Line}, Ctx) ->
         I ->
             throw({Line, I})
     end;
-expandSizeofInExpression(#op2{op1 = Operand1, op2 = Operand2} = O, Ctx) ->
-    O#op2{op1 = expandSizeofInExpression(Operand1, Ctx), op2 = expandSizeofInExpression(Operand2, Ctx)};
-expandSizeofInExpression(#op1{operand = Operand} = O, Ctx) ->
-    O#op1{operand = expandSizeofInExpression(Operand, Ctx)};
-expandSizeofInExpression(#struct_init{field_values = ExprMap} = Si, Ctx) ->
-    Si#struct_init{field_values = expandSizeofInMap(ExprMap, Ctx)};
-expandSizeofInExpression(#array_init{elements = Elements} = Ai, Ctx) ->
-    Ai#array_init{elements = expandSizeofInExpressions(Elements, Ctx)};
+expandSizeofInExpression(#operatorExpression2{operand1 = Operand1, operand2 = Operand2} = O, Ctx) ->
+    O#operatorExpression2{operand1 = expandSizeofInExpression(Operand1, Ctx), operand2 = expandSizeofInExpression(Operand2, Ctx)};
+expandSizeofInExpression(#operatorExpression1{operand = Operand} = O, Ctx) ->
+    O#operatorExpression1{operand = expandSizeofInExpression(Operand, Ctx)};
+expandSizeofInExpression(#structInitializeExpression{fieldValueMap = ExprMap} = Si, Ctx) ->
+    Si#structInitializeExpression{fieldValueMap = expandSizeofInMap(ExprMap, Ctx)};
+expandSizeofInExpression(#arrayInitializeExpression{elements = Elements} = Ai, Ctx) ->
+    Ai#arrayInitializeExpression{elements = expandSizeofInExpressions(Elements, Ctx)};
 expandSizeofInExpression(Any, _) ->
     Any.
 
@@ -56,12 +56,12 @@ fillStructSize(Any, _) ->
 
 -spec fillStructOffsets(eExpression(), compilePassCtx1()) -> eExpression().
 fillStructOffsets(#struct{} = S, Ctx) ->
-    S#struct{field_offsets = offsetOfStruct(S, Ctx)};
+    S#struct{fieldOffsetMap = offsetOfStruct(S, Ctx)};
 fillStructOffsets(Any, _) ->
     Any.
 
 -spec offsetOfStruct(#struct{}, compilePassCtx1()) -> #{atom() := integer()}.
-offsetOfStruct(#struct{field_names = FieldNames, field_types = FieldTypes}, Ctx) ->
+offsetOfStruct(#struct{fieldNames = FieldNames, fieldTypeMap = FieldTypes}, Ctx) ->
     FieldTypeList = getKVsByReferences(FieldNames, FieldTypes),
     {_, OffsetMap} = sizeOfStructFields(FieldTypeList, 0, #{}, Ctx),
     OffsetMap.
@@ -69,12 +69,12 @@ offsetOfStruct(#struct{field_names = FieldNames, field_types = FieldTypes}, Ctx)
 -spec sizeOfStruct(#struct{}, compilePassCtx1()) -> non_neg_integer().
 sizeOfStruct(#struct{size = Size}, _) when is_integer(Size), Size > 0 ->
     Size;
-sizeOfStruct(#struct{field_names = Names, field_types = Types}, Ctx) ->
+sizeOfStruct(#struct{fieldNames = Names, fieldTypeMap = Types}, Ctx) ->
     FieldTypeList = getKVsByReferences(Names, Types),
     {Size, _} = sizeOfStructFields(FieldTypeList, 0, #{}, Ctx),
     Size.
 
--spec getKVsByReferences([#varref{}], #{atom() := any()}) -> [{atom(), any()}].
+-spec getKVsByReferences([#variableReference{}], #{atom() := any()}) -> [{atom(), any()}].
 getKVsByReferences(RefList, Map) ->
     Keys = ecompilerUtil:namesOfVariableReferences(RefList),
     Values = ecompilerUtil:getValuesByKeys(Keys, Map),
@@ -106,37 +106,37 @@ fixStructFieldOffset(CurrentOffset, NextOffset, PointerWidth) ->
     end.
 
 -spec sizeOf(eType(), compilePassCtx1()) -> non_neg_integer().
-sizeOf(#array_type{elemtype = T, len = Len}, {_, PointerWidth} = Ctx) ->
-    ElemSize = sizeOf(T, Ctx),
-    FixedSize = case ElemSize < PointerWidth of
+sizeOf(#arrayType{elemtype = T, length = Len}, {_, PointerWidth} = Ctx) ->
+    ElementSize = sizeOf(T, Ctx),
+    FixedSize = case ElementSize < PointerWidth of
                     true ->
-                        case PointerWidth rem ElemSize of
+                        case PointerWidth rem ElementSize of
                             0 ->
-                                ElemSize;
+                                ElementSize;
                             _ ->
                                 PointerWidth
                         end;
                     false ->
-                        ecompilerUtil:fillToPointerWidth(ElemSize, PointerWidth)
+                        ecompilerUtil:fillToPointerWidth(ElementSize, PointerWidth)
                 end,
     FixedSize * Len;
-sizeOf(#basic_type{pdepth = N}, {_, PointerWidth}) when N > 0 ->
+sizeOf(#basicType{pdepth = N}, {_, PointerWidth}) when N > 0 ->
     PointerWidth;
-sizeOf(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
+sizeOf(#basicType{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
     case maps:find(Tag, StructMap) of
         {ok, S} ->
             sizeOfStruct(S, Ctx);
         error ->
-            throw(ecompilerUtil:flatfmt("~s is not found", [Tag]))
+            throw(ecompilerUtil:fmt("~s is not found", [Tag]))
     end;
-sizeOf(#basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
+sizeOf(#basicType{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
     case ecompilerUtil:primitiveSizeOf(Tag) of
         pwidth ->
             PointerWidth;
         V when is_integer(V) ->
             V
     end;
-sizeOf(#fun_type{}, {_, PointerWidth}) ->
+sizeOf(#functionType{}, {_, PointerWidth}) ->
     PointerWidth;
 sizeOf(A, _) ->
-    throw(ecompilerUtil:flatfmt("invalid type ~p on sizeof", [A])).
+    throw(ecompilerUtil:fmt("invalid type ~p on sizeof", [A])).
