@@ -1,9 +1,10 @@
 ## The E compiler
 
 This is the compiler for my machine-level programming language. It is designed to be:
-- *E*asy to learn and implement
-- Suitable for *E*mbeded systems
-- Friendly to *E*lectronic hobbyist
+- **E**asy to learn and implement
+- **E**xplicit for pointer related operations
+- Suitable for **E**mbeded systems
+- Friendly to **E**lectronic hobbyist
 
 So I name it the E language in this document.
 
