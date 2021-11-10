@@ -1,9 +1,11 @@
 ## The E compiler
-=====
 
-This is the compiler for my machine-level programming language.
+This is the compiler for my machine-level programming language. It is designed to be:
+- *E*asy to learn and implement
+- Suitable for *E*mbeded systems
+- Friendly to *E*lectronic hobbyist
 
-I haven't given it a name yet, so for convenience, I will call it the E language in this document.
+So I name it the E language in this document.
 
 
 ## What is it ?
@@ -11,6 +13,7 @@ I haven't given it a name yet, so for convenience, I will call it the E language
 The E language is a simplified C language, they have similar semantics, but the syntax of E language is more compact.
 
 Here are some comparisons:
+
 
 ### basic operations
 
@@ -58,6 +61,7 @@ Blah c[2] = {{1, "a"}, {2, "b}};
 
 ```
 
+
 ### union and enum
 
 E language do not support enum or union.
@@ -77,6 +81,7 @@ int main(int argc, char **argv)
     return 0;
 }
 ```
+
 
 ### condition
 
@@ -100,6 +105,7 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 }
 ```
 
+
 ### function pointer
 
 ```
@@ -115,13 +121,11 @@ void (*(*(*myFunction1)())())() = anotherFuntion1;
 unsigned char * (*(*(*myFunction2)(char *, unsigned int))(char *, char *))(int, unsigned int) = anotherFuntion2;
 ```
 
+
 ## Why another C ?
 
 - The syntax of C language is bad in many situations like complex function pointers.
-
 - The goto statement in C language is not powerful enough, gcc have "labels as values" to solve this, but it is not standard C, and it introduces new keyword.
-
-- C language does not have module system, the code constructing depends on many header files and building tools.
 
 
 ## vim plugin
