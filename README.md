@@ -1,22 +1,15 @@
-## The E compiler
+## The E Language And Its Compiler
 
-This is the compiler for my machine-level programming language. It is designed to be:
-- **E**asy to learn and implement
-- **E**xplicit for pointer related operations
-- Suitable for **E**mbeded systems
-- Friendly to **E**lectronic hobbyist
+The E language is a simplified C language with fewer concepts and more reasonable syntax. It is designed to be:
+- **E**asy to learn and implement.
+- **E**xplicit on pointer operations.
+- Suitable for **E**mbeded systems and friendly to **E**lectronic hobbyists.
 
-So I name it the E language in this document.
-
-
-## What is it ?
-
-The E language is a simplified C language, they have similar semantics, but the syntax of E language is more compact.
 
 Here are some comparisons:
 
 
-### basic operations
+### Basic Operations
 
 |        C language          |     E language           |
 |----------------------------|--------------------------|
@@ -33,7 +26,8 @@ Here are some comparisons:
 | sizeof (struct Blah *)     | sizeof(Blah^)            |
 | malloc(sizeof(struct A))   | malloc(sizeof(A))        |
 
-### array and struct
+
+### Array And Struct
 
 ```
 arr: {i32, 3} = {1, 2, 3};
@@ -63,12 +57,12 @@ Blah c[2] = {{1, "a"}, {2, "b}};
 ```
 
 
-### union and enum
+### Union And Enum
 
 E language do not support enum or union.
 
 
-### function definition
+### Function Definition
 
 ```
 fun main(argc: isize, argv: i8^^): isize
@@ -84,7 +78,7 @@ int main(int argc, char **argv)
 ```
 
 
-### condition
+### Condition
 
 ```
 if fn1(fn2(val1)) >= fn3(val2) then
@@ -107,7 +101,7 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 ```
 
 
-### function pointer
+### Function Pointer
 
 ```
 myFunction1: fun(): fun(): fun() = anotherFuntion1;
@@ -123,15 +117,15 @@ unsigned char * (*(*(*myFunction2)(char *, unsigned int))(char *, char *))(int, 
 ```
 
 
-## Why another C ?
+## Why Another C ?
 
 - The syntax of C language is bad in many situations like complex function pointers.
 - The goto statement in C language is not powerful enough, gcc have "labels as values" to solve this, but it is not standard C, and it introduces new keyword.
 
 
-## vim plugin
+## Editor Support
 
-A simple vim plugin (only syntax highlight is supported) is ready to use, install with this command
+A simple Vim plugin is inside this project. Install it by copying it to the certain directory:
 
 ```sh
 mkdir -p ~/.vim/pack/my/start/
