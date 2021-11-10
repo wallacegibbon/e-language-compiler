@@ -35,21 +35,21 @@ Here are some comparisons:
 arr: {i32, 3} = {1, 2, 3};
 
 struct Blah
-    id:         i32,
-    name:       i8^,
+    id: i32,
+    name: i8^,
 end
 
-b: Blah = Blah{id=1, name="hello"};
+b: Blah = Blah{id = 1, name = "hello"};
 
-c: {Blah, 2} = { Blah{id=1, name="a"}, Blah{id=2, name="b"} };
+c: {Blah, 2} = {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}};
 ```
 
 ```c
 i32 arr[3] = {1, 2, 3};
 
 struct Blah {
-    i32         id;
-    char        *name;
+    i32 id;
+    char *name;
 }
 
 Blah b = {1, "hello"};
@@ -103,11 +103,16 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 ### function pointer
 
 ```
-myfn1: fun(): fun(): fun(u8^) = get_incfn1;
+myFunction1: fun(): fun(): fun() = anotherFuntion1;
+
+myFunction2: fun(i8^, usize): fun(i8^, i8^): fun(isize, usize): u8^ = anotherFuntion2;
+
 ```
 
 ```c
-void (*(*(*myfn1)())())(u8*) = get_incfn1;
+void (*(*(*myFunction1)())())() = anotherFuntion1;
+
+unsigned char * (*(*(*myFunction2)(char *, unsigned int))(char *, char *))(int, unsigned int) = anotherFuntion2;
 ```
 
 ## Why another C ?
@@ -132,6 +137,9 @@ cp -r ./misc/elang.vim/ ~/.vim/pack/my/start/
 ## Macro
 
 A macro system like C and Erlang (Token level) is supported (under developing...)
+
+Macro can bring many problems (like overriding predefined variables like true and false in C), so a prefix "?" should be used
+to make it explicit when invoking macros. (just like erlang)
 
 
 ## Plans
