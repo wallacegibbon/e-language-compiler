@@ -60,6 +60,8 @@ fun main(argc: i64, argv: i64^^): i64
     v1: i64 = 1;
     v1 = v1 + 10;
 
+    (v1 as Blah^)^.a;
+
     cnt = v1 + 2;
     cnt = 22;
 

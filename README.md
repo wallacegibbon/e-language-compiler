@@ -11,7 +11,7 @@ Here are some comparisons:
 
 ### Basic Operations
 
-|        C language          |     E language           |
+|         C language         |        E language        |
 |----------------------------|--------------------------|
 | &p                         | p@                       |
 | *p                         | p^                       |
@@ -23,6 +23,7 @@ Here are some comparisons:
 | &p[3]                      | p+3                      |
 | uint8_t *p                 | p: u8^                   |
 | void **p                   | p: any^^                 |
+| ((struct Blah *) p)->f1    | (p as Blah^)^.f1         |
 | sizeof (struct Blah *)     | sizeof(Blah^)            |
 | malloc(sizeof(struct A))   | malloc(sizeof(A))        |
 
@@ -135,14 +136,28 @@ cp -r ./misc/elang.vim/ ~/.vim/pack/my/start/
 
 ## Macro
 
-A macro system like C and Erlang (Token level) is supported (under developing...)
+A *token-level* macro system like C and Erlang is supported. (still under developing...)
 
-Macro can bring many problems (like overriding predefined variables like true and false in C), so a prefix "?" should be used
-to make it explicit when invoking macros. (just like erlang)
+Macro can bring many problems like overriding predefined variables. e.g. In C language, you can do dangerous things like `#define true 0`.
+To solve this problem, a prefix "?" should be used to make it explicit when invoking macros. (just like erlang)
 
 
 ## Plans
 
+### Target
+
 This compiler only compile E language to C language for now, in the future,
 it will be compiled directly to machine language. (RISC-V may be the only target)
+
+### Heap And Stack
+
+For now, `malloc` function is the only way to allocate memory on heap, the `new` keyword may be introduced so that you can create a object on heap directly.
+The syntax may look like this: (not decided yet)
+
+```
+b: Blah = new Blah{id = 1, name = "hello"};
+
+c: {Blah, 2} = new {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}};
+
+```
 

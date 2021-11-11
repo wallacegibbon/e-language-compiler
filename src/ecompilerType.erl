@@ -187,6 +187,17 @@ typeOfExpression(#gotoStatement{line = Line}, _) ->
     ecompilerUtil:voidType(Line);
 typeOfExpression(#gotoLabel{line = Line}, _) ->
     ecompilerUtil:voidType(Line);
+typeOfExpression(#typeConvert{expression = Expression, type = TargetType, line = Line}, Ctx) ->
+    case {typeOfExpression(Expression, Ctx), TargetType} of
+        {#basicType{pdepth = D1}, #basicType{pdepth = D2}} when D1 > 0, D2 > 0 ->
+            TargetType;
+        {#basicType{class = integer, pdepth = 0}, #basicType{pdepth = D2}} when D2 > 0 ->
+            TargetType;
+        {#basicType{class = integer, pdepth = 0}, #basicType{class = integer, pdepth = 0}} ->
+            TargetType;
+        {ExpressionType, _} ->
+            throw({Line, ecompilerUtil:fmt("incompatible type: ~w <-> ~w", [ExpressionType, TargetType])})
+    end;
 typeOfExpression({float, Line, _}, _) ->
     #basicType{class = float, pdepth = 0, tag = f64, line = Line};
 typeOfExpression({integer, Line, _}, _) ->

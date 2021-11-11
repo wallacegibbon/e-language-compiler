@@ -14,7 +14,7 @@ Terminals
 %% operators
 ',' '::' ':' ';' '=' '{' '}' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '~' '!' '!=' '==' '>=' '<='
 %% keywords
-struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr' while do 'if' then elif else return sizeof goto
+struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr' while do 'if' then elif else return sizeof goto as
 
 %% reserved keywords
 'cond' 'case' for break continue
@@ -182,6 +182,7 @@ expression -> atomicLiteralValues : '$1'.
 expression -> callExpression : '$1'.
 expression -> sizeofExpression : '$1'.
 expression -> '(' expression ')' : '$2'.
+expression -> '(' expression as typeAnnotation ')' : #typeConvert{expression = '$2', type = '$4', line = tokenLine('$3')}.
 
 reservedKeyword -> 'cond' : '$1'.
 reservedKeyword -> 'case' : '$1'.

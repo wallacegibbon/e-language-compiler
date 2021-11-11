@@ -10,7 +10,7 @@ syn match eFloat		    "\<\.\d\+\([Ee][-+]\d\+\)\?\>"
 syn match eFloat		    "\<\d\+[Ee][-+]\d\+\>"
 syn match eLabel		    "^@@.*:"
 
-syn keyword eKeyword fun end if then else elif while do goto sizeof typeof struct return
+syn keyword eKeyword fun end if then else elif while do goto sizeof typeof struct return as
 syn keyword eType usize isize u8 i8 u16 i16 u32 i32 u64 i64 float64 float32 any
 syn keyword eOperator band bor bxor bnot and or not rem
 syn match   eOperator "==\|!=\|>=\|<=\|>\|<\|@\|\^\|+\|-\|*\|/\|="

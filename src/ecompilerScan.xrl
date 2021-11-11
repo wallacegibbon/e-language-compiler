@@ -28,7 +28,7 @@ Rules.
 {DecimalDigit}+\.{DecimalDigit}+ : {token, {float, TokenLine, list_to_float(TokenChars)}}.
 {DecimalDigit}\.{DecimalDigit}+e{DecimalDigit}+ : {token, {float, TokenLine, list_to_float(TokenChars)}}.
 {Delim} : {token, {list_to_atom(TokenChars), TokenLine}}.
-struct|end|fun|return|if|then|elif|else|while|do|goto|sizeof : {token, {list_to_atom(TokenChars), TokenLine}}.
+struct|end|fun|return|if|then|elif|else|while|do|goto|sizeof|as : {token, {list_to_atom(TokenChars), TokenLine}}.
 rem|and|or|band|bor|bxor|bsl|bsr : {token, {list_to_atom(TokenChars), TokenLine}}.
 cond|case|for|break|continue : {token, {list_to_atom(TokenChars), TokenLine}}.
 u8|i8|u16|i16|u32|i32|u64|i64|usize|isize : {token, {integerType, TokenLine, list_to_atom(TokenChars)}}.

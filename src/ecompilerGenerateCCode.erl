@@ -164,6 +164,8 @@ expressionToString(#gotoLabel{name = Name}, _) ->
     io_lib:format("~s:", [Name]);
 expressionToString(#variableReference{name = Name}, Endchar) ->
     io_lib:format("~s~c", [Name, Endchar]);
+expressionToString(#typeConvert{expression = Expression, type = TargetType}, Endchar) ->
+    io_lib:format("((~s) ~s)~c", [typeToCString(TargetType, ""), expressionToString(Expression, $\s), Endchar]);
 expressionToString({Any, _Line, Value}, Endchar) when Any =:= integer; Any =:= float ->
     io_lib:format("~w~c", [Value, Endchar]);
 expressionToString({Any, _Line, S}, Endchar) when Any =:= string ->

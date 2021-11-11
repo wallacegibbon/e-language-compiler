@@ -124,6 +124,11 @@
         {line = 0 :: integer(),
          expression :: eExpression()}).
 
+-record(typeConvert,
+        {line = 0 :: integer(),
+         expression :: eExpression(),
+         type :: eType()}).
+
 % primitive types: u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
 -type eType() :: #basicType{} | #arrayType{} | #functionType{} | any().
 
