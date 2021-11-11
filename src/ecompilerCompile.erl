@@ -33,7 +33,7 @@ compileFromRawAST(AST, CustomCompileOptions) ->
     %% type checking
     Maps = {FunctionTypeMap, StructMap2},
     ecompilerType:checkTypesInAST(AST4, VariableTypeMap, Maps),
-    ecompilerType:checkTypesInExpressions(InitCode1, VariableTypeMap, Maps),
+    ecompilerType:checkTypesInASTNodeList(InitCode1, VariableTypeMap, Maps),
     %% expand init exprs like A{a=1} and {1,2,3}
     AST5 = ecompilerExpandInitExpression:expandInitExpressionInFunctions(AST4, StructMap2),
 

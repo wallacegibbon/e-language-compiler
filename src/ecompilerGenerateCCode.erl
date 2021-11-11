@@ -34,7 +34,7 @@ fixExpressionsForC(Expressions, Ctx) ->
 
 -spec fixExpressionForC(eExpression(), genCContext()) -> eExpression().
 fixExpressionForC(#operatorExpression1{operator = '@', operand = Operand, line = Line} = E, {FunctionTypeMap, StructMap, VarTypes} = Ctx) ->
-    case ecompilerType:typeOfExpression(Operand, {VarTypes, FunctionTypeMap, StructMap, #{}}) of
+    case ecompilerType:typeOfASTNode(Operand, {VarTypes, FunctionTypeMap, StructMap, #{}}) of
         #arrayType{} ->
             #operatorExpression2{operator = '.', operand1 = fixExpressionForC(Operand, Ctx), operand2 = #variableReference{name = value, line = Line}};
         _ ->
