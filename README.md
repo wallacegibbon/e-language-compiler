@@ -5,7 +5,6 @@ The E language is a simplified C language with fewer concepts and more reasonabl
 - **E**xplicit on pointer operations.
 - Suitable for **E**mbeded systems and friendly to **E**lectronic hobbyists.
 
-
 Here are some comparisons:
 
 
@@ -58,9 +57,48 @@ Blah c[2] = {{1, "a"}, {2, "b}};
 ```
 
 
-### Union And Enum
+### Union
 
-E language do not support enum or union.
+The most common usage of `union` is to reuse memory, which is useful in specific situations. But most union can be simply replaced by pointer operations.
+Here is an example about `union` in C language: 
+
+```c
+struct A {
+    unsigned char tag;
+    union {
+        long long num;
+        char buf[8];
+    } value;
+};
+
+struct A a = {.tag = 1, .value.num = 0x12345678 };
+printf("%x\n", a.value.buf[2]);
+// 34
+
+```
+
+In E language (and also in C language), you can use pointer manipulation to achieve this:
+
+```
+struct A
+    tag: u8,
+    value: i64,
+end
+
+a: A = A{tag = 1, value = 0x12345678};
+printf("%x\n", ((a.value@ as i8^) + 2)^);
+% 34
+```
+
+To keep things minimum, E language do not support `union`.
+
+
+### Enum
+
+Enum is good, it brings better type checking to some extent. But on the other hand, everything will still work without `enum`.
+On the other hand, the preprocessor of E language support `#define xx xxx`, which has reduced the necessity of `enum`.
+
+To keep things minimum, E language do not support `enum`, either.
 
 
 ### Function Definition
