@@ -22,7 +22,7 @@ fun main(argc: isize, argv: i64^^): i64
 
     puts("after goto");
 
-@@finish:
+@finish
     puts("after label");
 
     return (tmp + 11)^;

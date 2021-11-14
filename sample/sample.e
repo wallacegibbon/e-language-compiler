@@ -86,9 +86,7 @@ fun main(argc: i64, argv: i64^^): i64
     1 + x@;
     %1 - x@;
 
-    %c::blah(Blah1{id = "a"});
-
-@@finish:
+@finish
 
     return 0;
 end

@@ -1,7 +1,7 @@
 Nonterminals
 
 rootStatementList rootStatement structDefinition functionDefinition variableDefinitionList variableDefinition parameters
-functionStatementList functionStatement ifStatement elseStatement whileStatement
+functionStatementList functionStatement ifStatement elseStatement whileStatement gotoLabel
 expression  callExpression preMinusPlusExpression sizeofExpression assignExpression op19 op30 op29 op28 op27 op26 op25 op2WithAssignment
 typeAnnotationList typeAnnotation
 pointerDepth atomicLiteralValues arrayInitExpression arrayInitElements structInitExpression structInitFields structInitAssignment
@@ -12,7 +12,7 @@ reservedKeyword
 Terminals
 
 %% operators
-',' '::' ':' ';' '=' '{' '}' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '~' '!' '!=' '==' '>=' '<='
+',' ':' ';' '=' '{' '}' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '~' '!' '!=' '==' '>=' '<='
 %% keywords
 struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr' while do 'if' then elif else return sizeof goto as
 
@@ -164,7 +164,9 @@ functionStatement -> ifStatement : '$1'.
 functionStatement -> whileStatement : '$1'.
 functionStatement -> goto expression ';' : #gotoStatement{expression = '$2', line = tokenLine('$1')}.
 functionStatement -> return expression ';' : #returnStatement{expression = '$2', line = tokenLine('$1')}.
-functionStatement -> '@' '@' identifier ':' : #gotoLabel{name = tokenValue('$3'), line = tokenLine('$3')}.
+functionStatement -> gotoLabel : '$1'.
+
+gotoLabel -> '@' identifier : #gotoLabel{name = tokenValue('$2'), line = tokenLine('$2')}.
 
 expression -> reservedKeyword : return_error(tokenLine('$1'), ecompilerUtil:fmt("~s is reserved keyword", [tokenSymbol('$1')])).
 expression -> expression op30 expression : #operatorExpression2{operator = tokenSymbol('$2'), operand1 = '$1', operand2 = '$3', line=tokenLine('$2')}.
@@ -190,7 +192,7 @@ reservedKeyword -> for : '$1'.
 reservedKeyword -> break : '$1'.
 reservedKeyword -> continue : '$1'.
 
-%% the precedence of 'preMinusPlusExpression' needs to be higher than "operand2 -"
+%% the precedence of 'preMinusPlusExpression' needs to be higher than "operatorExpression2 +/-"
 Unary 300 preMinusPlusExpression.
 preMinusPlusExpression -> '-' expression : #operatorExpression1{operator = tokenSymbol('$1'), operand = '$2', line = tokenLine('$1')}.
 preMinusPlusExpression -> '+' expression : #operatorExpression1{operator = tokenSymbol('$1'), operand = '$2', line = tokenLine('$1')}.
@@ -203,7 +205,6 @@ op19 -> '~' : '$1'.
 
 Left 1000 op30.
 op30 -> '.' : '$1'.
-op30 -> '::' : '$1'.
 
 Left 290 op29.
 op29 -> '*' : '$1'.
