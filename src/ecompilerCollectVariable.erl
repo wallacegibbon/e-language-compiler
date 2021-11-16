@@ -49,9 +49,8 @@ structInitToMap([#operatorExpression2{operator = assign, operand1 = #variableRef
 structInitToMap([], FieldNames, ExprMap) ->
     {FieldNames, ExprMap}.
 
-%% in function expressions, the init code of defvar can not be simply
-%% fetched out from the code, it should be replaced as assignment in the
-%% same place.
+%% In function expressions, the init code of defvar can not be simply fetched out from the code,
+%% it should be replaced as assignment in the same place.
 -spec fetchVariables(eAST(), eAST(), {variableTypeMap(), eAST(), boolean()}) -> {eAST(), variableTypeMap(), eAST()}.
 fetchVariables([#variableDefinition{name = Name, type = Type, line = Line, initialValue = Initval} | Rest], NewAst, {VarTypes, InitCode, CollectInitCode}) ->
     ensureNoNameConflict(Name, VarTypes, Line),
