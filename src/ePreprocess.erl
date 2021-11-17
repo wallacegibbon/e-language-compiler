@@ -188,25 +188,25 @@ process_elif_4_test() ->
 
 -spec convertElifToElseAndIf([token()]) -> [token()].
 convertElifToElseAndIf(Tokens) ->
-    lists:reverse(lists:flatten(convertElifToElseAndIf(Tokens, [], 0))).
+    lists:flatten(convertElifToElseAndIf(Tokens, 0)).
 
--spec convertElifToElseAndIf([token()], TokenTree, integer()) -> TokenTree when TokenTree :: [token() | TokenTree].
-convertElifToElseAndIf([{'#', _} = PreTag, {'if', _} = Token | Rest], CollectedTokens, _) ->
-    [convertElifToElseAndIf(Rest, [], 0), Token, PreTag, CollectedTokens];
-convertElifToElseAndIf([{'#', _}, {elif, LineNumber} | Rest], CollectedTokens, ElifDepth) ->
-    convertElifToElseAndIf(Rest, [makeElifReplacement(LineNumber) | CollectedTokens], ElifDepth + 1);
-convertElifToElseAndIf([{'#', _} = PreTag, {identifier, _, endif} = Token | Rest], CollectedTokens, ElifDepth) ->
-    convertElifToElseAndIf(Rest, [lists:duplicate(ElifDepth + 1, [Token, PreTag]) | CollectedTokens], 0);
-convertElifToElseAndIf([Token | Rest], CollectedTokens, ElifDepth) ->
-    convertElifToElseAndIf(Rest, [Token | CollectedTokens], ElifDepth);
-convertElifToElseAndIf([], _, N) when N =/= 0 ->
+-spec convertElifToElseAndIf([token()], integer()) -> TokenTree when TokenTree :: [token() | TokenTree].
+convertElifToElseAndIf([{'#', _} = PreTag, {'if', _} = Token | Rest], _) ->
+    [PreTag, Token | convertElifToElseAndIf(Rest, 0)];
+convertElifToElseAndIf([{'#', _}, {elif, LineNumber} | Rest], ElifDepth) ->
+    [makeElifReplacement(LineNumber) | convertElifToElseAndIf(Rest, ElifDepth + 1)];
+convertElifToElseAndIf([{'#', _} = PreTag, {identifier, _, endif} = Token | Rest], ElifDepth) ->
+    [lists:duplicate(ElifDepth + 1, [PreTag, Token]) | convertElifToElseAndIf(Rest, 0)];
+convertElifToElseAndIf([Token | Rest], ElifDepth) ->
+    [Token | convertElifToElseAndIf(Rest, ElifDepth)];
+convertElifToElseAndIf([], N) when N =/= 0 ->
     throw({0, "preprocessor error, #if and #endif mismatch"});
-convertElifToElseAndIf([], CollectedTokens, 0) ->
-    CollectedTokens.
+convertElifToElseAndIf([], 0) ->
+    [].
 
 -spec makeElifReplacement(integer()) -> [any()].
 makeElifReplacement(LineNumber) ->
-    lists:reverse([{'#', LineNumber}, {else, LineNumber}, {'#', LineNumber}, {'if', LineNumber}]).
+    [{'#', LineNumber}, {else, LineNumber}, {'#', LineNumber}, {'if', LineNumber}].
 
 -ifdef(EUNIT).
 
