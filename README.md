@@ -1,8 +1,8 @@
 ## The E Language And Its Compiler
 
 The E language is a simplified C language with fewer concepts and more reasonable syntax. It is designed to be:
-- **E**asy to learn and implement.
 - **E**xplicit on pointer operations.
+- **E**asy to learn and implement.
 - Suitable for **E**mbeded systems and friendly to **E**lectronic hobbyists.
 
 Here are some comparisons:
@@ -96,7 +96,7 @@ To keep things minimum, E language do not support `union`.
 ### Enum
 
 Enum is good, it brings better type checking to some extent. But on the other hand, everything will still work without `enum`.
-On the other hand, the preprocessor of E language support `#define xx xxx`, which has reduced the necessity of `enum`.
+The preprocessor of E language support contant definition `#define xx xxx`, which has reduced the necessity of `enum`.
 
 To keep things minimum, E language do not support `enum`, either.
 
