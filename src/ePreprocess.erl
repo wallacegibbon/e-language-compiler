@@ -58,7 +58,7 @@ handleSpecial([{'if', _} | Rest], {MacroMap, _, EndTag} = Context) ->
     handleNormal(RestTokensNew, {MacroMapNew, CollectedTokens, EndTag});
 handleSpecial([{else, _} | RestContent], {MacroMap, TokensToReturn, else}) ->
     {MacroMap, TokensToReturn, RestContent};
-handleSpecial([{identifier, LineNumber, else} | _], {_, _, normal}) ->
+handleSpecial([{else, LineNumber} | _], {_, _, normal}) ->
     throw({LineNumber, "\"#else\" is not expected here"});
 handleSpecial([{identifier, _, endif} | RestContent], {MacroMap, TokensToReturn, endif}) ->
     {MacroMap, TokensToReturn, RestContent};
