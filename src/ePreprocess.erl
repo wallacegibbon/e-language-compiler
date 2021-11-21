@@ -9,18 +9,24 @@
 -type macroMap() :: #{atom() => [token()]}.
 -type preprocessContext() :: {MacroMap :: macroMap(), TokensToReturn :: [token()], EndTag :: else | endif | normal}.
 -type handleReturn() :: {MacroMap :: macroMap(), TokensToReturn :: [token()], RestTokens :: [token()]}.
+-type token() :: any().
 
 -spec handleSpecial([token()], preprocessContext()) -> handleReturn().
-handleSpecial([{identifier, _, define}, {identifier, LineNumber, Name} | Rest], {MacroMap, TokensToReturn, EndTag}) ->
+handleSpecial([{identifier, _, define}, {identifier, LineNumber, Name} | Rest], {MacroMap, TokensToReturn, EndTag} = Context) ->
     case MacroMap of
         #{Name := _} ->
             throw({LineNumber, ecompilerUtil:fmt("macro name conflict: \"~s\"", [Name])});
         _ ->
-            {Tokens, RestTokens} = getExpressionTillEOL(Rest),
+            {Tokens, RestTokens} = getExpressionTillEOL(Rest, Context),
             handleNormal(RestTokens, {MacroMap#{Name => Tokens}, TokensToReturn, EndTag})
     end;
-handleSpecial([{identifier, _, undef}, {identifier, _, Name} | Rest], {MacroMap, TokensToReturn, EndTag}) ->
-    handleNormal(Rest, {maps:remove(Name, MacroMap), TokensToReturn, EndTag});
+handleSpecial([{identifier, _, undef}, {identifier, LineNumber, Name} | Rest], {MacroMap, TokensToReturn, EndTag}) ->
+    case MacroMap of
+        #{Name := _} ->
+            handleNormal(Rest, {maps:remove(Name, MacroMap), TokensToReturn, EndTag});
+        _ ->
+            throw({LineNumber, ecompilerUtil:fmt("macro \"~s\" is not defined", [Name])})
+    end;
 handleSpecial([{identifier, _, ifdef}, {identifier, _, Name} | Rest], {MacroMap, _, EndTag} = Context) ->
     {MacroMapNew, CollectedTokens, RestTokensNew} = case MacroMap of
                                                         #{Name := _} ->
@@ -42,7 +48,7 @@ handleSpecial([{identifier, _, ifndef}, {identifier, _, Name} | Rest], {MacroMap
 handleSpecial([{identifier, LineNumber, ifndef} | _], _) ->
     throw({LineNumber, "invalid #ifndef command"});
 handleSpecial([{'if', _} | Rest], {MacroMap, _, EndTag} = Context) ->
-    {Tokens, RestTokens} = getExpressionTillEOL(Rest),
+    {Tokens, RestTokens} = getExpressionTillEOL(Rest, Context),
     {MacroMapNew, CollectedTokens, RestTokensNew} = case evaluateTokenExpressions(Tokens, MacroMap) of
                                                         true ->
                                                             collectToElseAndIgnoreToEndif(RestTokens, Context);
@@ -65,7 +71,7 @@ handleSpecial([{identifier, LineNumber, error} | _], _) ->
 handleSpecial([{identifier, LineNumber, warning} | _], _) ->
     throw({LineNumber, "compile warning... (todo)"});
 handleSpecial([{identifier, _, include} | Rest], Context) ->
-    {_, RestTokens} = getExpressionTillEOL(Rest),
+    {_, RestTokens} = getExpressionTillEOL(Rest, Context),
     handleNormal(RestTokens, Context);
 handleSpecial([{identifier, LineNumber, Name} | _], _) ->
     throw({LineNumber, ecompilerUtil:fmt("unexpected operator \"~s\" here", [Name])});
@@ -91,6 +97,10 @@ ignoreToElseAndCollectToEndif(Tokens, {MacroMap, TokensToReturn, _}) ->
     {MacroMapNew, CollectedTokens ++ TokensToReturn, RestTokens}.
 
 -spec handleNormal([token()], preprocessContext()) -> handleReturn().
+handleNormal([{'?', _}, {identifier, _, _} = Ident | Rest], {MacroMap, _, _} = Context) ->
+    replaceMacro(Ident, MacroMap, fun (Tokens) -> handleNormal(Tokens ++ Rest, Context) end);
+handleNormal([{'?', LineNumber} | _], _) ->
+    throw({LineNumber, "syntax error near \"?\""});
 handleNormal([{'#', _} | Rest], Context) ->
     handleSpecial(Rest, Context);
 handleNormal([{newline, _} | Rest], Context) ->
@@ -107,24 +117,43 @@ process(Tokens) ->
     {_, ProcessedTokens, _} = handleNormal(convertElifToElseAndIf(Tokens), {#{}, [], normal}),
     lists:reverse((ProcessedTokens)).
 
--spec getExpressionTillEOL([token()]) -> {[token()], [token()]}.
-getExpressionTillEOL(Tokens) ->
-    getExpressionTillEOL(Tokens, []).
+-spec getExpressionTillEOL([token()], preprocessContext()) -> {[token()], [token()]}.
+getExpressionTillEOL(Tokens, Context) ->
+    getExpressionTillEOL(Tokens, [], Context).
 
--spec getExpressionTillEOL([token()], [token()]) -> {[token()], [token()]}.
-getExpressionTillEOL([{newline, _} | Rest], CollectedTokens) ->
+-spec getExpressionTillEOL([token()], [token()], preprocessContext()) -> {[token()], [token()]}.
+getExpressionTillEOL([{'?', _}, {identifier, _, _} = Ident | Rest], CollectedTokens, {MacroMap, _, _} = Context) ->
+    replaceMacro(Ident, MacroMap, fun (Tokens) ->
+                                        getExpressionTillEOL(Rest, lists:reverse(Tokens) ++ CollectedTokens, Context)
+                                  end);
+getExpressionTillEOL([{'?', LineNumber} | _], _, _) ->
+    throw({LineNumber, "syntax error near \"?\""});
+getExpressionTillEOL([{newline, _} | Rest], CollectedTokens, _) ->
     {lists:reverse(CollectedTokens), Rest};
+getExpressionTillEOL([Token | Rest], CollectedTokens, Context) ->
+    getExpressionTillEOL(Rest, [Token | CollectedTokens], Context);
 %% EOF should not appear in this function, but leave the error handling to upper level.
-getExpressionTillEOL([], CollectedTokens) ->
-    {lists:reverse(CollectedTokens), []};
-getExpressionTillEOL([Token | Rest], CollectedTokens) ->
-    getExpressionTillEOL(Rest, [Token | CollectedTokens]).
+getExpressionTillEOL([], CollectedTokens, _) ->
+    {lists:reverse(CollectedTokens), []}.
+
+-spec replaceMacro({identifier, non_neg_integer(), atom()}, macroMap(), fun(([token()]) -> Result)) -> Result when Result :: any().
+replaceMacro({identifier, LineNumber, Name}, MacroMap, ContinueHandler) ->
+    case MacroMap of
+        #{Name := Value} ->
+            ContinueHandler(replaceLineNumber(Value, LineNumber));
+        _ ->
+            throw({LineNumber, ecompilerUtil:fmt("undefined macro ~s", [Name])})
+    end.
 
 %% tokens should be parsed to ast before evaluating them, this function will be updated when the parser is finished
 evaluateTokenExpressions([{integer, _, 0}], _MacroMap) ->
     false;
 evaluateTokenExpressions([{integer, _, 1}], _MacroMap) ->
     true.
+
+-spec replaceLineNumber([token()], non_neg_integer()) -> [token()].
+replaceLineNumber(Tokens, LineNumber) ->
+    lists:map(fun (Token) -> setelement(2, Token, LineNumber) end, Tokens).
 
 -ifdef(EUNIT).
 
@@ -184,6 +213,34 @@ process_elif_4_test() ->
     {ok, Tokens, _} = ecompilerScan:string("#if 0\n a\n #elif 1\n b\n #elif 1\n c\n #else\n d\n #endif"),
     ?assertEqual([{identifier, 4, b}], process(Tokens)).
 
+process_define_lineNumber_test() ->
+    {ok, Tokens, _} = ecompilerScan:string("#define A 1\n?A"),
+    ?assertEqual([{integer, 2, 1}], process(Tokens)).
+
+process_define_lineNumber_2_test() ->
+    {ok, Tokens, _} = ecompilerScan:string("#define A 1\n#define B ?A\n?B"),
+    ?assertEqual([{integer, 3, 1}], process(Tokens)).
+
+process_define_1_test() ->
+    {ok, Tokens, _} = ecompilerScan:string("#define A 1 + 2 + 3\n?A + 1"),
+    ?assertEqual("1 + 2 + 3 + 1", tokensToString(process(Tokens))).
+
+process_define_2_test() ->
+    {ok, Tokens, _} = ecompilerScan:string("#define A (1 + 2 + 3)\n?A + 1"),
+    ?assertEqual("( 1 + 2 + 3 ) + 1", tokensToString(process(Tokens))).
+
+process_define_3_test() ->
+    {ok, Tokens, _} = ecompilerScan:string("#define A 1 + 2 + 3\n#define B ?A + 4\n?B + 5"),
+    ?assertEqual("1 + 2 + 3 + 4 + 5", tokensToString(process(Tokens))).
+
+process_undef_1_test() ->
+    {ok, Tokens, _} = ecompilerScan:string("#define A 1 + 2 + 3\n#undef A\n?A + 1"),
+    ?assertThrow({3, "undefined macro A"}, tokensToString(process(Tokens))).
+
+process_undef_2_test() ->
+    {ok, Tokens, _} = ecompilerScan:string("#define A 1 + 2 + 3\n#undef B\n?A + 1"),
+    ?assertThrow({2, "macro \"B\" is not defined"}, tokensToString(process(Tokens))).
+
 -endif.
 
 -spec convertElifToElseAndIf([token()]) -> [token()].
@@ -230,10 +287,6 @@ convertElifToElseAndIf_4_test() ->
     ?assertEqual("# if 0 \n # if 1 \n # else \n # endif # endif",
                  tokensToString(convertElifToElseAndIf(Tokens))).
 
--endif.
-
--type token() :: any().
-
 -spec tokensToString([token()]) -> string().
 tokensToString(Tokens) ->
     lists:flatten(lists:join(" ", lists:map(fun tokenToString/1, Tokens))).
@@ -251,8 +304,6 @@ tokenToString({newline, _}) ->
     $\n;
 tokenToString({AnyAtom, _}) ->
     atom_to_list(AnyAtom).
-
--ifdef(EUNIT).
 
 tokensToString_test() ->
     ?assertEqual("* + \n \n", tokensToString([{'*', 1}, {'+', 1}, {newline, 1}, {newline,2}])).
