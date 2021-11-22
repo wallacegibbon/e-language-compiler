@@ -8,10 +8,10 @@
 
 %% find all consts in AST, calculate it and replace all const references.
 parseAndRemoveConstants(AST) ->
-    {Constants, Ast2} = fetchContants(AST),
-    Ast3 = replaceContants(Ast2, Constants),
-    %io:format(">>> ~p~n", [Ast3]),
-    Ast3.
+    {Constants, AST2} = fetchContants(AST),
+    AST3 = replaceContants(AST2, Constants),
+    %io:format(">>> ~p~n", [AST3]),
+    AST3.
 
 %% fetch constants
 fetchContants(AST) ->

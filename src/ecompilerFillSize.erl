@@ -44,9 +44,9 @@ expandSizeofInExpression(Any, _) ->
 -spec fillStructInformation(eAST(), compilePassCtx1()) -> eAST().
 fillStructInformation(AST, {_, PointerWidth} = Context) ->
     %% struct definition are only allowed in top level of an AST.
-    Ast1 = lists:map(fun (E) -> fillStructSize(E, Context) end, AST),
-    {_, StructMap1} = ecompilerUtil:makeFunctionAndStructMapFromAST(Ast1),
-    lists:map(fun (E) -> fillStructOffsets(E, {StructMap1, PointerWidth}) end, Ast1).
+    AST1 = lists:map(fun (E) -> fillStructSize(E, Context) end, AST),
+    {_, StructMap1} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST1),
+    lists:map(fun (E) -> fillStructOffsets(E, {StructMap1, PointerWidth}) end, AST1).
 
 -spec fillStructSize(eExpression(), compilePassCtx1()) -> eExpression().
 fillStructSize(#struct{} = S, Context) ->

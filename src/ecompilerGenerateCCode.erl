@@ -10,12 +10,12 @@
 generateCCode(AST, GlobalVars, InitCode, OutputFile) ->
     {FunctionTypeMap, StructMap} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST),
     Context = {FunctionTypeMap, StructMap, GlobalVars},
-    Ast2 = lists:map(fun (A) -> fixFunctionForC(A, Context) end, AST),
+    AST2 = lists:map(fun (A) -> fixFunctionForC(A, Context) end, AST),
     InitCode2 = fixExpressionsForC(InitCode, Context),
-    %io:format(">>>~p~n", [Ast2]),
+    %io:format(">>>~p~n", [AST2]),
     %% struct definition have to be before function declarations
     CheckStruct = fun (A) -> element(1, A) =:= struct end,
-    {StructAST, FunctionAST} = lists:partition(CheckStruct, Ast2),
+    {StructAST, FunctionAST} = lists:partition(CheckStruct, AST2),
     {StructStatements, []} = statementsToString(StructAST, []),
     {FnStatements, FnDeclars} = statementsToString(FunctionAST, InitCode2),
     VarStatements = variableMapToString(GlobalVars),

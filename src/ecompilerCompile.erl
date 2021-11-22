@@ -10,7 +10,7 @@
 compileFromRawAST(AST, CustomCompileOptions) ->
     CompileOptions = maps:merge(defaultCompileOptions(), CustomCompileOptions),
     {AST2, VariableTypeMap, InitCode0} = ecompilerCollectVariable:fetchVariables(AST),
-    %io:format(">>> ~p~n", [Ast2]),
+    %io:format(">>> ~p~n", [AST2]),
 
     {FunctionTypeMap, StructMap0} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST2),
 

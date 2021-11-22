@@ -25,16 +25,16 @@ expandInitExpressionInFunctions([], _) ->
 expandInitExpressions(Expressions, StructMap) ->
     expandInitExpression(Expressions, [], StructMap).
 
-expandInitExpression([#ifStatement{then = Then, else = Else} = E | Rest], NewAst, StructMap) ->
-    expandInitExpression(Rest, [E#ifStatement{then = expandInitExpression(Then, [], StructMap), else = expandInitExpression(Else, [], StructMap)} | NewAst], StructMap);
-expandInitExpression([#whileStatement{statements = Expressions} = E | Rest], NewAst, StructMap) ->
-    expandInitExpression(Rest, [E#whileStatement{statements = expandInitExpression(Expressions, [], StructMap)} | NewAst], StructMap);
-expandInitExpression([#operatorExpression2{} = Op | Rest], NewAst, StructMap) ->
-    expandInitExpression(Rest, replaceInitOps(Op, StructMap) ++ NewAst, StructMap);
-expandInitExpression([Any | Rest], NewAst, StructMap) ->
-    expandInitExpression(Rest, [Any | NewAst], StructMap);
-expandInitExpression([], NewAst, _) ->
-    lists:reverse(NewAst).
+expandInitExpression([#ifStatement{then = Then, else = Else} = E | Rest], NewAST, StructMap) ->
+    expandInitExpression(Rest, [E#ifStatement{then = expandInitExpression(Then, [], StructMap), else = expandInitExpression(Else, [], StructMap)} | NewAST], StructMap);
+expandInitExpression([#whileStatement{statements = Expressions} = E | Rest], NewAST, StructMap) ->
+    expandInitExpression(Rest, [E#whileStatement{statements = expandInitExpression(Expressions, [], StructMap)} | NewAST], StructMap);
+expandInitExpression([#operatorExpression2{} = Op | Rest], NewAST, StructMap) ->
+    expandInitExpression(Rest, replaceInitOps(Op, StructMap) ++ NewAST, StructMap);
+expandInitExpression([Any | Rest], NewAST, StructMap) ->
+    expandInitExpression(Rest, [Any | NewAST], StructMap);
+expandInitExpression([], NewAST, _) ->
+    lists:reverse(NewAST).
 
 replaceInitOps(#operatorExpression2{operator = assign, operand1 = Operand1, operand2 = #structInitializeExpression{name = Name, line = Line, fieldValueMap = FieldValues}}, StructMap) ->
     case maps:find(Name, StructMap) of
