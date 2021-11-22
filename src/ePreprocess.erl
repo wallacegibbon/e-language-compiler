@@ -97,8 +97,8 @@ ignoreToElseAndCollectToEndif(Tokens, {MacroMap, TokensToReturn, _}) ->
     {MacroMapNew, CollectedTokens ++ TokensToReturn, RestTokens}.
 
 -spec handleNormal([token()], preprocessContext()) -> handleReturn().
-handleNormal([{'?', _}, {identifier, _, _} = Ident | Rest], {MacroMap, _, _} = Context) ->
-    replaceMacro(Ident, MacroMap, fun (Tokens) -> handleNormal(Tokens ++ Rest, Context) end);
+handleNormal([{'?', _}, {identifier, _, _} = Identifier | Rest], {MacroMap, _, _} = Context) ->
+    replaceMacro(Identifier, MacroMap, fun (Tokens) -> handleNormal(Tokens ++ Rest, Context) end);
 handleNormal([{'?', LineNumber} | _], _) ->
     throw({LineNumber, "syntax error near \"?\""});
 handleNormal([{'#', _} | Rest], Context) ->
@@ -122,10 +122,10 @@ getExpressionTillEOL(Tokens, Context) ->
     getExpressionTillEOL(Tokens, [], Context).
 
 -spec getExpressionTillEOL([token()], [token()], preprocessContext()) -> {[token()], [token()]}.
-getExpressionTillEOL([{'?', _}, {identifier, _, _} = Ident | Rest], CollectedTokens, {MacroMap, _, _} = Context) ->
-    replaceMacro(Ident, MacroMap, fun (Tokens) ->
-                                        getExpressionTillEOL(Rest, lists:reverse(Tokens) ++ CollectedTokens, Context)
-                                  end);
+getExpressionTillEOL([{'?', _}, {identifier, _, _} = Identifier | Rest], CollectedTokens, {MacroMap, _, _} = Context) ->
+    replaceMacro(Identifier, MacroMap, fun (Tokens) ->
+                                            getExpressionTillEOL(Rest, lists:reverse(Tokens) ++ CollectedTokens, Context)
+                                       end);
 getExpressionTillEOL([{'?', LineNumber} | _], _, _) ->
     throw({LineNumber, "syntax error near \"?\""});
 getExpressionTillEOL([{newline, _} | Rest], CollectedTokens, _) ->

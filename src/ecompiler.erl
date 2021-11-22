@@ -12,8 +12,8 @@ compileToC(InputFilename, OutputFilename) ->
         %io:format(">> ~p~n~n", [AST]),
         ecompilerGenerateCCode:generateCCode(AST, Vars, InitCode, OutputFilename)
     catch
-        {Filename, Errinfo} ->
-            io:format("~s: ~p~n", [Filename, Errinfo])
+        {Filename, ErrorInfo} ->
+            io:format("~s: ~p~n", [Filename, ErrorInfo])
     end.
 
 -spec compileToAST(string()) -> {eAST(), variableTypeMap(), eAST()}.
@@ -39,11 +39,11 @@ parseFile(Filename) ->
                     case ecompilerParse:parse(ePreprocess:process(Tokens)) of
                         {ok, _Ast} = D ->
                             D;
-                        {error, {Line, _, Errinfo}} ->
-                            throw({Line, Errinfo})
+                        {error, {Line, _, ErrorInfo}} ->
+                            throw({Line, ErrorInfo})
                     end;
-                {error, Errors, Warnings} ->
-                    throw({Errors, Warnings})
+                {error, ErrorInfo, Line} ->
+                    throw({Line, ErrorInfo})
             end;
         {error, enoent} ->
             throw("module not found");

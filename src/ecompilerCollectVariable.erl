@@ -60,7 +60,7 @@ fetchVariables([#variableDefinition{name = Name, type = Type, line = Line, initi
         false ->
             fetchVariables(Rest, appendToAST(NewAst, Name, Initval, Line), {VarTypes#{Name => Type}, InitCode, CollectInitCode})
     end;
-fetchVariables([#functionRaw{name = Name, returnType = Ret, parameters = Params, statements = Expressions, line = Line} | Rest], NewAst, {GlobalVars, _, _} = Ctx) ->
+fetchVariables([#functionRaw{name = Name, returnType = Ret, parameters = Params, statements = Expressions, line = Line} | Rest], NewAst, {GlobalVars, _, _} = Context) ->
     {[], ParamVars, ParamInitCode} = fetchVariables(Params, [], {#{}, [], true}),
     ecompilerUtil:assert(ParamInitCode =:= [], {Line, "function parameters can not have default value"}),
     {NewExprs, FunVarTypes, []} = fetchVariables(Expressions, [], {ParamVars, [], false}),
@@ -71,15 +71,15 @@ fetchVariables([#functionRaw{name = Name, returnType = Ret, parameters = Params,
     checkLabelConflict(Labels, GlobalVars, FunVarTypes),
     FunctionType = #functionType{parameters = getValuesByDefinitions(Params, ParamVars), ret = Ret, line = Line},
     Function = #function{name = Name, variableTypeMap = FunVarTypes, statements = NewExprs, parameterNames = variableDefinitionToReference(Params), line = Line, type = FunctionType},
-    fetchVariables(Rest, [Function | NewAst], Ctx);
-fetchVariables([#structRaw{name = Name, fields = Fields, line = Line} | Rest], NewAst, Ctx) ->
+    fetchVariables(Rest, [Function | NewAst], Context);
+fetchVariables([#structRaw{name = Name, fields = Fields, line = Line} | Rest], NewAst, Context) ->
     %% struct can have default value
     {[], FieldTypes, StructInitCode} = fetchVariables(Fields, [], {#{}, [], true}),
     {_, FieldInitMap} = structInitToMap(StructInitCode),
     S = #struct{name = Name, fieldTypeMap = FieldTypes, fieldNames = variableDefinitionToReference(Fields), fieldDefaultValueMap = FieldInitMap, line = Line},
-    fetchVariables(Rest, [S | NewAst], Ctx);
-fetchVariables([Any | Rest], NewAst, Ctx) ->
-    fetchVariables(Rest, [Any | NewAst], Ctx);
+    fetchVariables(Rest, [S | NewAst], Context);
+fetchVariables([Any | Rest], NewAst, Context) ->
+    fetchVariables(Rest, [Any | NewAst], Context);
 fetchVariables([], NewAst, {VarTypes, InitCode, _}) ->
     {lists:reverse(NewAst), VarTypes, lists:reverse(InitCode)}.
 

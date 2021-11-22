@@ -30,33 +30,33 @@ checkTypesInASTNodeList(Expressions, GlobalVarTypes, {FunctionTypeMap, StructMap
     ok.
 
 -spec typeOfASTNodeList([eExpression()], typeOfContext()) -> [eType()].
-typeOfASTNodeList(Expressions, Ctx) ->
-    lists:map(fun (Expression) -> typeOfASTNode(Expression, Ctx) end, Expressions).
+typeOfASTNodeList(Expressions, Context) ->
+    lists:map(fun (Expression) -> typeOfASTNode(Expression, Context) end, Expressions).
 
 -spec typeOfASTNode(eExpression(), typeOfContext()) -> eType().
-typeOfASTNode(#operatorExpression2{operator = assign, operand1 = Operand1, operand2 = Operand2, line = Line}, {_, _, StructMap, _} = Ctx) ->
+typeOfASTNode(#operatorExpression2{operator = assign, operand1 = Operand1, operand2 = Operand2, line = Line}, {_, _, StructMap, _} = Context) ->
     TypeofOp1 = case Operand1 of
                     #operatorExpression2{operator = '.', operand1 = SubOp1, operand2 = SubOp2} ->
-                        typeOfStructField(typeOfASTNode(SubOp1, Ctx), SubOp2, StructMap, Line);
+                        typeOfStructField(typeOfASTNode(SubOp1, Context), SubOp2, StructMap, Line);
                     #operatorExpression1{operator = '^', operand = SubOp} ->
-                        decreasePointerDepth(typeOfASTNode(SubOp, Ctx), Line);
+                        decreasePointerDepth(typeOfASTNode(SubOp, Context), Line);
                     #variableReference{} ->
-                        typeOfASTNode(Operand1, Ctx);
+                        typeOfASTNode(Operand1, Context);
                     Any ->
                         throw({Line, ecompilerUtil:fmt("invalid left value (~s)", [ecompilerUtil:expressionToString(Any)])})
                 end,
-    TypeofOp2 = typeOfASTNode(Operand2, Ctx),
+    TypeofOp2 = typeOfASTNode(Operand2, Context),
     case compareType(TypeofOp1, TypeofOp2) of
         true ->
             TypeofOp1;
         false ->
             throw({Line, ecompilerUtil:fmt("type mismatch in \"~s = ~s\"", [typeToString(TypeofOp1), typeToString(TypeofOp2)])})
     end;
-typeOfASTNode(#operatorExpression2{operator = '.', operand1 = Operand1, operand2 = Operand2, line = Line}, {_, _, StructMap, _} = Ctx) ->
-    typeOfStructField(typeOfASTNode(Operand1, Ctx), Operand2, StructMap, Line);
-typeOfASTNode(#operatorExpression2{operator = '+', operand1 = Operand1, operand2 = Operand2, line = Line}, Ctx) ->
-    TypeofOp1 = typeOfASTNode(Operand1, Ctx),
-    TypeofOp2 = typeOfASTNode(Operand2, Ctx),
+typeOfASTNode(#operatorExpression2{operator = '.', operand1 = Operand1, operand2 = Operand2, line = Line}, {_, _, StructMap, _} = Context) ->
+    typeOfStructField(typeOfASTNode(Operand1, Context), Operand2, StructMap, Line);
+typeOfASTNode(#operatorExpression2{operator = '+', operand1 = Operand1, operand2 = Operand2, line = Line}, Context) ->
+    TypeofOp1 = typeOfASTNode(Operand1, Context),
+    TypeofOp2 = typeOfASTNode(Operand2, Context),
     case areBothNumberSameType(TypeofOp1, TypeofOp2) of
         {true, T} ->
             T;
@@ -69,9 +69,9 @@ typeOfASTNode(#operatorExpression2{operator = '+', operand1 = Operand1, operand2
             end
     end;
 %% integer + pointer is valid, but integer - pointer is invalid
-typeOfASTNode(#operatorExpression2{operator = '-', operand1 = Operand1, operand2 = Operand2, line = Line}, Ctx) ->
-    TypeofOp1 = typeOfASTNode(Operand1, Ctx),
-    TypeofOp2 = typeOfASTNode(Operand2, Ctx),
+typeOfASTNode(#operatorExpression2{operator = '-', operand1 = Operand1, operand2 = Operand2, line = Line}, Context) ->
+    TypeofOp1 = typeOfASTNode(Operand1, Context),
+    TypeofOp2 = typeOfASTNode(Operand2, Context),
     case areBothNumberSameType(TypeofOp1, TypeofOp2) of
         {true, T} ->
             T;
@@ -83,9 +83,9 @@ typeOfASTNode(#operatorExpression2{operator = '-', operand1 = Operand1, operand2
                     throw({Line, typeErrorOfOp2('-', TypeofOp1, TypeofOp2)})
             end
     end;
-typeOfASTNode(#operatorExpression2{operator = Operator, operand1 = Operand1, operand2 = Operand2, line = Line}, Ctx) when Operator =:= '*'; Operator =:= '/' ->
-    TypeofOp1 = typeOfASTNode(Operand1, Ctx),
-    TypeofOp2 = typeOfASTNode(Operand2, Ctx),
+typeOfASTNode(#operatorExpression2{operator = Operator, operand1 = Operand1, operand2 = Operand2, line = Line}, Context) when Operator =:= '*'; Operator =:= '/' ->
+    TypeofOp1 = typeOfASTNode(Operand1, Context),
+    TypeofOp2 = typeOfASTNode(Operand2, Context),
     case areBothNumberSameType(TypeofOp1, TypeofOp2) of
         {true, T} ->
             T;
@@ -93,37 +93,37 @@ typeOfASTNode(#operatorExpression2{operator = Operator, operand1 = Operand1, ope
             throw({Line, typeErrorOfOp2(Operator, TypeofOp1, TypeofOp2)})
     end;
 %% the left operators are: and, or, band, bor, bxor, bsl, bsr, >, <, ...
-typeOfASTNode(#operatorExpression2{operator = Operator, operand1 = Operand1, operand2 = Operand2, line = Line}, Ctx) ->
-    TypeofOp1 = typeOfASTNode(Operand1, Ctx),
-    TypeofOp2 = typeOfASTNode(Operand2, Ctx),
+typeOfASTNode(#operatorExpression2{operator = Operator, operand1 = Operand1, operand2 = Operand2, line = Line}, Context) ->
+    TypeofOp1 = typeOfASTNode(Operand1, Context),
+    TypeofOp2 = typeOfASTNode(Operand2, Context),
     case areBothIntegers(TypeofOp1, TypeofOp2) of
         true ->
             TypeofOp1;
         false ->
             throw({Line, typeErrorOfOp2(Operator, TypeofOp1, TypeofOp2)})
     end;
-typeOfASTNode(#operatorExpression1{operator = '^', operand = Operand, line = Line}, Ctx) ->
-    case typeOfASTNode(Operand, Ctx) of
+typeOfASTNode(#operatorExpression1{operator = '^', operand = Operand, line = Line}, Context) ->
+    case typeOfASTNode(Operand, Context) of
         #basicType{} = T ->
             decreasePointerDepth(T, Line);
         _ ->
             throw({Line, ecompilerUtil:fmt("invalid \"^\" on operand ~s", [ecompilerUtil:expressionToString(Operand)])})
     end;
-typeOfASTNode(#operatorExpression1{operator = '@', operand = Operand, line = Line}, {_, _, StructMap, _} = Ctx) ->
+typeOfASTNode(#operatorExpression1{operator = '@', operand = Operand, line = Line}, {_, _, StructMap, _} = Context) ->
     case Operand of
         #operatorExpression2{operator = '.', operand1 = Operand1, operand2 = Operand2} ->
-            T = typeOfStructField(typeOfASTNode(Operand1, Ctx), Operand2, StructMap, Line),
+            T = typeOfStructField(typeOfASTNode(Operand1, Context), Operand2, StructMap, Line),
             increasePointerDepth(T, Line);
         #variableReference{} ->
-            increasePointerDepth(typeOfASTNode(Operand, Ctx), Line);
+            increasePointerDepth(typeOfASTNode(Operand, Context), Line);
         _ ->
             throw({Line, ecompilerUtil:fmt("invalid \"@\" on operand ~s", [ecompilerUtil:expressionToString(Operand)])})
     end;
-typeOfASTNode(#operatorExpression1{operand = Operand}, Ctx) ->
-    typeOfASTNode(Operand, Ctx);
-typeOfASTNode(#callExpression{fn = FunExpr, args = Arguments, line = Line}, Ctx) ->
-    ArgsTypes = typeOfASTNodeList(Arguments, Ctx),
-    case typeOfASTNode(FunExpr, Ctx) of
+typeOfASTNode(#operatorExpression1{operand = Operand}, Context) ->
+    typeOfASTNode(Operand, Context);
+typeOfASTNode(#callExpression{fn = FunExpr, args = Arguments, line = Line}, Context) ->
+    ArgsTypes = typeOfASTNodeList(Arguments, Context),
+    case typeOfASTNode(FunExpr, Context) of
         #functionType{parameters = FnParamTypes, ret = FnRetType} ->
             case compareTypes(ArgsTypes, FnParamTypes) of
                 true ->
@@ -134,17 +134,17 @@ typeOfASTNode(#callExpression{fn = FunExpr, args = Arguments, line = Line}, Ctx)
         T ->
             throw({Line, ecompilerUtil:fmt("invalid function expr: ~s", [typeToString(T)])})
     end;
-typeOfASTNode(#ifStatement{condition = Condition, then = Then, else = Else, line = Line}, Ctx) ->
-    typeOfASTNode(Condition, Ctx),
-    typeOfASTNodeList(Then, Ctx),
-    typeOfASTNodeList(Else, Ctx),
+typeOfASTNode(#ifStatement{condition = Condition, then = Then, else = Else, line = Line}, Context) ->
+    typeOfASTNode(Condition, Context),
+    typeOfASTNodeList(Then, Context),
+    typeOfASTNodeList(Else, Context),
     ecompilerUtil:voidType(Line);
-typeOfASTNode(#whileStatement{condition = Condition, statements = Expressions, line = Line}, Ctx) ->
-    typeOfASTNode(Condition, Ctx),
-    typeOfASTNodeList(Expressions, Ctx),
+typeOfASTNode(#whileStatement{condition = Condition, statements = Expressions, line = Line}, Context) ->
+    typeOfASTNode(Condition, Context),
+    typeOfASTNodeList(Expressions, Context),
     ecompilerUtil:voidType(Line);
-typeOfASTNode(#returnStatement{expression = Expression, line = Line}, {_, _, _, FnRetType} = Ctx) ->
-    RealRet = typeOfASTNode(Expression, Ctx),
+typeOfASTNode(#returnStatement{expression = Expression, line = Line}, {_, _, _, FnRetType} = Context) ->
+    RealRet = typeOfASTNode(Expression, Context),
     case compareType(RealRet, FnRetType) of
         true ->
             RealRet;
@@ -165,18 +165,18 @@ typeOfASTNode(#variableReference{name = Name, line = Line}, {VarTypes, FunctionT
            end,
     checkType(Type, StructMap),
     Type;
-typeOfASTNode(#arrayInitializeExpression{elements = Elements, line = Line}, Ctx) ->
-    ElementTypes = typeOfASTNodeList(Elements, Ctx),
+typeOfASTNode(#arrayInitializeExpression{elements = Elements, line = Line}, Context) ->
+    ElementTypes = typeOfASTNodeList(Elements, Context),
     case areSameType(ElementTypes) of
         true ->
             #arrayType{elemtype = hd(ElementTypes), length = length(ElementTypes), line = Line};
         false ->
             throw({Line, ecompilerUtil:fmt("array init type conflict: {~s}", [joinTypesToString(ElementTypes)])})
     end;
-typeOfASTNode(#structInitializeExpression{name = StructName, fieldNames = InitFieldNames, fieldValueMap = InitFieldValues, line = Line}, {_, _, StructMap, _} = Ctx) ->
+typeOfASTNode(#structInitializeExpression{name = StructName, fieldNames = InitFieldNames, fieldValueMap = InitFieldValues, line = Line}, {_, _, StructMap, _} = Context) ->
     case maps:find(StructName, StructMap) of
         {ok, #struct{fieldTypeMap = FieldTypes}} ->
-            checkTypesInStructFields(InitFieldNames, FieldTypes, InitFieldValues, StructName, Ctx),
+            checkTypesInStructFields(InitFieldNames, FieldTypes, InitFieldValues, StructName, Context),
             #basicType{class = struct, tag = StructName, pdepth = 0, line = Line};
         _ ->
             throw({Line, ecompilerUtil:fmt("struct ~s is not found", [StructName])})
@@ -187,8 +187,8 @@ typeOfASTNode(#gotoStatement{line = Line}, _) ->
     ecompilerUtil:voidType(Line);
 typeOfASTNode(#gotoLabel{line = Line}, _) ->
     ecompilerUtil:voidType(Line);
-typeOfASTNode(#typeConvert{expression = Expression, type = TargetType, line = Line}, Ctx) ->
-    case {typeOfASTNode(Expression, Ctx), TargetType} of
+typeOfASTNode(#typeConvert{expression = Expression, type = TargetType, line = Line}, Context) ->
+    case {typeOfASTNode(Expression, Context), TargetType} of
         {#basicType{pdepth = D1}, #basicType{pdepth = D2}} when D1 > 0, D2 > 0 ->
             TargetType;
         {#basicType{class = integer, pdepth = 0}, #basicType{pdepth = D2}} when D2 > 0 ->
@@ -224,15 +224,15 @@ decreasePointerDepth(T, OpLine) ->
     throw({OpLine, ecompilerUtil:fmt("'^' on type ~s is invalid", [typeToString(T)])}).
 
 -spec checkTypesInStructFields([#variableReference{}], variableTypeMap(), #{atom() := any()}, atom(), typeOfContext()) -> ok.
-checkTypesInStructFields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
-    lists:foreach(fun (V) -> checkStructField(V, FieldTypes, ValMap, StructName, Ctx) end, FieldNames).
+checkTypesInStructFields(FieldNames, FieldTypes, ValMap, StructName, Context) ->
+    lists:foreach(fun (V) -> checkStructField(V, FieldTypes, ValMap, StructName, Context) end, FieldNames).
 
 -spec checkStructField(#variableReference{}, variableTypeMap(), #{atom() := any()}, atom(), typeOfContext()) -> ok.
-checkStructField(#variableReference{name = FieldName, line = Line}, FieldTypes, ValMap, StructName, {_, _, StructMap, _} = Ctx) ->
+checkStructField(#variableReference{name = FieldName, line = Line}, FieldTypes, ValMap, StructName, {_, _, StructMap, _} = Context) ->
     {ok, Val} = maps:find(FieldName, ValMap),
     ExpectedType = getFieldType(FieldName, FieldTypes, StructName, Line),
     checkType(ExpectedType, StructMap),
-    GivenType = typeOfASTNode(Val, Ctx),
+    GivenType = typeOfASTNode(Val, Context),
     case compareType(ExpectedType, GivenType) of
         true ->
             ok;

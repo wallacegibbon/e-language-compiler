@@ -9,9 +9,9 @@
 -spec generateCCode(eAST(), variableTypeMap(), eAST(), string()) -> ok.
 generateCCode(AST, GlobalVars, InitCode, OutputFile) ->
     {FunctionTypeMap, StructMap} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST),
-    Ctx = {FunctionTypeMap, StructMap, GlobalVars},
-    Ast2 = lists:map(fun (A) -> fixFunctionForC(A, Ctx) end, AST),
-    InitCode2 = fixExpressionsForC(InitCode, Ctx),
+    Context = {FunctionTypeMap, StructMap, GlobalVars},
+    Ast2 = lists:map(fun (A) -> fixFunctionForC(A, Context) end, AST),
+    InitCode2 = fixExpressionsForC(InitCode, Context),
     %io:format(">>>~p~n", [Ast2]),
     %% struct definition have to be before function declarations
     CheckStruct = fun (A) -> element(1, A) =:= struct end,
@@ -29,21 +29,21 @@ fixFunctionForC(Any, _) ->
     Any.
 
 -spec fixExpressionsForC(eAST(), genCContext()) -> eAST().
-fixExpressionsForC(Expressions, Ctx) ->
-    ecompilerUtil:expressionMap(fun (E) -> fixExpressionForC(E, Ctx) end, Expressions).
+fixExpressionsForC(Expressions, Context) ->
+    ecompilerUtil:expressionMap(fun (E) -> fixExpressionForC(E, Context) end, Expressions).
 
 -spec fixExpressionForC(eExpression(), genCContext()) -> eExpression().
-fixExpressionForC(#operatorExpression1{operator = '@', operand = Operand, line = Line} = E, {FunctionTypeMap, StructMap, VarTypes} = Ctx) ->
+fixExpressionForC(#operatorExpression1{operator = '@', operand = Operand, line = Line} = E, {FunctionTypeMap, StructMap, VarTypes} = Context) ->
     case ecompilerType:typeOfASTNode(Operand, {VarTypes, FunctionTypeMap, StructMap, #{}}) of
         #arrayType{} ->
-            #operatorExpression2{operator = '.', operand1 = fixExpressionForC(Operand, Ctx), operand2 = #variableReference{name = value, line = Line}};
+            #operatorExpression2{operator = '.', operand1 = fixExpressionForC(Operand, Context), operand2 = #variableReference{name = value, line = Line}};
         _ ->
             E
     end;
-fixExpressionForC(#operatorExpression1{operand = Operand} = E, Ctx) ->
-    E#operatorExpression1{operand = fixExpressionForC(Operand, Ctx)};
-fixExpressionForC(#operatorExpression2{operand1 = Operand1, operand2 = Operand2} = E, Ctx) ->
-    E#operatorExpression2{operand1 = fixExpressionForC(Operand1, Ctx), operand2 = fixExpressionForC(Operand2, Ctx)};
+fixExpressionForC(#operatorExpression1{operand = Operand} = E, Context) ->
+    E#operatorExpression1{operand = fixExpressionForC(Operand, Context)};
+fixExpressionForC(#operatorExpression2{operand1 = Operand1, operand2 = Operand2} = E, Context) ->
+    E#operatorExpression2{operand1 = fixExpressionForC(Operand1, Context), operand2 = fixExpressionForC(Operand2, Context)};
 fixExpressionForC(Any, _) ->
     Any.
 

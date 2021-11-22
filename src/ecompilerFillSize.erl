@@ -5,34 +5,34 @@
 -include("ecompilerFrameDef.hrl").
 
 -spec expandSizeOf(eAST(), compilePassCtx1()) -> eAST().
-expandSizeOf([#function{statements = Expressions} = F | Rest], Ctx) ->
-    [F#function{statements = expandSizeofInExpressions(Expressions, Ctx)} | expandSizeOf(Rest, Ctx)];
-expandSizeOf([#struct{fieldDefaultValueMap = FieldDefaults} = S | Rest], Ctx) ->
-    [S#struct{fieldDefaultValueMap = expandSizeofInMap(FieldDefaults, Ctx)} | expandSizeOf(Rest, Ctx)];
+expandSizeOf([#function{statements = Expressions} = F | Rest], Context) ->
+    [F#function{statements = expandSizeofInExpressions(Expressions, Context)} | expandSizeOf(Rest, Context)];
+expandSizeOf([#struct{fieldDefaultValueMap = FieldDefaults} = S | Rest], Context) ->
+    [S#struct{fieldDefaultValueMap = expandSizeofInMap(FieldDefaults, Context)} | expandSizeOf(Rest, Context)];
 expandSizeOf([], _) ->
     [].
 
-expandSizeofInMap(Map, Ctx) ->
-    maps:map(fun (_, V1) -> expandSizeofInExpression(V1, Ctx) end, Map).
+expandSizeofInMap(Map, Context) ->
+    maps:map(fun (_, V1) -> expandSizeofInExpression(V1, Context) end, Map).
 
 -spec expandSizeofInExpressions(eAST(), compilePassCtx1()) -> [eExpression()].
-expandSizeofInExpressions(Expressions, Ctx) ->
-    ecompilerUtil:expressionMap(fun (E) -> expandSizeofInExpression(E, Ctx) end, Expressions).
+expandSizeofInExpressions(Expressions, Context) ->
+    ecompilerUtil:expressionMap(fun (E) -> expandSizeofInExpression(E, Context) end, Expressions).
 
 -spec expandSizeofInExpression(eExpression(), compilePassCtx1()) -> eExpression().
-expandSizeofInExpression(#sizeofExpression{type = T, line = Line}, Ctx) ->
-    try {integer, Line, sizeOf(T, Ctx)} catch
+expandSizeofInExpression(#sizeofExpression{type = T, line = Line}, Context) ->
+    try {integer, Line, sizeOf(T, Context)} catch
         I ->
             throw({Line, I})
     end;
-expandSizeofInExpression(#operatorExpression2{operand1 = Operand1, operand2 = Operand2} = O, Ctx) ->
-    O#operatorExpression2{operand1 = expandSizeofInExpression(Operand1, Ctx), operand2 = expandSizeofInExpression(Operand2, Ctx)};
-expandSizeofInExpression(#operatorExpression1{operand = Operand} = O, Ctx) ->
-    O#operatorExpression1{operand = expandSizeofInExpression(Operand, Ctx)};
-expandSizeofInExpression(#structInitializeExpression{fieldValueMap = ExprMap} = Si, Ctx) ->
-    Si#structInitializeExpression{fieldValueMap = expandSizeofInMap(ExprMap, Ctx)};
-expandSizeofInExpression(#arrayInitializeExpression{elements = Elements} = Ai, Ctx) ->
-    Ai#arrayInitializeExpression{elements = expandSizeofInExpressions(Elements, Ctx)};
+expandSizeofInExpression(#operatorExpression2{operand1 = Operand1, operand2 = Operand2} = O, Context) ->
+    O#operatorExpression2{operand1 = expandSizeofInExpression(Operand1, Context), operand2 = expandSizeofInExpression(Operand2, Context)};
+expandSizeofInExpression(#operatorExpression1{operand = Operand} = O, Context) ->
+    O#operatorExpression1{operand = expandSizeofInExpression(Operand, Context)};
+expandSizeofInExpression(#structInitializeExpression{fieldValueMap = ExprMap} = Si, Context) ->
+    Si#structInitializeExpression{fieldValueMap = expandSizeofInMap(ExprMap, Context)};
+expandSizeofInExpression(#arrayInitializeExpression{elements = Elements} = Ai, Context) ->
+    Ai#arrayInitializeExpression{elements = expandSizeofInExpressions(Elements, Context)};
 expandSizeofInExpression(Any, _) ->
     Any.
 
@@ -42,36 +42,36 @@ expandSizeofInExpression(Any, _) ->
 %% But the code is beautiful, so I will just keep it as it is now.
 %% use a process to hold the calculated struct info when the speed really becomes a problem.
 -spec fillStructInformation(eAST(), compilePassCtx1()) -> eAST().
-fillStructInformation(AST, {_, PointerWidth} = Ctx) ->
+fillStructInformation(AST, {_, PointerWidth} = Context) ->
     %% struct definition are only allowed in top level of an AST.
-    Ast1 = lists:map(fun (E) -> fillStructSize(E, Ctx) end, AST),
+    Ast1 = lists:map(fun (E) -> fillStructSize(E, Context) end, AST),
     {_, StructMap1} = ecompilerUtil:makeFunctionAndStructMapFromAST(Ast1),
     lists:map(fun (E) -> fillStructOffsets(E, {StructMap1, PointerWidth}) end, Ast1).
 
 -spec fillStructSize(eExpression(), compilePassCtx1()) -> eExpression().
-fillStructSize(#struct{} = S, Ctx) ->
-    S#struct{size = sizeOfStruct(S, Ctx)};
+fillStructSize(#struct{} = S, Context) ->
+    S#struct{size = sizeOfStruct(S, Context)};
 fillStructSize(Any, _) ->
     Any.
 
 -spec fillStructOffsets(eExpression(), compilePassCtx1()) -> eExpression().
-fillStructOffsets(#struct{} = S, Ctx) ->
-    S#struct{fieldOffsetMap = offsetOfStruct(S, Ctx)};
+fillStructOffsets(#struct{} = S, Context) ->
+    S#struct{fieldOffsetMap = offsetOfStruct(S, Context)};
 fillStructOffsets(Any, _) ->
     Any.
 
 -spec offsetOfStruct(#struct{}, compilePassCtx1()) -> #{atom() := integer()}.
-offsetOfStruct(#struct{fieldNames = FieldNames, fieldTypeMap = FieldTypes}, Ctx) ->
+offsetOfStruct(#struct{fieldNames = FieldNames, fieldTypeMap = FieldTypes}, Context) ->
     FieldTypeList = getKVsByReferences(FieldNames, FieldTypes),
-    {_, OffsetMap} = sizeOfStructFields(FieldTypeList, 0, #{}, Ctx),
+    {_, OffsetMap} = sizeOfStructFields(FieldTypeList, 0, #{}, Context),
     OffsetMap.
 
 -spec sizeOfStruct(#struct{}, compilePassCtx1()) -> non_neg_integer().
 sizeOfStruct(#struct{size = Size}, _) when is_integer(Size), Size > 0 ->
     Size;
-sizeOfStruct(#struct{fieldNames = Names, fieldTypeMap = Types}, Ctx) ->
+sizeOfStruct(#struct{fieldNames = Names, fieldTypeMap = Types}, Context) ->
     FieldTypeList = getKVsByReferences(Names, Types),
-    {Size, _} = sizeOfStructFields(FieldTypeList, 0, #{}, Ctx),
+    {Size, _} = sizeOfStructFields(FieldTypeList, 0, #{}, Context),
     Size.
 
 -spec getKVsByReferences([#variableReference{}], #{atom() := any()}) -> [{atom(), any()}].
@@ -83,15 +83,15 @@ getKVsByReferences(RefList, Map) ->
 %% this is the function that calculate size and offsets
 -spec sizeOfStructFields([{atom(), eType()}], integer(), OffsetMap, compilePassCtx1()) -> {integer(), OffsetMap}
         when OffsetMap :: #{atom() := integer()}.
-sizeOfStructFields([{Fname, Ftype} | Rest], CurrentOffset, OffsetMap, {_, PointerWidth} = Ctx) ->
-    FieldSize = sizeOf(Ftype, Ctx),
+sizeOfStructFields([{Fname, Ftype} | Rest], CurrentOffset, OffsetMap, {_, PointerWidth} = Context) ->
+    FieldSize = sizeOf(Ftype, Context),
     NextOffset = CurrentOffset + FieldSize,
     case CurrentOffset rem PointerWidth =/= 0 of
         true ->
             OffsetFixed = fixStructFieldOffset(CurrentOffset, NextOffset, PointerWidth),
-            sizeOfStructFields(Rest, OffsetFixed + FieldSize, OffsetMap#{Fname => OffsetFixed}, Ctx);
+            sizeOfStructFields(Rest, OffsetFixed + FieldSize, OffsetMap#{Fname => OffsetFixed}, Context);
         false ->
-            sizeOfStructFields(Rest, NextOffset, OffsetMap#{Fname => CurrentOffset}, Ctx)
+            sizeOfStructFields(Rest, NextOffset, OffsetMap#{Fname => CurrentOffset}, Context)
     end;
 sizeOfStructFields([], CurrentOffset, OffsetMap, _) ->
     {CurrentOffset, OffsetMap}.
@@ -106,8 +106,8 @@ fixStructFieldOffset(CurrentOffset, NextOffset, PointerWidth) ->
     end.
 
 -spec sizeOf(eType(), compilePassCtx1()) -> non_neg_integer().
-sizeOf(#arrayType{elemtype = T, length = Len}, {_, PointerWidth} = Ctx) ->
-    ElementSize = sizeOf(T, Ctx),
+sizeOf(#arrayType{elemtype = T, length = Len}, {_, PointerWidth} = Context) ->
+    ElementSize = sizeOf(T, Context),
     FixedSize = case ElementSize < PointerWidth of
                     true ->
                         case PointerWidth rem ElementSize of
@@ -122,10 +122,10 @@ sizeOf(#arrayType{elemtype = T, length = Len}, {_, PointerWidth} = Ctx) ->
     FixedSize * Len;
 sizeOf(#basicType{pdepth = N}, {_, PointerWidth}) when N > 0 ->
     PointerWidth;
-sizeOf(#basicType{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
+sizeOf(#basicType{class = struct, tag = Tag}, {StructMap, _} = Context) ->
     case maps:find(Tag, StructMap) of
         {ok, S} ->
-            sizeOfStruct(S, Ctx);
+            sizeOfStruct(S, Context);
         error ->
             throw(ecompilerUtil:fmt("~s is not found", [Tag]))
     end;
