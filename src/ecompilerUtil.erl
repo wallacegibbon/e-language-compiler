@@ -9,17 +9,17 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("ecompilerFrameDef.hrl").
 
-%% when do simple convertions, this function can be used to avoid boilerplate
+%% when do simple conversions, this function can be used to avoid boilerplate
 %% code for if, while, return, call..., so you can concentrate on operand1, operand2...
--spec expressionMap(fun((eExpression()) -> eExpression()), [eExpression()]) -> eExpression().
+-spec expressionMap(fun ((eExpression()) -> eExpression()), [eExpression()]) -> eExpression().
 expressionMap(Fn, [#ifStatement{condition = Cond, then = Then, else = Else} = If | Rest]) ->
     [If#ifStatement{condition = Fn(Cond), then = expressionMap(Fn, Then), else = expressionMap(Fn, Else)} | expressionMap(Fn, Rest)];
 expressionMap(Fn, [#whileStatement{condition = Cond, statements = Expressions} = While | Rest]) ->
     [While#whileStatement{condition = Fn(Cond), statements = expressionMap(Fn, Expressions)} | expressionMap(Fn, Rest)];
-expressionMap(Fn, [#callExpression{fn = Callee, args = Arguments} = Fncall | Rest]) ->
-    [Fncall#callExpression{fn = Fn(Callee), args = expressionMap(Fn, Arguments)} | expressionMap(Fn, Rest)];
-expressionMap(Fn, [#returnStatement{expression = Retexpr} = Return | Rest]) ->
-    [Return#returnStatement{expression = Fn(Retexpr)} | expressionMap(Fn, Rest)];
+expressionMap(Fn, [#callExpression{fn = Callee, args = Arguments} = FunctionCall | Rest]) ->
+    [FunctionCall#callExpression{fn = Fn(Callee), args = expressionMap(Fn, Arguments)} | expressionMap(Fn, Rest)];
+expressionMap(Fn, [#returnStatement{expression = ReturnExpression} = Return | Rest]) ->
+    [Return#returnStatement{expression = Fn(ReturnExpression)} | expressionMap(Fn, Rest)];
 expressionMap(Fn, [Any | Rest]) ->
     [Fn(Any) | expressionMap(Fn, Rest)];
 expressionMap(_, []) ->
@@ -32,8 +32,8 @@ expressionToString(#whileStatement{condition = Cond, statements = Expressions}) 
     io_lib:format("while (~s) ~s end", [expressionToString(Cond), expressionToString(Expressions)]);
 expressionToString(#callExpression{fn = Callee, args = Arguments}) ->
     io_lib:format("(~s)(~s)", [expressionToString(Callee), expressionToString(Arguments)]);
-expressionToString(#returnStatement{expression = Retexpr}) ->
-    io_lib:format("return (~s)", [expressionToString(Retexpr)]);
+expressionToString(#returnStatement{expression = ReturnExpression}) ->
+    io_lib:format("return (~s)", [expressionToString(ReturnExpression)]);
 expressionToString(#variableReference{name = Name}) ->
     io_lib:format("~s", [expressionToString(Name)]);
 expressionToString(#operatorExpression2{operator = Operator, operand1 = Operand1, operand2 = Operand2}) ->
@@ -89,9 +89,9 @@ fillOffset(Offset, PointerWidth) ->
 cutExtra(Offset, PointerWidth) ->
     Offset div PointerWidth * PointerWidth.
 
--spec primitiveSizeOf(atom()) -> pwidth | 1 | 2 | 4 | 8.
-primitiveSizeOf(usize) -> pwidth;
-primitiveSizeOf(isize) -> pwidth;
+-spec primitiveSizeOf(atom()) -> pointerSize | 1 | 2 | 4 | 8.
+primitiveSizeOf(usize) -> pointerSize;
+primitiveSizeOf(isize) -> pointerSize;
 primitiveSizeOf(u64) -> 8;
 primitiveSizeOf(i64) -> 8;
 primitiveSizeOf(u32) -> 4;
@@ -108,12 +108,12 @@ voidType(Line) ->
     #basicType{class = void, tag = void, pdepth = 0, line = Line}.
 
 -spec namesOfVariableReferences([#variableReference{}]) -> [atom()].
-namesOfVariableReferences(VarRefs) ->
-    lists:map(fun (#variableReference{name = Name}) -> Name end, VarRefs).
+namesOfVariableReferences(VariableReferenceList) ->
+    lists:map(fun (#variableReference{name = Name}) -> Name end, VariableReferenceList).
 
 -spec namesOfVariableDefinitions([#variableDefinition{}]) -> [atom()].
-namesOfVariableDefinitions(VarDefs) ->
-    lists:map(fun (#variableDefinition{name = Name}) -> Name end, VarDefs).
+namesOfVariableDefinitions(VariableDefinitionList) ->
+    lists:map(fun (#variableDefinition{name = Name}) -> Name end, VariableDefinitionList).
 
 -spec assert(boolean(), any()) -> ok.
 assert(true, _) ->
@@ -125,11 +125,11 @@ assert(false, Info) ->
 valueInList(Value, List) ->
     lists:any(fun (V) -> V =:= Value end, List).
 
-%% filter_varref_inmaps([#variableReference{name=a}, #variableReference{name=b}], #{a => 1})
-%% > [#variableReference{name=a}].
+%% filterVariableReferenceInMap([#variableReference{name = a}, #variableReference{name = b}], #{a => 1})
+%% > [#variableReference{name = a}].
 -spec filterVariableReferenceInMap([#variableReference{}], #{atom() := any()}) -> [#variableReference{}].
-filterVariableReferenceInMap(Varrefs, TargetMap) ->
-    lists:filter(fun (#variableReference{name = Name}) -> existsInMap(Name, TargetMap) end, Varrefs).
+filterVariableReferenceInMap(VariableReferenceList, TargetMap) ->
+    lists:filter(fun (#variableReference{name = Name}) -> existsInMap(Name, TargetMap) end, VariableReferenceList).
 
 -ifdef(EUNIT).
 
@@ -140,8 +140,8 @@ filterVariableReferenceInMap_test() ->
 -endif.
 
 -spec existsInMap(atom(), #{atom() := any()}) -> boolean().
-existsInMap(Keyname, Map) ->
-    case maps:find(Keyname, Map) of
+existsInMap(KeyName, Map) ->
+    case maps:find(KeyName, Map) of
         {ok, _} ->
             true;
         _ ->

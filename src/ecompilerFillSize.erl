@@ -44,9 +44,9 @@ expandSizeofInExpression(Any, _) ->
 -spec fillStructInformation(eAST(), compilePassCtx1()) -> eAST().
 fillStructInformation(AST, {_, PointerWidth} = Context) ->
     %% struct definition are only allowed in top level of an AST.
-    Ast1 = lists:map(fun (E) -> fillStructSize(E, Context) end, AST),
-    {_, StructMap1} = ecompilerUtil:makeFunctionAndStructMapFromAST(Ast1),
-    lists:map(fun (E) -> fillStructOffsets(E, {StructMap1, PointerWidth}) end, Ast1).
+    AST1 = lists:map(fun (E) -> fillStructSize(E, Context) end, AST),
+    {_, StructMap1} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST1),
+    lists:map(fun (E) -> fillStructOffsets(E, {StructMap1, PointerWidth}) end, AST1).
 
 -spec fillStructSize(eExpression(), compilePassCtx1()) -> eExpression().
 fillStructSize(#struct{} = S, Context) ->
@@ -83,15 +83,15 @@ getKVsByReferences(RefList, Map) ->
 %% this is the function that calculate size and offsets
 -spec sizeOfStructFields([{atom(), eType()}], integer(), OffsetMap, compilePassCtx1()) -> {integer(), OffsetMap}
         when OffsetMap :: #{atom() := integer()}.
-sizeOfStructFields([{Fname, Ftype} | Rest], CurrentOffset, OffsetMap, {_, PointerWidth} = Context) ->
-    FieldSize = sizeOf(Ftype, Context),
+sizeOfStructFields([{FieldName, FieldType} | Rest], CurrentOffset, OffsetMap, {_, PointerWidth} = Context) ->
+    FieldSize = sizeOf(FieldType, Context),
     NextOffset = CurrentOffset + FieldSize,
     case CurrentOffset rem PointerWidth =/= 0 of
         true ->
             OffsetFixed = fixStructFieldOffset(CurrentOffset, NextOffset, PointerWidth),
-            sizeOfStructFields(Rest, OffsetFixed + FieldSize, OffsetMap#{Fname => OffsetFixed}, Context);
+            sizeOfStructFields(Rest, OffsetFixed + FieldSize, OffsetMap#{FieldName => OffsetFixed}, Context);
         false ->
-            sizeOfStructFields(Rest, NextOffset, OffsetMap#{Fname => CurrentOffset}, Context)
+            sizeOfStructFields(Rest, NextOffset, OffsetMap#{FieldName => CurrentOffset}, Context)
     end;
 sizeOfStructFields([], CurrentOffset, OffsetMap, _) ->
     {CurrentOffset, OffsetMap}.
@@ -131,7 +131,7 @@ sizeOf(#basicType{class = struct, tag = Tag}, {StructMap, _} = Context) ->
     end;
 sizeOf(#basicType{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
     case ecompilerUtil:primitiveSizeOf(Tag) of
-        pwidth ->
+        pointerSize ->
             PointerWidth;
         V when is_integer(V) ->
             V

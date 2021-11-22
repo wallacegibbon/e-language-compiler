@@ -23,22 +23,21 @@ compileToAST(Filename) ->
 -spec parseAndCompile(string()) -> {eAST(), variableTypeMap(), eAST()}.
 parseAndCompile(Filename) ->
     try
-        {ok, AST} = parseFile(Filename),
-        ecompilerCompile:compileFromRawAST(AST, #{})
+        ecompilerCompile:compileFromRawAST(parseFile(Filename), #{})
     catch
         E ->
             throw({Filename, E})
     end.
 
--spec parseFile(string()) -> {ok, eAST()}.
+-spec parseFile(string()) -> eAST().
 parseFile(Filename) ->
     case file:read_file(Filename) of
         {ok, RawContent} ->
             case ecompilerScan:string(binary_to_list(RawContent)) of
                 {ok, Tokens, _} ->
                     case ecompilerParse:parse(ePreprocess:process(Tokens)) of
-                        {ok, _Ast} = D ->
-                            D;
+                        {ok, AST} ->
+                            AST;
                         {error, {Line, _, ErrorInfo}} ->
                             throw({Line, ErrorInfo})
                     end;

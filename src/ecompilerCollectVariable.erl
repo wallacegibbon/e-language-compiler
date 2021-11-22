@@ -7,16 +7,16 @@
 
 -spec fetchVariables(eAST()) -> {eAST(), variableTypeMap(), eAST()}.
 fetchVariables(AST) ->
-    {Ast3, VarTypes, InitCode} = fetchVariables(prepareStructInitExpression(AST), [], {#{}, [], true}),
-    {Ast3, VarTypes, InitCode}.
+    {AST3, VarTypes, InitCode} = fetchVariables(prepareStructInitExpression(AST), [], {#{}, [], true}),
+    {AST3, VarTypes, InitCode}.
 
 -spec prepareStructInitExpression(eAST()) -> eAST().
 prepareStructInitExpression([#functionRaw{statements = Expressions} = F | Rest]) ->
     [F#functionRaw{statements = fixStructInitAST(Expressions)} | prepareStructInitExpression(Rest)];
 prepareStructInitExpression([#structRaw{fields = Expressions} = S | Rest]) ->
     [S#structRaw{fields = fixStructInitAST(Expressions)} | prepareStructInitExpression(Rest)];
-prepareStructInitExpression([#variableDefinition{initialValue = Initval} = V | Rest]) ->
-    [V#variableDefinition{initialValue = fixStructInit(Initval)} | prepareStructInitExpression(Rest)];
+prepareStructInitExpression([#variableDefinition{initialValue = InitialValue} = V | Rest]) ->
+    [V#variableDefinition{initialValue = fixStructInit(InitialValue)} | prepareStructInitExpression(Rest)];
 prepareStructInitExpression([]) ->
     [].
 
@@ -30,8 +30,8 @@ fixStructInit(#structInitializeExpressionRaw{name = Name, fields = Fields, line 
     #structInitializeExpression{name = Name, fieldNames = FieldNames, fieldValueMap = InitExprMap, line = Line};
 fixStructInit(#arrayInitializeExpression{elements = Elements} = A) ->
     A#arrayInitializeExpression{elements = fixStructInitAST(Elements)};
-fixStructInit(#variableDefinition{initialValue = Initval} = V) ->
-    V#variableDefinition{initialValue = fixStructInit(Initval)};
+fixStructInit(#variableDefinition{initialValue = InitialValue} = V) ->
+    V#variableDefinition{initialValue = fixStructInit(InitialValue)};
 fixStructInit(#operatorExpression2{operand1 = Operand1, operand2 = Operand2} = O) ->
     O#operatorExpression2{operand1 = fixStructInit(Operand1), operand2 = fixStructInit(Operand2)};
 fixStructInit(#operatorExpression1{operand = Operand} = O) ->
@@ -52,40 +52,40 @@ structInitToMap([], FieldNames, ExprMap) ->
 %% In function expressions, the init code of defvar can not be simply fetched out from the code,
 %% it should be replaced as assignment in the same place.
 -spec fetchVariables(eAST(), eAST(), {variableTypeMap(), eAST(), boolean()}) -> {eAST(), variableTypeMap(), eAST()}.
-fetchVariables([#variableDefinition{name = Name, type = Type, line = Line, initialValue = Initval} | Rest], NewAst, {VarTypes, InitCode, CollectInitCode}) ->
+fetchVariables([#variableDefinition{name = Name, type = Type, line = Line, initialValue = InitialValue} | Rest], NewAST, {VarTypes, InitCode, CollectInitCode}) ->
     ensureNoNameConflict(Name, VarTypes, Line),
     case CollectInitCode of
         true ->
-            fetchVariables(Rest, NewAst, {VarTypes#{Name => Type}, appendToAST(InitCode, Name, Initval, Line), CollectInitCode});
+            fetchVariables(Rest, NewAST, {VarTypes#{Name => Type}, appendToAST(InitCode, Name, InitialValue, Line), CollectInitCode});
         false ->
-            fetchVariables(Rest, appendToAST(NewAst, Name, Initval, Line), {VarTypes#{Name => Type}, InitCode, CollectInitCode})
+            fetchVariables(Rest, appendToAST(NewAST, Name, InitialValue, Line), {VarTypes#{Name => Type}, InitCode, CollectInitCode})
     end;
-fetchVariables([#functionRaw{name = Name, returnType = Ret, parameters = Params, statements = Expressions, line = Line} | Rest], NewAst, {GlobalVars, _, _} = Context) ->
+fetchVariables([#functionRaw{name = Name, returnType = Ret, parameters = Params, statements = Expressions, line = Line} | Rest], NewAST, {GlobalVars, _, _} = Context) ->
     {[], ParamVars, ParamInitCode} = fetchVariables(Params, [], {#{}, [], true}),
     ecompilerUtil:assert(ParamInitCode =:= [], {Line, "function parameters can not have default value"}),
-    {NewExprs, FunVarTypes, []} = fetchVariables(Expressions, [], {ParamVars, [], false}),
+    {NewExpressions, FunVarTypes, []} = fetchVariables(Expressions, [], {ParamVars, [], false}),
     %% local variables should have different names from global variables
     checkVariableConflict(GlobalVars, FunVarTypes),
-    %% lable names should be different from variables, because the operand of goto could be a pointer variable.
+    %% label names should be different from variables, because the operand of goto could be a pointer variable.
     Labels = lists:filter(fun (E) -> element(1, E) =:= label end, Expressions),
     checkLabelConflict(Labels, GlobalVars, FunVarTypes),
     FunctionType = #functionType{parameters = getValuesByDefinitions(Params, ParamVars), ret = Ret, line = Line},
-    Function = #function{name = Name, variableTypeMap = FunVarTypes, statements = NewExprs, parameterNames = variableDefinitionToReference(Params), line = Line, type = FunctionType},
-    fetchVariables(Rest, [Function | NewAst], Context);
-fetchVariables([#structRaw{name = Name, fields = Fields, line = Line} | Rest], NewAst, Context) ->
+    Function = #function{name = Name, variableTypeMap = FunVarTypes, statements = NewExpressions, parameterNames = variableDefinitionToReference(Params), line = Line, type = FunctionType},
+    fetchVariables(Rest, [Function | NewAST], Context);
+fetchVariables([#structRaw{name = Name, fields = Fields, line = Line} | Rest], NewAST, Context) ->
     %% struct can have default value
     {[], FieldTypes, StructInitCode} = fetchVariables(Fields, [], {#{}, [], true}),
     {_, FieldInitMap} = structInitToMap(StructInitCode),
     S = #struct{name = Name, fieldTypeMap = FieldTypes, fieldNames = variableDefinitionToReference(Fields), fieldDefaultValueMap = FieldInitMap, line = Line},
-    fetchVariables(Rest, [S | NewAst], Context);
-fetchVariables([Any | Rest], NewAst, Context) ->
-    fetchVariables(Rest, [Any | NewAst], Context);
-fetchVariables([], NewAst, {VarTypes, InitCode, _}) ->
-    {lists:reverse(NewAst), VarTypes, lists:reverse(InitCode)}.
+    fetchVariables(Rest, [S | NewAST], Context);
+fetchVariables([Any | Rest], NewAST, Context) ->
+    fetchVariables(Rest, [Any | NewAST], Context);
+fetchVariables([], NewAST, {VarTypes, InitCode, _}) ->
+    {lists:reverse(NewAST), VarTypes, lists:reverse(InitCode)}.
 
 -spec appendToAST(eAST(), atom(), eExpression(), integer()) -> eAST().
-appendToAST(AST, Varname, Initval, Line) when Initval =/= none ->
-    [#operatorExpression2{operator = assign, operand1 = #variableReference{name = Varname, line = Line}, operand2 = Initval, line = Line} | AST];
+appendToAST(AST, VariableName, InitialValue, Line) when InitialValue =/= none ->
+    [#operatorExpression2{operator = assign, operand1 = #variableReference{name = VariableName, line = Line}, operand2 = InitialValue, line = Line} | AST];
 appendToAST(AST, _, _, _) ->
     AST.
 
@@ -124,5 +124,5 @@ getValuesByDefinitions(DefList, Map) ->
     ecompilerUtil:getValuesByKeys(ecompilerUtil:namesOfVariableDefinitions(DefList), Map).
 
 -spec variableDefinitionToReference([#variableDefinition{}]) -> [#variableReference{}].
-variableDefinitionToReference(Vardefs) ->
-    lists:map(fun (#variableDefinition{name = N, line = Line}) -> #variableReference{name = N, line = Line} end, Vardefs).
+variableDefinitionToReference(VariableDefinitions) ->
+    lists:map(fun (#variableDefinition{name = N, line = Line}) -> #variableReference{name = N, line = Line} end, VariableDefinitions).

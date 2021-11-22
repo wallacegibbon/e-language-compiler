@@ -5,11 +5,11 @@
 -include("ecompilerFrameDef.hrl").
 
 -spec checkTypesInAST(eAST(), variableTypeMap(), {functionTypeMap(), structTypeMap()}) -> ok.
-checkTypesInAST([#function{variableTypeMap = VarTypes, statements = Expressions, type = Fntype} | Rest], GlobalVarTypes, {FunctionTypeMap, StructMap} = Maps) ->
+checkTypesInAST([#function{variableTypeMap = VarTypes, statements = Expressions, type = FunctionType} | Rest], GlobalVarTypes, {FunctionTypeMap, StructMap} = Maps) ->
     checkTypes(maps:values(VarTypes), StructMap),
-    checkType(Fntype#functionType.ret, StructMap),
+    checkType(FunctionType#functionType.ret, StructMap),
     CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
-    typeOfASTNodeList(Expressions, {CurrentVars, FunctionTypeMap, StructMap, Fntype#functionType.ret}),
+    typeOfASTNodeList(Expressions, {CurrentVars, FunctionTypeMap, StructMap, FunctionType#functionType.ret}),
     checkTypesInAST(Rest, GlobalVarTypes, Maps);
 checkTypesInAST([#struct{name = Name, fieldTypeMap = FieldTypes, fieldNames = FieldNames, fieldDefaultValueMap = FieldDefaults} | Rest], GlobalVarTypes, {FunctionTypeMap, StructMap} = Maps) ->
     checkTypes(maps:values(FieldTypes), StructMap),
@@ -62,8 +62,8 @@ typeOfASTNode(#operatorExpression2{operator = '+', operand1 = Operand1, operand2
             T;
         false ->
             case isPointerAndInt(TypeofOp1, TypeofOp2) of
-                {true, Ptype} ->
-                    Ptype;
+                {true, PointerType} ->
+                    PointerType;
                 false ->
                     throw({Line, typeErrorOfOp2('+', TypeofOp1, TypeofOp2)})
             end
@@ -77,8 +77,8 @@ typeOfASTNode(#operatorExpression2{operator = '-', operand1 = Operand1, operand2
             T;
         false ->
             case isPointerAndIntOrdered(TypeofOp1, TypeofOp2) of
-                {true, Ptype} ->
-                    Ptype;
+                {true, PointerType} ->
+                    PointerType;
                 false ->
                     throw({Line, typeErrorOfOp2('-', TypeofOp1, TypeofOp2)})
             end
@@ -210,16 +210,16 @@ argumentsErrorInformation(FnParamTypes, ArgsTypes) ->
     ecompilerUtil:fmt("args should be (~s), not (~s)", [joinTypesToString(FnParamTypes), joinTypesToString(ArgsTypes)]).
 
 -spec increasePointerDepth(eType(), integer()) -> eType().
-increasePointerDepth(#basicType{pdepth = Pdepth} = T, _) ->
-    T#basicType{pdepth = Pdepth + 1};
+increasePointerDepth(#basicType{pdepth = PointerDepth} = T, _) ->
+    T#basicType{pdepth = PointerDepth + 1};
 increasePointerDepth(#arrayType{elemtype = #basicType{} = T}, OpLine) ->
     increasePointerDepth(T, OpLine);
 increasePointerDepth(T, OpLine) ->
     throw({OpLine, ecompilerUtil:fmt("'@' on type ~s is invalid", [typeToString(T)])}).
 
 -spec decreasePointerDepth(eType(), integer()) -> eType().
-decreasePointerDepth(#basicType{pdepth = Pdepth} = T, _) when Pdepth > 0 ->
-    T#basicType{pdepth = Pdepth - 1};
+decreasePointerDepth(#basicType{pdepth = PointerDepth} = T, _) when PointerDepth > 0 ->
+    T#basicType{pdepth = PointerDepth - 1};
 decreasePointerDepth(T, OpLine) ->
     throw({OpLine, ecompilerUtil:fmt("'^' on type ~s is invalid", [typeToString(T)])}).
 
@@ -347,27 +347,27 @@ checkType(#basicType{class = struct, tag = Tag, line = Line}, StructMap) ->
     end;
 checkType(#basicType{}, _) ->
     ok;
-checkType(#arrayType{elemtype = Elemtype}, StructMap) ->
-    case Elemtype of
+checkType(#arrayType{elemtype = ElementType}, StructMap) ->
+    case ElementType of
         #arrayType{line = Line} ->
             throw({Line, "nested array is not supported"});
         _ ->
-            checkType(Elemtype, StructMap)
+            checkType(ElementType, StructMap)
     end;
-checkType(#functionType{parameters = Params, ret = Rettype}, StructMap) ->
+checkType(#functionType{parameters = Params, ret = ReturnType}, StructMap) ->
     checkTypes(Params, StructMap),
-    checkType(Rettype, StructMap).
+    checkType(ReturnType, StructMap).
 
 -spec joinTypesToString([eType()]) -> string().
 joinTypesToString(Types) ->
     lists:join(",", lists:map(fun typeToString/1, Types)).
 
 -spec typeToString(eType()) -> string().
-typeToString(#functionType{parameters = Params, ret = Rettype}) ->
-    io_lib:format("fun(~s): ~s", [joinTypesToString(Params), typeToString(Rettype)]);
+typeToString(#functionType{parameters = Params, ret = ReturnType}) ->
+    io_lib:format("fun(~s): ~s", [joinTypesToString(Params), typeToString(ReturnType)]);
 typeToString(#arrayType{elemtype = Type, length = N}) ->
     io_lib:format("{~s, ~w}", [typeToString(Type), N]);
-typeToString(#basicType{tag = Tag, pdepth = Pdepth}) when Pdepth > 0 ->
-    io_lib:format("(~s~s)", [Tag, lists:duplicate(Pdepth, "^")]);
+typeToString(#basicType{tag = Tag, pdepth = PointerDepth}) when PointerDepth > 0 ->
+    io_lib:format("(~s~s)", [Tag, lists:duplicate(PointerDepth, "^")]);
 typeToString(#basicType{tag = Tag, pdepth = 0}) ->
     atom_to_list(Tag).

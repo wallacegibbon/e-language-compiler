@@ -10,16 +10,16 @@
 generateCCode(AST, GlobalVars, InitCode, OutputFile) ->
     {FunctionTypeMap, StructMap} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST),
     Context = {FunctionTypeMap, StructMap, GlobalVars},
-    Ast2 = lists:map(fun (A) -> fixFunctionForC(A, Context) end, AST),
+    AST2 = lists:map(fun (A) -> fixFunctionForC(A, Context) end, AST),
     InitCode2 = fixExpressionsForC(InitCode, Context),
-    %io:format(">>>~p~n", [Ast2]),
+    %io:format(">>>~p~n", [AST2]),
     %% struct definition have to be before function declarations
     CheckStruct = fun (A) -> element(1, A) =:= struct end,
-    {StructAST, FunctionAST} = lists:partition(CheckStruct, Ast2),
+    {StructAST, FunctionAST} = lists:partition(CheckStruct, AST2),
     {StructStatements, []} = statementsToString(StructAST, []),
-    {FnStatements, FnDeclars} = statementsToString(FunctionAST, InitCode2),
+    {FnStatements, FunctionDeclarations} = statementsToString(FunctionAST, InitCode2),
     VarStatements = variableMapToString(GlobalVars),
-    Code = lists:join("\n\n", [commonCCodes(), StructStatements, VarStatements, FnDeclars, FnStatements]),
+    Code = lists:join("\n\n", [commonCCodes(), StructStatements, VarStatements, FunctionDeclarations, FnStatements]),
     ok = file:write_file(OutputFile, Code).
 
 -spec fixFunctionForC(eExpression(), genCContext()) -> eExpression().
@@ -57,32 +57,32 @@ commonCCodes() ->
 statementsToString(Statements, InitCode) ->
     statementsToString(Statements, InitCode, [], []).
 
-statementsToString([#function{name = Name, parameterNames = ParamNames, type = Fntype, variableTypeMap = VarTypes, statements = Expressions} | Rest], InitCode, StatementStrs, FnDeclars) ->
+statementsToString([#function{name = Name, parameterNames = ParamNames, type = FunctionType, variableTypeMap = VarTypes, statements = Expressions} | Rest], InitCode, StatementStringList, FnDeclarationList) ->
     ParamNameAtoms = fetchNamesFromVariableReferences(ParamNames),
     PureParams = mapToKVList(ParamNameAtoms, maps:with(ParamNameAtoms, VarTypes)),
     PureVars = maps:without(ParamNameAtoms, VarTypes),
-    Declar = functioinDeclarationToString(Name, functionParametersToString(PureParams), Fntype#functionType.ret),
-    Exprs2 = case Name =:= main of
-                 true ->
-                     InitCode ++ Expressions;
-                 false ->
-                     Expressions
-             end,
-    S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declar, variableMapToString(PureVars), expressionsToString(Exprs2)]),
-    statementsToString(Rest, InitCode, [S | StatementStrs], [Declar ++ ";\n" | FnDeclars]);
-statementsToString([#struct{name = Name, fieldTypeMap = FieldTypes, fieldNames = FieldNames} | Rest], InitCode, StatementStrs, FnDeclars) ->
+    Declarations = functionDeclarationToString(Name, functionParametersToString(PureParams), FunctionType#functionType.ret),
+    Expressions2 = case Name =:= main of
+                       true ->
+                           InitCode ++ Expressions;
+                       false ->
+                           Expressions
+                   end,
+    S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declarations, variableMapToString(PureVars), expressionsToString(Expressions2)]),
+    statementsToString(Rest, InitCode, [S | StatementStringList], [Declarations ++ ";\n" | FnDeclarationList]);
+statementsToString([#struct{name = Name, fieldTypeMap = FieldTypes, fieldNames = FieldNames} | Rest], InitCode, StatementStringList, FnDeclarationList) ->
     FieldList = mapToKVList(fetchNamesFromVariableReferences(FieldNames), FieldTypes),
     S = io_lib:format("struct ~s {~n~s~n};~n~n", [Name, variableListToString(FieldList)]),
-    statementsToString(Rest, InitCode, [S | StatementStrs], FnDeclars);
-statementsToString([], _, StatementStrs, FnDeclars) ->
-    {lists:reverse(StatementStrs), lists:reverse(FnDeclars)}.
+    statementsToString(Rest, InitCode, [S | StatementStringList], FnDeclarationList);
+statementsToString([], _, StatementStringList, FnDeclarationList) ->
+    {lists:reverse(StatementStringList), lists:reverse(FnDeclarationList)}.
 
-functioinDeclarationToString(Name, ParamStr, #basicType{pdepth = N} = Rettype) when N > 0 ->
-    functionReturnTypeToString(Rettype, io_lib:format("(*~s(~s))", [Name, ParamStr]));
-functioinDeclarationToString(Name, ParamStr, #functionType{} = Rettype) ->
-    functionReturnTypeToString(Rettype, io_lib:format("(*~s(~s))", [Name, ParamStr]));
-functioinDeclarationToString(Name, ParamStr, Rettype) ->
-    typeToCString(Rettype, io_lib:format("~s(~s)", [Name, ParamStr])).
+functionDeclarationToString(Name, ParamStr, #basicType{pdepth = N} = ReturnType) when N > 0 ->
+    functionReturnTypeToString(ReturnType, io_lib:format("(*~s(~s))", [Name, ParamStr]));
+functionDeclarationToString(Name, ParamStr, #functionType{} = ReturnType) ->
+    functionReturnTypeToString(ReturnType, io_lib:format("(*~s(~s))", [Name, ParamStr]));
+functionDeclarationToString(Name, ParamStr, ReturnType) ->
+    typeToCString(ReturnType, io_lib:format("~s(~s)", [Name, ParamStr])).
 
 functionParametersToString(NameTypePairs) ->
     lists:join(",", lists:map(fun ({N, T}) -> typeToCString(T, N) end, NameTypePairs)).
@@ -108,25 +108,25 @@ fetchNamesFromVariableReferences(VarrefList) ->
 mapToKVList(NameAtoms, ValueMap) ->
     lists:zip(NameAtoms, ecompilerUtil:getValuesByKeys(NameAtoms, ValueMap)).
 
-functionReturnTypeToString(#functionType{parameters = Params, ret = Rettype}, NameParams) ->
-    Paramstr = functionParamsToStringNoFunctionNames(Params),
-    NewNameParams = io_lib:format("~s(~s)", [NameParams, Paramstr]),
-    typeToCString(Rettype, NewNameParams);
+functionReturnTypeToString(#functionType{parameters = Params, ret = ReturnType}, NameParams) ->
+    ParametersString = functionParamsToStringNoFunctionNames(Params),
+    NewNameParams = io_lib:format("~s(~s)", [NameParams, ParametersString]),
+    typeToCString(ReturnType, NewNameParams);
 functionReturnTypeToString(#basicType{pdepth = N} = T, NameParams) when N > 0 ->
     typeToCString(T#basicType{pdepth = N - 1}, NameParams).
 
 %% convert type to C string
 -spec typeToCString(eExpression(), iolist()) -> iolist().
-typeToCString(#arrayType{length = Len, elemtype = ElementType}, Varname) ->
-    io_lib:format("struct {~s value[~w];} ~s", [typeToCString(ElementType, ""), Len, Varname]);
-typeToCString(#basicType{class = Class, tag = Tag, pdepth = Depth}, Varname) when Depth > 0 ->
-    io_lib:format("~s~s ~s", [typeTagToString(Class, Tag), lists:duplicate(Depth, "*"), Varname]);
-typeToCString(#basicType{class = Class, tag = Tag, pdepth = 0}, Varname) ->
-    io_lib:format("~s ~s", [typeTagToString(Class, Tag), Varname]);
-typeToCString(#functionType{parameters = Params, ret = Rettype}, Varname) ->
-    Paramstr = functionParamsToStringNoFunctionNames(Params),
-    NameParams = io_lib:format("(*~s)(~s)", [Varname, Paramstr]),
-    typeToCString(Rettype, NameParams).
+typeToCString(#arrayType{length = Len, elemtype = ElementType}, VariableName) ->
+    io_lib:format("struct {~s value[~w];} ~s", [typeToCString(ElementType, ""), Len, VariableName]);
+typeToCString(#basicType{class = Class, tag = Tag, pdepth = Depth}, VariableName) when Depth > 0 ->
+    io_lib:format("~s~s ~s", [typeTagToString(Class, Tag), lists:duplicate(Depth, "*"), VariableName]);
+typeToCString(#basicType{class = Class, tag = Tag, pdepth = 0}, VariableName) ->
+    io_lib:format("~s ~s", [typeTagToString(Class, Tag), VariableName]);
+typeToCString(#functionType{parameters = Params, ret = ReturnType}, VariableName) ->
+    ParameterString = functionParamsToStringNoFunctionNames(Params),
+    NameParams = io_lib:format("(*~s)(~s)", [VariableName, ParameterString]),
+    typeToCString(ReturnType, NameParams).
 
 typeTagToString(struct, Name) ->
     io_lib:format("struct ~s", [Name]);
@@ -147,34 +147,34 @@ expressionToString(#ifStatement{condition = Condition, then = Then, else = Else}
     io_lib:format("if (~s) {\n~s\n} else {\n~s}", [expressionToString(Condition, $\s), expressionsToString(Then), expressionsToString(Else)]);
 expressionToString(#whileStatement{condition = Condition, statements = Expressions}, _) ->
     io_lib:format("while (~s) {\n~s\n}\n", [expressionToString(Condition, $\s), expressionsToString(Expressions)]);
-expressionToString(#operatorExpression2{operator = '::', operand1 = #variableReference{name = c}, operand2 = Operand2}, Endchar) ->
-    expressionToString(Operand2, Endchar);
-expressionToString(#operatorExpression2{operator = Operator, operand1 = Operand1, operand2 = Operand2}, Endchar) ->
-    io_lib:format("(~s ~s ~s)~c", [expressionToString(Operand1, $\s), translateOperator(Operator), expressionToString(Operand2, $\s), Endchar]);
-expressionToString(#operatorExpression1{operator = Operator, operand = Operand}, Endchar) ->
-    io_lib:format("(~s ~s)~c", [translateOperator(Operator), expressionToString(Operand, $\s), Endchar]);
-expressionToString(#callExpression{fn = Fn, args = Arguments}, Endchar) ->
+expressionToString(#operatorExpression2{operator = '::', operand1 = #variableReference{name = c}, operand2 = Operand2}, EndChar) ->
+    expressionToString(Operand2, EndChar);
+expressionToString(#operatorExpression2{operator = Operator, operand1 = Operand1, operand2 = Operand2}, EndChar) ->
+    io_lib:format("(~s ~s ~s)~c", [expressionToString(Operand1, $\s), translateOperator(Operator), expressionToString(Operand2, $\s), EndChar]);
+expressionToString(#operatorExpression1{operator = Operator, operand = Operand}, EndChar) ->
+    io_lib:format("(~s ~s)~c", [translateOperator(Operator), expressionToString(Operand, $\s), EndChar]);
+expressionToString(#callExpression{fn = Fn, args = Arguments}, EndChar) ->
     ArgumentString = lists:join(",", lists:map(fun (E) -> expressionToString(E, $\s) end, Arguments)),
-    io_lib:format("~s(~s)~c", [expressionToString(Fn, $\s), ArgumentString, Endchar]);
-expressionToString(#returnStatement{expression = Expression}, Endchar) ->
-    io_lib:format("return ~s~c", [expressionToString(Expression, $\s), Endchar]);
-expressionToString(#gotoStatement{expression = Expression}, Endchar) ->
-    io_lib:format("goto ~s~c", [expressionToString(Expression, $\s), Endchar]);
+    io_lib:format("~s(~s)~c", [expressionToString(Fn, $\s), ArgumentString, EndChar]);
+expressionToString(#returnStatement{expression = Expression}, EndChar) ->
+    io_lib:format("return ~s~c", [expressionToString(Expression, $\s), EndChar]);
+expressionToString(#gotoStatement{expression = Expression}, EndChar) ->
+    io_lib:format("goto ~s~c", [expressionToString(Expression, $\s), EndChar]);
 expressionToString(#gotoLabel{name = Name}, _) ->
     io_lib:format("~s:", [Name]);
-expressionToString(#variableReference{name = Name}, Endchar) ->
-    io_lib:format("~s~c", [Name, Endchar]);
-expressionToString(#typeConvert{expression = Expression, type = TargetType}, Endchar) ->
-    io_lib:format("((~s) ~s)~c", [typeToCString(TargetType, ""), expressionToString(Expression, $\s), Endchar]);
-expressionToString({Any, _Line, Value}, Endchar) when Any =:= integer; Any =:= float ->
-    io_lib:format("~w~c", [Value, Endchar]);
-expressionToString({Any, _Line, S}, Endchar) when Any =:= string ->
-    io_lib:format("\"~s\"~c", [handleSpecialCharactersInString(S), Endchar]).
+expressionToString(#variableReference{name = Name}, EndChar) ->
+    io_lib:format("~s~c", [Name, EndChar]);
+expressionToString(#typeConvert{expression = Expression, type = TargetType}, EndChar) ->
+    io_lib:format("((~s) ~s)~c", [typeToCString(TargetType, ""), expressionToString(Expression, $\s), EndChar]);
+expressionToString({Any, _Line, Value}, EndChar) when Any =:= integer; Any =:= float ->
+    io_lib:format("~w~c", [Value, EndChar]);
+expressionToString({Any, _Line, S}, EndChar) when Any =:= string ->
+    io_lib:format("\"~s\"~c", [handleSpecialCharactersInString(S), EndChar]).
 
--define(SPECIAL_CHARMAP, #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}).
+-define(SPECIAL_CHARACTER_MAP, #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}).
 
 handleSpecialCharactersInString(String) ->
-    lists:map(fun (C) -> maps:get(C, ?SPECIAL_CHARMAP, C) end, String).
+    lists:map(fun (C) -> maps:get(C, ?SPECIAL_CHARACTER_MAP, C) end, String).
 
 -spec translateOperator(atom()) -> string() | atom().
 translateOperator(assign) ->

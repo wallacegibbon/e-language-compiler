@@ -10,7 +10,7 @@
 compileFromRawAST(AST, CustomCompileOptions) ->
     CompileOptions = maps:merge(defaultCompileOptions(), CustomCompileOptions),
     {AST2, VariableTypeMap, InitCode0} = ecompilerCollectVariable:fetchVariables(AST),
-    %io:format(">>> ~p~n", [Ast2]),
+    %io:format(">>> ~p~n", [AST2]),
 
     {FunctionTypeMap, StructMap0} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST2),
 
@@ -26,7 +26,7 @@ compileFromRawAST(AST, CustomCompileOptions) ->
     Ctx1 = {StructMap1, PointerWidth},
     AST4 = ecompilerFillSize:expandSizeOf(AST3, Ctx1),
 
-    %% initcode is not in main ast, do not forget it
+    %% Initializing code for global variables are not in main ast, do not forget it
     InitCode1 = ecompilerFillSize:expandSizeofInExpressions(InitCode0, Ctx1),
     %% sizeof expressions are expanded, so StructMap needs to be updated
     {_, StructMap2} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST4),
