@@ -1,4 +1,4 @@
--module(eCompile).
+-module(eMainCompiler).
 
 -export([compileFromRawAST/2]).
 

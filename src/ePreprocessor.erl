@@ -1,4 +1,4 @@
--module(ePreprocess).
+-module(ePreprocessor).
 
 -export([process/1]).
 
