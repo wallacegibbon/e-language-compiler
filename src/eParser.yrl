@@ -40,11 +40,11 @@ typeAnnotationList -> typeAnnotation : ['$1'].
 typeAnnotation -> 'fun' '(' typeAnnotationList ')' ':' typeAnnotation :
     #functionType{parameters = '$3', ret = '$6', line = tokenLine('$1')}.
 typeAnnotation -> 'fun' '(' typeAnnotationList ')' :
-    #functionType{parameters = '$3', ret = ecompilerUtil:voidType(tokenLine('$4')), line = tokenLine('$1')}.
+    #functionType{parameters = '$3', ret = eUtil:voidType(tokenLine('$4')), line = tokenLine('$1')}.
 typeAnnotation -> 'fun' '(' ')' ':' typeAnnotation :
     #functionType{parameters = [], ret = '$5', line = tokenLine('$1')}.
 typeAnnotation -> 'fun' '(' ')' :
-    #functionType{parameters = [], ret = ecompilerUtil:voidType(tokenLine('$3')), line = tokenLine('$1')}.
+    #functionType{parameters = [], ret = eUtil:voidType(tokenLine('$3')), line = tokenLine('$1')}.
 typeAnnotation -> '{' typeAnnotation ',' expression '}' :
     #arrayType{elemtype = '$2', length = tokenValue('$4'), line = tokenLine('$1')}.
 typeAnnotation -> integerType pointerDepth :
@@ -90,9 +90,9 @@ functionDefinition -> 'fun' identifier '(' variableDefinitionList ')' ':' typeAn
 functionDefinition -> 'fun' identifier '(' ')' ':' typeAnnotation functionStatementList 'end' :
     #functionRaw{name = tokenValue('$2'), parameters = [], returnType = '$6', statements = '$7', line = tokenLine('$2')}.
 functionDefinition -> 'fun' identifier '(' variableDefinitionList ')' functionStatementList 'end' :
-    #functionRaw{name = tokenValue('$2'), parameters = '$4', returnType = ecompilerUtil:voidType(tokenLine('$5')), statements = '$6', line = tokenLine('$2')}.
+    #functionRaw{name = tokenValue('$2'), parameters = '$4', returnType = eUtil:voidType(tokenLine('$5')), statements = '$6', line = tokenLine('$2')}.
 functionDefinition -> 'fun' identifier '(' ')' functionStatementList 'end' :
-    #functionRaw{name = tokenValue('$2'), parameters = [], returnType = ecompilerUtil:voidType(tokenLine('$4')), statements = '$5', line = tokenLine('$2')}.
+    #functionRaw{name = tokenValue('$2'), parameters = [], returnType = eUtil:voidType(tokenLine('$4')), statements = '$5', line = tokenLine('$2')}.
 
 %% while
 whileStatement -> while expression do functionStatementList 'end' :
@@ -168,7 +168,7 @@ functionStatement -> gotoLabel : '$1'.
 
 gotoLabel -> '@' identifier : #gotoLabel{name = tokenValue('$2'), line = tokenLine('$2')}.
 
-expression -> reservedKeyword : return_error(tokenLine('$1'), ecompilerUtil:fmt("~s is reserved keyword", [tokenSymbol('$1')])).
+expression -> reservedKeyword : return_error(tokenLine('$1'), eUtil:fmt("~s is reserved keyword", [tokenSymbol('$1')])).
 expression -> expression op30 expression : #operatorExpression2{operator = tokenSymbol('$2'), operand1 = '$1', operand2 = '$3', line=tokenLine('$2')}.
 expression -> expression op29 expression : #operatorExpression2{operator = tokenSymbol('$2'), operand1 = '$1', operand2 = '$3', line=tokenLine('$2')}.
 expression -> expression op28 expression : #operatorExpression2{operator = tokenSymbol('$2'), operand1 = '$1', operand2 = '$3', line = tokenLine('$2')}.
@@ -186,6 +186,7 @@ expression -> sizeofExpression : '$1'.
 expression -> '(' expression ')' : '$2'.
 expression -> '(' expression as typeAnnotation ')' : #typeConvert{expression = '$2', type = '$4', line = tokenLine('$3')}.
 
+reservedKeyword -> new : '$1'.
 reservedKeyword -> 'cond' : '$1'.
 reservedKeyword -> 'case' : '$1'.
 reservedKeyword -> for : '$1'.
@@ -237,7 +238,7 @@ op25 -> 'or' : '$1'.
 
 Erlang code.
 
--include("ecompilerFrameDef.hrl").
+-include("eRecordDefinition.hrl").
 
 stringToIntegerTokens({string, Line, Str}) ->
     lists:map(fun (Char) -> {integer, Line, Char} end, Str).

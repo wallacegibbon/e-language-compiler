@@ -1,43 +1,43 @@
--module(ecompilerCompile).
+-module(eCompile).
 
 -export([compileFromRawAST/2]).
 
--include("ecompilerFrameDef.hrl").
+-include("eRecordDefinition.hrl").
 
 -type compileOptions() :: map().
 
 -spec compileFromRawAST(eAST(), compileOptions()) -> {eAST(), variableTypeMap(), eAST()}.
 compileFromRawAST(AST, CustomCompileOptions) ->
     CompileOptions = maps:merge(defaultCompileOptions(), CustomCompileOptions),
-    {AST2, VariableTypeMap, InitCode0} = ecompilerCollectVariable:fetchVariables(AST),
+    {AST2, VariableTypeMap, InitCode0} = eVariable:fetchVariables(AST),
     %io:format(">>> ~p~n", [AST2]),
 
-    {FunctionTypeMap, StructMap0} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST2),
+    {FunctionTypeMap, StructMap0} = eUtil:makeFunctionAndStructMapFromAST(AST2),
 
     %% struct recursion is not allowed.
     ensureNoRecursiveStruct(StructMap0),
     #{pointer_width := PointerWidth} = CompileOptions,
     %% calculate struct size, filed offsets
-    AST3 = ecompilerFillSize:fillStructInformation(AST2, {StructMap0, PointerWidth}),
+    AST3 = eSize:fillStructInformation(AST2, {StructMap0, PointerWidth}),
 
     %% struct size is updated, so StructMap needs to be updated, too
-    {_, StructMap1} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST3),
+    {_, StructMap1} = eUtil:makeFunctionAndStructMapFromAST(AST3),
     %% expand sizeof expression
     Ctx1 = {StructMap1, PointerWidth},
-    AST4 = ecompilerFillSize:expandSizeOf(AST3, Ctx1),
+    AST4 = eSize:expandSizeOf(AST3, Ctx1),
 
     %% Initializing code for global variables are not in main ast, do not forget it
-    InitCode1 = ecompilerFillSize:expandSizeofInExpressions(InitCode0, Ctx1),
+    InitCode1 = eSize:expandSizeofInExpressions(InitCode0, Ctx1),
     %% sizeof expressions are expanded, so StructMap needs to be updated
-    {_, StructMap2} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST4),
+    {_, StructMap2} = eUtil:makeFunctionAndStructMapFromAST(AST4),
     %% type checking
     Maps = {FunctionTypeMap, StructMap2},
-    ecompilerType:checkTypesInAST(AST4, VariableTypeMap, Maps),
-    ecompilerType:checkTypesInASTNodeList(InitCode1, VariableTypeMap, Maps),
+    eType:checkTypesInAST(AST4, VariableTypeMap, Maps),
+    eType:checkTypesInASTNodeList(InitCode1, VariableTypeMap, Maps),
     %% expand init exprs like A{a=1} and {1,2,3}
-    AST5 = ecompilerExpandInitExpression:expandInitExpressionInFunctions(AST4, StructMap2),
+    AST5 = eInitExpression:expandInFunctions(AST4, StructMap2),
 
-    InitCode2 = ecompilerExpandInitExpression:expandInitExpressions(InitCode1, StructMap2),
+    InitCode2 = eInitExpression:expandInitExpressions(InitCode1, StructMap2),
     {AST5, VariableTypeMap, InitCode2}.
 
 -spec defaultCompileOptions() -> compileOptions().
@@ -54,7 +54,7 @@ checkStructRecursive(#struct{name = Name, line = Line} = Struct, StructTypeMap) 
         ok ->
             ok;
         {recur, Chain} ->
-            throw({Line, ecompilerUtil:fmt("recursive struct ~s -> ~w", [Name, Chain])})
+            throw({Line, eUtil:fmt("recursive struct ~s -> ~w", [Name, Chain])})
     end.
 
 -spec checkStructObject(#struct{}, structTypeMap(), [atom()]) -> ok | {recur, [any()]}.
@@ -65,7 +65,7 @@ checkStructObject(#struct{name = Name, fieldTypeMap = FieldTypes}, StructMap, Us
 checkStructFields([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
     case containStruct(FieldType) of
         {yes, StructName} ->
-            case ecompilerUtil:valueInList(StructName, UsedStructs) of
+            case eUtil:valueInList(StructName, UsedStructs) of
                 true ->
                     {recur, lists:reverse([StructName | UsedStructs])};
                 false ->

@@ -15,7 +15,7 @@
 handleSpecial([{identifier, _, define}, {identifier, LineNumber, Name} | Rest], {MacroMap, TokensToReturn, EndTag} = Context) ->
     case MacroMap of
         #{Name := _} ->
-            throw({LineNumber, ecompilerUtil:fmt("macro name conflict: \"~s\"", [Name])});
+            throw({LineNumber, eUtil:fmt("macro name conflict: \"~s\"", [Name])});
         _ ->
             {Tokens, RestTokens} = getExpressionTillEOL(Rest, Context),
             handleNormal(RestTokens, {MacroMap#{Name => Tokens}, TokensToReturn, EndTag})
@@ -25,7 +25,7 @@ handleSpecial([{identifier, _, undef}, {identifier, LineNumber, Name} | Rest], {
         #{Name := _} ->
             handleNormal(Rest, {maps:remove(Name, MacroMap), TokensToReturn, EndTag});
         _ ->
-            throw({LineNumber, ecompilerUtil:fmt("macro \"~s\" is not defined", [Name])})
+            throw({LineNumber, eUtil:fmt("macro \"~s\" is not defined", [Name])})
     end;
 handleSpecial([{identifier, _, ifdef}, {identifier, _, Name} | Rest], {MacroMap, _, EndTag} = Context) ->
     {MacroMapNew, CollectedTokens, RestTokensNew} = case MacroMap of
@@ -74,11 +74,11 @@ handleSpecial([{identifier, _, include} | Rest], Context) ->
     {_, RestTokens} = getExpressionTillEOL(Rest, Context),
     handleNormal(RestTokens, Context);
 handleSpecial([{identifier, LineNumber, Name} | _], _) ->
-    throw({LineNumber, ecompilerUtil:fmt("unexpected operator \"~s\" here", [Name])});
+    throw({LineNumber, eUtil:fmt("unexpected operator \"~s\" here", [Name])});
 handleSpecial([], {MacroMap, TokensToReturn, normal}) ->
     {MacroMap, TokensToReturn, []};
 handleSpecial([], {_, _, EndTag}) ->
-    throw({0, ecompilerUtil:fmt("unexpected end of file while in state: \"#~s\"", [EndTag])}).
+    throw({0, eUtil:fmt("unexpected end of file while in state: \"#~s\"", [EndTag])}).
 
 -spec collectToElseAndIgnoreToEndif([token()], preprocessContext()) -> handleReturn().
 collectToElseAndIgnoreToEndif(Tokens, {MacroMap, TokensToReturn, _}) ->
@@ -110,7 +110,7 @@ handleNormal([Token | Rest], {MacroMap, TokensToReturn, EndTag}) ->
 handleNormal([], {MacroMap, TokensToReturn, normal}) ->
     {MacroMap, TokensToReturn, []};
 handleNormal([], {_, _, EndTag}) ->
-    throw({0, ecompilerUtil:fmt("unexpected end of file while in state: \"#~s\"", [EndTag])}).
+    throw({0, eUtil:fmt("unexpected end of file while in state: \"#~s\"", [EndTag])}).
 
 -spec process([token()]) -> [token()].
 process(Tokens) ->
@@ -142,7 +142,7 @@ replaceMacro({identifier, LineNumber, Name}, MacroMap, ContinueHandler) ->
         #{Name := Value} ->
             ContinueHandler(replaceLineNumber(Value, LineNumber));
         _ ->
-            throw({LineNumber, ecompilerUtil:fmt("undefined macro ~s", [Name])})
+            throw({LineNumber, eUtil:fmt("undefined macro ~s", [Name])})
     end.
 
 %% tokens should be parsed to ast before evaluating them, this function will be updated when the parser is finished
@@ -158,87 +158,87 @@ replaceLineNumber(Tokens, LineNumber) ->
 -ifdef(EUNIT).
 
 process_noOperator_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("u32 a = 1;"),
+    {ok, Tokens, _} = eScanner:string("u32 a = 1;"),
     ?assertEqual([{integerType, 1, u32}, {identifier, 1, a}, {'=', 1}, {integer, 1, 1}, {';', 1}], process(Tokens)).
 
 process_if_true_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#if 1\n a\n #else\n b\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#if 1\n a\n #else\n b\n #endif"),
     ?assertEqual([{identifier, 2, a}], process(Tokens)).
 
 process_if_false_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#if 0\n a\n #else\n b\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#if 0\n a\n #else\n b\n #endif"),
     ?assertEqual([{identifier, 4, b}], process(Tokens)).
 
 process_ifdef_false_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#ifdef BLAH\n a\n #else\n b\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#ifdef BLAH\n a\n #else\n b\n #endif"),
     ?assertEqual([{identifier, 4, b}], process(Tokens)).
 
 process_ifdef_true_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#define BLAH\n #ifdef BLAH\n a\n #else\n b\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#define BLAH\n #ifdef BLAH\n a\n #else\n b\n #endif"),
     ?assertEqual([{identifier, 3, a}], process(Tokens)).
 
 process_ifndef_false_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#ifndef BLAH\n a\n #else\n b\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#ifndef BLAH\n a\n #else\n b\n #endif"),
     ?assertEqual([{identifier, 2, a}], process(Tokens)).
 
 process_ifndef_true_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#define BLAH\n #ifndef BLAH\n a\n #else\n b\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#define BLAH\n #ifndef BLAH\n a\n #else\n b\n #endif"),
     ?assertEqual([{identifier, 5, b}], process(Tokens)).
 
 process_recursive_1_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#if 1\n #if 1\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#if 1\n #if 1\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
     ?assertEqual([{identifier, 3, a}], process(Tokens)).
 
 process_recursive_2_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#if 1\n #if 0\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#if 1\n #if 0\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
     ?assertEqual([{identifier, 5, b}], process(Tokens)).
 
 process_recursive_3_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#if 0\n #if 1\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#if 0\n #if 1\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
     ?assertEqual([{identifier, 8, c}], process(Tokens)).
 
 process_elif_1_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#if 1\n a\n #elif 1\n b\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#if 1\n a\n #elif 1\n b\n #endif"),
     ?assertEqual([{identifier, 2, a}], process(Tokens)).
 
 process_elif_2_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#if 0\n a\n #elif 0\n b\n #elif 0\n c\n #else\n d\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#if 0\n a\n #elif 0\n b\n #elif 0\n c\n #else\n d\n #endif"),
     ?assertEqual([{identifier, 8, d}], process(Tokens)).
 
 process_elif_3_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#if 0\n a\n #elif 0\n b\n #elif 1\n c\n #else\n d\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#if 0\n a\n #elif 0\n b\n #elif 1\n c\n #else\n d\n #endif"),
     ?assertEqual([{identifier, 6, c}], process(Tokens)).
 
 process_elif_4_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#if 0\n a\n #elif 1\n b\n #elif 1\n c\n #else\n d\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#if 0\n a\n #elif 1\n b\n #elif 1\n c\n #else\n d\n #endif"),
     ?assertEqual([{identifier, 4, b}], process(Tokens)).
 
 process_define_lineNumber_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#define A 1\n?A"),
+    {ok, Tokens, _} = eScanner:string("#define A 1\n?A"),
     ?assertEqual([{integer, 2, 1}], process(Tokens)).
 
 process_define_lineNumber_2_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#define A 1\n#define B ?A\n?B"),
+    {ok, Tokens, _} = eScanner:string("#define A 1\n#define B ?A\n?B"),
     ?assertEqual([{integer, 3, 1}], process(Tokens)).
 
 process_define_1_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#define A 1 + 2 + 3\n?A + 1"),
+    {ok, Tokens, _} = eScanner:string("#define A 1 + 2 + 3\n?A + 1"),
     ?assertEqual("1 + 2 + 3 + 1", tokensToString(process(Tokens))).
 
 process_define_2_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#define A (1 + 2 + 3)\n?A + 1"),
+    {ok, Tokens, _} = eScanner:string("#define A (1 + 2 + 3)\n?A + 1"),
     ?assertEqual("( 1 + 2 + 3 ) + 1", tokensToString(process(Tokens))).
 
 process_define_3_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#define A 1 + 2 + 3\n#define B ?A + 4\n?B + 5"),
+    {ok, Tokens, _} = eScanner:string("#define A 1 + 2 + 3\n#define B ?A + 4\n?B + 5"),
     ?assertEqual("1 + 2 + 3 + 4 + 5", tokensToString(process(Tokens))).
 
 process_undef_1_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#define A 1 + 2 + 3\n#undef A\n?A + 1"),
+    {ok, Tokens, _} = eScanner:string("#define A 1 + 2 + 3\n#undef A\n?A + 1"),
     ?assertThrow({3, "undefined macro A"}, tokensToString(process(Tokens))).
 
 process_undef_2_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#define A 1 + 2 + 3\n#undef B\n?A + 1"),
+    {ok, Tokens, _} = eScanner:string("#define A 1 + 2 + 3\n#undef B\n?A + 1"),
     ?assertThrow({2, "macro \"B\" is not defined"}, tokensToString(process(Tokens))).
 
 -endif.
@@ -268,22 +268,22 @@ makeElifReplacement(LineNumber) ->
 -ifdef(EUNIT).
 
 convertElifToElseAndIf_1_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#if 1\n a\n #elif 1\n b\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#if 1\n a\n #elif 1\n b\n #endif"),
     ?assertEqual("# if 1 \n a \n # else # if 1 \n b \n # endif # endif",
                  tokensToString(convertElifToElseAndIf(Tokens))).
 
 convertElifToElseAndIf_2_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#if 0\n a\n #elif 0\n b\n #elif 1\n c\n #else\n d\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#if 0\n a\n #elif 0\n b\n #elif 1\n c\n #else\n d\n #endif"),
     ?assertEqual("# if 0 \n a \n # else # if 0 \n b \n # else # if 1 \n c \n # else \n d \n # endif # endif # endif",
                  tokensToString(convertElifToElseAndIf(Tokens))).
 
 convertElifToElseAndIf_3_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#if 0\n #else\n #endif"),
+    {ok, Tokens, _} = eScanner:string("#if 0\n #else\n #endif"),
     ?assertEqual("# if 0 \n # else \n # endif",
                  tokensToString(convertElifToElseAndIf(Tokens))).
 
 convertElifToElseAndIf_4_test() ->
-    {ok, Tokens, _} = ecompilerScan:string("#if 0\n #if 1\n #else\n #endif #endif"),
+    {ok, Tokens, _} = eScanner:string("#if 0\n #if 1\n #else\n #endif #endif"),
     ?assertEqual("# if 0 \n # if 1 \n # else \n # endif # endif",
                  tokensToString(convertElifToElseAndIf(Tokens))).
 

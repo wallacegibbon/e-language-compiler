@@ -3,14 +3,14 @@
 -export([compileToAST/1, compileToC/2]).
 
 -include_lib("eunit/include/eunit.hrl").
--include("ecompilerFrameDef.hrl").
+-include("eRecordDefinition.hrl").
 
 -spec compileToC(string(), string()) -> ok.
 compileToC(InputFilename, OutputFilename) ->
     try
         {AST, Vars, InitCode} = parseAndCompile(InputFilename),
         %io:format(">> ~p~n~n", [AST]),
-        ecompilerGenerateCCode:generateCCode(AST, Vars, InitCode, OutputFilename)
+        cCodeGenerator:generateCCode(AST, Vars, InitCode, OutputFilename)
     catch
         {Filename, ErrorInfo} ->
             io:format("~s: ~p~n", [Filename, ErrorInfo])
@@ -22,8 +22,7 @@ compileToAST(Filename) ->
 
 -spec parseAndCompile(string()) -> {eAST(), variableTypeMap(), eAST()}.
 parseAndCompile(Filename) ->
-    try
-        ecompilerCompile:compileFromRawAST(parseFile(Filename), #{})
+    try eCompile:compileFromRawAST(parseFile(Filename), #{})
     catch
         E ->
             throw({Filename, E})
@@ -33,9 +32,9 @@ parseAndCompile(Filename) ->
 parseFile(Filename) ->
     case file:read_file(Filename) of
         {ok, RawContent} ->
-            case ecompilerScan:string(binary_to_list(RawContent)) of
+            case eScanner:string(binary_to_list(RawContent)) of
                 {ok, Tokens, _} ->
-                    case ecompilerParse:parse(ePreprocess:process(Tokens)) of
+                    case eParser:parse(ePreprocess:process(Tokens)) of
                         {ok, AST} ->
                             AST;
                         {error, {Line, _, ErrorInfo}} ->

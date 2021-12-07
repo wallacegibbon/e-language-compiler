@@ -1,4 +1,4 @@
--module(ecompilerUtil).
+-module(eUtil).
 
 -export([expressionToString/1, expressionMap/2, filterVariableReferenceInMap/2, fmt/2, getValuesByKeys/2, namesOfVariableDefinitions/1, namesOfVariableReferences/1, valueInList/2]).
 -export([primitiveSizeOf/1, voidType/1]).
@@ -7,7 +7,7 @@
 -export([assert/2]).
 
 -include_lib("eunit/include/eunit.hrl").
--include("ecompilerFrameDef.hrl").
+-include("eRecordDefinition.hrl").
 
 %% when do simple conversions, this function can be used to avoid boilerplate
 %% code for if, while, return, call..., so you can concentrate on operand1, operand2...

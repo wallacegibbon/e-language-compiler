@@ -1,8 +1,8 @@
--module(ecompilerFillSize).
+-module(eSize).
 
 -export([expandSizeOf/2, expandSizeofInExpressions/2, fillStructInformation/2]).
 
--include("ecompilerFrameDef.hrl").
+-include("eRecordDefinition.hrl").
 
 -spec expandSizeOf(eAST(), compilePassCtx1()) -> eAST().
 expandSizeOf([#function{statements = Expressions} = F | Rest], Context) ->
@@ -17,7 +17,7 @@ expandSizeofInMap(Map, Context) ->
 
 -spec expandSizeofInExpressions(eAST(), compilePassCtx1()) -> [eExpression()].
 expandSizeofInExpressions(Expressions, Context) ->
-    ecompilerUtil:expressionMap(fun (E) -> expandSizeofInExpression(E, Context) end, Expressions).
+    eUtil:expressionMap(fun (E) -> expandSizeofInExpression(E, Context) end, Expressions).
 
 -spec expandSizeofInExpression(eExpression(), compilePassCtx1()) -> eExpression().
 expandSizeofInExpression(#sizeofExpression{type = T, line = Line}, Context) ->
@@ -45,7 +45,7 @@ expandSizeofInExpression(Any, _) ->
 fillStructInformation(AST, {_, PointerWidth} = Context) ->
     %% struct definition are only allowed in top level of an AST.
     AST1 = lists:map(fun (E) -> fillStructSize(E, Context) end, AST),
-    {_, StructMap1} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST1),
+    {_, StructMap1} = eUtil:makeFunctionAndStructMapFromAST(AST1),
     lists:map(fun (E) -> fillStructOffsets(E, {StructMap1, PointerWidth}) end, AST1).
 
 -spec fillStructSize(eExpression(), compilePassCtx1()) -> eExpression().
@@ -76,8 +76,8 @@ sizeOfStruct(#struct{fieldNames = Names, fieldTypeMap = Types}, Context) ->
 
 -spec getKVsByReferences([#variableReference{}], #{atom() := any()}) -> [{atom(), any()}].
 getKVsByReferences(RefList, Map) ->
-    Keys = ecompilerUtil:namesOfVariableReferences(RefList),
-    Values = ecompilerUtil:getValuesByKeys(Keys, Map),
+    Keys = eUtil:namesOfVariableReferences(RefList),
+    Values = eUtil:getValuesByKeys(Keys, Map),
     lists:zip(Keys, Values).
 
 %% this is the function that calculate size and offsets
@@ -98,9 +98,9 @@ sizeOfStructFields([], CurrentOffset, OffsetMap, _) ->
 
 -spec fixStructFieldOffset(integer(), integer(), integer()) -> integer().
 fixStructFieldOffset(CurrentOffset, NextOffset, PointerWidth) ->
-    case ecompilerUtil:cutExtra(NextOffset, PointerWidth) > ecompilerUtil:cutExtra(CurrentOffset, PointerWidth) of
+    case eUtil:cutExtra(NextOffset, PointerWidth) > eUtil:cutExtra(CurrentOffset, PointerWidth) of
         true ->
-            ecompilerUtil:fillOffset(CurrentOffset, PointerWidth);
+            eUtil:fillOffset(CurrentOffset, PointerWidth);
         false ->
             CurrentOffset
     end.
@@ -117,7 +117,7 @@ sizeOf(#arrayType{elemtype = T, length = Len}, {_, PointerWidth} = Context) ->
                                 PointerWidth
                         end;
                     false ->
-                        ecompilerUtil:fillToPointerWidth(ElementSize, PointerWidth)
+                        eUtil:fillToPointerWidth(ElementSize, PointerWidth)
                 end,
     FixedSize * Len;
 sizeOf(#basicType{pdepth = N}, {_, PointerWidth}) when N > 0 ->
@@ -127,10 +127,10 @@ sizeOf(#basicType{class = struct, tag = Tag}, {StructMap, _} = Context) ->
         {ok, S} ->
             sizeOfStruct(S, Context);
         error ->
-            throw(ecompilerUtil:fmt("~s is not found", [Tag]))
+            throw(eUtil:fmt("~s is not found", [Tag]))
     end;
 sizeOf(#basicType{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
-    case ecompilerUtil:primitiveSizeOf(Tag) of
+    case eUtil:primitiveSizeOf(Tag) of
         pointerSize ->
             PointerWidth;
         V when is_integer(V) ->
@@ -139,4 +139,4 @@ sizeOf(#basicType{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; 
 sizeOf(#functionType{}, {_, PointerWidth}) ->
     PointerWidth;
 sizeOf(A, _) ->
-    throw(ecompilerUtil:fmt("invalid type ~p on sizeof", [A])).
+    throw(eUtil:fmt("invalid type ~p on sizeof", [A])).

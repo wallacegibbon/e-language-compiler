@@ -1,25 +1,25 @@
--module(ecompilerExpandInitExpression).
+-module(eInitExpression).
 
--export([expandInitExpressionInFunctions/2, expandInitExpressions/2]).
+-export([expandInFunctions/2, expandInitExpressions/2]).
 
--include("ecompilerFrameDef.hrl").
+-include("eRecordDefinition.hrl").
 
 %% for now, array and struct init expression is only allowed in assignment
-checkInitExpressionPosition(#operatorExpression2{operator = assign, operand2 = Operand2}) when is_record(Operand2, structInitializeExpression); is_record(Operand2, arrayInitializeExpression) ->
+checkPosition(#operatorExpression2{operator = assign, operand2 = Operand2}) when is_record(Operand2, structInitializeExpression); is_record(Operand2, arrayInitializeExpression) ->
     ok;
-checkInitExpressionPosition(#structInitializeExpression{line = Line}) ->
+checkPosition(#structInitializeExpression{line = Line}) ->
     throw({Line, "struct init expression is only allowed in assignments"});
-checkInitExpressionPosition(#arrayInitializeExpression{line = Line}) ->
+checkPosition(#arrayInitializeExpression{line = Line}) ->
     throw({Line, "array init expression is only allowed in assignments"});
-checkInitExpressionPosition(_) ->
+checkPosition(_) ->
     ok.
 
-expandInitExpressionInFunctions([#function{statements = Expressions} = F | Rest], StructMap) ->
-    ecompilerUtil:expressionMap(fun checkInitExpressionPosition/1, Expressions),
-    [F#function{statements = expandInitExpressions(Expressions, StructMap)} | expandInitExpressionInFunctions(Rest, StructMap)];
-expandInitExpressionInFunctions([Any | Rest], StructMap) ->
-    [Any | expandInitExpressionInFunctions(Rest, StructMap)];
-expandInitExpressionInFunctions([], _) ->
+expandInFunctions([#function{statements = Expressions} = F | Rest], StructMap) ->
+    eUtil:expressionMap(fun checkPosition/1, Expressions),
+    [F#function{statements = expandInitExpressions(Expressions, StructMap)} | expandInFunctions(Rest, StructMap)];
+expandInFunctions([Any | Rest], StructMap) ->
+    [Any | expandInFunctions(Rest, StructMap)];
+expandInFunctions([], _) ->
     [].
 
 expandInitExpressions(Expressions, StructMap) ->
@@ -42,7 +42,7 @@ replaceInitOps(#operatorExpression2{operator = assign, operand1 = Operand1, oper
             FieldValueMap = maps:merge(FieldDefaults, FieldValues),
             structInitToOps(Operand1, FieldNames, FieldValueMap, FieldTypes, [], StructMap);
         error ->
-            throw({Line, ecompilerUtil:fmt("struct ~s is not found", [Name])})
+            throw({Line, eUtil:fmt("struct ~s is not found", [Name])})
     end;
 replaceInitOps(#operatorExpression2{operator = assign, operand1 = Operand1, operand2 = #arrayInitializeExpression{elements = Elements, line = Line}}, StructMap) ->
     arrayInitToOps(Operand1, Elements, 0, Line, [], StructMap);

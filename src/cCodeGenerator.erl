@@ -1,14 +1,14 @@
--module(ecompilerGenerateCCode).
+-module(cCodeGenerator).
 
 -export([generateCCode/4]).
 
--include("ecompilerFrameDef.hrl").
+-include("eRecordDefinition.hrl").
 
 -type genCContext() :: {functionTypeMap(), structTypeMap(), variableTypeMap()}.
 
 -spec generateCCode(eAST(), variableTypeMap(), eAST(), string()) -> ok.
 generateCCode(AST, GlobalVars, InitCode, OutputFile) ->
-    {FunctionTypeMap, StructMap} = ecompilerUtil:makeFunctionAndStructMapFromAST(AST),
+    {FunctionTypeMap, StructMap} = eUtil:makeFunctionAndStructMapFromAST(AST),
     Context = {FunctionTypeMap, StructMap, GlobalVars},
     AST2 = lists:map(fun (A) -> fixFunctionForC(A, Context) end, AST),
     InitCode2 = fixExpressionsForC(InitCode, Context),
@@ -30,11 +30,11 @@ fixFunctionForC(Any, _) ->
 
 -spec fixExpressionsForC(eAST(), genCContext()) -> eAST().
 fixExpressionsForC(Expressions, Context) ->
-    ecompilerUtil:expressionMap(fun (E) -> fixExpressionForC(E, Context) end, Expressions).
+    eUtil:expressionMap(fun (E) -> fixExpressionForC(E, Context) end, Expressions).
 
 -spec fixExpressionForC(eExpression(), genCContext()) -> eExpression().
 fixExpressionForC(#operatorExpression1{operator = '@', operand = Operand, line = Line} = E, {FunctionTypeMap, StructMap, VarTypes} = Context) ->
-    case ecompilerType:typeOfASTNode(Operand, {VarTypes, FunctionTypeMap, StructMap, #{}}) of
+    case eType:typeOfASTNode(Operand, {VarTypes, FunctionTypeMap, StructMap, #{}}) of
         #arrayType{} ->
             #operatorExpression2{operator = '.', operand1 = fixExpressionForC(Operand, Context), operand2 = #variableReference{name = value, line = Line}};
         _ ->
@@ -106,7 +106,7 @@ fetchNamesFromVariableReferences(VarrefList) ->
     lists:map(fun (#variableReference{name = N}) -> N end, VarrefList).
 
 mapToKVList(NameAtoms, ValueMap) ->
-    lists:zip(NameAtoms, ecompilerUtil:getValuesByKeys(NameAtoms, ValueMap)).
+    lists:zip(NameAtoms, eUtil:getValuesByKeys(NameAtoms, ValueMap)).
 
 functionReturnTypeToString(#functionType{parameters = Params, ret = ReturnType}, NameParams) ->
     ParametersString = functionParamsToStringNoFunctionNames(Params),

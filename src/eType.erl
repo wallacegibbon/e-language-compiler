@@ -1,8 +1,8 @@
--module(ecompilerType).
+-module(eType).
 
 -export([checkTypesInAST/3, checkTypesInASTNodeList/3, typeOfASTNode/2]).
 
--include("ecompilerFrameDef.hrl").
+-include("eRecordDefinition.hrl").
 
 -spec checkTypesInAST(eAST(), variableTypeMap(), {functionTypeMap(), structTypeMap()}) -> ok.
 checkTypesInAST([#function{variableTypeMap = VarTypes, statements = Expressions, type = FunctionType} | Rest], GlobalVarTypes, {FunctionTypeMap, StructMap} = Maps) ->
@@ -14,7 +14,7 @@ checkTypesInAST([#function{variableTypeMap = VarTypes, statements = Expressions,
 checkTypesInAST([#struct{name = Name, fieldTypeMap = FieldTypes, fieldNames = FieldNames, fieldDefaultValueMap = FieldDefaults} | Rest], GlobalVarTypes, {FunctionTypeMap, StructMap} = Maps) ->
     checkTypes(maps:values(FieldTypes), StructMap),
     %% check the default values for fields
-    InitFieldNames = ecompilerUtil:filterVariableReferenceInMap(FieldNames, FieldDefaults),
+    InitFieldNames = eUtil:filterVariableReferenceInMap(FieldNames, FieldDefaults),
     checkTypesInStructFields(InitFieldNames, FieldTypes, FieldDefaults, Name, {GlobalVarTypes, FunctionTypeMap, StructMap, #{}}),
     checkTypesInAST(Rest, GlobalVarTypes, Maps);
 checkTypesInAST([_ | Rest], GlobalVarTypes, Maps) ->
@@ -43,14 +43,14 @@ typeOfASTNode(#operatorExpression2{operator = assign, operand1 = Operand1, opera
                     #variableReference{} ->
                         typeOfASTNode(Operand1, Context);
                     Any ->
-                        throw({Line, ecompilerUtil:fmt("invalid left value (~s)", [ecompilerUtil:expressionToString(Any)])})
+                        throw({Line, eUtil:fmt("invalid left value (~s)", [eUtil:expressionToString(Any)])})
                 end,
     TypeofOp2 = typeOfASTNode(Operand2, Context),
     case compareType(TypeofOp1, TypeofOp2) of
         true ->
             TypeofOp1;
         false ->
-            throw({Line, ecompilerUtil:fmt("type mismatch in \"~s = ~s\"", [typeToString(TypeofOp1), typeToString(TypeofOp2)])})
+            throw({Line, eUtil:fmt("type mismatch in \"~s = ~s\"", [typeToString(TypeofOp1), typeToString(TypeofOp2)])})
     end;
 typeOfASTNode(#operatorExpression2{operator = '.', operand1 = Operand1, operand2 = Operand2, line = Line}, {_, _, StructMap, _} = Context) ->
     typeOfStructField(typeOfASTNode(Operand1, Context), Operand2, StructMap, Line);
@@ -107,7 +107,7 @@ typeOfASTNode(#operatorExpression1{operator = '^', operand = Operand, line = Lin
         #basicType{} = T ->
             decreasePointerDepth(T, Line);
         _ ->
-            throw({Line, ecompilerUtil:fmt("invalid \"^\" on operand ~s", [ecompilerUtil:expressionToString(Operand)])})
+            throw({Line, eUtil:fmt("invalid \"^\" on operand ~s", [eUtil:expressionToString(Operand)])})
     end;
 typeOfASTNode(#operatorExpression1{operator = '@', operand = Operand, line = Line}, {_, _, StructMap, _} = Context) ->
     case Operand of
@@ -117,7 +117,7 @@ typeOfASTNode(#operatorExpression1{operator = '@', operand = Operand, line = Lin
         #variableReference{} ->
             increasePointerDepth(typeOfASTNode(Operand, Context), Line);
         _ ->
-            throw({Line, ecompilerUtil:fmt("invalid \"@\" on operand ~s", [ecompilerUtil:expressionToString(Operand)])})
+            throw({Line, eUtil:fmt("invalid \"@\" on operand ~s", [eUtil:expressionToString(Operand)])})
     end;
 typeOfASTNode(#operatorExpression1{operand = Operand}, Context) ->
     typeOfASTNode(Operand, Context);
@@ -132,24 +132,24 @@ typeOfASTNode(#callExpression{fn = FunExpr, args = Arguments, line = Line}, Cont
                     throw({Line, argumentsErrorInformation(FnParamTypes, ArgsTypes)})
             end;
         T ->
-            throw({Line, ecompilerUtil:fmt("invalid function expr: ~s", [typeToString(T)])})
+            throw({Line, eUtil:fmt("invalid function expr: ~s", [typeToString(T)])})
     end;
 typeOfASTNode(#ifStatement{condition = Condition, then = Then, else = Else, line = Line}, Context) ->
     typeOfASTNode(Condition, Context),
     typeOfASTNodeList(Then, Context),
     typeOfASTNodeList(Else, Context),
-    ecompilerUtil:voidType(Line);
+    eUtil:voidType(Line);
 typeOfASTNode(#whileStatement{condition = Condition, statements = Expressions, line = Line}, Context) ->
     typeOfASTNode(Condition, Context),
     typeOfASTNodeList(Expressions, Context),
-    ecompilerUtil:voidType(Line);
+    eUtil:voidType(Line);
 typeOfASTNode(#returnStatement{expression = Expression, line = Line}, {_, _, _, FnRetType} = Context) ->
     RealRet = typeOfASTNode(Expression, Context),
     case compareType(RealRet, FnRetType) of
         true ->
             RealRet;
         false ->
-            throw({Line, ecompilerUtil:fmt("ret type should be (~s), not (~s)", [typeToString(FnRetType), typeToString(RealRet)])})
+            throw({Line, eUtil:fmt("ret type should be (~s), not (~s)", [typeToString(FnRetType), typeToString(RealRet)])})
     end;
 typeOfASTNode(#variableReference{name = Name, line = Line}, {VarTypes, FunctionTypeMap, StructMap, _}) ->
     Type = case maps:find(Name, VarTypes) of
@@ -158,7 +158,7 @@ typeOfASTNode(#variableReference{name = Name, line = Line}, {VarTypes, FunctionT
                        {ok, T} ->
                            T;
                        error ->
-                           throw({Line, ecompilerUtil:fmt("variable ~s is undefined", [Name])})
+                           throw({Line, eUtil:fmt("variable ~s is undefined", [Name])})
                    end;
                {ok, T} ->
                    T
@@ -171,7 +171,7 @@ typeOfASTNode(#arrayInitializeExpression{elements = Elements, line = Line}, Cont
         true ->
             #arrayType{elemtype = hd(ElementTypes), length = length(ElementTypes), line = Line};
         false ->
-            throw({Line, ecompilerUtil:fmt("array init type conflict: {~s}", [joinTypesToString(ElementTypes)])})
+            throw({Line, eUtil:fmt("array init type conflict: {~s}", [joinTypesToString(ElementTypes)])})
     end;
 typeOfASTNode(#structInitializeExpression{name = StructName, fieldNames = InitFieldNames, fieldValueMap = InitFieldValues, line = Line}, {_, _, StructMap, _} = Context) ->
     case maps:find(StructName, StructMap) of
@@ -179,14 +179,14 @@ typeOfASTNode(#structInitializeExpression{name = StructName, fieldNames = InitFi
             checkTypesInStructFields(InitFieldNames, FieldTypes, InitFieldValues, StructName, Context),
             #basicType{class = struct, tag = StructName, pdepth = 0, line = Line};
         _ ->
-            throw({Line, ecompilerUtil:fmt("struct ~s is not found", [StructName])})
+            throw({Line, eUtil:fmt("struct ~s is not found", [StructName])})
     end;
 typeOfASTNode(#sizeofExpression{line = Line}, _) ->
     #basicType{class = integer, pdepth = 0, tag = i64, line = Line};
 typeOfASTNode(#gotoStatement{line = Line}, _) ->
-    ecompilerUtil:voidType(Line);
+    eUtil:voidType(Line);
 typeOfASTNode(#gotoLabel{line = Line}, _) ->
-    ecompilerUtil:voidType(Line);
+    eUtil:voidType(Line);
 typeOfASTNode(#typeConvert{expression = Expression, type = TargetType, line = Line}, Context) ->
     case {typeOfASTNode(Expression, Context), TargetType} of
         {#basicType{pdepth = D1}, #basicType{pdepth = D2}} when D1 > 0, D2 > 0 ->
@@ -196,7 +196,7 @@ typeOfASTNode(#typeConvert{expression = Expression, type = TargetType, line = Li
         {#basicType{class = integer, pdepth = 0}, #basicType{class = integer, pdepth = 0}} ->
             TargetType;
         {ExpressionType, _} ->
-            throw({Line, ecompilerUtil:fmt("incompatible type: ~w <-> ~w", [ExpressionType, TargetType])})
+            throw({Line, eUtil:fmt("incompatible type: ~w <-> ~w", [ExpressionType, TargetType])})
     end;
 typeOfASTNode({float, Line, _}, _) ->
     #basicType{class = float, pdepth = 0, tag = f64, line = Line};
@@ -207,7 +207,7 @@ typeOfASTNode({string, Line, _}, _) ->
 
 -spec argumentsErrorInformation([eType()], [eType()]) -> string().
 argumentsErrorInformation(FnParamTypes, ArgsTypes) ->
-    ecompilerUtil:fmt("args should be (~s), not (~s)", [joinTypesToString(FnParamTypes), joinTypesToString(ArgsTypes)]).
+    eUtil:fmt("args should be (~s), not (~s)", [joinTypesToString(FnParamTypes), joinTypesToString(ArgsTypes)]).
 
 -spec increasePointerDepth(eType(), integer()) -> eType().
 increasePointerDepth(#basicType{pdepth = PointerDepth} = T, _) ->
@@ -215,13 +215,13 @@ increasePointerDepth(#basicType{pdepth = PointerDepth} = T, _) ->
 increasePointerDepth(#arrayType{elemtype = #basicType{} = T}, OpLine) ->
     increasePointerDepth(T, OpLine);
 increasePointerDepth(T, OpLine) ->
-    throw({OpLine, ecompilerUtil:fmt("'@' on type ~s is invalid", [typeToString(T)])}).
+    throw({OpLine, eUtil:fmt("'@' on type ~s is invalid", [typeToString(T)])}).
 
 -spec decreasePointerDepth(eType(), integer()) -> eType().
 decreasePointerDepth(#basicType{pdepth = PointerDepth} = T, _) when PointerDepth > 0 ->
     T#basicType{pdepth = PointerDepth - 1};
 decreasePointerDepth(T, OpLine) ->
-    throw({OpLine, ecompilerUtil:fmt("'^' on type ~s is invalid", [typeToString(T)])}).
+    throw({OpLine, eUtil:fmt("'^' on type ~s is invalid", [typeToString(T)])}).
 
 -spec checkTypesInStructFields([#variableReference{}], variableTypeMap(), #{atom() := any()}, atom(), typeOfContext()) -> ok.
 checkTypesInStructFields(FieldNames, FieldTypes, ValMap, StructName, Context) ->
@@ -237,7 +237,7 @@ checkStructField(#variableReference{name = FieldName, line = Line}, FieldTypes, 
         true ->
             ok;
         false ->
-            throw({Line, ecompilerUtil:fmt("~s.~s type error: ~s = ~s", [StructName, FieldName, typeToString(ExpectedType), typeToString(GivenType)])})
+            throw({Line, eUtil:fmt("~s.~s type error: ~s = ~s", [StructName, FieldName, typeToString(ExpectedType), typeToString(GivenType)])})
     end.
 
 -spec areSameType([eType()]) -> boolean().
@@ -254,10 +254,10 @@ typeOfStructField(#basicType{class = struct, tag = StructName, pdepth = 0}, #var
         {ok, #struct{fieldTypeMap = FieldTypes}} ->
             getFieldType(FieldName, FieldTypes, StructName, Line);
         error ->
-            throw({Line, ecompilerUtil:fmt("struct ~s is not found", [StructName])})
+            throw({Line, eUtil:fmt("struct ~s is not found", [StructName])})
     end;
 typeOfStructField(T, _, _, Line) ->
-    throw({Line, ecompilerUtil:fmt("operand1 for \".\" is not struct ~s", [typeToString(T)])}).
+    throw({Line, eUtil:fmt("operand1 for \".\" is not struct ~s", [typeToString(T)])}).
 
 -spec getFieldType(atom(), #{atom() => eType()}, atom(), integer()) -> eType().
 getFieldType(FieldName, FieldTypes, StructName, Line) ->
@@ -265,7 +265,7 @@ getFieldType(FieldName, FieldTypes, StructName, Line) ->
         {ok, Type} ->
             Type;
         error ->
-            throw({Line, ecompilerUtil:fmt("~s.~s does not exist", [StructName, FieldName])})
+            throw({Line, eUtil:fmt("~s.~s does not exist", [StructName, FieldName])})
     end.
 
 -spec compareTypes([eType()], [eType()]) -> boolean().
@@ -330,7 +330,7 @@ areBothFloats(_, _) ->
 
 -spec typeErrorOfOp2(atom(), eType(), eType()) -> string().
 typeErrorOfOp2(Operator, TypeofOp1, TypeofOp2) ->
-    ecompilerUtil:fmt("type error in \"~s ~s ~s\"", [typeToString(TypeofOp1), Operator, typeToString(TypeofOp2)]).
+    eUtil:fmt("type error in \"~s ~s ~s\"", [typeToString(TypeofOp1), Operator, typeToString(TypeofOp2)]).
 
 -spec checkTypes([eType()], structTypeMap()) -> ok.
 checkTypes(TypeList, StructMap) ->
@@ -343,7 +343,7 @@ checkType(#basicType{class = struct, tag = Tag, line = Line}, StructMap) ->
         {ok, _} ->
             ok;
         error ->
-            throw({Line, ecompilerUtil:fmt("struct ~s is not found", [Tag])})
+            throw({Line, eUtil:fmt("struct ~s is not found", [Tag])})
     end;
 checkType(#basicType{}, _) ->
     ok;

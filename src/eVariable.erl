@@ -1,9 +1,9 @@
 %%% this is the 2nd pass, variable map will be created after this pass.
--module(ecompilerCollectVariable).
+-module(eVariable).
 
 -export([fetchVariables/1]).
 
--include("ecompilerFrameDef.hrl").
+-include("eRecordDefinition.hrl").
 
 -spec fetchVariables(eAST()) -> {eAST(), variableTypeMap(), eAST()}.
 fetchVariables(AST) ->
@@ -22,7 +22,7 @@ prepareStructInitExpression([]) ->
 
 -spec fixStructInitAST(eAST()) -> eAST().
 fixStructInitAST(Lst) ->
-    ecompilerUtil:expressionMap(fun fixStructInit/1, Lst).
+    eUtil:expressionMap(fun fixStructInit/1, Lst).
 
 -spec fixStructInit(eExpression()) -> eExpression().
 fixStructInit(#structInitializeExpressionRaw{name = Name, fields = Fields, line = Line}) ->
@@ -62,7 +62,7 @@ fetchVariables([#variableDefinition{name = Name, type = Type, line = Line, initi
     end;
 fetchVariables([#functionRaw{name = Name, returnType = Ret, parameters = Params, statements = Expressions, line = Line} | Rest], NewAST, {GlobalVars, _, _} = Context) ->
     {[], ParamVars, ParamInitCode} = fetchVariables(Params, [], {#{}, [], true}),
-    ecompilerUtil:assert(ParamInitCode =:= [], {Line, "function parameters can not have default value"}),
+    eUtil:assert(ParamInitCode =:= [], {Line, "function parameters can not have default value"}),
     {NewExpressions, FunVarTypes, []} = fetchVariables(Expressions, [], {ParamVars, [], false}),
     %% local variables should have different names from global variables
     checkVariableConflict(GlobalVars, FunVarTypes),
@@ -117,11 +117,11 @@ ensureNoNameConflict(Name, VarMap, Line) ->
 
 -spec throwNameConflict(atom(), integer()) -> no_return().
 throwNameConflict(Name, Line) ->
-    throw({Line, ecompilerUtil:fmt("name ~s has already been used", [Name])}).
+    throw({Line, eUtil:fmt("name ~s has already been used", [Name])}).
 
 -spec getValuesByDefinitions([#variableDefinition{}], #{atom() => any()}) -> [any()].
 getValuesByDefinitions(DefList, Map) ->
-    ecompilerUtil:getValuesByKeys(ecompilerUtil:namesOfVariableDefinitions(DefList), Map).
+    eUtil:getValuesByKeys(eUtil:namesOfVariableDefinitions(DefList), Map).
 
 -spec variableDefinitionToReference([#variableDefinition{}]) -> [#variableReference{}].
 variableDefinitionToReference(VariableDefinitions) ->
