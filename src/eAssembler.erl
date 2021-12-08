@@ -1,5 +1,4 @@
 -module(eAssembler).
-
 -export([compileFile/1]).
 
 compileFile(FileName) ->

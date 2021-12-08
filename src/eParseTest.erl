@@ -1,5 +1,4 @@
 -module(eParseTest).
-
 -include_lib("eunit/include/eunit.hrl").
 
 -ifdef(TEST).

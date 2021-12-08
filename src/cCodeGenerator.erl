@@ -1,5 +1,4 @@
 -module(cCodeGenerator).
-
 -export([generateCCode/4]).
 
 -include("eRecordDefinition.hrl").

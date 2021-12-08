@@ -1,5 +1,4 @@
 -module(eInitExpression).
-
 -export([expandInFunctions/2, expandInitExpressions/2]).
 
 -include("eRecordDefinition.hrl").

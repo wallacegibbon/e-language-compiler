@@ -7,7 +7,6 @@ The E language is a simplified C language with fewer concepts and more reasonabl
 
 Here are some comparisons:
 
-
 ### Basic Operations
 
 |         C language         |        E language        |
@@ -96,7 +95,7 @@ To keep things minimum, E language do not support `union`.
 ### Enum
 
 Enum is good, it brings better type checking to some extent. But on the other hand, everything will still work without `enum`.
-The preprocessor of E language support contant definition `#define xx xxx`, which has reduced the necessity of `enum`.
+The preprocessor of E language support constant definition `#define xx xxx`, which has reduced the necessity of `enum`.
 
 To keep things minimum, E language do not support `enum`, either.
 
@@ -198,4 +197,3 @@ b: Blah = new Blah{id = 1, name = "hello"};
 c: {Blah, 2} = new {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}};
 
 ```
-

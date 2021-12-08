@@ -1,6 +1,4 @@
-%%% this is the 2nd pass, variable map will be created after this pass.
 -module(eVariable).
-
 -export([fetchVariables/1]).
 
 -include("eRecordDefinition.hrl").

@@ -1,5 +1,4 @@
 -module(eMainCompiler).
-
 -export([compileFromRawAST/2]).
 
 -include("eRecordDefinition.hrl").

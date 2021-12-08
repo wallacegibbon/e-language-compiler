@@ -1,5 +1,4 @@
 -module(eSize).
-
 -export([expandSizeOf/2, expandSizeofInExpressions/2, fillStructInformation/2]).
 
 -include("eRecordDefinition.hrl").

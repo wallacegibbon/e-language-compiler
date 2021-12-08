@@ -1,5 +1,4 @@
 -module(eType).
-
 -export([checkTypesInAST/3, checkTypesInASTNodeList/3, typeOfASTNode/2]).
 
 -include("eRecordDefinition.hrl").

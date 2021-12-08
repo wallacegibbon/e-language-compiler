@@ -1,5 +1,4 @@
 -module(ecompiler).
-
 -export([compileToAST/1, compileToC/2]).
 
 -include_lib("eunit/include/eunit.hrl").

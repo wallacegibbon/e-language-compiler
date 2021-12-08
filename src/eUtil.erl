@@ -1,10 +1,6 @@
 -module(eUtil).
-
 -export([expressionToString/1, expressionMap/2, filterVariableReferenceInMap/2, fmt/2, getValuesByKeys/2, namesOfVariableDefinitions/1, namesOfVariableReferences/1, valueInList/2]).
--export([primitiveSizeOf/1, voidType/1]).
--export([cutExtra/2, fillOffset/2, fillToPointerWidth/2]).
--export([makeFunctionAndStructMapFromAST/1]).
--export([assert/2]).
+-export([primitiveSizeOf/1, voidType/1, cutExtra/2, fillOffset/2, fillToPointerWidth/2, makeFunctionAndStructMapFromAST/1, assert/2]).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("eRecordDefinition.hrl").
