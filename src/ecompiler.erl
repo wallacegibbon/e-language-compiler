@@ -1,39 +1,39 @@
 -module(ecompiler).
--export([compileToAST/1, compileToC/2]).
+-export([compile_to_ast/1, compile_to_c/2]).
 
 -include_lib("eunit/include/eunit.hrl").
--include("eRecordDefinition.hrl").
+-include("e_record_definition.hrl").
 
--spec compileToC(string(), string()) -> ok.
-compileToC(InputFilename, OutputFilename) ->
+-spec compile_to_c(string(), string()) -> ok.
+compile_to_c(InputFilename, OutputFilename) ->
     try
-        {AST, Vars, InitCode} = parseAndCompile(InputFilename),
+        {AST, Vars, InitCode} = parse_and_compile(InputFilename),
         %io:format(">> ~p~n~n", [AST]),
-        cCodeGenerator:generateCCode(AST, Vars, InitCode, OutputFilename)
+        c_codegen:generate_c_code(AST, Vars, InitCode, OutputFilename)
     catch
         {Filename, ErrorInfo} ->
             io:format("~s: ~p~n", [Filename, ErrorInfo])
     end.
 
--spec compileToAST(string()) -> {eAST(), variableTypeMap(), eAST()}.
-compileToAST(Filename) ->
-    parseAndCompile(Filename).
+-spec compile_to_ast(string()) -> {e_ast(), var_type_map(), e_ast()}.
+compile_to_ast(Filename) ->
+    parse_and_compile(Filename).
 
--spec parseAndCompile(string()) -> {eAST(), variableTypeMap(), eAST()}.
-parseAndCompile(Filename) ->
-    try eMainCompiler:compileFromRawAST(parseFile(Filename), #{})
+-spec parse_and_compile(string()) -> {e_ast(), var_type_map(), e_ast()}.
+parse_and_compile(Filename) ->
+    try e_compiler:compile_from_raw_ast(parse_file(Filename), #{})
     catch
         E ->
             throw({Filename, E})
     end.
 
--spec parseFile(string()) -> eAST().
-parseFile(Filename) ->
+-spec parse_file(string()) -> e_ast().
+parse_file(Filename) ->
     case file:read_file(Filename) of
         {ok, RawContent} ->
-            case eScanner:string(binary_to_list(RawContent)) of
+            case e_scanner:string(binary_to_list(RawContent)) of
                 {ok, Tokens, _} ->
-                    case eParser:parse(ePreprocessor:process(Tokens)) of
+                    case e_parser:parse(e_preprocessor:process(Tokens)) of
                         {ok, AST} ->
                             AST;
                         {error, {Line, _, ErrorInfo}} ->
