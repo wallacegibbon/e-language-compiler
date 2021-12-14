@@ -212,11 +212,11 @@ process_elif_4_test() ->
     {ok, Tokens, _} = e_scanner:string("#if 0\n a\n #elif 1\n b\n #elif 1\n c\n #else\n d\n #endif"),
     ?assertEqual([{identifier, 4, b}], process(Tokens)).
 
-process_define_lineNumber_test() ->
+process_define_line_number_test() ->
     {ok, Tokens, _} = e_scanner:string("#define A 1\n?A"),
     ?assertEqual([{integer, 2, 1}], process(Tokens)).
 
-process_define_lineNumber_2_test() ->
+process_define_line_number_2_test() ->
     {ok, Tokens, _} = e_scanner:string("#define A 1\n#define B ?A\n?B"),
     ?assertEqual([{integer, 3, 1}], process(Tokens)).
 

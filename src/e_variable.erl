@@ -13,8 +13,8 @@ prepare_struct_init_expr([#function_raw{statements = Expressions} = F | Rest]) -
     [F#function_raw{statements = fix_struct_init_ast(Expressions)} | prepare_struct_init_expr(Rest)];
 prepare_struct_init_expr([#struct_raw{fields = Expressions} = S | Rest]) ->
     [S#struct_raw{fields = fix_struct_init_ast(Expressions)} | prepare_struct_init_expr(Rest)];
-prepare_struct_init_expr([#variable_definition{initialValue = InitialValue} = V | Rest]) ->
-    [V#variable_definition{initialValue = fix_struct_init(InitialValue)} | prepare_struct_init_expr(Rest)];
+prepare_struct_init_expr([#variable_definition{init_value = InitialValue} = V | Rest]) ->
+    [V#variable_definition{init_value = fix_struct_init(InitialValue)} | prepare_struct_init_expr(Rest)];
 prepare_struct_init_expr([]) ->
     [].
 
@@ -25,11 +25,11 @@ fix_struct_init_ast(Lst) ->
 -spec fix_struct_init(e_expr()) -> e_expr().
 fix_struct_init(#struct_init_expr_raw{name = Name, fields = Fields, line = Line}) ->
     {FieldNames, InitExprMap} = struct_init_to_map(Fields),
-    #struct_init_expr{name = Name, fieldNames = FieldNames, fieldValueMap = InitExprMap, line = Line};
+    #struct_init_expr{name = Name, field_names = FieldNames, field_value_map = InitExprMap, line = Line};
 fix_struct_init(#array_init_expr{elements = Elements} = A) ->
     A#array_init_expr{elements = fix_struct_init_ast(Elements)};
-fix_struct_init(#variable_definition{initialValue = InitialValue} = V) ->
-    V#variable_definition{initialValue = fix_struct_init(InitialValue)};
+fix_struct_init(#variable_definition{init_value = InitialValue} = V) ->
+    V#variable_definition{init_value = fix_struct_init(InitialValue)};
 fix_struct_init(#operator_expression2{operand1 = Operand1, operand2 = Operand2} = O) ->
     O#operator_expression2{operand1 = fix_struct_init(Operand1), operand2 = fix_struct_init(Operand2)};
 fix_struct_init(#operator_expression1{operand = Operand} = O) ->
@@ -50,7 +50,7 @@ struct_init_to_map([], FieldNames, ExprMap) ->
 %% In function expressions, the init code of defvar can not be simply fetched out from the code,
 %% it should be replaced as assignment in the same place.
 -spec fetch_variables(e_ast(), e_ast(), {var_type_map(), e_ast(), boolean()}) -> {e_ast(), var_type_map(), e_ast()}.
-fetch_variables([#variable_definition{name = Name, type = Type, line = Line, initialValue = InitialValue} | Rest], NewAST, {VarTypes, InitCode, CollectInitCode}) ->
+fetch_variables([#variable_definition{name = Name, type = Type, line = Line, init_value = InitialValue} | Rest], NewAST, {VarTypes, InitCode, CollectInitCode}) ->
     ensure_no_name_conflict(Name, VarTypes, Line),
     case CollectInitCode of
         true ->
@@ -58,7 +58,7 @@ fetch_variables([#variable_definition{name = Name, type = Type, line = Line, ini
         false ->
             fetch_variables(Rest, appendToAST(NewAST, Name, InitialValue, Line), {VarTypes#{Name => Type}, InitCode, CollectInitCode})
     end;
-fetch_variables([#function_raw{name = Name, returnType = Ret, parameters = Params, statements = Expressions, line = Line} | Rest], NewAST, {GlobalVars, _, _} = Context) ->
+fetch_variables([#function_raw{name = Name, ret_type = Ret, parameters = Params, statements = Expressions, line = Line} | Rest], NewAST, {GlobalVars, _, _} = Context) ->
     {[], ParamVars, ParamInitCode} = fetch_variables(Params, [], {#{}, [], true}),
     e_util:assert(ParamInitCode =:= [], {Line, "function parameters can not have default value"}),
     {NewExpressions, FunVarTypes, []} = fetch_variables(Expressions, [], {ParamVars, [], false}),
@@ -68,13 +68,13 @@ fetch_variables([#function_raw{name = Name, returnType = Ret, parameters = Param
     Labels = lists:filter(fun (E) -> element(1, E) =:= label end, Expressions),
     check_label_conflict(Labels, GlobalVars, FunVarTypes),
     FunctionType = #function_type{parameters = get_values_by_defs(Params, ParamVars), ret = Ret, line = Line},
-    Function = #function{name = Name, variableTypeMap = FunVarTypes, statements = NewExpressions, parameterNames = var_defs_to_refs(Params), line = Line, type = FunctionType},
+    Function = #function{name = Name, var_type_map = FunVarTypes, statements = NewExpressions, param_names = var_defs_to_refs(Params), line = Line, type = FunctionType},
     fetch_variables(Rest, [Function | NewAST], Context);
 fetch_variables([#struct_raw{name = Name, fields = Fields, line = Line} | Rest], NewAST, Context) ->
     %% struct can have default value
     {[], FieldTypes, StructInitCode} = fetch_variables(Fields, [], {#{}, [], true}),
     {_, FieldInitMap} = struct_init_to_map(StructInitCode),
-    S = #struct{name = Name, fieldTypeMap = FieldTypes, fieldNames = var_defs_to_refs(Fields), fieldDefaultValueMap = FieldInitMap, line = Line},
+    S = #struct{name = Name, field_type_map = FieldTypes, field_names = var_defs_to_refs(Fields), field_default_value_map = FieldInitMap, line = Line},
     fetch_variables(Rest, [S | NewAST], Context);
 fetch_variables([Any | Rest], NewAST, Context) ->
     fetch_variables(Rest, [Any | NewAST], Context);

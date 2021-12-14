@@ -75,7 +75,7 @@ variable_definitions -> variable_definition ',' : ['$1'].
 variable_definitions -> variable_definition : ['$1'].
 
 variable_definition -> identifier ':' type_annotation '=' expression :
-    #variable_definition{name = token_value('$1'), type = '$3', initialValue = '$5', line = token_line('$1')}.
+    #variable_definition{name = token_value('$1'), type = '$3', init_value = '$5', line = token_line('$1')}.
 
 variable_definition -> identifier ':' type_annotation :
     #variable_definition{name = token_value('$1'), type = '$3', line = token_line('$1')}.
@@ -86,13 +86,13 @@ struct_definition -> struct identifier variable_definitions 'end' :
 
 %% function definition
 function_definition -> 'fun' identifier '(' variable_definitions ')' ':' type_annotation function_statements 'end' :
-    #function_raw{name = token_value('$2'), parameters = '$4', returnType = '$7', statements = '$8', line = token_line('$2')}.
+    #function_raw{name = token_value('$2'), parameters = '$4', ret_type = '$7', statements = '$8', line = token_line('$2')}.
 function_definition -> 'fun' identifier '(' ')' ':' type_annotation function_statements 'end' :
-    #function_raw{name = token_value('$2'), parameters = [], returnType = '$6', statements = '$7', line = token_line('$2')}.
+    #function_raw{name = token_value('$2'), parameters = [], ret_type = '$6', statements = '$7', line = token_line('$2')}.
 function_definition -> 'fun' identifier '(' variable_definitions ')' function_statements 'end' :
-    #function_raw{name = token_value('$2'), parameters = '$4', returnType = e_util:void_type(token_line('$5')), statements = '$6', line = token_line('$2')}.
+    #function_raw{name = token_value('$2'), parameters = '$4', ret_type = e_util:void_type(token_line('$5')), statements = '$6', line = token_line('$2')}.
 function_definition -> 'fun' identifier '(' ')' function_statements 'end' :
-    #function_raw{name = token_value('$2'), parameters = [], returnType = e_util:void_type(token_line('$4')), statements = '$5', line = token_line('$2')}.
+    #function_raw{name = token_value('$2'), parameters = [], ret_type = e_util:void_type(token_line('$4')), statements = '$5', line = token_line('$2')}.
 
 %% while
 while_statement -> while expression do function_statements 'end' :

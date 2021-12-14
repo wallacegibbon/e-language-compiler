@@ -35,9 +35,9 @@ expand_init_expr([Any | Rest], NewAST, StructMap) ->
 expand_init_expr([], NewAST, _) ->
     lists:reverse(NewAST).
 
-replace_init_ops(#operator_expression2{operator = assign, operand1 = Operand1, operand2 = #struct_init_expr{name = Name, line = Line, fieldValueMap = FieldValues}}, StructMap) ->
+replace_init_ops(#operator_expression2{operator = assign, operand1 = Operand1, operand2 = #struct_init_expr{name = Name, line = Line, field_value_map = FieldValues}}, StructMap) ->
     case maps:find(Name, StructMap) of
-        {ok, #struct{fieldNames = FieldNames, fieldTypeMap = FieldTypes, fieldDefaultValueMap = FieldDefaults}} ->
+        {ok, #struct{field_names = FieldNames, field_type_map = FieldTypes, field_default_value_map = FieldDefaults}} ->
             FieldValueMap = maps:merge(FieldDefaults, FieldValues),
             struct_init_to_ops(Operand1, FieldNames, FieldValueMap, FieldTypes, [], StructMap);
         error ->
@@ -64,7 +64,7 @@ struct_init_to_ops(_, [], _, _, NewCode, _) ->
 default_value_of(#array_type{elemtype = ElementType, length = Len}, Line) ->
     #array_init_expr{elements = lists:duplicate(Len, default_value_of(ElementType, Line)), line = Line};
 default_value_of(#basic_type{class = struct, tag = Tag, pdepth = 0}, Line) ->
-    #struct_init_expr{name = Tag, line = Line, fieldValueMap = #{}, fieldNames = []};
+    #struct_init_expr{name = Tag, line = Line, field_value_map = #{}, field_names = []};
 default_value_of(#basic_type{class = integer, pdepth = 0}, Line) ->
     {integer, Line, 0};
 default_value_of(#basic_type{class = float, pdepth = 0}, Line) ->

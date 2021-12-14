@@ -7,8 +7,8 @@
         {line = 0 :: integer(),
          name :: atom(),
          type :: #function_type{},
-         parameterNames = [] :: [atom()],
-         variableTypeMap :: var_type_map(),
+         param_names = [] :: [atom()],
+         var_type_map :: var_type_map(),
          labels = [] :: [e_expr()],
          statements = [] :: [e_ast()]}).
 
@@ -16,10 +16,10 @@
         {line = 0 :: integer(),
          name :: atom(),
          size = -1 :: integer(),
-         fieldTypeMap :: var_type_map(),
-         fieldOffsetMap = #{} :: #{atom() := integer()},
-         fieldNames = [] :: [any()],
-         fieldDefaultValueMap = #{} :: #{atom() := e_expr()}}).
+         field_type_map :: var_type_map(),
+         field_offset_map = #{} :: #{atom() := integer()},
+         field_names = [] :: [any()],
+         field_default_value_map = #{} :: #{atom() := e_expr()}}).
 
 -record(basic_type,
         {line = 0 :: integer(),
@@ -40,8 +40,8 @@
 -record(struct_init_expr,
         {line = 0 :: integer(),
          name :: atom(),
-         fieldNames = [] :: [any()],
-         fieldValueMap = #{} :: #{atom() := e_expr()}}).
+         field_names = [] :: [any()],
+         field_value_map = #{} :: #{atom() := e_expr()}}).
 
 -record(array_init_expr,
         {line = 0 :: integer(),
@@ -51,7 +51,7 @@
         {line = 0 :: integer(),
          name :: atom(),
          parameters = [] :: [e_expr()],
-         returnType :: e_type(),
+         ret_type :: e_type(),
          statements = [] :: [e_expr()]}).
 
 -record(struct_raw,
@@ -78,7 +78,7 @@
         {line = 0 :: integer(),
          name :: atom(),
          type :: e_type(),
-         initialValue = none :: any()}).
+         init_value = none :: any()}).
 
 -record(variable_reference,
         {line = 0 :: integer(),

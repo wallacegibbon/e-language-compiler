@@ -3,9 +3,9 @@
 
 -include("e_record_definition.hrl").
 
--type compileOptions() :: map().
+-type compile_options() :: map().
 
--spec compile_from_raw_ast(e_ast(), compileOptions()) -> {e_ast(), var_type_map(), e_ast()}.
+-spec compile_from_raw_ast(e_ast(), compile_options()) -> {e_ast(), var_type_map(), e_ast()}.
 compile_from_raw_ast(AST, CustomCompileOptions) ->
     CompileOptions = maps:merge(default_compiler_options(), CustomCompileOptions),
     {AST2, VariableTypeMap, InitCode0} = e_variable:fetch_variables(AST),
@@ -39,7 +39,7 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
     InitCode2 = e_init_expr:expand_init_expr(InitCode1, StructMap2),
     {AST5, VariableTypeMap, InitCode2}.
 
--spec default_compiler_options() -> compileOptions().
+-spec default_compiler_options() -> compile_options().
 default_compiler_options() ->
     #{pointer_width => 8}.
 
@@ -57,7 +57,7 @@ check_struct_recursive(#struct{name = Name, line = Line} = Struct, StructTypeMap
     end.
 
 -spec check_struct_object(#struct{}, struct_type_map(), [atom()]) -> ok | {recur, [any()]}.
-check_struct_object(#struct{name = Name, fieldTypeMap = FieldTypes}, StructMap, UsedStructs) ->
+check_struct_object(#struct{name = Name, field_type_map = FieldTypes}, StructMap, UsedStructs) ->
     check_struct_field(maps:to_list(FieldTypes), StructMap, [Name | UsedStructs]).
 
 -spec check_struct_field([{atom(), e_type()}], struct_type_map(), [atom()]) -> ok | {recur, [any()]}.

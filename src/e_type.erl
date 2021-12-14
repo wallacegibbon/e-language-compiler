@@ -4,13 +4,13 @@
 -include("e_record_definition.hrl").
 
 -spec check_types_in_ast(e_ast(), var_type_map(), {fn_type_map(), struct_type_map()}) -> ok.
-check_types_in_ast([#function{variableTypeMap = VarTypes, statements = Expressions, type = FunctionType} | Rest], GlobalVarTypes, {FunctionTypeMap, StructMap} = Maps) ->
+check_types_in_ast([#function{var_type_map = VarTypes, statements = Expressions, type = FunctionType} | Rest], GlobalVarTypes, {FunctionTypeMap, StructMap} = Maps) ->
     check_types(maps:values(VarTypes), StructMap),
     check_type(FunctionType#function_type.ret, StructMap),
     CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
     type_of_ast_nodes(Expressions, {CurrentVars, FunctionTypeMap, StructMap, FunctionType#function_type.ret}),
     check_types_in_ast(Rest, GlobalVarTypes, Maps);
-check_types_in_ast([#struct{name = Name, fieldTypeMap = FieldTypes, fieldNames = FieldNames, fieldDefaultValueMap = FieldDefaults} | Rest], GlobalVarTypes, {FunctionTypeMap, StructMap} = Maps) ->
+check_types_in_ast([#struct{name = Name, field_type_map = FieldTypes, field_names = FieldNames, field_default_value_map = FieldDefaults} | Rest], GlobalVarTypes, {FunctionTypeMap, StructMap} = Maps) ->
     check_types(maps:values(FieldTypes), StructMap),
     %% check the default values for fields
     InitFieldNames = e_util:filter_var_refs_in_map(FieldNames, FieldDefaults),
@@ -172,9 +172,9 @@ type_of_ast_node(#array_init_expr{elements = Elements, line = Line}, Context) ->
         false ->
             throw({Line, e_util:fmt("array init type conflict: {~s}", [join_types_to_str(ElementTypes)])})
     end;
-type_of_ast_node(#struct_init_expr{name = StructName, fieldNames = InitFieldNames, fieldValueMap = InitFieldValues, line = Line}, {_, _, StructMap, _} = Context) ->
+type_of_ast_node(#struct_init_expr{name = StructName, field_names = InitFieldNames, field_value_map = InitFieldValues, line = Line}, {_, _, StructMap, _} = Context) ->
     case maps:find(StructName, StructMap) of
-        {ok, #struct{fieldTypeMap = FieldTypes}} ->
+        {ok, #struct{field_type_map = FieldTypes}} ->
             check_types_in_struct_fields(InitFieldNames, FieldTypes, InitFieldValues, StructName, Context),
             #basic_type{class = struct, tag = StructName, pdepth = 0, line = Line};
         _ ->
@@ -250,7 +250,7 @@ are_same_type(_) ->
 -spec type_of_struct_field(e_type(), #variable_reference{}, struct_type_map(), integer()) -> e_type().
 type_of_struct_field(#basic_type{class = struct, tag = StructName, pdepth = 0}, #variable_reference{name = FieldName}, StructMap, Line) ->
     case maps:find(StructName, StructMap) of
-        {ok, #struct{fieldTypeMap = FieldTypes}} ->
+        {ok, #struct{field_type_map = FieldTypes}} ->
             get_field_type(FieldName, FieldTypes, StructName, Line);
         error ->
             throw({Line, e_util:fmt("struct ~s is not found", [StructName])})

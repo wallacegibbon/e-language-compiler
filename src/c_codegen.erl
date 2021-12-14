@@ -22,7 +22,7 @@ generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
     ok = file:write_file(OutputFile, Code).
 
 -spec fix_function_for_c(e_expr(), context()) -> e_expr().
-fix_function_for_c(#function{statements = Expressions, variableTypeMap = VarTypes} = F, {FunctionTypeMap, StructMap, GlobalVars}) ->
+fix_function_for_c(#function{statements = Expressions, var_type_map = VarTypes} = F, {FunctionTypeMap, StructMap, GlobalVars}) ->
     F#function{statements = fix_exprs_for_c(Expressions, {FunctionTypeMap, StructMap, maps:merge(GlobalVars, VarTypes)})};
 fix_function_for_c(Any, _) ->
     Any.
@@ -56,7 +56,7 @@ common_c_code() ->
 statements_to_str(Statements, InitCode) ->
     statements_to_str(Statements, InitCode, [], []).
 
-statements_to_str([#function{name = Name, parameterNames = ParamNames, type = FunctionType, variableTypeMap = VarTypes, statements = Expressions} | Rest], InitCode, StatementStringList, FnDeclarationList) ->
+statements_to_str([#function{name = Name, param_names = ParamNames, type = FunctionType, var_type_map = VarTypes, statements = Expressions} | Rest], InitCode, StatementStringList, FnDeclarationList) ->
     ParamNameAtoms = names_from_varrefs(ParamNames),
     PureParams = map_to_kv_list(ParamNameAtoms, maps:with(ParamNameAtoms, VarTypes)),
     PureVars = maps:without(ParamNameAtoms, VarTypes),
@@ -69,7 +69,7 @@ statements_to_str([#function{name = Name, parameterNames = ParamNames, type = Fu
                    end,
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declarations, var_map_to_str(PureVars), exprs_to_str(Expressions2)]),
     statements_to_str(Rest, InitCode, [S | StatementStringList], [Declarations ++ ";\n" | FnDeclarationList]);
-statements_to_str([#struct{name = Name, fieldTypeMap = FieldTypes, fieldNames = FieldNames} | Rest], InitCode, StatementStringList, FnDeclarationList) ->
+statements_to_str([#struct{name = Name, field_type_map = FieldTypes, field_names = FieldNames} | Rest], InitCode, StatementStringList, FnDeclarationList) ->
     FieldList = map_to_kv_list(names_from_varrefs(FieldNames), FieldTypes),
     S = io_lib:format("struct ~s {~n~s~n};~n~n", [Name, var_list_to_str(FieldList)]),
     statements_to_str(Rest, InitCode, [S | StatementStringList], FnDeclarationList);

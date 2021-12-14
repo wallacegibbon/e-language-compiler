@@ -8,8 +8,8 @@
 -spec expand_sizeof(e_ast(), context()) -> e_ast().
 expand_sizeof([#function{statements = Expressions} = F | Rest], Context) ->
     [F#function{statements = expand_sizeof_in_exprs(Expressions, Context)} | expand_sizeof(Rest, Context)];
-expand_sizeof([#struct{fieldDefaultValueMap = FieldDefaults} = S | Rest], Context) ->
-    [S#struct{fieldDefaultValueMap = expand_sizeof_in_map(FieldDefaults, Context)} | expand_sizeof(Rest, Context)];
+expand_sizeof([#struct{field_default_value_map = FieldDefaults} = S | Rest], Context) ->
+    [S#struct{field_default_value_map = expand_sizeof_in_map(FieldDefaults, Context)} | expand_sizeof(Rest, Context)];
 expand_sizeof([], _) ->
     [].
 
@@ -30,8 +30,8 @@ expand_sizeof_in_expr(#operator_expression2{operand1 = Operand1, operand2 = Oper
     O#operator_expression2{operand1 = expand_sizeof_in_expr(Operand1, Context), operand2 = expand_sizeof_in_expr(Operand2, Context)};
 expand_sizeof_in_expr(#operator_expression1{operand = Operand} = O, Context) ->
     O#operator_expression1{operand = expand_sizeof_in_expr(Operand, Context)};
-expand_sizeof_in_expr(#struct_init_expr{fieldValueMap = ExprMap} = Si, Context) ->
-    Si#struct_init_expr{fieldValueMap = expand_sizeof_in_map(ExprMap, Context)};
+expand_sizeof_in_expr(#struct_init_expr{field_value_map = ExprMap} = Si, Context) ->
+    Si#struct_init_expr{field_value_map = expand_sizeof_in_map(ExprMap, Context)};
 expand_sizeof_in_expr(#array_init_expr{elements = Elements} = Ai, Context) ->
     Ai#array_init_expr{elements = expand_sizeof_in_exprs(Elements, Context)};
 expand_sizeof_in_expr(Any, _) ->
@@ -57,12 +57,12 @@ fill_struct_size(Any, _) ->
 
 -spec fill_struct_offsets(e_expr(), context()) -> e_expr().
 fill_struct_offsets(#struct{} = S, Context) ->
-    S#struct{fieldOffsetMap = offset_of_struct(S, Context)};
+    S#struct{field_offset_map = offset_of_struct(S, Context)};
 fill_struct_offsets(Any, _) ->
     Any.
 
 -spec offset_of_struct(#struct{}, context()) -> #{atom() := integer()}.
-offset_of_struct(#struct{fieldNames = FieldNames, fieldTypeMap = FieldTypes}, Context) ->
+offset_of_struct(#struct{field_names = FieldNames, field_type_map = FieldTypes}, Context) ->
     FieldTypeList = get_kvs_by_refs(FieldNames, FieldTypes),
     {_, OffsetMap} = size_of_struct_fields(FieldTypeList, 0, #{}, Context),
     OffsetMap.
@@ -70,7 +70,7 @@ offset_of_struct(#struct{fieldNames = FieldNames, fieldTypeMap = FieldTypes}, Co
 -spec size_of_struct(#struct{}, context()) -> non_neg_integer().
 size_of_struct(#struct{size = Size}, _) when is_integer(Size), Size > 0 ->
     Size;
-size_of_struct(#struct{fieldNames = Names, fieldTypeMap = Types}, Context) ->
+size_of_struct(#struct{field_names = Names, field_type_map = Types}, Context) ->
     FieldTypeList = get_kvs_by_refs(Names, Types),
     {Size, _} = size_of_struct_fields(FieldTypeList, 0, #{}, Context),
     Size.
