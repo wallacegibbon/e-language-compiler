@@ -118,21 +118,21 @@ process(Tokens) ->
 
 -spec get_expr_till_eol([token()], context()) -> {[token()], [token()]}.
 get_expr_till_eol(Tokens, Context) ->
-    gete_expr_till_eol(Tokens, [], Context).
+    get_expr_till_eol(Tokens, [], Context).
 
--spec gete_expr_till_eol([token()], [token()], context()) -> {[token()], [token()]}.
-gete_expr_till_eol([{'?', _}, {identifier, _, _} = Identifier | Rest], CollectedTokens, {MacroMap, _, _} = Context) ->
+-spec get_expr_till_eol([token()], [token()], context()) -> {[token()], [token()]}.
+get_expr_till_eol([{'?', _}, {identifier, _, _} = Identifier | Rest], CollectedTokens, {MacroMap, _, _} = Context) ->
     replace_macro(Identifier, MacroMap, fun (Tokens) ->
-                                                gete_expr_till_eol(Rest, lists:reverse(Tokens) ++ CollectedTokens, Context)
+                                                get_expr_till_eol(Rest, lists:reverse(Tokens) ++ CollectedTokens, Context)
                                         end);
-gete_expr_till_eol([{'?', LineNumber} | _], _, _) ->
+get_expr_till_eol([{'?', LineNumber} | _], _, _) ->
     throw({LineNumber, "syntax error near \"?\""});
-gete_expr_till_eol([{newline, _} | Rest], CollectedTokens, _) ->
+get_expr_till_eol([{newline, _} | Rest], CollectedTokens, _) ->
     {lists:reverse(CollectedTokens), Rest};
-gete_expr_till_eol([Token | Rest], CollectedTokens, Context) ->
-    gete_expr_till_eol(Rest, [Token | CollectedTokens], Context);
+get_expr_till_eol([Token | Rest], CollectedTokens, Context) ->
+    get_expr_till_eol(Rest, [Token | CollectedTokens], Context);
 %% EOF should not appear in this function, but leave the error handling to upper level.
-gete_expr_till_eol([], CollectedTokens, _) ->
+get_expr_till_eol([], CollectedTokens, _) ->
     {lists:reverse(CollectedTokens), []}.
 
 -spec replace_macro({identifier, non_neg_integer(), atom()}, macro_map(), fun(([token()]) -> Result)) -> Result when Result :: any().
