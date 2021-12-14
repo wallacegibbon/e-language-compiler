@@ -21,18 +21,18 @@ check_types_in_ast([_ | Rest], GlobalVarTypes, Maps) ->
 check_types_in_ast([], _, _) ->
     ok.
 
--type typeOfContext() :: {var_type_map(), fn_type_map(), struct_type_map(), functionReturnTypeMap()}.
+-type context() :: {var_type_map(), fn_type_map(), struct_type_map(), fn_ret_type_map()}.
 
 -spec check_type_in_ast_nodes([e_expr()], var_type_map(), {fn_type_map(), struct_type_map()}) -> ok.
 check_type_in_ast_nodes(Expressions, GlobalVarTypes, {FunctionTypeMap, StructMap}) ->
     type_of_ast_nodes(Expressions, {GlobalVarTypes, FunctionTypeMap, StructMap, #{}}),
     ok.
 
--spec type_of_ast_nodes([e_expr()], typeOfContext()) -> [e_type()].
+-spec type_of_ast_nodes([e_expr()], context()) -> [e_type()].
 type_of_ast_nodes(Expressions, Context) ->
     lists:map(fun (Expression) -> type_of_ast_node(Expression, Context) end, Expressions).
 
--spec type_of_ast_node(e_expr(), typeOfContext()) -> e_type().
+-spec type_of_ast_node(e_expr(), context()) -> e_type().
 type_of_ast_node(#operator_expression2{operator = assign, operand1 = Operand1, operand2 = Operand2, line = Line}, {_, _, StructMap, _} = Context) ->
     TypeofOp1 = case Operand1 of
                     #operator_expression2{operator = '.', operand1 = SubOp1, operand2 = SubOp2} ->
@@ -222,11 +222,11 @@ dec_pointer_depth(#basic_type{pdepth = PointerDepth} = T, _) when PointerDepth >
 dec_pointer_depth(T, OpLine) ->
     throw({OpLine, e_util:fmt("'^' on type ~s is invalid", [type_to_str(T)])}).
 
--spec check_types_in_struct_fields([#variable_reference{}], var_type_map(), #{atom() := any()}, atom(), typeOfContext()) -> ok.
+-spec check_types_in_struct_fields([#variable_reference{}], var_type_map(), #{atom() := any()}, atom(), context()) -> ok.
 check_types_in_struct_fields(FieldNames, FieldTypes, ValMap, StructName, Context) ->
     lists:foreach(fun (V) -> check_struct_field(V, FieldTypes, ValMap, StructName, Context) end, FieldNames).
 
--spec check_struct_field(#variable_reference{}, var_type_map(), #{atom() := any()}, atom(), typeOfContext()) -> ok.
+-spec check_struct_field(#variable_reference{}, var_type_map(), #{atom() := any()}, atom(), context()) -> ok.
 check_struct_field(#variable_reference{name = FieldName, line = Line}, FieldTypes, ValMap, StructName, {_, _, StructMap, _} = Context) ->
     {ok, Val} = maps:find(FieldName, ValMap),
     ExpectedType = get_field_type(FieldName, FieldTypes, StructName, Line),

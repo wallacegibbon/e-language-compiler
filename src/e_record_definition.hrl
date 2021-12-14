@@ -132,17 +132,15 @@
 % primitive types: u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
 -type e_type() :: #basic_type{} | #array_type{} | #function_type{} | any().
 
--type eStatement() :: #if_statement{} | #while_statement{} | #goto_statement{} | #return_statement{}.
+-type e_statement() :: #if_statement{} | #while_statement{} | #goto_statement{} | #return_statement{}.
 -type e_expr() :: #operator_expression1{} | #operator_expression2{} | #call_expr{} | #sizeof_expression{} | any().
 
 -type struct_type_map() :: #{atom() := #struct{}}.
 
 -type fn_type_map() :: #{atom() := #function_type{}}.
 
--type functionReturnTypeMap() :: #{atom() := e_type()}.
+-type fn_ret_type_map() :: #{atom() := e_type()}.
 
 -type var_type_map() :: #{atom() := e_type()}.
 
 -type e_ast() :: [e_expr()].
-
--type compilePassCtx1() :: {struct_type_map(), non_neg_integer()}.

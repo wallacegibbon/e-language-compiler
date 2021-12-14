@@ -3,7 +3,9 @@
 
 -include("e_record_definition.hrl").
 
--spec expand_sizeof(e_ast(), compilePassCtx1()) -> e_ast().
+-type context() :: {struct_type_map(), non_neg_integer()}.
+
+-spec expand_sizeof(e_ast(), context()) -> e_ast().
 expand_sizeof([#function{statements = Expressions} = F | Rest], Context) ->
     [F#function{statements = expand_sizeof_in_exprs(Expressions, Context)} | expand_sizeof(Rest, Context)];
 expand_sizeof([#struct{fieldDefaultValueMap = FieldDefaults} = S | Rest], Context) ->
@@ -14,11 +16,11 @@ expand_sizeof([], _) ->
 expand_sizeof_in_map(Map, Context) ->
     maps:map(fun (_, V1) -> expand_sizeof_in_expr(V1, Context) end, Map).
 
--spec expand_sizeof_in_exprs(e_ast(), compilePassCtx1()) -> [e_expr()].
+-spec expand_sizeof_in_exprs(e_ast(), context()) -> [e_expr()].
 expand_sizeof_in_exprs(Expressions, Context) ->
     e_util:expr_map(fun (E) -> expand_sizeof_in_expr(E, Context) end, Expressions).
 
--spec expand_sizeof_in_expr(e_expr(), compilePassCtx1()) -> e_expr().
+-spec expand_sizeof_in_expr(e_expr(), context()) -> e_expr().
 expand_sizeof_in_expr(#sizeof_expression{type = T, line = Line}, Context) ->
     try {integer, Line, size_of(T, Context)} catch
         I ->
@@ -40,32 +42,32 @@ expand_sizeof_in_expr(Any, _) ->
 %% In the current algorithm, the size of the same struct will be calculated for multiple times, which is not necessary.
 %% But the code is beautiful, so I will just keep it as it is now.
 %% use a process to hold the calculated struct info when the speed really becomes a problem.
--spec fill_struct_info(e_ast(), compilePassCtx1()) -> e_ast().
+-spec fill_struct_info(e_ast(), context()) -> e_ast().
 fill_struct_info(AST, {_, PointerWidth} = Context) ->
     %% struct definition are only allowed in top level of an AST.
     AST1 = lists:map(fun (E) -> fill_struct_size(E, Context) end, AST),
     {_, StructMap1} = e_util:make_function_and_struct_map_from_ast(AST1),
     lists:map(fun (E) -> fill_struct_offsets(E, {StructMap1, PointerWidth}) end, AST1).
 
--spec fill_struct_size(e_expr(), compilePassCtx1()) -> e_expr().
+-spec fill_struct_size(e_expr(), context()) -> e_expr().
 fill_struct_size(#struct{} = S, Context) ->
     S#struct{size = size_of_struct(S, Context)};
 fill_struct_size(Any, _) ->
     Any.
 
--spec fill_struct_offsets(e_expr(), compilePassCtx1()) -> e_expr().
+-spec fill_struct_offsets(e_expr(), context()) -> e_expr().
 fill_struct_offsets(#struct{} = S, Context) ->
     S#struct{fieldOffsetMap = offset_of_struct(S, Context)};
 fill_struct_offsets(Any, _) ->
     Any.
 
--spec offset_of_struct(#struct{}, compilePassCtx1()) -> #{atom() := integer()}.
+-spec offset_of_struct(#struct{}, context()) -> #{atom() := integer()}.
 offset_of_struct(#struct{fieldNames = FieldNames, fieldTypeMap = FieldTypes}, Context) ->
     FieldTypeList = get_kvs_by_refs(FieldNames, FieldTypes),
     {_, OffsetMap} = size_of_struct_fields(FieldTypeList, 0, #{}, Context),
     OffsetMap.
 
--spec size_of_struct(#struct{}, compilePassCtx1()) -> non_neg_integer().
+-spec size_of_struct(#struct{}, context()) -> non_neg_integer().
 size_of_struct(#struct{size = Size}, _) when is_integer(Size), Size > 0 ->
     Size;
 size_of_struct(#struct{fieldNames = Names, fieldTypeMap = Types}, Context) ->
@@ -80,7 +82,7 @@ get_kvs_by_refs(RefList, Map) ->
     lists:zip(Keys, Values).
 
 %% this is the function that calculate size and offsets
--spec size_of_struct_fields([{atom(), e_type()}], integer(), OffsetMap, compilePassCtx1()) -> {integer(), OffsetMap}
+-spec size_of_struct_fields([{atom(), e_type()}], integer(), OffsetMap, context()) -> {integer(), OffsetMap}
         when OffsetMap :: #{atom() := integer()}.
 size_of_struct_fields([{FieldName, FieldType} | Rest], CurrentOffset, OffsetMap, {_, PointerWidth} = Context) ->
     FieldSize = size_of(FieldType, Context),
@@ -104,7 +106,7 @@ fix_struct_field_offset(CurrentOffset, NextOffset, PointerWidth) ->
             CurrentOffset
     end.
 
--spec size_of(e_type(), compilePassCtx1()) -> non_neg_integer().
+-spec size_of(e_type(), context()) -> non_neg_integer().
 size_of(#array_type{elemtype = T, length = Len}, {_, PointerWidth} = Context) ->
     ElementSize = size_of(T, Context),
     FixedSize = case ElementSize < PointerWidth of
