@@ -22,8 +22,8 @@ generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
     ok = file:write_file(OutputFile, Code).
 
 -spec fix_function_for_c(e_expr(), context()) -> e_expr().
-fix_function_for_c(#function{statements = Expressions, var_type_map = VarTypes} = F, {FunctionTypeMap, StructMap, GlobalVars}) ->
-    F#function{statements = fix_exprs_for_c(Expressions, {FunctionTypeMap, StructMap, maps:merge(GlobalVars, VarTypes)})};
+fix_function_for_c(#function{stmts = Expressions, var_type_map = VarTypes} = F, {FunctionTypeMap, StructMap, GlobalVars}) ->
+    F#function{stmts = fix_exprs_for_c(Expressions, {FunctionTypeMap, StructMap, maps:merge(GlobalVars, VarTypes)})};
 fix_function_for_c(Any, _) ->
     Any.
 
@@ -32,17 +32,17 @@ fix_exprs_for_c(Expressions, Context) ->
     e_util:expr_map(fun (E) -> fix_expr_for_c(E, Context) end, Expressions).
 
 -spec fix_expr_for_c(e_expr(), context()) -> e_expr().
-fix_expr_for_c(#operator_expression1{operator = '@', operand = Operand, line = Line} = E, {FunctionTypeMap, StructMap, VarTypes} = Context) ->
+fix_expr_for_c(#op1_expr{operator = '@', operand = Operand, line = Line} = E, {FunctionTypeMap, StructMap, VarTypes} = Context) ->
     case e_type:type_of_ast_node(Operand, {VarTypes, FunctionTypeMap, StructMap, #{}}) of
         #array_type{} ->
-            #operator_expression2{operator = '.', operand1 = fix_expr_for_c(Operand, Context), operand2 = #variable_reference{name = value, line = Line}};
+            #op2_expr{operator = '.', operand1 = fix_expr_for_c(Operand, Context), operand2 = #variable_reference{name = value, line = Line}};
         _ ->
             E
     end;
-fix_expr_for_c(#operator_expression1{operand = Operand} = E, Context) ->
-    E#operator_expression1{operand = fix_expr_for_c(Operand, Context)};
-fix_expr_for_c(#operator_expression2{operand1 = Operand1, operand2 = Operand2} = E, Context) ->
-    E#operator_expression2{operand1 = fix_expr_for_c(Operand1, Context), operand2 = fix_expr_for_c(Operand2, Context)};
+fix_expr_for_c(#op1_expr{operand = Operand} = E, Context) ->
+    E#op1_expr{operand = fix_expr_for_c(Operand, Context)};
+fix_expr_for_c(#op2_expr{operand1 = Operand1, operand2 = Operand2} = E, Context) ->
+    E#op2_expr{operand1 = fix_expr_for_c(Operand1, Context), operand2 = fix_expr_for_c(Operand2, Context)};
 fix_expr_for_c(Any, _) ->
     Any.
 
@@ -56,7 +56,7 @@ common_c_code() ->
 statements_to_str(Statements, InitCode) ->
     statements_to_str(Statements, InitCode, [], []).
 
-statements_to_str([#function{name = Name, param_names = ParamNames, type = FunctionType, var_type_map = VarTypes, statements = Expressions} | Rest], InitCode, StatementStringList, FnDeclarationList) ->
+statements_to_str([#function{name = Name, param_names = ParamNames, type = FunctionType, var_type_map = VarTypes, stmts = Expressions} | Rest], InitCode, StatementStringList, FnDeclarationList) ->
     ParamNameAtoms = names_from_varrefs(ParamNames),
     PureParams = map_to_kv_list(ParamNameAtoms, maps:with(ParamNameAtoms, VarTypes)),
     PureVars = maps:without(ParamNameAtoms, VarTypes),
@@ -76,7 +76,7 @@ statements_to_str([#struct{name = Name, field_type_map = FieldTypes, field_names
 statements_to_str([], _, StatementStringList, FnDeclarationList) ->
     {lists:reverse(StatementStringList), lists:reverse(FnDeclarationList)}.
 
-function_declaration_to_str(Name, ParamStr, #basic_type{pdepth = N} = ReturnType) when N > 0 ->
+function_declaration_to_str(Name, ParamStr, #basic_type{p_depth = N} = ReturnType) when N > 0 ->
     return_type_to_str(ReturnType, io_lib:format("(*~s(~s))", [Name, ParamStr]));
 function_declaration_to_str(Name, ParamStr, #function_type{} = ReturnType) ->
     return_type_to_str(ReturnType, io_lib:format("(*~s(~s))", [Name, ParamStr]));
@@ -111,16 +111,16 @@ return_type_to_str(#function_type{parameters = Params, ret = ReturnType}, NamePa
     ParametersString = function_params_to_str_no_name(Params),
     NewNameParams = io_lib:format("~s(~s)", [NameParams, ParametersString]),
     type_to_c_str(ReturnType, NewNameParams);
-return_type_to_str(#basic_type{pdepth = N} = T, NameParams) when N > 0 ->
-    type_to_c_str(T#basic_type{pdepth = N - 1}, NameParams).
+return_type_to_str(#basic_type{p_depth = N} = T, NameParams) when N > 0 ->
+    type_to_c_str(T#basic_type{p_depth = N - 1}, NameParams).
 
 %% convert type to C string
 -spec type_to_c_str(e_expr(), iolist()) -> iolist().
-type_to_c_str(#array_type{length = Len, elemtype = ElementType}, VariableName) ->
+type_to_c_str(#array_type{length = Len, elem_type = ElementType}, VariableName) ->
     io_lib:format("struct {~s value[~w];} ~s", [type_to_c_str(ElementType, ""), Len, VariableName]);
-type_to_c_str(#basic_type{class = Class, tag = Tag, pdepth = Depth}, VariableName) when Depth > 0 ->
+type_to_c_str(#basic_type{class = Class, tag = Tag, p_depth = Depth}, VariableName) when Depth > 0 ->
     io_lib:format("~s~s ~s", [type_tag_to_str(Class, Tag), lists:duplicate(Depth, "*"), VariableName]);
-type_to_c_str(#basic_type{class = Class, tag = Tag, pdepth = 0}, VariableName) ->
+type_to_c_str(#basic_type{class = Class, tag = Tag, p_depth = 0}, VariableName) ->
     io_lib:format("~s ~s", [type_tag_to_str(Class, Tag), VariableName]);
 type_to_c_str(#function_type{parameters = Params, ret = ReturnType}, VariableName) ->
     ParameterString = function_params_to_str_no_name(Params),
@@ -142,28 +142,28 @@ exprs_to_str([], ExprList) ->
     lists:reverse(ExprList).
 
 -spec expr_to_str(e_expr(), char()) -> iolist().
-expr_to_str(#if_statement{condition = Condition, then = Then, else = Else}, _) ->
+expr_to_str(#if_stmt{condi = Condition, then = Then, else = Else}, _) ->
     io_lib:format("if (~s) {\n~s\n} else {\n~s}", [expr_to_str(Condition, $\s), exprs_to_str(Then), exprs_to_str(Else)]);
-expr_to_str(#while_statement{condition = Condition, statements = Expressions}, _) ->
+expr_to_str(#while_stmt{condi = Condition, stmts = Expressions}, _) ->
     io_lib:format("while (~s) {\n~s\n}\n", [expr_to_str(Condition, $\s), exprs_to_str(Expressions)]);
-expr_to_str(#operator_expression2{operator = '::', operand1 = #variable_reference{name = c}, operand2 = Operand2}, EndChar) ->
+expr_to_str(#op2_expr{operator = '::', operand1 = #variable_reference{name = c}, operand2 = Operand2}, EndChar) ->
     expr_to_str(Operand2, EndChar);
-expr_to_str(#operator_expression2{operator = Operator, operand1 = Operand1, operand2 = Operand2}, EndChar) ->
+expr_to_str(#op2_expr{operator = Operator, operand1 = Operand1, operand2 = Operand2}, EndChar) ->
     io_lib:format("(~s ~s ~s)~c", [expr_to_str(Operand1, $\s), translate_op(Operator), expr_to_str(Operand2, $\s), EndChar]);
-expr_to_str(#operator_expression1{operator = Operator, operand = Operand}, EndChar) ->
+expr_to_str(#op1_expr{operator = Operator, operand = Operand}, EndChar) ->
     io_lib:format("(~s ~s)~c", [translate_op(Operator), expr_to_str(Operand, $\s), EndChar]);
 expr_to_str(#call_expr{fn = Fn, args = Arguments}, EndChar) ->
     ArgumentString = lists:join(",", lists:map(fun (E) -> expr_to_str(E, $\s) end, Arguments)),
     io_lib:format("~s(~s)~c", [expr_to_str(Fn, $\s), ArgumentString, EndChar]);
-expr_to_str(#return_statement{expression = Expression}, EndChar) ->
+expr_to_str(#return_stmt{expr = Expression}, EndChar) ->
     io_lib:format("return ~s~c", [expr_to_str(Expression, $\s), EndChar]);
-expr_to_str(#goto_statement{expression = Expression}, EndChar) ->
+expr_to_str(#goto_stmt{expr = Expression}, EndChar) ->
     io_lib:format("goto ~s~c", [expr_to_str(Expression, $\s), EndChar]);
 expr_to_str(#goto_label{name = Name}, _) ->
     io_lib:format("~s:", [Name]);
 expr_to_str(#variable_reference{name = Name}, EndChar) ->
     io_lib:format("~s~c", [Name, EndChar]);
-expr_to_str(#type_convert{expression = Expression, type = TargetType}, EndChar) ->
+expr_to_str(#type_convert{expr = Expression, type = TargetType}, EndChar) ->
     io_lib:format("((~s) ~s)~c", [type_to_c_str(TargetType, ""), expr_to_str(Expression, $\s), EndChar]);
 expr_to_str({Any, _Line, Value}, EndChar) when Any =:= integer; Any =:= float ->
     io_lib:format("~w~c", [Value, EndChar]);

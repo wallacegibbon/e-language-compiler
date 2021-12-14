@@ -10,7 +10,7 @@
          param_names = [] :: [atom()],
          var_type_map :: var_type_map(),
          labels = [] :: [e_expr()],
-         statements = [] :: [e_ast()]}).
+         stmts = [] :: [e_ast()]}).
 
 -record(struct,
         {line = 0 :: integer(),
@@ -23,16 +23,16 @@
 
 -record(basic_type,
         {line = 0 :: integer(),
-         pdepth = 0 :: integer(),
+         p_depth = 0 :: integer(),
          class :: struct | integer | float | void | any,
          tag :: atom()}).
 
 -record(array_type,
         {line = 0 :: integer(),
-         elemtype :: e_type(),
+         elem_type :: e_type(),
          length :: integer()}).
 
--record(struct_init_expr_raw,
+-record(struct_init_raw_expr,
         {line = 0 :: integer(),
          name :: atom(),
          fields = [] :: [e_expr()]}).
@@ -52,29 +52,29 @@
          name :: atom(),
          parameters = [] :: [e_expr()],
          ret_type :: e_type(),
-         statements = [] :: [e_expr()]}).
+         stmts = [] :: [e_expr()]}).
 
 -record(struct_raw,
         {line = 0 :: integer(),
          name :: atom(),
          fields = [] :: [e_expr()]}).
 
--record(return_statement,
+-record(return_stmt,
         {line = 0 :: integer(),
-         expression :: e_expr()}).
+         expr :: e_expr()}).
 
--record(while_statement,
+-record(while_stmt,
         {line = 0 :: integer(),
-         condition :: e_expr(),
-         statements = [] :: [e_expr()]}).
+         condi :: e_expr(),
+         stmts = [] :: [e_expr()]}).
 
--record(if_statement,
+-record(if_stmt,
         {line = 0 :: integer(),
-         condition :: e_expr(),
+         condi :: e_expr(),
          then = [] :: [e_expr()],
          else = [] :: [e_expr()]}).
 
--record(variable_definition,
+-record(var_def,
         {line = 0 :: integer(),
          name :: atom(),
          type :: e_type(),
@@ -96,12 +96,12 @@
         {line = 0 :: integer(),
          value :: string()}).
 
--record(operator_expression1,
+-record(op1_expr,
         {line = 0 :: integer(),
          operator :: atom(),
          operand :: e_expr()}).
 
--record(operator_expression2,
+-record(op2_expr,
         {line = 0 :: integer(),
          operator :: atom(),
          operand1 :: e_expr(),
@@ -112,7 +112,7 @@
          fn :: e_expr(),
          args = [] :: [e_expr()]}).
 
--record(sizeof_expression,
+-record(sizeof_expr,
         {line = 0 :: integer(),
          type :: e_type()}).
 
@@ -120,20 +120,20 @@
         {line = 0 :: integer(),
          name :: atom()}).
 
--record(goto_statement,
+-record(goto_stmt,
         {line = 0 :: integer(),
-         expression :: e_expr()}).
+         expr :: e_expr()}).
 
 -record(type_convert,
         {line = 0 :: integer(),
-         expression :: e_expr(),
+         expr :: e_expr(),
          type :: e_type()}).
 
 % primitive types: u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
 -type e_type() :: #basic_type{} | #array_type{} | #function_type{} | any().
 
--type e_statement() :: #if_statement{} | #while_statement{} | #goto_statement{} | #return_statement{}.
--type e_expr() :: #operator_expression1{} | #operator_expression2{} | #call_expr{} | #sizeof_expression{} | any().
+-type e_stmt() :: #if_stmt{} | #while_stmt{} | #goto_stmt{} | #return_stmt{}.
+-type e_expr() :: #op1_expr{} | #op2_expr{} | #call_expr{} | #sizeof_expr{} | any().
 
 -type struct_type_map() :: #{atom() := #struct{}}.
 

@@ -6,8 +6,8 @@
 -type context() :: {struct_type_map(), non_neg_integer()}.
 
 -spec expand_sizeof(e_ast(), context()) -> e_ast().
-expand_sizeof([#function{statements = Expressions} = F | Rest], Context) ->
-    [F#function{statements = expand_sizeof_in_exprs(Expressions, Context)} | expand_sizeof(Rest, Context)];
+expand_sizeof([#function{stmts = Expressions} = F | Rest], Context) ->
+    [F#function{stmts = expand_sizeof_in_exprs(Expressions, Context)} | expand_sizeof(Rest, Context)];
 expand_sizeof([#struct{field_default_value_map = FieldDefaults} = S | Rest], Context) ->
     [S#struct{field_default_value_map = expand_sizeof_in_map(FieldDefaults, Context)} | expand_sizeof(Rest, Context)];
 expand_sizeof([], _) ->
@@ -21,15 +21,15 @@ expand_sizeof_in_exprs(Expressions, Context) ->
     e_util:expr_map(fun (E) -> expand_sizeof_in_expr(E, Context) end, Expressions).
 
 -spec expand_sizeof_in_expr(e_expr(), context()) -> e_expr().
-expand_sizeof_in_expr(#sizeof_expression{type = T, line = Line}, Context) ->
+expand_sizeof_in_expr(#sizeof_expr{type = T, line = Line}, Context) ->
     try {integer, Line, size_of(T, Context)} catch
         I ->
             throw({Line, I})
     end;
-expand_sizeof_in_expr(#operator_expression2{operand1 = Operand1, operand2 = Operand2} = O, Context) ->
-    O#operator_expression2{operand1 = expand_sizeof_in_expr(Operand1, Context), operand2 = expand_sizeof_in_expr(Operand2, Context)};
-expand_sizeof_in_expr(#operator_expression1{operand = Operand} = O, Context) ->
-    O#operator_expression1{operand = expand_sizeof_in_expr(Operand, Context)};
+expand_sizeof_in_expr(#op2_expr{operand1 = Operand1, operand2 = Operand2} = O, Context) ->
+    O#op2_expr{operand1 = expand_sizeof_in_expr(Operand1, Context), operand2 = expand_sizeof_in_expr(Operand2, Context)};
+expand_sizeof_in_expr(#op1_expr{operand = Operand} = O, Context) ->
+    O#op1_expr{operand = expand_sizeof_in_expr(Operand, Context)};
 expand_sizeof_in_expr(#struct_init_expr{field_value_map = ExprMap} = Si, Context) ->
     Si#struct_init_expr{field_value_map = expand_sizeof_in_map(ExprMap, Context)};
 expand_sizeof_in_expr(#array_init_expr{elements = Elements} = Ai, Context) ->
@@ -107,7 +107,7 @@ fix_struct_field_offset(CurrentOffset, NextOffset, PointerWidth) ->
     end.
 
 -spec size_of(e_type(), context()) -> non_neg_integer().
-size_of(#array_type{elemtype = T, length = Len}, {_, PointerWidth} = Context) ->
+size_of(#array_type{elem_type = T, length = Len}, {_, PointerWidth} = Context) ->
     ElementSize = size_of(T, Context),
     FixedSize = case ElementSize < PointerWidth of
                     true ->
@@ -121,7 +121,7 @@ size_of(#array_type{elemtype = T, length = Len}, {_, PointerWidth} = Context) ->
                         e_util:fill_to_pointer_width(ElementSize, PointerWidth)
                 end,
     FixedSize * Len;
-size_of(#basic_type{pdepth = N}, {_, PointerWidth}) when N > 0 ->
+size_of(#basic_type{p_depth = N}, {_, PointerWidth}) when N > 0 ->
     PointerWidth;
 size_of(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Context) ->
     case maps:find(Tag, StructMap) of

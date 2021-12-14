@@ -158,7 +158,7 @@ replace_line_number(Tokens, LineNumber) ->
 
 process_no_operator_test() ->
     {ok, Tokens, _} = e_scanner:string("u32 a = 1;"),
-    ?assertEqual([{integerType, 1, u32}, {identifier, 1, a}, {'=', 1}, {integer, 1, 1}, {';', 1}], process(Tokens)).
+    ?assertEqual([{int_type, 1, u32}, {identifier, 1, a}, {'=', 1}, {integer, 1, 1}, {';', 1}], process(Tokens)).
 
 process_if_true_test() ->
     {ok, Tokens, _} = e_scanner:string("#if 1\n a\n #else\n b\n #endif"),

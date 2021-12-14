@@ -82,9 +82,9 @@ check_struct_field([], _, _) ->
     ok.
 
 -spec contain_struct(e_type()) -> {yes, atom()} | no.
-contain_struct(#basic_type{class = struct, pdepth = 0, tag = Name}) ->
+contain_struct(#basic_type{class = struct, p_depth = 0, tag = Name}) ->
     {yes, Name};
-contain_struct(#array_type{elemtype = BaseType}) ->
+contain_struct(#array_type{elem_type = BaseType}) ->
     contain_struct(BaseType);
 contain_struct(_) ->
     no.
