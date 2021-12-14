@@ -1,8 +1,7 @@
 Nonterminals
 
-root_stmts root_stmt struct_def function_def var_defs var_def parameters
-function_stmts function_stmt if_stmt else_stmt while_stmt goto_label
-expr  call_expr pre_minus_plus_expr sizeof_expr assign_expr op19 op30 op29 op28 op27 op26 op25 op2_with_assignment
+root_stmts root_stmt struct_def function_def var_defs var_def params function_stmts function_stmt if_stmt else_stmt while_stmt goto_label
+expr call_expr pre_minus_plus_expr sizeof_expr assign_expr op19 op30 op29 op28 op27 op26 op25 op2_with_assignment
 type_annotations type_anno
 pointer_depth atomic_literal_values array_init_expr array_init_elements struct_init_expr struct_init_fields struct_init_assignment
 reserved_keyword
@@ -38,13 +37,13 @@ type_annotations -> type_anno ',' type_annotations : ['$1' | '$3'].
 type_annotations -> type_anno : ['$1'].
 
 type_anno -> 'fun' '(' type_annotations ')' ':' type_anno :
-    #function_type{parameters = '$3', ret = '$6', line = token_line('$1')}.
+    #fn_type{params = '$3', ret = '$6', line = token_line('$1')}.
 type_anno -> 'fun' '(' type_annotations ')' :
-    #function_type{parameters = '$3', ret = e_util:void_type(token_line('$4')), line = token_line('$1')}.
+    #fn_type{params = '$3', ret = e_util:void_type(token_line('$4')), line = token_line('$1')}.
 type_anno -> 'fun' '(' ')' ':' type_anno :
-    #function_type{parameters = [], ret = '$5', line = token_line('$1')}.
+    #fn_type{params = [], ret = '$5', line = token_line('$1')}.
 type_anno -> 'fun' '(' ')' :
-    #function_type{parameters = [], ret = e_util:void_type(token_line('$3')), line = token_line('$1')}.
+    #fn_type{params = [], ret = e_util:void_type(token_line('$3')), line = token_line('$1')}.
 type_anno -> '{' type_anno ',' expr '}' :
     #array_type{elem_type = '$2', length = token_value('$4'), line = token_line('$1')}.
 type_anno -> int_type pointer_depth :
@@ -86,13 +85,13 @@ struct_def -> struct identifier var_defs 'end' :
 
 %% function definition
 function_def -> 'fun' identifier '(' var_defs ')' ':' type_anno function_stmts 'end' :
-    #function_raw{name = token_value('$2'), parameters = '$4', ret_type = '$7', stmts = '$8', line = token_line('$2')}.
+    #function_raw{name = token_value('$2'), params = '$4', ret_type = '$7', stmts = '$8', line = token_line('$2')}.
 function_def -> 'fun' identifier '(' ')' ':' type_anno function_stmts 'end' :
-    #function_raw{name = token_value('$2'), parameters = [], ret_type = '$6', stmts = '$7', line = token_line('$2')}.
+    #function_raw{name = token_value('$2'), params = [], ret_type = '$6', stmts = '$7', line = token_line('$2')}.
 function_def -> 'fun' identifier '(' var_defs ')' function_stmts 'end' :
-    #function_raw{name = token_value('$2'), parameters = '$4', ret_type = e_util:void_type(token_line('$5')), stmts = '$6', line = token_line('$2')}.
+    #function_raw{name = token_value('$2'), params = '$4', ret_type = e_util:void_type(token_line('$5')), stmts = '$6', line = token_line('$2')}.
 function_def -> 'fun' identifier '(' ')' function_stmts 'end' :
-    #function_raw{name = token_value('$2'), parameters = [], ret_type = e_util:void_type(token_line('$4')), stmts = '$5', line = token_line('$2')}.
+    #function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_line('$4')), stmts = '$5', line = token_line('$2')}.
 
 %% while
 while_stmt -> while expr do function_stmts 'end' :
@@ -128,13 +127,13 @@ struct_init_fields -> struct_init_assignment ',' struct_init_fields : ['$1' | '$
 struct_init_fields -> struct_init_assignment : ['$1'].
 
 struct_init_assignment -> identifier '=' expr :
-    #op2_expr{operator = assign, operand1 = #variable_reference{name = token_value('$1'), line = token_line('$1')}, operand2 = '$3', line = token_line('$2')}.
+    #op2_expr{operator = assign, operand1 = #var_ref{name = token_value('$1'), line = token_line('$1')}, operand2 = '$3', line = token_line('$2')}.
 
 %% sizeof
 sizeof_expr -> sizeof '(' type_anno ')' : #sizeof_expr{type = '$3', line = token_line('$2')}.
 
 %% function invocation
-call_expr -> expr '(' parameters ')' : #call_expr{fn = '$1', args = '$3', line = token_line('$2')}.
+call_expr -> expr '(' params ')' : #call_expr{fn = '$1', args = '$3', line = token_line('$2')}.
 call_expr -> expr '(' ')' : #call_expr{fn = '$1', args = [], line = token_line('$2')}.
 
 assign_expr -> expr op2_with_assignment expr :
@@ -146,9 +145,9 @@ op2_with_assignment -> op29 '=' : '$1'.
 op2_with_assignment -> op28 '=' : '$1'.
 op2_with_assignment -> op27 '=' : '$1'.
 
-parameters -> expr ',' parameters : ['$1' | '$3'].
-parameters -> expr ',' : ['$1'].
-parameters -> expr : ['$1'].
+params -> expr ',' params : ['$1' | '$3'].
+params -> expr ',' : ['$1'].
+params -> expr : ['$1'].
 
 atomic_literal_values -> integer : '$1'.
 atomic_literal_values -> float : '$1'.
@@ -176,7 +175,7 @@ expr -> expr op27 expr : #op2_expr{operator = token_symbol('$2'), operand1 = '$1
 expr -> expr op26 expr : #op2_expr{operator = token_symbol('$2'), operand1 = '$1', operand2 = '$3', line = token_line('$2')}.
 expr -> expr op25 expr : #op2_expr{operator = token_symbol('$2'), operand1 = '$1', operand2 = '$3', line = token_line('$2')}.
 expr -> expr op19 : #op1_expr{operator = token_symbol('$2'), operand = '$1', line = token_line('$2')}.
-expr -> identifier : #variable_reference{name = token_value('$1'), line = token_line('$1')}.
+expr -> identifier : #var_ref{name = token_value('$1'), line = token_line('$1')}.
 expr -> pre_minus_plus_expr : '$1'.
 expr -> array_init_expr : '$1'.
 expr -> struct_init_expr : '$1'.

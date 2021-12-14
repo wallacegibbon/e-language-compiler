@@ -11,7 +11,7 @@ function_normal_test() ->
     {ok, AST} = e_parser:parse(Tokens),
     %?debugFmt("~p~n", [AST]),
     ?assertEqual([{function_raw, 1, a, [{var_def, 1, v, {basic_type, 1, 1, integer, i8}, none}], {basic_type, 1, 0, void, void},
-                    [{op2_expr, 1, assign, {op1_expr, 1, '^', {variable_reference, 1, v}}, {integer, 1, 10}}]}], AST),
+                    [{op2_expr, 1, assign, {op1_expr, 1, '^', {var_ref, 1, v}}, {integer, 1, 10}}]}], AST),
     ok.
 
 function_pointer_test() ->
@@ -22,8 +22,8 @@ function_pointer_test() ->
     {ok, AST} = e_parser:parse(Tokens),
     %?debugFmt("~p~n", [AST]),
     ?assertEqual([{var_def, 1, a,
-                   {function_type, 1, [{basic_type, 1, 0, integer, u8}, {basic_type, 1, 1, integer, u8}], {basic_type, 1, 1, integer, u16}},
-                   {variable_reference, 1, b}}],
+                   {fn_type, 1, [{basic_type, 1, 0, integer, u8}, {basic_type, 1, 1, integer, u8}], {basic_type, 1, 1, integer, u16}},
+                   {var_ref, 1, b}}],
                  AST),
     ok.
 
@@ -34,7 +34,7 @@ function_call_test() ->
                  Tokens),
     {ok, AST} = e_parser:parse(Tokens),
     %?debugFmt("~p~n", [AST]),
-    ?assertEqual([{var_def, 1, b, {basic_type, 1, 0, integer, u8}, {call_expr, 1, {variable_reference, 1, a}, [{integer, 1, 13}]}}],
+    ?assertEqual([{var_def, 1, b, {basic_type, 1, 0, integer, u8}, {call_expr, 1, {var_ref, 1, a}, [{integer, 1, 13}]}}],
                  AST),
     ok.
 
@@ -67,8 +67,8 @@ struct_init_test() ->
     %?debugFmt("~p~n", [AST]),
     ?assertEqual([{var_def, 1, a, {basic_type, 1, 0, struct, 'S'},
                    {struct_init_raw_expr, 1, 'S',
-                    [{op2_expr, 1, assign, {variable_reference, 1, name}, {string, 1, "a"}},
-                     {op2_expr, 1, assign, {variable_reference, 1, value}, {integer, 1, 2}}]}}],
+                    [{op2_expr, 1, assign, {var_ref, 1, name}, {string, 1, "a"}},
+                     {op2_expr, 1, assign, {var_ref, 1, value}, {integer, 1, 2}}]}}],
                  AST),
     ok.
 
@@ -80,8 +80,8 @@ assign_test() ->
     {ok, AST} = e_parser:parse(Tokens),
     %?debugFmt("~p~n", [AST]),
     ?assertEqual([{function_raw, 1, b, [], {basic_type, 1, 0, void, void},
-                    [{op2_expr, 1, assign, {variable_reference, 1, a}, {op2_expr, 1, '*', {variable_reference, 1, a}, {integer, 1, 3}}},
-                     {op2_expr, 1, assign, {variable_reference, 1, c}, {op2_expr, 1, 'bsr', {variable_reference, 1, c}, {integer, 1, 5}}}]}],
+                    [{op2_expr, 1, assign, {var_ref, 1, a}, {op2_expr, 1, '*', {var_ref, 1, a}, {integer, 1, 3}}},
+                     {op2_expr, 1, assign, {var_ref, 1, c}, {op2_expr, 1, 'bsr', {var_ref, 1, c}, {integer, 1, 5}}}]}],
                  AST),
     ok.
 

@@ -8,9 +8,9 @@
 -spec generate_c_code(e_ast(), var_type_map(), e_ast(), string()) -> ok.
 generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
     {FunctionTypeMap, StructMap} = e_util:make_function_and_struct_map_from_ast(AST),
-    Context = {FunctionTypeMap, StructMap, GlobalVars},
-    AST2 = lists:map(fun (A) -> fix_function_for_c(A, Context) end, AST),
-    InitCode2 = fix_exprs_for_c(InitCode, Context),
+    Ctx = {FunctionTypeMap, StructMap, GlobalVars},
+    AST2 = lists:map(fun (A) -> fix_function_for_c(A, Ctx) end, AST),
+    InitCode2 = fix_exprs_for_c(InitCode, Ctx),
     %io:format(">>>~p~n", [AST2]),
     %% struct definition have to be before function declarations
     CheckStruct = fun (A) -> element(1, A) =:= struct end,
@@ -28,21 +28,21 @@ fix_function_for_c(Any, _) ->
     Any.
 
 -spec fix_exprs_for_c(e_ast(), context()) -> e_ast().
-fix_exprs_for_c(Expressions, Context) ->
-    e_util:expr_map(fun (E) -> fix_expr_for_c(E, Context) end, Expressions).
+fix_exprs_for_c(Expressions, Ctx) ->
+    e_util:expr_map(fun (E) -> fix_expr_for_c(E, Ctx) end, Expressions).
 
 -spec fix_expr_for_c(e_expr(), context()) -> e_expr().
-fix_expr_for_c(#op1_expr{operator = '@', operand = Operand, line = Line} = E, {FunctionTypeMap, StructMap, VarTypes} = Context) ->
+fix_expr_for_c(#op1_expr{operator = '@', operand = Operand, line = Line} = E, {FunctionTypeMap, StructMap, VarTypes} = Ctx) ->
     case e_type:type_of_ast_node(Operand, {VarTypes, FunctionTypeMap, StructMap, #{}}) of
         #array_type{} ->
-            #op2_expr{operator = '.', operand1 = fix_expr_for_c(Operand, Context), operand2 = #variable_reference{name = value, line = Line}};
+            #op2_expr{operator = '.', operand1 = fix_expr_for_c(Operand, Ctx), operand2 = #var_ref{name = value, line = Line}};
         _ ->
             E
     end;
-fix_expr_for_c(#op1_expr{operand = Operand} = E, Context) ->
-    E#op1_expr{operand = fix_expr_for_c(Operand, Context)};
-fix_expr_for_c(#op2_expr{operand1 = Operand1, operand2 = Operand2} = E, Context) ->
-    E#op2_expr{operand1 = fix_expr_for_c(Operand1, Context), operand2 = fix_expr_for_c(Operand2, Context)};
+fix_expr_for_c(#op1_expr{operand = Operand} = E, Ctx) ->
+    E#op1_expr{operand = fix_expr_for_c(Operand, Ctx)};
+fix_expr_for_c(#op2_expr{operand1 = Operand1, operand2 = Operand2} = E, Ctx) ->
+    E#op2_expr{operand1 = fix_expr_for_c(Operand1, Ctx), operand2 = fix_expr_for_c(Operand2, Ctx)};
 fix_expr_for_c(Any, _) ->
     Any.
 
@@ -60,7 +60,7 @@ statements_to_str([#function{name = Name, param_names = ParamNames, type = Funct
     ParamNameAtoms = names_from_varrefs(ParamNames),
     PureParams = map_to_kv_list(ParamNameAtoms, maps:with(ParamNameAtoms, VarTypes)),
     PureVars = maps:without(ParamNameAtoms, VarTypes),
-    Declarations = function_declaration_to_str(Name, function_params_to_str(PureParams), FunctionType#function_type.ret),
+    Declarations = function_declaration_to_str(Name, function_params_to_str(PureParams), FunctionType#fn_type.ret),
     Expressions2 = case Name =:= main of
                        true ->
                            InitCode ++ Expressions;
@@ -78,7 +78,7 @@ statements_to_str([], _, StatementStringList, FnDeclarationList) ->
 
 function_declaration_to_str(Name, ParamStr, #basic_type{p_depth = N} = ReturnType) when N > 0 ->
     return_type_to_str(ReturnType, io_lib:format("(*~s(~s))", [Name, ParamStr]));
-function_declaration_to_str(Name, ParamStr, #function_type{} = ReturnType) ->
+function_declaration_to_str(Name, ParamStr, #fn_type{} = ReturnType) ->
     return_type_to_str(ReturnType, io_lib:format("(*~s(~s))", [Name, ParamStr]));
 function_declaration_to_str(Name, ParamStr, ReturnType) ->
     type_to_c_str(ReturnType, io_lib:format("~s(~s)", [Name, ParamStr])).
@@ -102,12 +102,12 @@ vars_to_str([], Strs) ->
     lists:reverse(Strs).
 
 names_from_varrefs(VarrefList) ->
-    lists:map(fun (#variable_reference{name = N}) -> N end, VarrefList).
+    lists:map(fun (#var_ref{name = N}) -> N end, VarrefList).
 
 map_to_kv_list(NameAtoms, ValueMap) ->
     lists:zip(NameAtoms, e_util:get_values_by_keys(NameAtoms, ValueMap)).
 
-return_type_to_str(#function_type{parameters = Params, ret = ReturnType}, NameParams) ->
+return_type_to_str(#fn_type{params = Params, ret = ReturnType}, NameParams) ->
     ParametersString = function_params_to_str_no_name(Params),
     NewNameParams = io_lib:format("~s(~s)", [NameParams, ParametersString]),
     type_to_c_str(ReturnType, NewNameParams);
@@ -122,7 +122,7 @@ type_to_c_str(#basic_type{class = Class, tag = Tag, p_depth = Depth}, VariableNa
     io_lib:format("~s~s ~s", [type_tag_to_str(Class, Tag), lists:duplicate(Depth, "*"), VariableName]);
 type_to_c_str(#basic_type{class = Class, tag = Tag, p_depth = 0}, VariableName) ->
     io_lib:format("~s ~s", [type_tag_to_str(Class, Tag), VariableName]);
-type_to_c_str(#function_type{parameters = Params, ret = ReturnType}, VariableName) ->
+type_to_c_str(#fn_type{params = Params, ret = ReturnType}, VariableName) ->
     ParameterString = function_params_to_str_no_name(Params),
     NameParams = io_lib:format("(*~s)(~s)", [VariableName, ParameterString]),
     type_to_c_str(ReturnType, NameParams).
@@ -146,7 +146,7 @@ expr_to_str(#if_stmt{condi = Condition, then = Then, else = Else}, _) ->
     io_lib:format("if (~s) {\n~s\n} else {\n~s}", [expr_to_str(Condition, $\s), exprs_to_str(Then), exprs_to_str(Else)]);
 expr_to_str(#while_stmt{condi = Condition, stmts = Expressions}, _) ->
     io_lib:format("while (~s) {\n~s\n}\n", [expr_to_str(Condition, $\s), exprs_to_str(Expressions)]);
-expr_to_str(#op2_expr{operator = '::', operand1 = #variable_reference{name = c}, operand2 = Operand2}, EndChar) ->
+expr_to_str(#op2_expr{operator = '::', operand1 = #var_ref{name = c}, operand2 = Operand2}, EndChar) ->
     expr_to_str(Operand2, EndChar);
 expr_to_str(#op2_expr{operator = Operator, operand1 = Operand1, operand2 = Operand2}, EndChar) ->
     io_lib:format("(~s ~s ~s)~c", [expr_to_str(Operand1, $\s), translate_op(Operator), expr_to_str(Operand2, $\s), EndChar]);
@@ -161,7 +161,7 @@ expr_to_str(#goto_stmt{expr = Expression}, EndChar) ->
     io_lib:format("goto ~s~c", [expr_to_str(Expression, $\s), EndChar]);
 expr_to_str(#goto_label{name = Name}, _) ->
     io_lib:format("~s:", [Name]);
-expr_to_str(#variable_reference{name = Name}, EndChar) ->
+expr_to_str(#var_ref{name = Name}, EndChar) ->
     io_lib:format("~s~c", [Name, EndChar]);
 expr_to_str(#type_convert{expr = Expression, type = TargetType}, EndChar) ->
     io_lib:format("((~s) ~s)~c", [type_to_c_str(TargetType, ""), expr_to_str(Expression, $\s), EndChar]);

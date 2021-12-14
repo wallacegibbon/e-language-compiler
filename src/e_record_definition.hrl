@@ -1,12 +1,12 @@
--record(function_type,
+-record(fn_type,
         {line = 0 :: integer(),
-         parameters = [] :: [e_type()],
+         params = [] :: [e_type()],
          ret :: e_type()}).
 
 -record(function,
         {line = 0 :: integer(),
          name :: atom(),
-         type :: #function_type{},
+         type :: #fn_type{},
          param_names = [] :: [atom()],
          var_type_map :: var_type_map(),
          labels = [] :: [e_expr()],
@@ -50,7 +50,7 @@
 -record(function_raw,
         {line = 0 :: integer(),
          name :: atom(),
-         parameters = [] :: [e_expr()],
+         params = [] :: [e_expr()],
          ret_type :: e_type(),
          stmts = [] :: [e_expr()]}).
 
@@ -80,7 +80,7 @@
          type :: e_type(),
          init_value = none :: any()}).
 
--record(variable_reference,
+-record(var_ref,
         {line = 0 :: integer(),
          name :: atom()}).
 
@@ -130,14 +130,14 @@
          type :: e_type()}).
 
 % primitive types: u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
--type e_type() :: #basic_type{} | #array_type{} | #function_type{} | any().
+-type e_type() :: #basic_type{} | #array_type{} | #fn_type{} | any().
 
 -type e_stmt() :: #if_stmt{} | #while_stmt{} | #goto_stmt{} | #return_stmt{}.
 -type e_expr() :: #op1_expr{} | #op2_expr{} | #call_expr{} | #sizeof_expr{} | any().
 
 -type struct_type_map() :: #{atom() := #struct{}}.
 
--type fn_type_map() :: #{atom() := #function_type{}}.
+-type fn_type_map() :: #{atom() := #fn_type{}}.
 
 -type fn_ret_type_map() :: #{atom() := e_type()}.
 

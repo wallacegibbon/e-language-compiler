@@ -48,7 +48,7 @@ replace_init_ops(#op2_expr{operator = assign, operand1 = Operand1, operand2 = #a
 replace_init_ops(Any, _) ->
     [Any].
 
-struct_init_to_ops(Target, [#variable_reference{line = Line, name = FieldName} = Field | Rest], FieldInitMap, FieldTypes, NewCode, StructMap) ->
+struct_init_to_ops(Target, [#var_ref{line = Line, name = FieldName} = Field | Rest], FieldInitMap, FieldTypes, NewCode, StructMap) ->
     Operand2 = case maps:find(FieldName, FieldInitMap) of
                    {ok, InitOp} ->
                        InitOp;

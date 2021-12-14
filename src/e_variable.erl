@@ -37,12 +37,12 @@ fix_struct_init(#op1_expr{operand = Operand} = O) ->
 fix_struct_init(Any) ->
     Any.
 
--spec struct_init_to_map([e_expr()]) -> {[#variable_reference{}], #{atom() := e_expr()}}.
+-spec struct_init_to_map([e_expr()]) -> {[#var_ref{}], #{atom() := e_expr()}}.
 struct_init_to_map(Expressions) ->
     struct_init_to_map(Expressions, [], #{}).
 
--spec struct_init_to_map([#op2_expr{}], [#variable_reference{}], #{atom() := e_expr()}) -> {[#variable_reference{}], #{atom() := e_expr()}}.
-struct_init_to_map([#op2_expr{operator = assign, operand1 = #variable_reference{name = Field} = Operand1, operand2 = Val} | Rest], FieldNames, ExprMap) ->
+-spec struct_init_to_map([#op2_expr{}], [#var_ref{}], #{atom() := e_expr()}) -> {[#var_ref{}], #{atom() := e_expr()}}.
+struct_init_to_map([#op2_expr{operator = assign, operand1 = #var_ref{name = Field} = Operand1, operand2 = Val} | Rest], FieldNames, ExprMap) ->
     struct_init_to_map(Rest, [Operand1 | FieldNames], ExprMap#{Field => fix_struct_init(Val)});
 struct_init_to_map([], FieldNames, ExprMap) ->
     {FieldNames, ExprMap}.
@@ -58,32 +58,32 @@ fetch_variables([#var_def{name = Name, type = Type, line = Line, init_value = In
         false ->
             fetch_variables(Rest, appendToAST(NewAST, Name, InitialValue, Line), {VarTypes#{Name => Type}, InitCode, CollectInitCode})
     end;
-fetch_variables([#function_raw{name = Name, ret_type = Ret, parameters = Params, stmts = Expressions, line = Line} | Rest], NewAST, {GlobalVars, _, _} = Context) ->
+fetch_variables([#function_raw{name = Name, ret_type = Ret, params = Params, stmts = Expressions, line = Line} | Rest], NewAST, {GlobalVars, _, _} = Ctx) ->
     {[], ParamVars, ParamInitCode} = fetch_variables(Params, [], {#{}, [], true}),
-    e_util:assert(ParamInitCode =:= [], {Line, "function parameters can not have default value"}),
+    e_util:assert(ParamInitCode =:= [], {Line, "function params can not have default value"}),
     {NewExpressions, FunVarTypes, []} = fetch_variables(Expressions, [], {ParamVars, [], false}),
     %% local variables should have different names from global variables
     check_variable_conflict(GlobalVars, FunVarTypes),
     %% label names should be different from variables, because the operand of goto could be a pointer variable.
     Labels = lists:filter(fun (E) -> element(1, E) =:= label end, Expressions),
     check_label_conflict(Labels, GlobalVars, FunVarTypes),
-    FunctionType = #function_type{parameters = get_values_by_defs(Params, ParamVars), ret = Ret, line = Line},
+    FunctionType = #fn_type{params = get_values_by_defs(Params, ParamVars), ret = Ret, line = Line},
     Function = #function{name = Name, var_type_map = FunVarTypes, stmts = NewExpressions, param_names = var_defs_to_refs(Params), line = Line, type = FunctionType},
-    fetch_variables(Rest, [Function | NewAST], Context);
-fetch_variables([#struct_raw{name = Name, fields = Fields, line = Line} | Rest], NewAST, Context) ->
+    fetch_variables(Rest, [Function | NewAST], Ctx);
+fetch_variables([#struct_raw{name = Name, fields = Fields, line = Line} | Rest], NewAST, Ctx) ->
     %% struct can have default value
     {[], FieldTypes, StructInitCode} = fetch_variables(Fields, [], {#{}, [], true}),
     {_, FieldInitMap} = struct_init_to_map(StructInitCode),
     S = #struct{name = Name, field_type_map = FieldTypes, field_names = var_defs_to_refs(Fields), field_default_value_map = FieldInitMap, line = Line},
-    fetch_variables(Rest, [S | NewAST], Context);
-fetch_variables([Any | Rest], NewAST, Context) ->
-    fetch_variables(Rest, [Any | NewAST], Context);
+    fetch_variables(Rest, [S | NewAST], Ctx);
+fetch_variables([Any | Rest], NewAST, Ctx) ->
+    fetch_variables(Rest, [Any | NewAST], Ctx);
 fetch_variables([], NewAST, {VarTypes, InitCode, _}) ->
     {lists:reverse(NewAST), VarTypes, lists:reverse(InitCode)}.
 
 -spec appendToAST(e_ast(), atom(), e_expr(), integer()) -> e_ast().
 appendToAST(AST, VariableName, InitialValue, Line) when InitialValue =/= none ->
-    [#op2_expr{operator = assign, operand1 = #variable_reference{name = VariableName, line = Line}, operand2 = InitialValue, line = Line} | AST];
+    [#op2_expr{operator = assign, operand1 = #var_ref{name = VariableName, line = Line}, operand2 = InitialValue, line = Line} | AST];
 appendToAST(AST, _, _, _) ->
     AST.
 
@@ -121,6 +121,6 @@ throw_name_conflict(Name, Line) ->
 get_values_by_defs(DefList, Map) ->
     e_util:get_values_by_keys(e_util:names_of_var_defs(DefList), Map).
 
--spec var_defs_to_refs([#var_def{}]) -> [#variable_reference{}].
+-spec var_defs_to_refs([#var_def{}]) -> [#var_ref{}].
 var_defs_to_refs(VariableDefinitions) ->
-    lists:map(fun (#var_def{name = N, line = Line}) -> #variable_reference{name = N, line = Line} end, VariableDefinitions).
+    lists:map(fun (#var_def{name = N, line = Line}) -> #var_ref{name = N, line = Line} end, VariableDefinitions).

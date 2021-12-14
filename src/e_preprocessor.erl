@@ -11,12 +11,12 @@
 -endif.
 
 -spec handle_special([token()], context()) -> handle_ret().
-handle_special([{identifier, _, define}, {identifier, LineNumber, Name} | Rest], {MacroMap, TokensToReturn, EndTag} = Context) ->
+handle_special([{identifier, _, define}, {identifier, LineNumber, Name} | Rest], {MacroMap, TokensToReturn, EndTag} = Ctx) ->
     case MacroMap of
         #{Name := _} ->
             throw({LineNumber, e_util:fmt("macro name conflict: \"~s\"", [Name])});
         _ ->
-            {Tokens, RestTokens} = get_expr_till_eol(Rest, Context),
+            {Tokens, RestTokens} = get_expr_till_eol(Rest, Ctx),
             handle_normal(RestTokens, {MacroMap#{Name => Tokens}, TokensToReturn, EndTag})
     end;
 handle_special([{identifier, _, undef}, {identifier, LineNumber, Name} | Rest], {MacroMap, TokensToReturn, EndTag}) ->
@@ -26,33 +26,33 @@ handle_special([{identifier, _, undef}, {identifier, LineNumber, Name} | Rest], 
         _ ->
             throw({LineNumber, e_util:fmt("macro \"~s\" is not defined", [Name])})
     end;
-handle_special([{identifier, _, ifdef}, {identifier, _, Name} | Rest], {MacroMap, _, EndTag} = Context) ->
+handle_special([{identifier, _, ifdef}, {identifier, _, Name} | Rest], {MacroMap, _, EndTag} = Ctx) ->
     {MacroMapNew, CollectedTokens, RestTokensNew} = case MacroMap of
                                                         #{Name := _} ->
-                                                            collect_to_else_and_ignore_to_endif(Rest, Context);
+                                                            collect_to_else_and_ignore_to_endif(Rest, Ctx);
                                                         _ ->
-                                                            ignore_to_else_and_collect_to_endif(Rest, Context)
+                                                            ignore_to_else_and_collect_to_endif(Rest, Ctx)
                                                     end,
     handle_normal(RestTokensNew, {MacroMapNew, CollectedTokens, EndTag});
 handle_special([{identifier, LineNumber, ifdef} | _], _) ->
     throw({LineNumber, "invalid #ifdef command"});
-handle_special([{identifier, _, ifndef}, {identifier, _, Name} | Rest], {MacroMap, _, EndTag} = Context) ->
+handle_special([{identifier, _, ifndef}, {identifier, _, Name} | Rest], {MacroMap, _, EndTag} = Ctx) ->
     {MacroMapNew, CollectedTokens, RestTokensNew} = case MacroMap of
                                                         #{Name := _} ->
-                                                            ignore_to_else_and_collect_to_endif(Rest, Context);
+                                                            ignore_to_else_and_collect_to_endif(Rest, Ctx);
                                                         _ ->
-                                                            collect_to_else_and_ignore_to_endif(Rest, Context)
+                                                            collect_to_else_and_ignore_to_endif(Rest, Ctx)
                                                     end,
     handle_normal(RestTokensNew, {MacroMapNew, CollectedTokens, EndTag});
 handle_special([{identifier, LineNumber, ifndef} | _], _) ->
     throw({LineNumber, "invalid #ifndef command"});
-handle_special([{'if', _} | Rest], {MacroMap, _, EndTag} = Context) ->
-    {Tokens, RestTokens} = get_expr_till_eol(Rest, Context),
+handle_special([{'if', _} | Rest], {MacroMap, _, EndTag} = Ctx) ->
+    {Tokens, RestTokens} = get_expr_till_eol(Rest, Ctx),
     {MacroMapNew, CollectedTokens, RestTokensNew} = case eval_token_exprs(Tokens, MacroMap) of
                                                         true ->
-                                                            collect_to_else_and_ignore_to_endif(RestTokens, Context);
+                                                            collect_to_else_and_ignore_to_endif(RestTokens, Ctx);
                                                         false ->
-                                                            ignore_to_else_and_collect_to_endif(RestTokens, Context)
+                                                            ignore_to_else_and_collect_to_endif(RestTokens, Ctx)
                                                     end,
     handle_normal(RestTokensNew, {MacroMapNew, CollectedTokens, EndTag});
 handle_special([{else, _} | RestContent], {MacroMap, TokensToReturn, else}) ->
@@ -69,9 +69,9 @@ handle_special([{identifier, LineNumber, error} | _], _) ->
     throw({LineNumber, "compile error... (todo)"});
 handle_special([{identifier, LineNumber, warning} | _], _) ->
     throw({LineNumber, "compile warning... (todo)"});
-handle_special([{identifier, _, include} | Rest], Context) ->
-    {_, RestTokens} = get_expr_till_eol(Rest, Context),
-    handle_normal(RestTokens, Context);
+handle_special([{identifier, _, include} | Rest], Ctx) ->
+    {_, RestTokens} = get_expr_till_eol(Rest, Ctx),
+    handle_normal(RestTokens, Ctx);
 handle_special([{identifier, LineNumber, Name} | _], _) ->
     throw({LineNumber, e_util:fmt("unexpected operator \"~s\" here", [Name])});
 handle_special([], {MacroMap, TokensToReturn, normal}) ->
@@ -96,14 +96,14 @@ ignore_to_else_and_collect_to_endif(Tokens, {MacroMap, TokensToReturn, _}) ->
     {MacroMapNew, CollectedTokens ++ TokensToReturn, RestTokens}.
 
 -spec handle_normal([token()], context()) -> handle_ret().
-handle_normal([{'?', _}, {identifier, _, _} = Identifier | Rest], {MacroMap, _, _} = Context) ->
-    replace_macro(Identifier, MacroMap, fun (Tokens) -> handle_normal(Tokens ++ Rest, Context) end);
+handle_normal([{'?', _}, {identifier, _, _} = Identifier | Rest], {MacroMap, _, _} = Ctx) ->
+    replace_macro(Identifier, MacroMap, fun (Tokens) -> handle_normal(Tokens ++ Rest, Ctx) end);
 handle_normal([{'?', LineNumber} | _], _) ->
     throw({LineNumber, "syntax error near \"?\""});
-handle_normal([{'#', _} | Rest], Context) ->
-    handle_special(Rest, Context);
-handle_normal([{newline, _} | Rest], Context) ->
-    handle_normal(Rest, Context);
+handle_normal([{'#', _} | Rest], Ctx) ->
+    handle_special(Rest, Ctx);
+handle_normal([{newline, _} | Rest], Ctx) ->
+    handle_normal(Rest, Ctx);
 handle_normal([Token | Rest], {MacroMap, TokensToReturn, EndTag}) ->
     handle_normal(Rest, {MacroMap, [Token | TokensToReturn], EndTag});
 handle_normal([], {MacroMap, TokensToReturn, normal}) ->
@@ -117,20 +117,20 @@ process(Tokens) ->
     lists:reverse((ProcessedTokens)).
 
 -spec get_expr_till_eol([token()], context()) -> {[token()], [token()]}.
-get_expr_till_eol(Tokens, Context) ->
-    get_expr_till_eol(Tokens, [], Context).
+get_expr_till_eol(Tokens, Ctx) ->
+    get_expr_till_eol(Tokens, [], Ctx).
 
 -spec get_expr_till_eol([token()], [token()], context()) -> {[token()], [token()]}.
-get_expr_till_eol([{'?', _}, {identifier, _, _} = Identifier | Rest], CollectedTokens, {MacroMap, _, _} = Context) ->
+get_expr_till_eol([{'?', _}, {identifier, _, _} = Identifier | Rest], CollectedTokens, {MacroMap, _, _} = Ctx) ->
     replace_macro(Identifier, MacroMap, fun (Tokens) ->
-                                                get_expr_till_eol(Rest, lists:reverse(Tokens) ++ CollectedTokens, Context)
+                                                get_expr_till_eol(Rest, lists:reverse(Tokens) ++ CollectedTokens, Ctx)
                                         end);
 get_expr_till_eol([{'?', LineNumber} | _], _, _) ->
     throw({LineNumber, "syntax error near \"?\""});
 get_expr_till_eol([{newline, _} | Rest], CollectedTokens, _) ->
     {lists:reverse(CollectedTokens), Rest};
-get_expr_till_eol([Token | Rest], CollectedTokens, Context) ->
-    get_expr_till_eol(Rest, [Token | CollectedTokens], Context);
+get_expr_till_eol([Token | Rest], CollectedTokens, Ctx) ->
+    get_expr_till_eol(Rest, [Token | CollectedTokens], Ctx);
 %% EOF should not appear in this function, but leave the error handling to upper level.
 get_expr_till_eol([], CollectedTokens, _) ->
     {lists:reverse(CollectedTokens), []}.

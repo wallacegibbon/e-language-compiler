@@ -30,7 +30,7 @@ expr_to_str(#call_expr{fn = Callee, args = Arguments}) ->
     io_lib:format("(~s)(~s)", [expr_to_str(Callee), expr_to_str(Arguments)]);
 expr_to_str(#return_stmt{expr = ReturnExpression}) ->
     io_lib:format("return (~s)", [expr_to_str(ReturnExpression)]);
-expr_to_str(#variable_reference{name = Name}) ->
+expr_to_str(#var_ref{name = Name}) ->
     io_lib:format("~s", [expr_to_str(Name)]);
 expr_to_str(#op2_expr{operator = Operator, operand1 = Operand1, operand2 = Operand2}) ->
     io_lib:format("~s ~s ~s", [expr_to_str(Operand1), Operator, expr_to_str(Operand2)]);
@@ -103,9 +103,9 @@ primitive_size_of(T) -> throw(fmt("size of ~p is not defined", [T])).
 void_type(Line) ->
     #basic_type{class = void, tag = void, p_depth = 0, line = Line}.
 
--spec names_of_var_refs([#variable_reference{}]) -> [atom()].
+-spec names_of_var_refs([#var_ref{}]) -> [atom()].
 names_of_var_refs(VariableReferenceList) ->
-    lists:map(fun (#variable_reference{name = Name}) -> Name end, VariableReferenceList).
+    lists:map(fun (#var_ref{name = Name}) -> Name end, VariableReferenceList).
 
 -spec names_of_var_defs([#var_def{}]) -> [atom()].
 names_of_var_defs(VariableDefinitionList) ->
@@ -121,17 +121,17 @@ assert(false, Info) ->
 value_in_list(Value, List) ->
     lists:any(fun (V) -> V =:= Value end, List).
 
-%% filter_var_refs_in_map([#variable_reference{name = a}, #variable_reference{name = b}], #{a => 1})
-%% > [#variable_reference{name = a}].
--spec filter_var_refs_in_map([#variable_reference{}], #{atom() := any()}) -> [#variable_reference{}].
+%% filter_var_refs_in_map([#var_ref{name = a}, #var_ref{name = b}], #{a => 1})
+%% > [#var_ref{name = a}].
+-spec filter_var_refs_in_map([#var_ref{}], #{atom() := any()}) -> [#var_ref{}].
 filter_var_refs_in_map(VariableReferenceList, TargetMap) ->
-    lists:filter(fun (#variable_reference{name = Name}) -> exist_in_map(Name, TargetMap) end, VariableReferenceList).
+    lists:filter(fun (#var_ref{name = Name}) -> exist_in_map(Name, TargetMap) end, VariableReferenceList).
 
 -ifdef(EUNIT).
 
 filter_var_refs_in_map_test() ->
-    A = filter_var_refs_in_map([#variable_reference{name = a}, #variable_reference{name = b}], #{a => 1}),
-    ?assertEqual(A, [#variable_reference{name = a}]).
+    A = filter_var_refs_in_map([#var_ref{name = a}, #var_ref{name = b}], #{a => 1}),
+    ?assertEqual(A, [#var_ref{name = a}]).
 
 -endif.
 
