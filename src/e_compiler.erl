@@ -8,10 +8,10 @@
 -spec compile_from_raw_ast(e_ast(), compile_options()) -> {e_ast(), var_type_map(), e_ast()}.
 compile_from_raw_ast(AST, CustomCompileOptions) ->
     CompileOptions = maps:merge(default_compiler_options(), CustomCompileOptions),
-    {AST2, VariableTypeMap, InitCode0} = e_variable:fetch_variables(AST),
+    {AST2, VarTypeMap, InitCode0} = e_variable:fetch_variables(AST),
     %io:format(">>> ~p~n", [AST2]),
 
-    {FunctionTypeMap, StructMap0} = e_util:make_function_and_struct_map_from_ast(AST2),
+    {FnTypeMap, StructMap0} = e_util:make_function_and_struct_map_from_ast(AST2),
 
     %% struct recursion is not allowed.
     ensure_no_recursive_struct(StructMap0),
@@ -30,14 +30,14 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
     %% sizeof expressions are expanded, so StructMap needs to be updated
     {_, StructMap2} = e_util:make_function_and_struct_map_from_ast(AST4),
     %% type checking
-    Maps = {FunctionTypeMap, StructMap2},
-    e_type:check_types_in_ast(AST4, VariableTypeMap, Maps),
-    e_type:check_type_in_ast_nodes(InitCode1, VariableTypeMap, Maps),
+    Maps = {FnTypeMap, StructMap2},
+    e_type:check_types_in_ast(AST4, VarTypeMap, Maps),
+    e_type:check_type_in_ast_nodes(InitCode1, VarTypeMap, Maps),
     %% expand init exprs like A{a=1} and {1,2,3}
     AST5 = e_init_expr:expand_in_function(AST4, StructMap2),
 
     InitCode2 = e_init_expr:expand_init_expr(InitCode1, StructMap2),
-    {AST5, VariableTypeMap, InitCode2}.
+    {AST5, VarTypeMap, InitCode2}.
 
 -spec default_compiler_options() -> compile_options().
 default_compiler_options() ->

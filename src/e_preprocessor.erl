@@ -2,8 +2,8 @@
 -export([process/1]).
 
 -type macro_map() :: #{atom() => [token()]}.
--type context() :: {MacroMap :: macro_map(), TokensToReturn :: [token()], EndTag :: else | endif | normal}.
--type handle_ret() :: {MacroMap :: macro_map(), TokensToReturn :: [token()], RestTokens :: [token()]}.
+-type context() :: {MacroMap :: macro_map(), RetTokens :: [token()], EndTag :: else | endif | normal}.
+-type handle_ret() :: {MacroMap :: macro_map(), RetTokens :: [token()], RestTokens :: [token()]}.
 -type token() :: any().
 
 -ifdef(TEST).
@@ -11,18 +11,18 @@
 -endif.
 
 -spec handle_special([token()], context()) -> handle_ret().
-handle_special([{identifier, _, define}, {identifier, LineNumber, Name} | Rest], {MacroMap, TokensToReturn, EndTag} = Ctx) ->
+handle_special([{identifier, _, define}, {identifier, LineNumber, Name} | Rest], {MacroMap, RetTokens, EndTag} = Ctx) ->
     case MacroMap of
         #{Name := _} ->
             throw({LineNumber, e_util:fmt("macro name conflict: \"~s\"", [Name])});
         _ ->
             {Tokens, RestTokens} = get_expr_till_eol(Rest, Ctx),
-            handle_normal(RestTokens, {MacroMap#{Name => Tokens}, TokensToReturn, EndTag})
+            handle_normal(RestTokens, {MacroMap#{Name => Tokens}, RetTokens, EndTag})
     end;
-handle_special([{identifier, _, undef}, {identifier, LineNumber, Name} | Rest], {MacroMap, TokensToReturn, EndTag}) ->
+handle_special([{identifier, _, undef}, {identifier, LineNumber, Name} | Rest], {MacroMap, RetTokens, EndTag}) ->
     case MacroMap of
         #{Name := _} ->
-            handle_normal(Rest, {maps:remove(Name, MacroMap), TokensToReturn, EndTag});
+            handle_normal(Rest, {maps:remove(Name, MacroMap), RetTokens, EndTag});
         _ ->
             throw({LineNumber, e_util:fmt("macro \"~s\" is not defined", [Name])})
     end;
@@ -55,16 +55,16 @@ handle_special([{'if', _} | Rest], {MacroMap, _, EndTag} = Ctx) ->
                                                             ignore_to_else_and_collect_to_endif(RestTokens, Ctx)
                                                     end,
     handle_normal(RestTokensNew, {MacroMapNew, CollectedTokens, EndTag});
-handle_special([{else, _} | RestContent], {MacroMap, TokensToReturn, else}) ->
-    {MacroMap, TokensToReturn, RestContent};
+handle_special([{else, _} | RestContent], {MacroMap, RetTokens, else}) ->
+    {MacroMap, RetTokens, RestContent};
 handle_special([{else, LineNumber} | _], {_, _, normal}) ->
     throw({LineNumber, "\"#else\" is not expected here"});
-handle_special([{identifier, _, endif} | RestContent], {MacroMap, TokensToReturn, endif}) ->
-    {MacroMap, TokensToReturn, RestContent};
+handle_special([{identifier, _, endif} | RestContent], {MacroMap, RetTokens, endif}) ->
+    {MacroMap, RetTokens, RestContent};
 %% when the "#else" part is missing ("#if" following "#endif"), pretend that the "#else\n" exists and has been swallowed,
 %% and put the "#endif" back to unhandled tokens.
-handle_special([{identifier, LineNumber, endif} | _] = Content, {MacroMap, TokensToReturn, else}) ->
-    {MacroMap, TokensToReturn, [{'#', LineNumber} | Content]};
+handle_special([{identifier, LineNumber, endif} | _] = Content, {MacroMap, RetTokens, else}) ->
+    {MacroMap, RetTokens, [{'#', LineNumber} | Content]};
 handle_special([{identifier, LineNumber, error} | _], _) ->
     throw({LineNumber, "compile error... (todo)"});
 handle_special([{identifier, LineNumber, warning} | _], _) ->
@@ -74,26 +74,26 @@ handle_special([{identifier, _, include} | Rest], Ctx) ->
     handle_normal(RestTokens, Ctx);
 handle_special([{identifier, LineNumber, Name} | _], _) ->
     throw({LineNumber, e_util:fmt("unexpected operator \"~s\" here", [Name])});
-handle_special([], {MacroMap, TokensToReturn, normal}) ->
-    {MacroMap, TokensToReturn, []};
+handle_special([], {MacroMap, RetTokens, normal}) ->
+    {MacroMap, RetTokens, []};
 handle_special([], {_, _, EndTag}) ->
     throw({0, e_util:fmt("unexpected end of file while in state: \"#~s\"", [EndTag])}).
 
 -spec collect_to_else_and_ignore_to_endif([token()], context()) -> handle_ret().
-collect_to_else_and_ignore_to_endif(Tokens, {MacroMap, TokensToReturn, _}) ->
+collect_to_else_and_ignore_to_endif(Tokens, {MacroMap, RetTokens, _}) ->
     %% collect "then" part
     {MacroMapNew, CollectedTokens, RestTokensRaw} = handle_normal(Tokens, {MacroMap, [], else}),
     %% ignore "else" part
     {_, _, RestTokens} = handle_normal(RestTokensRaw, {MacroMap, [], endif}),
-    {MacroMapNew, CollectedTokens ++ TokensToReturn, RestTokens}.
+    {MacroMapNew, CollectedTokens ++ RetTokens, RestTokens}.
 
 -spec ignore_to_else_and_collect_to_endif([token()], context()) -> handle_ret().
-ignore_to_else_and_collect_to_endif(Tokens, {MacroMap, TokensToReturn, _}) ->
+ignore_to_else_and_collect_to_endif(Tokens, {MacroMap, RetTokens, _}) ->
     %% ignore "then" part
     {_, _, RestTokensRaw} = handle_normal(Tokens, {MacroMap, [], else}),
     %% collect "else" part
     {MacroMapNew, CollectedTokens, RestTokens} = handle_normal(RestTokensRaw, {MacroMap, [], endif}),
-    {MacroMapNew, CollectedTokens ++ TokensToReturn, RestTokens}.
+    {MacroMapNew, CollectedTokens ++ RetTokens, RestTokens}.
 
 -spec handle_normal([token()], context()) -> handle_ret().
 handle_normal([{'?', _}, {identifier, _, _} = Identifier | Rest], {MacroMap, _, _} = Ctx) ->
@@ -104,10 +104,10 @@ handle_normal([{'#', _} | Rest], Ctx) ->
     handle_special(Rest, Ctx);
 handle_normal([{newline, _} | Rest], Ctx) ->
     handle_normal(Rest, Ctx);
-handle_normal([Token | Rest], {MacroMap, TokensToReturn, EndTag}) ->
-    handle_normal(Rest, {MacroMap, [Token | TokensToReturn], EndTag});
-handle_normal([], {MacroMap, TokensToReturn, normal}) ->
-    {MacroMap, TokensToReturn, []};
+handle_normal([Token | Rest], {MacroMap, RetTokens, EndTag}) ->
+    handle_normal(Rest, {MacroMap, [Token | RetTokens], EndTag});
+handle_normal([], {MacroMap, RetTokens, normal}) ->
+    {MacroMap, RetTokens, []};
 handle_normal([], {_, _, EndTag}) ->
     throw({0, e_util:fmt("unexpected end of file while in state: \"#~s\"", [EndTag])}).
 

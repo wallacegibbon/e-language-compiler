@@ -6,8 +6,8 @@
 -type context() :: {struct_type_map(), non_neg_integer()}.
 
 -spec expand_sizeof(e_ast(), context()) -> e_ast().
-expand_sizeof([#function{stmts = Expressions} = F | Rest], Ctx) ->
-    [F#function{stmts = expand_sizeof_in_exprs(Expressions, Ctx)} | expand_sizeof(Rest, Ctx)];
+expand_sizeof([#function{stmts = Exprs} = F | Rest], Ctx) ->
+    [F#function{stmts = expand_sizeof_in_exprs(Exprs, Ctx)} | expand_sizeof(Rest, Ctx)];
 expand_sizeof([#struct{field_default_value_map = FieldDefaults} = S | Rest], Ctx) ->
     [S#struct{field_default_value_map = expand_sizeof_in_map(FieldDefaults, Ctx)} | expand_sizeof(Rest, Ctx)];
 expand_sizeof([], _) ->
@@ -17,8 +17,8 @@ expand_sizeof_in_map(Map, Ctx) ->
     maps:map(fun (_, V1) -> expand_sizeof_in_expr(V1, Ctx) end, Map).
 
 -spec expand_sizeof_in_exprs(e_ast(), context()) -> [e_expr()].
-expand_sizeof_in_exprs(Expressions, Ctx) ->
-    e_util:expr_map(fun (E) -> expand_sizeof_in_expr(E, Ctx) end, Expressions).
+expand_sizeof_in_exprs(Exprs, Ctx) ->
+    e_util:expr_map(fun (E) -> expand_sizeof_in_expr(E, Ctx) end, Exprs).
 
 -spec expand_sizeof_in_expr(e_expr(), context()) -> e_expr().
 expand_sizeof_in_expr(#sizeof_expr{type = T, line = Line}, Ctx) ->
@@ -26,14 +26,14 @@ expand_sizeof_in_expr(#sizeof_expr{type = T, line = Line}, Ctx) ->
         I ->
             throw({Line, I})
     end;
-expand_sizeof_in_expr(#op2_expr{operand1 = Operand1, operand2 = Operand2} = O, Ctx) ->
-    O#op2_expr{operand1 = expand_sizeof_in_expr(Operand1, Ctx), operand2 = expand_sizeof_in_expr(Operand2, Ctx)};
+expand_sizeof_in_expr(#op2_expr{operand1 = Op1, operand2 = Op2} = O, Ctx) ->
+    O#op2_expr{operand1 = expand_sizeof_in_expr(Op1, Ctx), operand2 = expand_sizeof_in_expr(Op2, Ctx)};
 expand_sizeof_in_expr(#op1_expr{operand = Operand} = O, Ctx) ->
     O#op1_expr{operand = expand_sizeof_in_expr(Operand, Ctx)};
-expand_sizeof_in_expr(#struct_init_expr{field_value_map = ExprMap} = Si, Ctx) ->
-    Si#struct_init_expr{field_value_map = expand_sizeof_in_map(ExprMap, Ctx)};
-expand_sizeof_in_expr(#array_init_expr{elements = Elements} = Ai, Ctx) ->
-    Ai#array_init_expr{elements = expand_sizeof_in_exprs(Elements, Ctx)};
+expand_sizeof_in_expr(#struct_init_expr{field_value_map = ExprMap} = S, Ctx) ->
+    S#struct_init_expr{field_value_map = expand_sizeof_in_map(ExprMap, Ctx)};
+expand_sizeof_in_expr(#array_init_expr{elements = Elements} = A, Ctx) ->
+    A#array_init_expr{elements = expand_sizeof_in_exprs(Elements, Ctx)};
 expand_sizeof_in_expr(Any, _) ->
     Any.
 
@@ -62,8 +62,8 @@ fill_struct_offsets(Any, _) ->
     Any.
 
 -spec offset_of_struct(#struct{}, context()) -> #{atom() := integer()}.
-offset_of_struct(#struct{field_names = FieldNames, field_type_map = FieldTypes}, Ctx) ->
-    FieldTypeList = get_kvs_by_refs(FieldNames, FieldTypes),
+offset_of_struct(#struct{field_names = Names, field_type_map = FieldTypes}, Ctx) ->
+    FieldTypeList = get_kvs_by_refs(Names, FieldTypes),
     {_, OffsetMap} = size_of_struct_fields(FieldTypeList, 0, #{}, Ctx),
     OffsetMap.
 

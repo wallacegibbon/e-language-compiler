@@ -10,12 +10,12 @@
 -spec expr_map(fun ((e_expr()) -> e_expr()), [e_expr()]) -> e_expr().
 expr_map(Fn, [#if_stmt{condi = Cond, then = Then, else = Else} = If | Rest]) ->
     [If#if_stmt{condi = Fn(Cond), then = expr_map(Fn, Then), else = expr_map(Fn, Else)} | expr_map(Fn, Rest)];
-expr_map(Fn, [#while_stmt{condi = Cond, stmts = Expressions} = While | Rest]) ->
-    [While#while_stmt{condi = Fn(Cond), stmts = expr_map(Fn, Expressions)} | expr_map(Fn, Rest)];
-expr_map(Fn, [#call_expr{fn = Callee, args = Arguments} = FunctionCall | Rest]) ->
-    [FunctionCall#call_expr{fn = Fn(Callee), args = expr_map(Fn, Arguments)} | expr_map(Fn, Rest)];
-expr_map(Fn, [#return_stmt{expr = ReturnExpression} = Return | Rest]) ->
-    [Return#return_stmt{expr = Fn(ReturnExpression)} | expr_map(Fn, Rest)];
+expr_map(Fn, [#while_stmt{condi = Cond, stmts = Exprs} = While | Rest]) ->
+    [While#while_stmt{condi = Fn(Cond), stmts = expr_map(Fn, Exprs)} | expr_map(Fn, Rest)];
+expr_map(Fn, [#call_expr{fn = Callee, args = Args} = FnCall | Rest]) ->
+    [FnCall#call_expr{fn = Fn(Callee), args = expr_map(Fn, Args)} | expr_map(Fn, Rest)];
+expr_map(Fn, [#return_stmt{expr = Expr} = Ret | Rest]) ->
+    [Ret#return_stmt{expr = Fn(Expr)} | expr_map(Fn, Rest)];
 expr_map(Fn, [Any | Rest]) ->
     [Fn(Any) | expr_map(Fn, Rest)];
 expr_map(_, []) ->
@@ -24,28 +24,28 @@ expr_map(_, []) ->
 -spec expr_to_str(e_expr()) -> string().
 expr_to_str(#if_stmt{condi = Cond, then = Then, else = Else}) ->
     io_lib:format("if (~s) ~s else ~s end", [expr_to_str(Cond), expr_to_str(Then), expr_to_str(Else)]);
-expr_to_str(#while_stmt{condi = Cond, stmts = Expressions}) ->
-    io_lib:format("while (~s) ~s end", [expr_to_str(Cond), expr_to_str(Expressions)]);
-expr_to_str(#call_expr{fn = Callee, args = Arguments}) ->
-    io_lib:format("(~s)(~s)", [expr_to_str(Callee), expr_to_str(Arguments)]);
-expr_to_str(#return_stmt{expr = ReturnExpression}) ->
-    io_lib:format("return (~s)", [expr_to_str(ReturnExpression)]);
+expr_to_str(#while_stmt{condi = Cond, stmts = Exprs}) ->
+    io_lib:format("while (~s) ~s end", [expr_to_str(Cond), expr_to_str(Exprs)]);
+expr_to_str(#call_expr{fn = Callee, args = Args}) ->
+    io_lib:format("(~s)(~s)", [expr_to_str(Callee), expr_to_str(Args)]);
+expr_to_str(#return_stmt{expr = Expr}) ->
+    io_lib:format("return (~s)", [expr_to_str(Expr)]);
 expr_to_str(#var_ref{name = Name}) ->
     io_lib:format("~s", [expr_to_str(Name)]);
-expr_to_str(#op2_expr{operator = Operator, operand1 = Operand1, operand2 = Operand2}) ->
-    io_lib:format("~s ~s ~s", [expr_to_str(Operand1), Operator, expr_to_str(Operand2)]);
+expr_to_str(#op2_expr{operator = Operator, operand1 = Op1, operand2 = Op2}) ->
+    io_lib:format("~s ~s ~s", [expr_to_str(Op1), Operator, expr_to_str(Op2)]);
 expr_to_str(#op1_expr{operator = Operator, operand = Operand}) ->
     io_lib:format("~s ~s", [expr_to_str(Operand), Operator]);
-expr_to_str({ImmediateValue, _, Val}) when ImmediateValue =:= integer; ImmediateValue =:= float ->
+expr_to_str({TypeTag, _, Val}) when TypeTag =:= integer; TypeTag =:= float ->
     io_lib:format("~w", [Val]);
-expr_to_str({ImmediateValue, _, Val}) when ImmediateValue =:= string ->
+expr_to_str({string, _, Val}) ->
     Val;
 expr_to_str(Any) ->
     Any.
 
 -spec fmt(string(), [any()]) -> string().
-fmt(FmtStr, Arguments) ->
-    lists:flatten(io_lib:format(FmtStr, Arguments)).
+fmt(FmtStr, Args) ->
+    lists:flatten(io_lib:format(FmtStr, Args)).
 
 -spec get_values_by_keys([atom()], #{atom() => any()}) -> [any()].
 get_values_by_keys(Fields, Map) when is_map(Map) ->
@@ -66,11 +66,11 @@ get_values_by_keys_test() ->
 
 -spec make_function_and_struct_map_from_ast(any()) -> {fn_type_map(), struct_type_map()}.
 make_function_and_struct_map_from_ast(AST) ->
-    {Functions, Structs} = lists:partition(fun (A) -> element(1, A) =:= function end, AST),
-    %% FunctionTypeMap stores function type only
-    FunctionTypeMap = maps:from_list(lists:map(fun (#function{name = Name} = Fn) -> {Name, Fn#function.type} end, Functions)),
+    {Fns, Structs} = lists:partition(fun (A) -> element(1, A) =:= function end, AST),
+    %% FnTypeMap stores function type only
+    FnTypeMap = maps:from_list(lists:map(fun (#function{name = Name} = Fn) -> {Name, Fn#function.type} end, Fns)),
     StructMap = maps:from_list(lists:map(fun (#struct{name = Name} = S) -> {Name, S} end, Structs)),
-    {FunctionTypeMap, StructMap}.
+    {FnTypeMap, StructMap}.
 
 %% address calculations
 -spec fill_to_pointer_width(integer(), non_neg_integer()) -> integer().
@@ -104,12 +104,12 @@ void_type(Line) ->
     #basic_type{class = void, tag = void, p_depth = 0, line = Line}.
 
 -spec names_of_var_refs([#var_ref{}]) -> [atom()].
-names_of_var_refs(VariableReferenceList) ->
-    lists:map(fun (#var_ref{name = Name}) -> Name end, VariableReferenceList).
+names_of_var_refs(VarRefList) ->
+    lists:map(fun (#var_ref{name = Name}) -> Name end, VarRefList).
 
 -spec names_of_var_defs([#var_def{}]) -> [atom()].
-names_of_var_defs(VariableDefinitionList) ->
-    lists:map(fun (#var_def{name = Name}) -> Name end, VariableDefinitionList).
+names_of_var_defs(VarDefList) ->
+    lists:map(fun (#var_def{name = Name}) -> Name end, VarDefList).
 
 -spec assert(boolean(), any()) -> ok.
 assert(true, _) ->
@@ -124,8 +124,8 @@ value_in_list(Value, List) ->
 %% filter_var_refs_in_map([#var_ref{name = a}, #var_ref{name = b}], #{a => 1})
 %% > [#var_ref{name = a}].
 -spec filter_var_refs_in_map([#var_ref{}], #{atom() := any()}) -> [#var_ref{}].
-filter_var_refs_in_map(VariableReferenceList, TargetMap) ->
-    lists:filter(fun (#var_ref{name = Name}) -> exist_in_map(Name, TargetMap) end, VariableReferenceList).
+filter_var_refs_in_map(VarRefList, TargetMap) ->
+    lists:filter(fun (#var_ref{name = Name}) -> exist_in_map(Name, TargetMap) end, VarRefList).
 
 -ifdef(EUNIT).
 
