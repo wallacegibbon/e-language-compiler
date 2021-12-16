@@ -108,23 +108,21 @@ map_to_kv_list(NameAtoms, ValueMap) ->
     lists:zip(NameAtoms, e_util:get_values_by_keys(NameAtoms, ValueMap)).
 
 return_type_to_str(#fn_type{params = Params, ret = RetType}, NameParams) ->
-    ParametersString = function_params_to_str_no_name(Params),
-    NewNameParams = io_lib:format("~s(~s)", [NameParams, ParametersString]),
+    NewNameParams = io_lib:format("~s(~s)", [NameParams, function_params_to_str_no_name(Params)]),
     type_to_c_str(RetType, NewNameParams);
 return_type_to_str(#basic_type{p_depth = N} = T, NameParams) when N > 0 ->
     type_to_c_str(T#basic_type{p_depth = N - 1}, NameParams).
 
 %% convert type to C string
 -spec type_to_c_str(e_expr(), iolist()) -> iolist().
-type_to_c_str(#array_type{length = Len, elem_type = ElementType}, VarName) ->
-    io_lib:format("struct {~s value[~w];} ~s", [type_to_c_str(ElementType, ""), Len, VarName]);
+type_to_c_str(#array_type{length = Len, elem_type = Type}, VarName) ->
+    io_lib:format("struct {~s value[~w];} ~s", [type_to_c_str(Type, ""), Len, VarName]);
 type_to_c_str(#basic_type{class = Class, tag = Tag, p_depth = Depth}, VarName) when Depth > 0 ->
     io_lib:format("~s~s ~s", [type_tag_to_str(Class, Tag), lists:duplicate(Depth, "*"), VarName]);
 type_to_c_str(#basic_type{class = Class, tag = Tag, p_depth = 0}, VarName) ->
     io_lib:format("~s ~s", [type_tag_to_str(Class, Tag), VarName]);
 type_to_c_str(#fn_type{params = Params, ret = RetType}, VarName) ->
-    ParameterString = function_params_to_str_no_name(Params),
-    NameParams = io_lib:format("(*~s)(~s)", [VarName, ParameterString]),
+    NameParams = io_lib:format("(*~s)(~s)", [VarName, function_params_to_str_no_name(Params)]),
     type_to_c_str(RetType, NameParams).
 
 type_tag_to_str(struct, Name) ->
@@ -153,8 +151,8 @@ expr_to_str(#op2_expr{operator = Operator, operand1 = Op1, operand2 = Op2}, EndC
 expr_to_str(#op1_expr{operator = Operator, operand = Operand}, EndChar) ->
     io_lib:format("(~s ~s)~c", [translate_op(Operator), expr_to_str(Operand, $\s), EndChar]);
 expr_to_str(#call_expr{fn = Fn, args = Args}, EndChar) ->
-    ArgumentString = lists:join(",", lists:map(fun (E) -> expr_to_str(E, $\s) end, Args)),
-    io_lib:format("~s(~s)~c", [expr_to_str(Fn, $\s), ArgumentString, EndChar]);
+    ArgStr = lists:join(",", lists:map(fun (E) -> expr_to_str(E, $\s) end, Args)),
+    io_lib:format("~s(~s)~c", [expr_to_str(Fn, $\s), ArgStr, EndChar]);
 expr_to_str(#return_stmt{expr = Expr}, EndChar) ->
     io_lib:format("return ~s~c", [expr_to_str(Expr, $\s), EndChar]);
 expr_to_str(#goto_stmt{expr = Expr}, EndChar) ->
@@ -163,8 +161,8 @@ expr_to_str(#goto_label{name = Name}, _) ->
     io_lib:format("~s:", [Name]);
 expr_to_str(#var_ref{name = Name}, EndChar) ->
     io_lib:format("~s~c", [Name, EndChar]);
-expr_to_str(#type_convert{expr = Expr, type = TargetType}, EndChar) ->
-    io_lib:format("((~s) ~s)~c", [type_to_c_str(TargetType, ""), expr_to_str(Expr, $\s), EndChar]);
+expr_to_str(#type_convert{expr = Expr, type = Type}, EndChar) ->
+    io_lib:format("((~s) ~s)~c", [type_to_c_str(Type, ""), expr_to_str(Expr, $\s), EndChar]);
 expr_to_str({Any, _Line, Value}, EndChar) when Any =:= integer; Any =:= float ->
     io_lib:format("~w~c", [Value, EndChar]);
 expr_to_str({Any, _Line, S}, EndChar) when Any =:= string ->

@@ -34,72 +34,72 @@ type_of_ast_nodes(Exprs, Ctx) ->
 
 -spec type_of_ast_node(e_expr(), context()) -> e_type().
 type_of_ast_node(#op2_expr{operator = assign, operand1 = Op1, operand2 = Op2, line = Line}, {_, _, StructMap, _} = Ctx) ->
-    TypeofOp1 = case Op1 of
-                    #op2_expr{operator = '.', operand1 = SubOp1, operand2 = SubOp2} ->
-                        type_of_struct_field(type_of_ast_node(SubOp1, Ctx), SubOp2, StructMap, Line);
-                    #op1_expr{operator = '^', operand = SubOp} ->
-                        dec_pointer_depth(type_of_ast_node(SubOp, Ctx), Line);
-                    #var_ref{} ->
-                        type_of_ast_node(Op1, Ctx);
-                    Any ->
-                        throw({Line, e_util:fmt("invalid left value (~s)", [e_util:expr_to_str(Any)])})
-                end,
-    TypeofOp2 = type_of_ast_node(Op2, Ctx),
-    case compare_type(TypeofOp1, TypeofOp2) of
+    Op1Type = case Op1 of
+                  #op2_expr{operator = '.', operand1 = SubOp1, operand2 = SubOp2} ->
+                      type_of_struct_field(type_of_ast_node(SubOp1, Ctx), SubOp2, StructMap, Line);
+                  #op1_expr{operator = '^', operand = SubOp} ->
+                      dec_pointer_depth(type_of_ast_node(SubOp, Ctx), Line);
+                  #var_ref{} ->
+                      type_of_ast_node(Op1, Ctx);
+                  Any ->
+                      throw({Line, e_util:fmt("invalid left value (~s)", [e_util:expr_to_str(Any)])})
+              end,
+    Op2Type = type_of_ast_node(Op2, Ctx),
+    case compare_type(Op1Type, Op2Type) of
         true ->
-            TypeofOp1;
+            Op1Type;
         false ->
-            throw({Line, e_util:fmt("type mismatch in \"~s = ~s\"", [type_to_str(TypeofOp1), type_to_str(TypeofOp2)])})
+            throw({Line, e_util:fmt("type mismatch in \"~s = ~s\"", [type_to_str(Op1Type), type_to_str(Op2Type)])})
     end;
 type_of_ast_node(#op2_expr{operator = '.', operand1 = Op1, operand2 = Op2, line = Line}, {_, _, StructMap, _} = Ctx) ->
     type_of_struct_field(type_of_ast_node(Op1, Ctx), Op2, StructMap, Line);
 type_of_ast_node(#op2_expr{operator = '+', operand1 = Op1, operand2 = Op2, line = Line}, Ctx) ->
-    TypeofOp1 = type_of_ast_node(Op1, Ctx),
-    TypeofOp2 = type_of_ast_node(Op2, Ctx),
-    case are_both_number_of_same_type(TypeofOp1, TypeofOp2) of
+    Op1Type = type_of_ast_node(Op1, Ctx),
+    Op2Type = type_of_ast_node(Op2, Ctx),
+    case are_both_number_of_same_type(Op1Type, Op2Type) of
         {true, T} ->
             T;
         false ->
-            case is_pointer_and_integer(TypeofOp1, TypeofOp2) of
+            case is_pointer_and_integer(Op1Type, Op2Type) of
                 {true, PointerType} ->
                     PointerType;
                 false ->
-                    throw({Line, type_error_of_op2('+', TypeofOp1, TypeofOp2)})
+                    throw({Line, type_error_of_op2('+', Op1Type, Op2Type)})
             end
     end;
 %% integer + pointer is valid, but integer - pointer is invalid
 type_of_ast_node(#op2_expr{operator = '-', operand1 = Op1, operand2 = Op2, line = Line}, Ctx) ->
-    TypeofOp1 = type_of_ast_node(Op1, Ctx),
-    TypeofOp2 = type_of_ast_node(Op2, Ctx),
-    case are_both_number_of_same_type(TypeofOp1, TypeofOp2) of
+    Op1Type = type_of_ast_node(Op1, Ctx),
+    Op2Type = type_of_ast_node(Op2, Ctx),
+    case are_both_number_of_same_type(Op1Type, Op2Type) of
         {true, T} ->
             T;
         false ->
-            case is_pointer_and_integer_ordered(TypeofOp1, TypeofOp2) of
+            case is_pointer_and_integer_ordered(Op1Type, Op2Type) of
                 {true, PointerType} ->
                     PointerType;
                 false ->
-                    throw({Line, type_error_of_op2('-', TypeofOp1, TypeofOp2)})
+                    throw({Line, type_error_of_op2('-', Op1Type, Op2Type)})
             end
     end;
 type_of_ast_node(#op2_expr{operator = Operator, operand1 = Op1, operand2 = Op2, line = Line}, Ctx) when Operator =:= '*'; Operator =:= '/' ->
-    TypeofOp1 = type_of_ast_node(Op1, Ctx),
-    TypeofOp2 = type_of_ast_node(Op2, Ctx),
-    case are_both_number_of_same_type(TypeofOp1, TypeofOp2) of
+    Op1Type = type_of_ast_node(Op1, Ctx),
+    Op2Type = type_of_ast_node(Op2, Ctx),
+    case are_both_number_of_same_type(Op1Type, Op2Type) of
         {true, T} ->
             T;
         false ->
-            throw({Line, type_error_of_op2(Operator, TypeofOp1, TypeofOp2)})
+            throw({Line, type_error_of_op2(Operator, Op1Type, Op2Type)})
     end;
 %% the left operators are: and, or, band, bor, bxor, bsl, bsr, >, <, ...
 type_of_ast_node(#op2_expr{operator = Operator, operand1 = Op1, operand2 = Op2, line = Line}, Ctx) ->
-    TypeofOp1 = type_of_ast_node(Op1, Ctx),
-    TypeofOp2 = type_of_ast_node(Op2, Ctx),
-    case are_both_integers(TypeofOp1, TypeofOp2) of
+    Op1Type = type_of_ast_node(Op1, Ctx),
+    Op2Type = type_of_ast_node(Op2, Ctx),
+    case are_both_integers(Op1Type, Op2Type) of
         true ->
-            TypeofOp1;
+            Op1Type;
         false ->
-            throw({Line, type_error_of_op2(Operator, TypeofOp1, TypeofOp2)})
+            throw({Line, type_error_of_op2(Operator, Op1Type, Op2Type)})
     end;
 type_of_ast_node(#op1_expr{operator = '^', operand = Operand, line = Line}, Ctx) ->
     case type_of_ast_node(Operand, Ctx) of
@@ -121,14 +121,14 @@ type_of_ast_node(#op1_expr{operator = '@', operand = Operand, line = Line}, {_, 
 type_of_ast_node(#op1_expr{operand = Operand}, Ctx) ->
     type_of_ast_node(Operand, Ctx);
 type_of_ast_node(#call_expr{fn = FunExpr, args = Args, line = Line}, Ctx) ->
-    ArgsTypes = type_of_ast_nodes(Args, Ctx),
+    ArgTypes = type_of_ast_nodes(Args, Ctx),
     case type_of_ast_node(FunExpr, Ctx) of
         #fn_type{params = FnParamTypes, ret = FnRetType} ->
-            case compare_types(ArgsTypes, FnParamTypes) of
+            case compare_types(ArgTypes, FnParamTypes) of
                 true ->
                     FnRetType;
                 false ->
-                    throw({Line, argumentsErrorInformation(FnParamTypes, ArgsTypes)})
+                    throw({Line, argumentsErrorInformation(FnParamTypes, ArgTypes)})
             end;
         T ->
             throw({Line, e_util:fmt("invalid function expr: ~s", [type_to_str(T)])})
@@ -172,13 +172,13 @@ type_of_ast_node(#array_init_expr{elements = Elements, line = Line}, Ctx) ->
         false ->
             throw({Line, e_util:fmt("array init type conflict: {~s}", [join_types_to_str(ElementTypes)])})
     end;
-type_of_ast_node(#struct_init_expr{name = StructName, field_names = FieldNames, field_value_map = FieldValues, line = Line}, {_, _, StructMap, _} = Ctx) ->
-    case maps:find(StructName, StructMap) of
+type_of_ast_node(#struct_init_expr{name = Name, field_names = FieldNames, field_value_map = FieldValues, line = Line}, {_, _, StructMap, _} = Ctx) ->
+    case maps:find(Name, StructMap) of
         {ok, #struct{field_type_map = FieldTypes}} ->
-            check_types_in_struct_fields(FieldNames, FieldTypes, FieldValues, StructName, Ctx),
-            #basic_type{class = struct, tag = StructName, p_depth = 0, line = Line};
+            check_types_in_struct_fields(FieldNames, FieldTypes, FieldValues, Name, Ctx),
+            #basic_type{class = struct, tag = Name, p_depth = 0, line = Line};
         _ ->
-            throw({Line, e_util:fmt("struct ~s is not found", [StructName])})
+            throw({Line, e_util:fmt("struct ~s is not found", [Name])})
     end;
 type_of_ast_node(#sizeof_expr{line = Line}, _) ->
     #basic_type{class = integer, p_depth = 0, tag = i64, line = Line};
@@ -240,12 +240,9 @@ check_struct_field(#var_ref{name = FieldName, line = Line}, FieldTypes, ValMap, 
     end.
 
 -spec are_same_type([e_type()]) -> boolean().
-are_same_type([TargetType, TargetType | Rest]) ->
-    are_same_type([TargetType | Rest]);
-are_same_type([_]) ->
-    true;
-are_same_type(_) ->
-    false.
+are_same_type([Type, Type | Rest]) -> are_same_type([Type | Rest]);
+are_same_type([_]) -> true;
+are_same_type(_) -> false.
 
 -spec type_of_struct_field(e_type(), #var_ref{}, struct_type_map(), integer()) -> e_type().
 type_of_struct_field(#basic_type{class = struct, tag = Name, p_depth = 0}, #var_ref{name = FieldName}, StructMap, Line) ->
@@ -346,12 +343,12 @@ check_type(#basic_type{class = struct, tag = Tag, line = Line}, StructMap) ->
     end;
 check_type(#basic_type{}, _) ->
     ok;
-check_type(#array_type{elem_type = ElementType}, StructMap) ->
-    case ElementType of
+check_type(#array_type{elem_type = Type}, StructMap) ->
+    case Type of
         #array_type{line = Line} ->
             throw({Line, "nested array is not supported"});
         _ ->
-            check_type(ElementType, StructMap)
+            check_type(Type, StructMap)
     end;
 check_type(#fn_type{params = Params, ret = RetType}, StructMap) ->
     check_types(Params, StructMap),

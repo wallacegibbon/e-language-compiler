@@ -1,6 +1,6 @@
 -module(e_util).
 -export([expr_to_str/1, expr_map/2, filter_var_refs_in_map/2, fmt/2, get_values_by_keys/2, names_of_var_defs/1, names_of_var_refs/1, value_in_list/2]).
--export([primitive_size_of/1, void_type/1, cut_extra/2, fill_offset/2, fill_to_pointer_width/2, make_function_and_struct_map_from_ast/1, assert/2]).
+-export([primitive_size_of/1, void_type/1, cut_extra/2, fill_unit_opti/2, fill_unit_pessi/2, make_function_and_struct_map_from_ast/1, assert/2]).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("e_record_definition.hrl").
@@ -73,17 +73,17 @@ make_function_and_struct_map_from_ast(AST) ->
     {FnTypeMap, StructMap}.
 
 %% address calculations
--spec fill_to_pointer_width(integer(), non_neg_integer()) -> integer().
-fill_to_pointer_width(Num, PointerWidth) ->
-    (Num + PointerWidth - 1) div PointerWidth * PointerWidth.
+-spec fill_unit_pessi(integer(), non_neg_integer()) -> integer().
+fill_unit_pessi(Num, Unit) ->
+    (Num + Unit - 1) div Unit * Unit.
 
--spec fill_offset(integer(), non_neg_integer()) -> integer().
-fill_offset(Offset, PointerWidth) ->
-    (Offset + PointerWidth) div PointerWidth * PointerWidth.
+-spec fill_unit_opti(integer(), non_neg_integer()) -> integer().
+fill_unit_opti(Num, Unit) ->
+    (Num + Unit) div Unit * Unit.
 
 -spec cut_extra(integer(), non_neg_integer()) -> integer().
-cut_extra(Offset, PointerWidth) ->
-    Offset div PointerWidth * PointerWidth.
+cut_extra(Num, Unit) ->
+    Num div Unit * Unit.
 
 -spec primitive_size_of(atom()) -> pointerSize | 1 | 2 | 4 | 8.
 primitive_size_of(usize) -> pointerSize;

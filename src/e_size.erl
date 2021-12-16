@@ -101,26 +101,14 @@ size_of_struct_fields([], CurrentOffset, OffsetMap, _) ->
 fix_struct_field_offset(CurrentOffset, NextOffset, PointerWidth) ->
     case e_util:cut_extra(NextOffset, PointerWidth) > e_util:cut_extra(CurrentOffset, PointerWidth) of
         true ->
-            e_util:fill_offset(CurrentOffset, PointerWidth);
+            e_util:fill_unit_opti(CurrentOffset, PointerWidth);
         false ->
             CurrentOffset
     end.
 
 -spec size_of(e_type(), context()) -> non_neg_integer().
 size_of(#array_type{elem_type = T, length = Len}, {_, PointerWidth} = Ctx) ->
-    ElementSize = size_of(T, Ctx),
-    FixedSize = case ElementSize < PointerWidth of
-                    true ->
-                        case PointerWidth rem ElementSize of
-                            0 ->
-                                ElementSize;
-                            _ ->
-                                PointerWidth
-                        end;
-                    false ->
-                        e_util:fill_to_pointer_width(ElementSize, PointerWidth)
-                end,
-    FixedSize * Len;
+    align_fix(size_of(T, Ctx), PointerWidth) * Len;
 size_of(#basic_type{p_depth = N}, {_, PointerWidth}) when N > 0 ->
     PointerWidth;
 size_of(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
@@ -141,3 +129,11 @@ size_of(#fn_type{}, {_, PointerWidth}) ->
     PointerWidth;
 size_of(A, _) ->
     throw(e_util:fmt("invalid type ~p on sizeof", [A])).
+
+-spec align_fix(non_neg_integer(), non_neg_integer()) -> non_neg_integer().
+align_fix(Size, Unit) when Size < Unit, Unit rem Size =:= 0 ->
+    Size;
+align_fix(Size, Unit) when Size < Unit ->
+    Unit;
+align_fix(Size, Unit) ->
+    e_util:fill_unit_pessi(Size, Unit).
