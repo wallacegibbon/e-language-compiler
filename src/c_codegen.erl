@@ -62,11 +62,11 @@ statements_to_str([#function{name = Name, param_names = ParamNames, type = FnTyp
     PureVars = maps:without(ParamNameAtoms, VarTypes),
     Declars = function_declaration_to_str(Name, function_params_to_str(PureParams), FnType#fn_type.ret),
     Exprs2 = case Name =:= main of
-                       true ->
-                           InitCode ++ Exprs;
-                       false ->
-                           Exprs
-                   end,
+                 true ->
+                     InitCode ++ Exprs;
+                 false ->
+                     Exprs
+             end,
     S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declars, var_map_to_str(PureVars), exprs_to_str(Exprs2)]),
     statements_to_str(Rest, InitCode, [S | StmtStrs], [Declars ++ ";\n" | FnDeclars]);
 statements_to_str([#struct{name = Name, field_type_map = FieldTypes, field_names = FieldNames} | Rest], InitCode, StmtStrs, FnDeclars) ->

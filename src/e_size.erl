@@ -89,8 +89,8 @@ size_of_struct_fields([{FieldName, FieldType} | Rest], CurrentOffset, OffsetMap,
     NextOffset = CurrentOffset + FieldSize,
     case CurrentOffset rem PointerWidth =/= 0 of
         true ->
-            OffsetFixed = fix_struct_field_offset(CurrentOffset, NextOffset, PointerWidth),
-            size_of_struct_fields(Rest, OffsetFixed + FieldSize, OffsetMap#{FieldName => OffsetFixed}, Ctx);
+            Offset = fix_struct_field_offset(CurrentOffset, NextOffset, PointerWidth),
+            size_of_struct_fields(Rest, Offset + FieldSize, OffsetMap#{FieldName => Offset}, Ctx);
         false ->
             size_of_struct_fields(Rest, NextOffset, OffsetMap#{FieldName => CurrentOffset}, Ctx)
     end;

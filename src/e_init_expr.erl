@@ -49,14 +49,16 @@ replace_init_ops(Any, _) ->
     [Any].
 
 struct_init_to_ops(Target, [#var_ref{line = Line, name = Name} = Field | Rest], FieldInitMap, FieldTypes, NewCode, StructMap) ->
-    Op2 = case maps:find(Name, FieldInitMap) of
-                   {ok, InitOp} ->
-                       InitOp;
-                   error ->
-                       default_value_of(maps:get(Name, FieldTypes), Line)
-               end,
-    NewAssign = #op2_expr{operator = assign, operand2 = Op2, line = Line, operand1 = #op2_expr{operator = '.', operand1 = Target, operand2 = Field, line = Line}},
-    Ops = replace_init_ops(NewAssign, StructMap),
+    NewOp = #op2_expr{operator = assign,
+                      operand1 = #op2_expr{operator = '.', operand1 = Target, operand2 = Field, line = Line},
+                      operand2 = case maps:find(Name, FieldInitMap) of
+                                     {ok, InitOp} ->
+                                         InitOp;
+                                     error ->
+                                         default_value_of(maps:get(Name, FieldTypes), Line)
+                                 end,
+                      line = Line},
+    Ops = replace_init_ops(NewOp, StructMap),
     struct_init_to_ops(Target, Rest, FieldInitMap, FieldTypes, Ops ++ NewCode, StructMap);
 struct_init_to_ops(_, [], _, _, NewCode, _) ->
     NewCode.
