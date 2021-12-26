@@ -85,9 +85,9 @@ fill_unit_opti(Num, Unit) ->
 cut_extra(Num, Unit) ->
     Num div Unit * Unit.
 
--spec primitive_size_of(atom()) -> pointerSize | 1 | 2 | 4 | 8.
-primitive_size_of(usize) -> pointerSize;
-primitive_size_of(isize) -> pointerSize;
+-spec primitive_size_of(atom()) -> pointer_size | 1 | 2 | 4 | 8.
+primitive_size_of(usize) -> pointer_size;
+primitive_size_of(isize) -> pointer_size;
 primitive_size_of(u64) -> 8;
 primitive_size_of(i64) -> 8;
 primitive_size_of(u32) -> 4;

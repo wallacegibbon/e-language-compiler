@@ -120,7 +120,7 @@ size_of(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
     end;
 size_of(#basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
     case e_util:primitive_size_of(Tag) of
-        pointerSize ->
+        pointer_size ->
             PointerWidth;
         V when is_integer(V) ->
             V
