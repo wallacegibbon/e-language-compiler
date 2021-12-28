@@ -129,7 +129,7 @@
          expr :: e_expr(),
          type :: e_type()}).
 
-% primitive types: u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
+%% primitive types: u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
 -type e_type() :: #basic_type{} | #array_type{} | #fn_type{} | any().
 
 -type e_stmt() :: #if_stmt{} | #while_stmt{} | #goto_stmt{} | #return_stmt{}.

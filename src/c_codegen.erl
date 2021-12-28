@@ -11,7 +11,7 @@ generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
     Ctx = {FnTypeMap, StructMap, GlobalVars},
     AST2 = lists:map(fun (A) -> fix_function_for_c(A, Ctx) end, AST),
     InitCode2 = fix_exprs_for_c(InitCode, Ctx),
-    %io:format(">>>~p~n", [AST2]),
+    %%io:format(">>>~p~n", [AST2]),
     %% struct definition have to be before function declarations
     CheckStruct = fun (A) -> element(1, A) =:= struct end,
     {StructAST, FnAST} = lists:partition(CheckStruct, AST2),
@@ -49,9 +49,9 @@ fix_expr_for_c(Any, _) ->
 -spec common_c_code() -> string().
 common_c_code() ->
     "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\n"
-    "typedef unsigned int usize;\ntypedef int isize;\ntypedef unsigned char u8;\ntypedef char i8;\n"
-    "typedef unsigned short u16;\ntypedef short i16;\ntypedef unsigned int u32;\ntypedef int i32;\n"
-    "typedef unsigned long u64;\ntypedef long i64;\ntypedef double f64;\ntypedef float f32;\n\n".
+        "typedef unsigned int usize;\ntypedef int isize;\ntypedef unsigned char u8;\ntypedef char i8;\n"
+        "typedef unsigned short u16;\ntypedef short i16;\ntypedef unsigned int u32;\ntypedef int i32;\n"
+        "typedef unsigned long u64;\ntypedef long i64;\ntypedef double f64;\ntypedef float f32;\n\n".
 
 statements_to_str(Statements, InitCode) ->
     statements_to_str(Statements, InitCode, [], []).

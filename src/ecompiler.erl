@@ -8,7 +8,6 @@
 compile_to_c(InputFilename, OutputFilename) ->
     try
         {AST, Vars, InitCode} = parse_and_compile(InputFilename),
-        %io:format(">> ~p~n~n", [AST]),
         c_codegen:generate_c_code(AST, Vars, InitCode, OutputFilename)
     catch
         {Filename, ErrorInfo} ->

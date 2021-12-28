@@ -9,7 +9,6 @@
 compile_from_raw_ast(AST, CustomCompileOptions) ->
     CompileOptions = maps:merge(default_compiler_options(), CustomCompileOptions),
     {AST2, VarTypeMap, InitCode0} = e_variable:fetch_variables(AST),
-    %io:format(">>> ~p~n", [AST2]),
 
     {FnTypeMap, StructMap0} = e_util:make_function_and_struct_map_from_ast(AST2),
 

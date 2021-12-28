@@ -22,7 +22,8 @@ expand_sizeof_in_exprs(Exprs, Ctx) ->
 
 -spec expand_sizeof_in_expr(e_expr(), context()) -> e_expr().
 expand_sizeof_in_expr(#sizeof_expr{type = T, line = Line}, Ctx) ->
-    try {integer, Line, size_of(T, Ctx)} catch
+    try {integer, Line, size_of(T, Ctx)}
+    catch
         I ->
             throw({Line, I})
     end;
@@ -83,7 +84,7 @@ get_kvs_by_refs(RefList, Map) ->
 
 %% this is the function that calculate size and offsets
 -spec size_of_struct_fields([{atom(), e_type()}], integer(), OffsetMap, context()) -> {integer(), OffsetMap}
-        when OffsetMap :: #{atom() := integer()}.
+              when OffsetMap :: #{atom() := integer()}.
 size_of_struct_fields([{FieldName, FieldType} | Rest], CurrentOffset, OffsetMap, {_, PointerWidth} = Ctx) ->
     FieldSize = size_of(FieldType, Ctx),
     NextOffset = CurrentOffset + FieldSize,
