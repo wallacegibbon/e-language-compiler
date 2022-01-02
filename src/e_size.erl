@@ -1,4 +1,5 @@
 -module(e_size).
+
 -export([expand_sizeof/2, expand_sizeof_in_exprs/2, fill_struct_info/2]).
 
 -include("e_record_definition.hrl").
@@ -9,26 +10,29 @@
 expand_sizeof([#function{stmts = Exprs} = F | Rest], Ctx) ->
     [F#function{stmts = expand_sizeof_in_exprs(Exprs, Ctx)} | expand_sizeof(Rest, Ctx)];
 expand_sizeof([#struct{field_default_value_map = FieldDefaults} = S | Rest], Ctx) ->
-    [S#struct{field_default_value_map = expand_sizeof_in_map(FieldDefaults, Ctx)} | expand_sizeof(Rest, Ctx)];
+    [S#struct{field_default_value_map = expand_sizeof_in_map(FieldDefaults, Ctx)}
+     | expand_sizeof(Rest, Ctx)];
 expand_sizeof([], _) ->
     [].
 
 expand_sizeof_in_map(Map, Ctx) ->
-    maps:map(fun (_, V1) -> expand_sizeof_in_expr(V1, Ctx) end, Map).
+    maps:map(fun(_, V1) -> expand_sizeof_in_expr(V1, Ctx) end, Map).
 
 -spec expand_sizeof_in_exprs(e_ast(), context()) -> [e_expr()].
 expand_sizeof_in_exprs(Exprs, Ctx) ->
-    e_util:expr_map(fun (E) -> expand_sizeof_in_expr(E, Ctx) end, Exprs).
+    e_util:expr_map(fun(E) -> expand_sizeof_in_expr(E, Ctx) end, Exprs).
 
 -spec expand_sizeof_in_expr(e_expr(), context()) -> e_expr().
 expand_sizeof_in_expr(#sizeof_expr{type = T, line = Line}, Ctx) ->
-    try {integer, Line, size_of(T, Ctx)}
+    try
+        {integer, Line, size_of(T, Ctx)}
     catch
         I ->
             throw({Line, I})
     end;
 expand_sizeof_in_expr(#op2_expr{operand1 = Op1, operand2 = Op2} = O, Ctx) ->
-    O#op2_expr{operand1 = expand_sizeof_in_expr(Op1, Ctx), operand2 = expand_sizeof_in_expr(Op2, Ctx)};
+    O#op2_expr{operand1 = expand_sizeof_in_expr(Op1, Ctx),
+               operand2 = expand_sizeof_in_expr(Op2, Ctx)};
 expand_sizeof_in_expr(#op1_expr{operand = Operand} = O, Ctx) ->
     O#op1_expr{operand = expand_sizeof_in_expr(Operand, Ctx)};
 expand_sizeof_in_expr(#struct_init_expr{field_value_map = ExprMap} = S, Ctx) ->
@@ -46,9 +50,9 @@ expand_sizeof_in_expr(Any, _) ->
 -spec fill_struct_info(e_ast(), context()) -> e_ast().
 fill_struct_info(AST, {_, PointerWidth} = Ctx) ->
     %% struct definition are only allowed in top level of an AST.
-    AST1 = lists:map(fun (E) -> fill_struct_size(E, Ctx) end, AST),
+    AST1 = lists:map(fun(E) -> fill_struct_size(E, Ctx) end, AST),
     {_, StructMap1} = e_util:make_function_and_struct_map_from_ast(AST1),
-    lists:map(fun (E) -> fill_struct_offsets(E, {StructMap1, PointerWidth}) end, AST1).
+    lists:map(fun(E) -> fill_struct_offsets(E, {StructMap1, PointerWidth}) end, AST1).
 
 -spec fill_struct_size(e_expr(), context()) -> e_expr().
 fill_struct_size(#struct{} = S, Ctx) ->
@@ -83,9 +87,13 @@ get_kvs_by_refs(RefList, Map) ->
     lists:zip(Keys, Values).
 
 %% this is the function that calculate size and offsets
--spec size_of_struct_fields([{atom(), e_type()}], integer(), OffsetMap, context()) -> {integer(), OffsetMap}
-              when OffsetMap :: #{atom() := integer()}.
-size_of_struct_fields([{FieldName, FieldType} | Rest], CurrentOffset, OffsetMap, {_, PointerWidth} = Ctx) ->
+-spec size_of_struct_fields([{atom(), e_type()}], integer(), OffsetMap, context()) ->
+                               {integer(), OffsetMap}
+    when OffsetMap :: #{atom() := integer()}.
+size_of_struct_fields([{FieldName, FieldType} | Rest],
+                      CurrentOffset,
+                      OffsetMap,
+                      {_, PointerWidth} = Ctx) ->
     FieldSize = size_of(FieldType, Ctx),
     NextOffset = CurrentOffset + FieldSize,
     case CurrentOffset rem PointerWidth =/= 0 of
@@ -100,7 +108,9 @@ size_of_struct_fields([], CurrentOffset, OffsetMap, _) ->
 
 -spec fix_struct_field_offset(integer(), integer(), integer()) -> integer().
 fix_struct_field_offset(CurrentOffset, NextOffset, PointerWidth) ->
-    case e_util:cut_extra(NextOffset, PointerWidth) > e_util:cut_extra(CurrentOffset, PointerWidth) of
+    case e_util:cut_extra(NextOffset, PointerWidth)
+         > e_util:cut_extra(CurrentOffset, PointerWidth)
+    of
         true ->
             e_util:fill_unit_opti(CurrentOffset, PointerWidth);
         false ->
@@ -119,7 +129,8 @@ size_of(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
         error ->
             throw(e_util:fmt("~s is not found", [Tag]))
     end;
-size_of(#basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
+size_of(#basic_type{class = C, tag = Tag}, {_, PointerWidth})
+    when C =:= integer; C =:= float ->
     case e_util:primitive_size_of(Tag) of
         pointer_size ->
             PointerWidth;

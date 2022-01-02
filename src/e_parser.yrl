@@ -1,9 +1,13 @@
 Nonterminals
 
-root_stmts root_stmt struct_def function_def var_defs var_def params function_stmts function_stmt if_stmt else_stmt while_stmt goto_label
-expr call_expr pre_minus_plus_expr sizeof_expr assign_expr op19 op30 op29 op28 op27 op26 op25 op2_with_assignment
-type_annotations type_anno
-pointer_depth atomic_literal_values array_init_expr array_init_elements struct_init_expr struct_init_fields struct_init_assignment
+root_stmts root_stmt struct_def function_def var_defs var_def params
+function_stmts function_stmt if_stmt else_stmt while_stmt goto_label
+expr call_expr pre_minus_plus_expr sizeof_expr assign_expr
+op19 op30 op29 op28 op27 op26 op25
+op2_with_assignment type_annotations type_anno
+pointer_depth atomic_literal_values
+array_init_expr array_init_elements
+struct_init_expr struct_init_fields struct_init_assignment
 reserved_keyword
 
 .
@@ -13,7 +17,8 @@ Terminals
 %% operators
 ',' ':' ';' '=' '{' '}' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '~' '!' '!=' '==' '>=' '<='
 %% keywords
-struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr' while do 'if' then elif else return sizeof goto as new
+struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
+while do 'if' then elif else return sizeof goto as new
 
 %% reserved keywords
 'cond' 'case' for break continue
@@ -85,13 +90,29 @@ struct_def -> struct identifier var_defs 'end' :
 
 %% function definition
 function_def -> 'fun' identifier '(' var_defs ')' ':' type_anno function_stmts 'end' :
-    #function_raw{name = token_value('$2'), params = '$4', ret_type = '$7', stmts = '$8', line = token_line('$2')}.
+    #function_raw{name = token_value('$2'),
+                  params = '$4',
+                  ret_type = '$7',
+                  stmts = '$8',
+                  line = token_line('$2')}.
 function_def -> 'fun' identifier '(' ')' ':' type_anno function_stmts 'end' :
-    #function_raw{name = token_value('$2'), params = [], ret_type = '$6', stmts = '$7', line = token_line('$2')}.
+    #function_raw{name = token_value('$2'),
+                  params = [],
+                  ret_type = '$6',
+                  stmts = '$7',
+                  line = token_line('$2')}.
 function_def -> 'fun' identifier '(' var_defs ')' function_stmts 'end' :
-    #function_raw{name = token_value('$2'), params = '$4', ret_type = e_util:void_type(token_line('$5')), stmts = '$6', line = token_line('$2')}.
+    #function_raw{name = token_value('$2'),
+                  params = '$4',
+                  ret_type = e_util:void_type(token_line('$5')),
+                  stmts = '$6',
+                  line = token_line('$2')}.
 function_def -> 'fun' identifier '(' ')' function_stmts 'end' :
-    #function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_line('$4')), stmts = '$5', line = token_line('$2')}.
+    #function_raw{name = token_value('$2'),
+                  params = [],
+                  ret_type = e_util:void_type(token_line('$4')),
+                  stmts = '$5',
+                  line = token_line('$2')}.
 
 %% while
 while_stmt -> while expr do function_stmts 'end' :
@@ -127,19 +148,35 @@ struct_init_fields -> struct_init_assignment ',' struct_init_fields : ['$1' | '$
 struct_init_fields -> struct_init_assignment : ['$1'].
 
 struct_init_assignment -> identifier '=' expr :
-    #op2_expr{operator = assign, operand1 = #var_ref{name = token_value('$1'), line = token_line('$1')}, operand2 = '$3', line = token_line('$2')}.
+    #op2_expr{operator = assign,
+              operand1 = #var_ref{name = token_value('$1'),
+              line = token_line('$1')},
+              operand2 = '$3',
+              line = token_line('$2')}.
 
 %% sizeof
-sizeof_expr -> sizeof '(' type_anno ')' : #sizeof_expr{type = '$3', line = token_line('$2')}.
+sizeof_expr -> sizeof '(' type_anno ')' :
+    #sizeof_expr{type = '$3', line = token_line('$2')}.
 
 %% function invocation
-call_expr -> expr '(' params ')' : #call_expr{fn = '$1', args = '$3', line = token_line('$2')}.
-call_expr -> expr '(' ')' : #call_expr{fn = '$1', args = [], line = token_line('$2')}.
+call_expr -> expr '(' params ')' :
+    #call_expr{fn = '$1', args = '$3', line = token_line('$2')}.
+call_expr -> expr '(' ')' :
+    #call_expr{fn = '$1', args = [], line = token_line('$2')}.
 
 assign_expr -> expr op2_with_assignment expr :
-    #op2_expr{operator = assign, operand1 = '$1', operand2 = #op2_expr{operator = token_symbol('$2'), operand1 = '$1', operand2 = '$3', line = token_line('$2')}, line = token_line('$2')}.
+    #op2_expr{operator = assign,
+              operand1 = '$1',
+              operand2 = #op2_expr{operator = token_symbol('$2'),
+              operand1 = '$1',
+              operand2 = '$3',
+              line = token_line('$2')},
+              line = token_line('$2')}.
 assign_expr -> expr '=' expr :
-    #op2_expr{operator = assign, operand1 = '$1', operand2 = '$3', line = token_line('$2')}.
+    #op2_expr{operator = assign,
+              operand1 = '$1',
+              operand2 = '$3',
+              line = token_line('$2')}.
 
 op2_with_assignment -> op29 '=' : '$1'.
 op2_with_assignment -> op28 '=' : '$1'.
@@ -165,7 +202,8 @@ function_stmt -> goto expr ';' : #goto_stmt{expr = '$2', line = token_line('$1')
 function_stmt -> return expr ';' : #return_stmt{expr = '$2', line = token_line('$1')}.
 function_stmt -> goto_label : '$1'.
 
-goto_label -> '@' identifier : #goto_label{name = token_value('$2'), line = token_line('$2')}.
+goto_label -> '@' identifier :
+    #goto_label{name = token_value('$2'), line = token_line('$2')}.
 
 expr -> reserved_keyword : return_error(token_line('$1'), e_util:fmt("~s is reserved keyword", [token_symbol('$1')])).
 expr -> expr op30 expr : #op2_expr{operator = token_symbol('$2'), operand1 = '$1', operand2 = '$3', line=token_line('$2')}.
@@ -194,8 +232,10 @@ reserved_keyword -> continue : '$1'.
 
 %% the precedence of 'pre_minus_plus_expr' needs to be higher than "op2_expr +/-"
 Unary 300 pre_minus_plus_expr.
-pre_minus_plus_expr -> '-' expr : #op1_expr{operator = token_symbol('$1'), operand = '$2', line = token_line('$1')}.
-pre_minus_plus_expr -> '+' expr : #op1_expr{operator = token_symbol('$1'), operand = '$2', line = token_line('$1')}.
+pre_minus_plus_expr -> '-' expr :
+    #op1_expr{operator = token_symbol('$1'), operand = '$2', line = token_line('$1')}.
+pre_minus_plus_expr -> '+' expr :
+    #op1_expr{operator = token_symbol('$1'), operand = '$2', line = token_line('$1')}.
 
 Unary 900 op19.
 op19 -> '^' : '$1'.
@@ -242,11 +282,8 @@ Erlang code.
 str_to_int_tokens({string, Line, Str}) ->
     lists:map(fun (Char) -> {integer, Line, Char} end, Str).
 
-token_value({_, _, Val}) ->
-    Val.
+token_value({_, _, Val}) -> Val.
 
-token_symbol({Sym, _}) ->
-    Sym.
+token_symbol({Sym, _}) -> Sym.
 
-token_line(T) ->
-    element(2, T).
+token_line(T) -> element(2, T).
