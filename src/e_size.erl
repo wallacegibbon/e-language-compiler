@@ -119,7 +119,8 @@ fix_struct_field_offset(CurrentOffset, NextOffset, PointerWidth) ->
 
 -spec size_of(e_type(), context()) -> non_neg_integer().
 size_of(#array_type{elem_type = T, length = Len}, {_, PointerWidth} = Ctx) ->
-    align_fix(size_of(T, Ctx), PointerWidth) * Len;
+    TotalSize = align_fix(size_of(T, Ctx), PointerWidth) * Len,
+    align_fix(TotalSize, PointerWidth);
 size_of(#basic_type{p_depth = N}, {_, PointerWidth}) when N > 0 ->
     PointerWidth;
 size_of(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
