@@ -90,29 +90,15 @@ struct_def -> struct identifier var_defs 'end' :
 
 %% function definition
 function_def -> 'fun' identifier '(' var_defs ')' ':' type_anno function_stmts 'end' :
-    #function_raw{name = token_value('$2'),
-                  params = '$4',
-                  ret_type = '$7',
-                  stmts = '$8',
-                  line = token_line('$2')}.
+    #function_raw{name = token_value('$2'), params = '$4', ret_type = '$7', stmts = '$8', line = token_line('$2')}.
 function_def -> 'fun' identifier '(' ')' ':' type_anno function_stmts 'end' :
-    #function_raw{name = token_value('$2'),
-                  params = [],
-                  ret_type = '$6',
-                  stmts = '$7',
-                  line = token_line('$2')}.
+    #function_raw{name = token_value('$2'), params = [], ret_type = '$6', stmts = '$7', line = token_line('$2')}.
 function_def -> 'fun' identifier '(' var_defs ')' function_stmts 'end' :
-    #function_raw{name = token_value('$2'),
-                  params = '$4',
-                  ret_type = e_util:void_type(token_line('$5')),
-                  stmts = '$6',
-                  line = token_line('$2')}.
+    #function_raw{name = token_value('$2'), params = '$4', ret_type = e_util:void_type(token_line('$5')),
+                  stmts = '$6', line = token_line('$2')}.
 function_def -> 'fun' identifier '(' ')' function_stmts 'end' :
-    #function_raw{name = token_value('$2'),
-                  params = [],
-                  ret_type = e_util:void_type(token_line('$4')),
-                  stmts = '$5',
-                  line = token_line('$2')}.
+    #function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_line('$4')),
+                  stmts = '$5', line = token_line('$2')}.
 
 %% while
 while_stmt -> while expr do function_stmts 'end' :
@@ -148,11 +134,8 @@ struct_init_fields -> struct_init_assignment ',' struct_init_fields : ['$1' | '$
 struct_init_fields -> struct_init_assignment : ['$1'].
 
 struct_init_assignment -> identifier '=' expr :
-    #op2_expr{operator = assign,
-              operand1 = #var_ref{name = token_value('$1'),
-              line = token_line('$1')},
-              operand2 = '$3',
-              line = token_line('$2')}.
+    #op2_expr{operator = assign, operand1 = #var_ref{name = token_value('$1'), line = token_line('$1')},
+              operand2 = '$3', line = token_line('$2')}.
 
 %% sizeof
 sizeof_expr -> sizeof '(' type_anno ')' :
@@ -167,10 +150,7 @@ call_expr -> expr '(' ')' :
 assign_expr -> expr op2_with_assignment expr :
     #op2_expr{operator = assign,
               operand1 = '$1',
-              operand2 = #op2_expr{operator = token_symbol('$2'),
-              operand1 = '$1',
-              operand2 = '$3',
-              line = token_line('$2')},
+              operand2 = #op2_expr{operator = token_symbol('$2'), operand1 = '$1', operand2 = '$3', line = token_line('$2')},
               line = token_line('$2')}.
 assign_expr -> expr '=' expr :
     #op2_expr{operator = assign,

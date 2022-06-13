@@ -1,23 +1,17 @@
 -module(e_preprocessor).
-
 -export([process/1]).
 
 -type macro_map() :: #{atom() => [token()]}.
--type context() ::
-    {MacroMap :: macro_map(), RetTokens :: [token()], EndTag :: else | endif | normal}.
--type handle_ret() ::
-    {MacroMap :: macro_map(), RetTokens :: [token()], RestTokens :: [token()]}.
+-type context() :: {MacroMap :: macro_map(), RetTokens :: [token()], EndTag :: else | endif | normal}.
+-type handle_ret() :: {MacroMap :: macro_map(), RetTokens :: [token()], RestTokens :: [token()]}.
 -type token() :: any().
 
 -ifdef(TEST).
-
 -include_lib("eunit/include/eunit.hrl").
-
 -endif.
 
 -spec handle_special([token()], context()) -> handle_ret().
-handle_special([{identifier, _, define}, {identifier, LineNumber, Name} | Rest],
-               {MacroMap, RetTokens, EndTag} = Ctx) ->
+handle_special([{identifier, _, define}, {identifier, LineNumber, Name} | Rest], {MacroMap, RetTokens, EndTag} = Ctx) ->
     case MacroMap of
         #{Name := _} ->
             throw({LineNumber, e_util:fmt("macro name conflict: \"~s\"", [Name])});
@@ -25,16 +19,14 @@ handle_special([{identifier, _, define}, {identifier, LineNumber, Name} | Rest],
             {Tokens, RestTokens} = get_expr_till_eol(Rest, Ctx),
             handle_normal(RestTokens, {MacroMap#{Name => Tokens}, RetTokens, EndTag})
     end;
-handle_special([{identifier, _, undef}, {identifier, LineNumber, Name} | Rest],
-               {MacroMap, RetTokens, EndTag}) ->
+handle_special([{identifier, _, undef}, {identifier, LineNumber, Name} | Rest], {MacroMap, RetTokens, EndTag}) ->
     case MacroMap of
         #{Name := _} ->
             handle_normal(Rest, {maps:remove(Name, MacroMap), RetTokens, EndTag});
         _ ->
             throw({LineNumber, e_util:fmt("macro \"~s\" is not defined", [Name])})
     end;
-handle_special([{identifier, _, ifdef}, {identifier, _, Name} | Rest],
-               {MacroMap, _, EndTag} = Ctx) ->
+handle_special([{identifier, _, ifdef}, {identifier, _, Name} | Rest], {MacroMap, _, EndTag} = Ctx) ->
     {MacroMapNew, CollectedTokens, RestTokensNew} =
         case MacroMap of
             #{Name := _} ->
@@ -45,8 +37,7 @@ handle_special([{identifier, _, ifdef}, {identifier, _, Name} | Rest],
     handle_normal(RestTokensNew, {MacroMapNew, CollectedTokens, EndTag});
 handle_special([{identifier, LineNumber, ifdef} | _], _) ->
     throw({LineNumber, "invalid #ifdef command"});
-handle_special([{identifier, _, ifndef}, {identifier, _, Name} | Rest],
-               {MacroMap, _, EndTag} = Ctx) ->
+handle_special([{identifier, _, ifndef}, {identifier, _, Name} | Rest], {MacroMap, _, EndTag} = Ctx) ->
     {MacroMapNew, CollectedTokens, RestTokensNew} =
         case MacroMap of
             #{Name := _} ->
@@ -75,8 +66,7 @@ handle_special([{identifier, _, endif} | RestContent], {MacroMap, RetTokens, end
     {MacroMap, RetTokens, RestContent};
 %% when the "#else" part is missing ("#if" following "#endif"), pretend that the "#else\n" exists and has been swallowed,
 %% and put the "#endif" back to unhandled tokens.
-handle_special([{identifier, LineNumber, endif} | _] = Content,
-               {MacroMap, RetTokens, else}) ->
+handle_special([{identifier, LineNumber, endif} | _] = Content, {MacroMap, RetTokens, else}) ->
     {MacroMap, RetTokens, [{'#', LineNumber} | Content]};
 handle_special([{identifier, LineNumber, error} | _], _) ->
     throw({LineNumber, "compile error... (todo)"});
@@ -95,8 +85,7 @@ handle_special([], {_, _, EndTag}) ->
 -spec collect_to_else_and_ignore_to_endif([token()], context()) -> handle_ret().
 collect_to_else_and_ignore_to_endif(Tokens, {MacroMap, RetTokens, _}) ->
     %% collect "then" part
-    {MacroMapNew, CollectedTokens, RestTokensRaw} =
-        handle_normal(Tokens, {MacroMap, [], else}),
+    {MacroMapNew, CollectedTokens, RestTokensRaw} = handle_normal(Tokens, {MacroMap, [], else}),
     %% ignore "else" part
     {_, _, RestTokens} = handle_normal(RestTokensRaw, {MacroMap, [], endif}),
     {MacroMapNew, CollectedTokens ++ RetTokens, RestTokens}.
@@ -106,16 +95,12 @@ ignore_to_else_and_collect_to_endif(Tokens, {MacroMap, RetTokens, _}) ->
     %% ignore "then" part
     {_, _, RestTokensRaw} = handle_normal(Tokens, {MacroMap, [], else}),
     %% collect "else" part
-    {MacroMapNew, CollectedTokens, RestTokens} =
-        handle_normal(RestTokensRaw, {MacroMap, [], endif}),
+    {MacroMapNew, CollectedTokens, RestTokens} = handle_normal(RestTokensRaw, {MacroMap, [], endif}),
     {MacroMapNew, CollectedTokens ++ RetTokens, RestTokens}.
 
 -spec handle_normal([token()], context()) -> handle_ret().
-handle_normal([{'?', _}, {identifier, _, _} = Identifier | Rest],
-              {MacroMap, _, _} = Ctx) ->
-    replace_macro(Identifier,
-                  MacroMap,
-                  fun(Tokens) -> handle_normal(Tokens ++ Rest, Ctx) end);
+handle_normal([{'?', _}, {identifier, _, _} = Identifier | Rest], {MacroMap, _, _} = Ctx) ->
+    replace_macro(Identifier, MacroMap, fun (Tokens) -> handle_normal(Tokens ++ Rest, Ctx) end);
 handle_normal([{'?', LineNumber} | _], _) ->
     throw({LineNumber, "syntax error near \"?\""});
 handle_normal([{'#', _} | Rest], Ctx) ->
@@ -131,8 +116,7 @@ handle_normal([], {_, _, EndTag}) ->
 
 -spec process([token()]) -> [token()].
 process(Tokens) ->
-    {_, ProcessedTokens, _} =
-        handle_normal(convert_elif_to_else_and_if(Tokens), {#{}, [], normal}),
+    {_, ProcessedTokens, _} = handle_normal(convert_elif_to_else_and_if(Tokens), {#{}, [], normal}),
     lists:reverse(ProcessedTokens).
 
 -spec get_expr_till_eol([token()], context()) -> {[token()], [token()]}.
@@ -140,14 +124,10 @@ get_expr_till_eol(Tokens, Ctx) ->
     get_expr_till_eol(Tokens, [], Ctx).
 
 -spec get_expr_till_eol([token()], [token()], context()) -> {[token()], [token()]}.
-get_expr_till_eol([{'?', _}, {identifier, _, _} = Identifier | Rest],
-                  CollectedTokens,
-                  {MacroMap, _, _} = Ctx) ->
-    replace_macro(Identifier,
-                  MacroMap,
-                  fun(Tokens) ->
-                     get_expr_till_eol(Rest, lists:reverse(Tokens) ++ CollectedTokens, Ctx)
-                  end);
+get_expr_till_eol([{'?', _}, {identifier, _, _} = Identifier | Rest], CollectedTokens, {MacroMap, _, _} = Ctx) ->
+    replace_macro(Identifier, MacroMap, fun (Tokens) ->
+                                                get_expr_till_eol(Rest, lists:reverse(Tokens) ++ CollectedTokens, Ctx)
+                                        end);
 get_expr_till_eol([{'?', LineNumber} | _], _, _) ->
     throw({LineNumber, "syntax error near \"?\""});
 get_expr_till_eol([{newline, _} | Rest], CollectedTokens, _) ->
@@ -158,11 +138,8 @@ get_expr_till_eol([Token | Rest], CollectedTokens, Ctx) ->
 get_expr_till_eol([], CollectedTokens, _) ->
     {lists:reverse(CollectedTokens), []}.
 
--spec replace_macro({identifier, non_neg_integer(), atom()},
-                    macro_map(),
-                    fun(([token()]) -> Result)) ->
-                       Result
-    when Result :: any().
+-spec replace_macro({identifier, non_neg_integer(), atom()}, macro_map(), fun (([token()]) -> Result)) -> Result
+              when Result :: any().
 replace_macro({identifier, LineNumber, Name}, MacroMap, ContinueHandler) ->
     case MacroMap of
         #{Name := Value} ->
@@ -179,18 +156,13 @@ eval_token_exprs([{integer, _, 1}], _MacroMap) ->
 
 -spec replace_line_number([token()], non_neg_integer()) -> [token()].
 replace_line_number(Tokens, LineNumber) ->
-    lists:map(fun(Token) -> setelement(2, Token, LineNumber) end, Tokens).
+    lists:map(fun (Token) -> setelement(2, Token, LineNumber) end, Tokens).
 
 -ifdef(EUNIT).
 
 process_no_operator_test() ->
     {ok, Tokens, _} = e_scanner:string("u32 a = 1;"),
-    ?assertEqual([{int_type, 1, u32},
-                  {identifier, 1, a},
-                  {'=', 1},
-                  {integer, 1, 1},
-                  {';', 1}],
-                 process(Tokens)).
+    ?assertEqual([{int_type, 1, u32}, {identifier, 1, a}, {'=', 1}, {integer, 1, 1}, {';', 1}], process(Tokens)).
 
 process_if_true_test() ->
     {ok, Tokens, _} = e_scanner:string("#if 1\n a\n #else\n b\n #endif"),
@@ -213,23 +185,19 @@ process_ifndef_false_test() ->
     ?assertEqual([{identifier, 2, a}], process(Tokens)).
 
 process_ifndef_true_test() ->
-    {ok, Tokens, _} =
-        e_scanner:string("#define BLAH\n #ifndef BLAH\n a\n #else\n b\n #endif"),
+    {ok, Tokens, _} = e_scanner:string("#define BLAH\n #ifndef BLAH\n a\n #else\n b\n #endif"),
     ?assertEqual([{identifier, 5, b}], process(Tokens)).
 
 process_recursive_1_test() ->
-    {ok, Tokens, _} =
-        e_scanner:string("#if 1\n #if 1\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
+    {ok, Tokens, _} = e_scanner:string("#if 1\n #if 1\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
     ?assertEqual([{identifier, 3, a}], process(Tokens)).
 
 process_recursive_2_test() ->
-    {ok, Tokens, _} =
-        e_scanner:string("#if 1\n #if 0\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
+    {ok, Tokens, _} = e_scanner:string("#if 1\n #if 0\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
     ?assertEqual([{identifier, 5, b}], process(Tokens)).
 
 process_recursive_3_test() ->
-    {ok, Tokens, _} =
-        e_scanner:string("#if 0\n #if 1\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
+    {ok, Tokens, _} = e_scanner:string("#if 0\n #if 1\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
     ?assertEqual([{identifier, 8, c}], process(Tokens)).
 
 process_elif_1_test() ->
@@ -237,18 +205,15 @@ process_elif_1_test() ->
     ?assertEqual([{identifier, 2, a}], process(Tokens)).
 
 process_elif_2_test() ->
-    {ok, Tokens, _} =
-        e_scanner:string("#if 0\n a\n #elif 0\n b\n #elif 0\n c\n #else\n d\n #endif"),
+    {ok, Tokens, _} = e_scanner:string("#if 0\n a\n #elif 0\n b\n #elif 0\n c\n #else\n d\n #endif"),
     ?assertEqual([{identifier, 8, d}], process(Tokens)).
 
 process_elif_3_test() ->
-    {ok, Tokens, _} =
-        e_scanner:string("#if 0\n a\n #elif 0\n b\n #elif 1\n c\n #else\n d\n #endif"),
+    {ok, Tokens, _} = e_scanner:string("#if 0\n a\n #elif 0\n b\n #elif 1\n c\n #else\n d\n #endif"),
     ?assertEqual([{identifier, 6, c}], process(Tokens)).
 
 process_elif_4_test() ->
-    {ok, Tokens, _} =
-        e_scanner:string("#if 0\n a\n #elif 1\n b\n #elif 1\n c\n #else\n d\n #endif"),
+    {ok, Tokens, _} = e_scanner:string("#if 0\n a\n #elif 1\n b\n #elif 1\n c\n #else\n d\n #endif"),
     ?assertEqual([{identifier, 4, b}], process(Tokens)).
 
 process_define_line_number_test() ->
@@ -286,13 +251,12 @@ convert_elif_to_else_and_if(Tokens) ->
     lists:flatten(convert_elif_to_else_and_if(Tokens, 0)).
 
 -spec convert_elif_to_else_and_if([token()], integer()) -> TokenTree
-    when TokenTree :: [token() | TokenTree].
+              when TokenTree :: [token() | TokenTree].
 convert_elif_to_else_and_if([{'#', _} = PreTag, {'if', _} = Token | Rest], _) ->
     [PreTag, Token | convert_elif_to_else_and_if(Rest, 0)];
 convert_elif_to_else_and_if([{'#', _}, {elif, LineNumber} | Rest], ElifDepth) ->
     [mk_elif_replacement(LineNumber) | convert_elif_to_else_and_if(Rest, ElifDepth + 1)];
-convert_elif_to_else_and_if([{'#', _} = PreTag, {identifier, _, endif} = Token | Rest],
-                            ElifDepth) ->
+convert_elif_to_else_and_if([{'#', _} = PreTag, {identifier, _, endif} = Token | Rest], ElifDepth) ->
     [lists:duplicate(ElifDepth + 1, [PreTag, Token]) | convert_elif_to_else_and_if(Rest, 0)];
 convert_elif_to_else_and_if([Token | Rest], ElifDepth) ->
     [Token | convert_elif_to_else_and_if(Rest, ElifDepth)];
@@ -313,8 +277,7 @@ convert_elif_to_else_and_if_1_test() ->
                  tokens_to_str(convert_elif_to_else_and_if(Tokens))).
 
 convert_elif_to_else_and_if_2_test() ->
-    {ok, Tokens, _} =
-        e_scanner:string("#if 0\n a\n #elif 0\n b\n #elif 1\n c\n #else\n d\n #endif"),
+    {ok, Tokens, _} = e_scanner:string("#if 0\n a\n #elif 0\n b\n #elif 1\n c\n #else\n d\n #endif"),
     ?assertEqual("# if 0 \n a \n # else # if 0 \n b \n # else # if 1 \n c \n "
                  "# else \n d \n # endif # endif # endif",
                  tokens_to_str(convert_elif_to_else_and_if(Tokens))).
@@ -331,8 +294,7 @@ convert_elif_to_else_and_if_4_test() ->
 
 -spec tokens_to_str([token()]) -> string().
 tokens_to_str(Tokens) ->
-    lists:flatten(
-        lists:join(" ", lists:map(fun token_to_str/1, Tokens))).
+    lists:flatten(lists:join(" ", lists:map(fun token_to_str/1, Tokens))).
 
 -spec token_to_str(token()) -> string().
 token_to_str({integer, _, Number}) ->
@@ -349,7 +311,6 @@ token_to_str({AnyAtom, _}) ->
     atom_to_list(AnyAtom).
 
 tokens_to_str_test() ->
-    ?assertEqual("* + \n \n",
-                 tokens_to_str([{'*', 1}, {'+', 1}, {newline, 1}, {newline, 2}])).
+    ?assertEqual("* + \n \n", tokens_to_str([{'*', 1}, {'+', 1}, {newline, 1}, {newline, 2}])).
 
 -endif.

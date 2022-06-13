@@ -1,9 +1,7 @@
 -module(ecompiler).
-
 -export([compile_to_ast/1, compile_to_c/2]).
 
 -include_lib("eunit/include/eunit.hrl").
-
 -include("e_record_definition.hrl").
 
 -spec compile_to_c(string(), string()) -> ok.
@@ -35,9 +33,7 @@ parse_file(Filename) ->
         {ok, RawContent} ->
             case e_scanner:string(binary_to_list(RawContent)) of
                 {ok, Tokens, _} ->
-                    case e_parser:parse(
-                             e_preprocessor:process(Tokens))
-                    of
+                    case e_parser:parse(e_preprocessor:process(Tokens)) of
                         {ok, AST} ->
                             AST;
                         {error, {Line, _, ErrorInfo}} ->

@@ -1,5 +1,4 @@
 -module(e_assembler).
-
 -export([compile_file/1]).
 
 compile_file(FileName) ->
