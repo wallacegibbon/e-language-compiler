@@ -9,7 +9,7 @@
 
 %% when do simple conversions, this function can be used to avoid boilerplate
 %% code for if, while, return, call..., so you can concentrate on operand1, operand2...
--spec expr_map(fun((e_expr()) -> e_expr()), [e_expr()]) -> e_expr().
+-spec expr_map(fun ((e_expr()) -> e_expr()), [e_expr()]) -> e_expr().
 expr_map(Fn, [#if_stmt{condi = Cond, then = Then, else = Else} = If | Rest]) ->
     [If#if_stmt{condi = Fn(Cond), then = expr_map(Fn, Then), else = expr_map(Fn, Else)} | expr_map(Fn, Rest)];
 expr_map(Fn, [#while_stmt{condi = Cond, stmts = Exprs} = While | Rest]) ->
@@ -68,12 +68,12 @@ get_values_by_keys_test() ->
 
 -spec make_function_and_struct_map_from_ast(any()) -> {fn_type_map(), struct_type_map()}.
 make_function_and_struct_map_from_ast(AST) ->
-    {Fns, Structs} = lists:partition(fun(A) -> element(1, A) =:= function end, AST),
+    {Fns, Structs} = lists:partition(fun (A) -> element(1, A) =:= function end, AST),
     %% FnTypeMap stores function type only
     FnTypeMap =
-        maps:from_list(lists:map(fun(#function{name = Name} = Fn) -> {Name, Fn#function.type} end, Fns)),
+        maps:from_list(lists:map(fun (#function{name = Name} = Fn) -> {Name, Fn#function.type} end, Fns)),
     StructMap =
-        maps:from_list(lists:map(fun(#struct{name = Name} = S) -> {Name, S} end, Structs)),
+        maps:from_list(lists:map(fun (#struct{name = Name} = S) -> {Name, S} end, Structs)),
     {FnTypeMap, StructMap}.
 
 %% address calculations
@@ -109,11 +109,11 @@ void_type(Line) ->
 
 -spec names_of_var_refs([#var_ref{}]) -> [atom()].
 names_of_var_refs(VarRefList) ->
-    lists:map(fun(#var_ref{name = Name}) -> Name end, VarRefList).
+    lists:map(fun (#var_ref{name = Name}) -> Name end, VarRefList).
 
 -spec names_of_var_defs([#var_def{}]) -> [atom()].
 names_of_var_defs(VarDefList) ->
-    lists:map(fun(#var_def{name = Name}) -> Name end, VarDefList).
+    lists:map(fun (#var_def{name = Name}) -> Name end, VarDefList).
 
 -spec assert(boolean(), any()) -> ok.
 assert(true, _) -> ok;
@@ -121,13 +121,13 @@ assert(false, Info) -> throw(Info).
 
 -spec value_in_list(any(), [any()]) -> boolean().
 value_in_list(Value, List) ->
-    lists:any(fun(V) -> V =:= Value end, List).
+    lists:any(fun (V) -> V =:= Value end, List).
 
 %% filter_var_refs_in_map([#var_ref{name = a}, #var_ref{name = b}], #{a => 1})
 %% > [#var_ref{name = a}].
 -spec filter_var_refs_in_map([#var_ref{}], #{atom() := any()}) -> [#var_ref{}].
 filter_var_refs_in_map(VarRefList, TargetMap) ->
-    lists:filter(fun(#var_ref{name = Name}) -> exist_in_map(Name, TargetMap) end, VarRefList).
+    lists:filter(fun (#var_ref{name = Name}) -> exist_in_map(Name, TargetMap) end, VarRefList).
 
 -ifdef(EUNIT).
 

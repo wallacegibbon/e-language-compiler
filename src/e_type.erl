@@ -34,7 +34,7 @@ check_type_in_ast_nodes(Exprs, GlobalVarTypes, {FnTypeMap, StructMap}) ->
 
 -spec type_of_ast_nodes([e_expr()], context()) -> [e_type()].
 type_of_ast_nodes(Exprs, Ctx) ->
-    lists:map(fun(Expr) -> type_of_ast_node(Expr, Ctx) end, Exprs).
+    lists:map(fun (Expr) -> type_of_ast_node(Expr, Ctx) end, Exprs).
 
 -spec type_of_ast_node(e_expr(), context()) -> e_type().
 type_of_ast_node(#op2_expr{operator = assign, operand1 = Op1, operand2 = Op2, line = Line},
@@ -232,7 +232,7 @@ dec_pointer_depth(T, OpLine) ->
 
 -spec check_types_in_struct_fields([#var_ref{}], var_type_map(), #{atom() := any()}, atom(), context()) -> ok.
 check_types_in_struct_fields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
-    lists:foreach(fun(V) -> check_struct_field(V, FieldTypes, ValMap, StructName, Ctx) end, FieldNames).
+    lists:foreach(fun (V) -> check_struct_field(V, FieldTypes, ValMap, StructName, Ctx) end, FieldNames).
 
 -spec check_struct_field(#var_ref{}, var_type_map(), #{atom() := any()}, atom(), context()) -> ok.
 check_struct_field(#var_ref{name = FieldName, line = Line}, FieldTypes, ValMap, StructName, {_, _, StructMap, _} = Ctx) ->
@@ -341,7 +341,7 @@ type_error_of_op2(Operator, TypeofOp1, TypeofOp2) ->
 
 -spec check_types([e_type()], struct_type_map()) -> ok.
 check_types(TypeList, StructMap) ->
-    lists:foreach(fun(T) -> check_type(T, StructMap) end, TypeList).
+    lists:foreach(fun (T) -> check_type(T, StructMap) end, TypeList).
 
 %% check type, ensure that all struct used by type exists.
 -spec check_type(e_type(), struct_type_map()) -> ok.
@@ -371,7 +371,7 @@ join_types_to_str(Types) ->
 
 -spec type_to_str(e_type()) -> string().
 type_to_str(#fn_type{params = Params, ret = RetType}) ->
-    io_lib:format("fun(~s): ~s", [join_types_to_str(Params), type_to_str(RetType)]);
+    io_lib:format("fun (~s): ~s", [join_types_to_str(Params), type_to_str(RetType)]);
 type_to_str(#array_type{elem_type = Type, length = N}) ->
     io_lib:format("{~s, ~w}", [type_to_str(Type), N]);
 type_to_str(#basic_type{tag = Tag, p_depth = PDepth}) when PDepth > 0 ->

@@ -44,7 +44,7 @@ default_compiler_options() ->
 
 -spec ensure_no_recursive_struct(struct_type_map()) -> ok.
 ensure_no_recursive_struct(StructTypeMap) ->
-    maps:foreach(fun(_, S) -> check_struct_recursive(S, StructTypeMap) end, StructTypeMap).
+    maps:foreach(fun (_, S) -> check_struct_recursive(S, StructTypeMap) end, StructTypeMap).
 
 -spec check_struct_recursive(#struct{}, struct_type_map()) -> ok.
 check_struct_recursive(#struct{name = Name, line = Line} = Struct, StructTypeMap) ->

@@ -9,11 +9,11 @@
 generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
     {FnTypeMap, StructMap} = e_util:make_function_and_struct_map_from_ast(AST),
     Ctx = {FnTypeMap, StructMap, GlobalVars},
-    AST2 = lists:map(fun(A) -> fix_function_for_c(A, Ctx) end, AST),
+    AST2 = lists:map(fun (A) -> fix_function_for_c(A, Ctx) end, AST),
     InitCode2 = fix_exprs_for_c(InitCode, Ctx),
     %%io:format(">>>~p~n", [AST2]),
     %% struct definition have to be before function declarations
-    CheckStruct = fun(A) -> element(1, A) =:= struct end,
+    CheckStruct = fun (A) -> element(1, A) =:= struct end,
     {StructAST, FnAST} = lists:partition(CheckStruct, AST2),
     {StructStmts, []} = statements_to_str(StructAST, []),
     {FnStmts, FnDeclars} = statements_to_str(FnAST, InitCode2),
@@ -29,7 +29,7 @@ fix_function_for_c(Any, _) ->
 
 -spec fix_exprs_for_c(e_ast(), context()) -> e_ast().
 fix_exprs_for_c(Exprs, Ctx) ->
-    e_util:expr_map(fun(E) -> fix_expr_for_c(E, Ctx) end, Exprs).
+    e_util:expr_map(fun (E) -> fix_expr_for_c(E, Ctx) end, Exprs).
 
 -spec fix_expr_for_c(e_expr(), context()) -> e_expr().
 fix_expr_for_c(#op1_expr{operator = '@', operand = Operand, line = Line} = E, {FnTypeMap, StructMap, VarTypes} = Ctx) ->
@@ -84,10 +84,10 @@ function_declaration_to_str(Name, ParamStr, RetType) ->
     type_to_c_str(RetType, io_lib:format("~s(~s)", [Name, ParamStr])).
 
 function_params_to_str(NameTypePairs) ->
-    lists:join(",", lists:map(fun({N, T}) -> type_to_c_str(T, N) end, NameTypePairs)).
+    lists:join(",", lists:map(fun ({N, T}) -> type_to_c_str(T, N) end, NameTypePairs)).
 
 function_params_to_str_no_name(Types) ->
-    lists:join(",", lists:map(fun(T) -> type_to_c_str(T, "") end, Types)).
+    lists:join(",", lists:map(fun (T) -> type_to_c_str(T, "") end, Types)).
 
 %% order is not necessary for vars
 var_map_to_str(VarsMap) when is_map(VarsMap) ->
@@ -102,7 +102,7 @@ vars_to_str([], Strs) ->
     lists:reverse(Strs).
 
 names_from_varrefs(VarrefList) ->
-    lists:map(fun(#var_ref{name = N}) -> N end, VarrefList).
+    lists:map(fun (#var_ref{name = N}) -> N end, VarrefList).
 
 map_to_kv_list(NameAtoms, ValueMap) ->
     lists:zip(NameAtoms, e_util:get_values_by_keys(NameAtoms, ValueMap)).
@@ -172,7 +172,7 @@ expr_to_str({Any, _Line, S}, EndChar) when Any =:= string ->
         #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}).
 
 fix_special_chars(String) ->
-    lists:map(fun(C) -> maps:get(C, ?SPECIAL_CHARACTER_MAP, C) end, String).
+    lists:map(fun (C) -> maps:get(C, ?SPECIAL_CHARACTER_MAP, C) end, String).
 
 -spec translate_op(atom()) -> string() | atom().
 translate_op(assign) -> "=";

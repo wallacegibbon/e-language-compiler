@@ -78,7 +78,7 @@ fetch_variables([#function_raw{name = Name, ret_type = Ret, params = Params, stm
     %% local variables should have different names from global variables
     check_variable_conflict(GlobalVars, FnVarTypes),
     %% label names should be different from variables, because the operand of goto could be a pointer variable.
-    Labels = lists:filter(fun(E) -> element(1, E) =:= label end, Exprs),
+    Labels = lists:filter(fun (E) -> element(1, E) =:= label end, Exprs),
     check_label_conflict(Labels, GlobalVars, FnVarTypes),
     FnType =
         #fn_type{params = get_values_by_defs(Params, ParamVars), ret = Ret, line = Line},
@@ -140,4 +140,4 @@ get_values_by_defs(DefList, Map) ->
 
 -spec var_defs_to_refs([#var_def{}]) -> [#var_ref{}].
 var_defs_to_refs(VarDefList) ->
-    lists:map(fun(#var_def{name = N, line = Line}) -> #var_ref{name = N, line = Line} end, VarDefList).
+    lists:map(fun (#var_def{name = N, line = Line}) -> #var_ref{name = N, line = Line} end, VarDefList).

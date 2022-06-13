@@ -14,11 +14,11 @@ expand_sizeof([], _) ->
     [].
 
 expand_sizeof_in_map(Map, Ctx) ->
-    maps:map(fun(_, V1) -> expand_sizeof_in_expr(V1, Ctx) end, Map).
+    maps:map(fun (_, V1) -> expand_sizeof_in_expr(V1, Ctx) end, Map).
 
 -spec expand_sizeof_in_exprs(e_ast(), context()) -> [e_expr()].
 expand_sizeof_in_exprs(Exprs, Ctx) ->
-    e_util:expr_map(fun(E) -> expand_sizeof_in_expr(E, Ctx) end, Exprs).
+    e_util:expr_map(fun (E) -> expand_sizeof_in_expr(E, Ctx) end, Exprs).
 
 -spec expand_sizeof_in_expr(e_expr(), context()) -> e_expr().
 expand_sizeof_in_expr(#sizeof_expr{type = T, line = Line}, Ctx) ->
@@ -47,9 +47,9 @@ expand_sizeof_in_expr(Any, _) ->
 -spec fill_struct_info(e_ast(), context()) -> e_ast().
 fill_struct_info(AST, {_, PointerWidth} = Ctx) ->
     %% struct definition are only allowed in top level of an AST.
-    AST1 = lists:map(fun(E) -> fill_struct_size(E, Ctx) end, AST),
+    AST1 = lists:map(fun (E) -> fill_struct_size(E, Ctx) end, AST),
     {_, StructMap1} = e_util:make_function_and_struct_map_from_ast(AST1),
-    lists:map(fun(E) -> fill_struct_offsets(E, {StructMap1, PointerWidth}) end, AST1).
+    lists:map(fun (E) -> fill_struct_offsets(E, {StructMap1, PointerWidth}) end, AST1).
 
 -spec fill_struct_size(e_expr(), context()) -> e_expr().
 fill_struct_size(#struct{} = S, Ctx) ->
