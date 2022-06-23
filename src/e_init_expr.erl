@@ -37,9 +37,9 @@ expand_init_expr([Any | Rest], NewAST, StructMap) ->
 expand_init_expr([], NewAST, _) ->
     lists:reverse(NewAST).
 
-replace_init_ops(#op2_expr{operator = assign, operand1 = Op1, operand2 = #struct_init_expr{name = Name,
-                                                                                           line = Line,
-                                                                                           field_value_map = FieldValues}},
+replace_init_ops(#op2_expr{operator = assign,
+                           operand1 = Op1,
+                           operand2 = #struct_init_expr{name = Name, line = Line, field_value_map = FieldValues}},
                  StructMap) ->
     case maps:find(Name, StructMap) of
         {ok, #struct{field_names = FieldNames, field_type_map = FieldTypes, field_default_value_map = FieldDefaults}} ->

@@ -2,12 +2,10 @@ Nonterminals
 
 root_stmts root_stmt struct_def function_def var_defs var_def params
 function_stmts function_stmt if_stmt else_stmt while_stmt goto_label
-expr call_expr pre_minus_plus_expr sizeof_expr assign_expr
-op19 op30 op29 op28 op27 op26 op25
-op2_with_assignment type_annotations type_anno
+expr call_expr pre_minus_plus_expr sizeof_expr assign_expr type_annotations type_anno
+op19 op30 op29 op28 op27 op26 op25 op2_with_assignment
 pointer_depth atomic_literal_values
-array_init_expr array_init_elements
-struct_init_expr struct_init_fields struct_init_assignment
+array_init_expr array_init_elements struct_init_expr struct_init_fields struct_init_assignment
 reserved_keyword
 
 .

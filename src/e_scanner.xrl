@@ -1,13 +1,13 @@
 Definitions.
 
-Delim = [@^.~,;:#+\-*/(){}?]|>=|<=|==|!=|!|>|<|=
+Delimiter = [@^.~,;:#+\-*/(){}?]|>=|<=|==|!=|!|>|<|=
 Identifier = [_a-zA-Z][_a-zA-Z0-9]*
-StrQuote = "
-StrUnescapedChar = [^\"\\]
-CharQuote = '
+StringQuote = "
+CharQuote = "
+StringUnescapedChar = [^\"\\]
 CharUnescapedChar = [^\'\\]
 CommonEscapedChar = \\\\|\\b|\\f|\\n|\\r|\\t|\\/
-StrEscapedChar = ({CommonEscapedChar}|\\")
+StringEscapedChar = ({CommonEscapedChar}|\\")
 CharEscapedChar = ({CommonEscapedChar}|\\')
 BinaryDigit = [01]
 OctalDigit = [0-7]
@@ -17,8 +17,8 @@ CommentStart = %
 
 Rules.
 
-{StrQuote}{StrQuote} : {token, {string, TokenLine, ""}}.
-{StrQuote}({StrUnescapedChar}|{StrEscapedChar})+{StrQuote} : {token, {string, TokenLine, fix_str(drop_quotes(TokenChars))}}.
+{StringQuote}{StringQuote} : {token, {string, TokenLine, ""}}.
+{StringQuote}({StringUnescapedChar}|{StringEscapedChar})+{StringQuote} : {token, {string, TokenLine, fix_str(drop_quotes(TokenChars))}}.
 {CharQuote}{CharQuote} : {error, "empty char"}.
 {CharQuote}({CharUnescapedChar}|{CharEscapedChar}){CharQuote} : {token, {integer, TokenLine, fix_char(drop_quotes(TokenChars))}}.
 0x{HexDigit}+ : {token, {integer, TokenLine, str_to_int(TokenChars, 16)}}.
@@ -27,7 +27,7 @@ Rules.
 {DecimalDigit}+ : {token, {integer, TokenLine, list_to_integer(TokenChars)}}.
 {DecimalDigit}+\.{DecimalDigit}+ : {token, {float, TokenLine, list_to_float(TokenChars)}}.
 {DecimalDigit}\.{DecimalDigit}+e{DecimalDigit}+ : {token, {float, TokenLine, list_to_float(TokenChars)}}.
-{Delim} : {token, {list_to_atom(TokenChars), TokenLine}}.
+{Delimiter} : {token, {list_to_atom(TokenChars), TokenLine}}.
 struct|end|fun|return|if|then|elif|else|while|do|goto|sizeof|as|new : {token, {list_to_atom(TokenChars), TokenLine}}.
 rem|and|or|band|bor|bxor|bsl|bsr : {token, {list_to_atom(TokenChars), TokenLine}}.
 cond|case|for|break|continue : {token, {list_to_atom(TokenChars), TokenLine}}.

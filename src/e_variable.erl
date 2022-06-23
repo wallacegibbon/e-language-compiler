@@ -43,8 +43,7 @@ struct_init_to_map(Exprs) ->
 
 -spec struct_init_to_map([#op2_expr{}], [#var_ref{}], #{atom() := e_expr()}) -> {[#var_ref{}], #{atom() := e_expr()}}.
 struct_init_to_map([#op2_expr{operator = assign, operand1 = #var_ref{name = Field} = Op1, operand2 = Val} | Rest],
-                   FieldNames,
-                   ExprMap) ->
+                   FieldNames, ExprMap) ->
     struct_init_to_map(Rest, [Op1 | FieldNames], ExprMap#{Field => fix_struct_init(Val)});
 struct_init_to_map([], FieldNames, ExprMap) ->
     {FieldNames, ExprMap}.
@@ -54,24 +53,18 @@ struct_init_to_map([], FieldNames, ExprMap) ->
 -spec fetch_variables(e_ast(), e_ast(), {var_type_map(), e_ast(), boolean()}) ->
           {e_ast(), var_type_map(), e_ast()}.
 fetch_variables([#var_def{name = Name, type = Type, line = Line, init_value = InitialValue} | Rest],
-                NewAST,
-                {VarTypes, InitCode, CollectInitCode}) ->
+                NewAST, {VarTypes, InitCode, CollectInitCode}) ->
     ensure_no_name_conflict(Name, VarTypes, Line),
     case CollectInitCode of
         true ->
-            fetch_variables(Rest,
-                            NewAST,
-                            {VarTypes#{Name => Type},
-                             appendToAST(InitCode, Name, InitialValue, Line),
-                             CollectInitCode});
+            fetch_variables(Rest, NewAST,
+                            {VarTypes#{Name => Type}, appendToAST(InitCode, Name, InitialValue, Line), CollectInitCode});
         false ->
-            fetch_variables(Rest,
-                            appendToAST(NewAST, Name, InitialValue, Line),
+            fetch_variables(Rest, appendToAST(NewAST, Name, InitialValue, Line),
                             {VarTypes#{Name => Type}, InitCode, CollectInitCode})
     end;
 fetch_variables([#function_raw{name = Name, ret_type = Ret, params = Params, stmts = Exprs, line = Line} | Rest],
-                NewAST,
-                {GlobalVars, _, _} = Ctx) ->
+                NewAST, {GlobalVars, _, _} = Ctx) ->
     {[], ParamVars, ParamInitCode} = fetch_variables(Params, [], {#{}, [], true}),
     e_util:assert(ParamInitCode =:= [], {Line, "function params can not have default value"}),
     {NewExprs, FnVarTypes, []} = fetch_variables(Exprs, [], {ParamVars, [], false}),
@@ -80,14 +73,11 @@ fetch_variables([#function_raw{name = Name, ret_type = Ret, params = Params, stm
     %% label names should be different from variables, because the operand of goto could be a pointer variable.
     Labels = lists:filter(fun (E) -> element(1, E) =:= label end, Exprs),
     check_label_conflict(Labels, GlobalVars, FnVarTypes),
-    FnType =
-        #fn_type{params = get_values_by_defs(Params, ParamVars), ret = Ret, line = Line},
-    Function =
-        #function{name = Name, var_type_map = FnVarTypes, stmts = NewExprs, param_names = var_defs_to_refs(Params), line = Line, type = FnType},
+    FnType = #fn_type{params = get_values_by_defs(Params, ParamVars), ret = Ret, line = Line},
+    Function = #function{name = Name, var_type_map = FnVarTypes, stmts = NewExprs,
+                         param_names = var_defs_to_refs(Params), line = Line, type = FnType},
     fetch_variables(Rest, [Function | NewAST], Ctx);
-fetch_variables([#struct_raw{name = Name, fields = Fields, line = Line} | Rest],
-                NewAST,
-                Ctx) ->
+fetch_variables([#struct_raw{name = Name, fields = Fields, line = Line} | Rest], NewAST, Ctx) ->
     %% struct can have default value
     {[], FieldTypes, StructInitCode} = fetch_variables(Fields, [], {#{}, [], true}),
     {_, FieldInitMap} = struct_init_to_map(StructInitCode),

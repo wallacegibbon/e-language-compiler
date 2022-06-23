@@ -11,7 +11,7 @@ generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
     Ctx = {FnTypeMap, StructMap, GlobalVars},
     AST2 = lists:map(fun (A) -> fix_function_for_c(A, Ctx) end, AST),
     InitCode2 = fix_exprs_for_c(InitCode, Ctx),
-    %%io:format(">>>~p~n", [AST2]),
+                                                % io:format(">>>~p~n", [AST2]),
     %% struct definition have to be before function declarations
     CheckStruct = fun (A) -> element(1, A) =:= struct end,
     {StructAST, FnAST} = lists:partition(CheckStruct, AST2),
