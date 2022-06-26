@@ -142,16 +142,16 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 ### Function Pointer
 
 ```
-myFunction1: fun(): fun(): fun() = anotherFuntion1;
+my_fn1: fun (): fun (): fun () = another_fn1;
 
-myFunction2: fun(i8^, usize): fun(i8^, i8^): fun(isize, usize): u8^ = anotherFuntion2;
+my_fn2: fun (i8^, usize): fun (i8^, i8^): fun (isize, usize): u8^ = another_fn2;
 
 ```
 
 ```c
-void (*(*(*myFunction1)())())() = anotherFuntion1;
+void (*(*(*my_fn1)())())() = another_fn1;
 
-unsigned char * (*(*(*myFunction2)(char *, unsigned int))(char *, char *))(int, unsigned int) = anotherFuntion2;
+unsigned char * (*(*(*my_fn2)(char *, unsigned int))(char *, char *))(int, unsigned int) = another_fn2;
 ```
 
 

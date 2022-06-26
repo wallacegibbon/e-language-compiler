@@ -9,10 +9,10 @@ fun main(argc: isize, argv: i64^^): i64
 
     print(tmp);
 
-    %myfn: fun(u8^) = inc;
+    %myfn: fun (u8^) = inc;
     %myfn(tmp);
 
-    myfn1: fun(): fun(): fun(u8^) = get_incfn1;
+    myfn1: fun (): fun (): fun (u8^) = get_incfn1;
     myfn1()()(tmp);
 
     print(tmp);
@@ -28,11 +28,11 @@ fun main(argc: isize, argv: i64^^): i64
     return (tmp + 11)^;
 end
 
-fun get_incfn1(): fun(): fun(u8^)
+fun get_incfn1(): fun (): fun (u8^)
     return get_incfn2;
 end
 
-fun get_incfn2(): fun(u8^)
+fun get_incfn2(): fun (u8^)
     return inc;
 end
 

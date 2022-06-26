@@ -92,7 +92,7 @@ assemble_op({jal, {r, Rd}, Label}) ->
 assemble_op({jalr, {r, Rd}, {r, Rs1}, ImmediateInteger}) ->
     <<>>;
 assemble_op(Any) ->
-    throw({invalidOPCode, Any}).
+    throw({invalid_op_code, Any}).
 
 disassemble_op(<<>>) ->
     {}.

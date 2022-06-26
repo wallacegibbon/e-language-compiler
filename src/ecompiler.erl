@@ -43,7 +43,7 @@ parse_file(Filename) ->
                     throw({Line, ErrorInfo})
             end;
         {error, enoent} ->
-            throw("module not found");
+            throw("file not found");
         {error, Reason} ->
             throw(Reason)
     end.

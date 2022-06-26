@@ -58,9 +58,9 @@ fetch_variables([#var_def{name = Name, type = Type, line = Line, init_value = In
     case CollectInitCode of
         true ->
             fetch_variables(Rest, NewAST,
-                            {VarTypes#{Name => Type}, appendToAST(InitCode, Name, InitialValue, Line), CollectInitCode});
+                            {VarTypes#{Name => Type}, append_to_ast(InitCode, Name, InitialValue, Line), CollectInitCode});
         false ->
-            fetch_variables(Rest, appendToAST(NewAST, Name, InitialValue, Line),
+            fetch_variables(Rest, append_to_ast(NewAST, Name, InitialValue, Line),
                             {VarTypes#{Name => Type}, InitCode, CollectInitCode})
     end;
 fetch_variables([#function_raw{name = Name, ret_type = Ret, params = Params, stmts = Exprs, line = Line} | Rest],
@@ -88,10 +88,10 @@ fetch_variables([Any | Rest], NewAST, Ctx) ->
 fetch_variables([], NewAST, {VarTypes, InitCode, _}) ->
     {lists:reverse(NewAST), VarTypes, lists:reverse(InitCode)}.
 
--spec appendToAST(e_ast(), atom(), e_expr(), integer()) -> e_ast().
-appendToAST(AST, VarName, InitialValue, Line) when InitialValue =/= none ->
+-spec append_to_ast(e_ast(), atom(), e_expr(), integer()) -> e_ast().
+append_to_ast(AST, VarName, InitialValue, Line) when InitialValue =/= none ->
     [#op2_expr{operator = assign, operand1 = #var_ref{name = VarName, line = Line}, operand2 = InitialValue, line = Line} | AST];
-appendToAST(AST, _, _, _) ->
+append_to_ast(AST, _, _, _) ->
     AST.
 
 -spec check_label_conflict([e_expr()], var_type_map(), var_type_map()) -> ok.

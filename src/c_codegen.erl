@@ -33,7 +33,7 @@ fix_exprs_for_c(Exprs, Ctx) ->
 
 -spec fix_expr_for_c(e_expr(), context()) -> e_expr().
 fix_expr_for_c(#op1_expr{operator = '@', operand = Operand, line = Line} = E, {FnTypeMap, StructMap, VarTypes} = Ctx) ->
-    case e_type:type_of_ast_node(Operand, {VarTypes, FnTypeMap, StructMap, #{}}) of
+    case e_type:typeof_node(Operand, {VarTypes, FnTypeMap, StructMap, #{}}) of
         #array_type{} ->
             #op2_expr{operator = '.', operand1 = fix_expr_for_c(Operand, Ctx), operand2 = #var_ref{name = value, line = Line}};
         _ ->

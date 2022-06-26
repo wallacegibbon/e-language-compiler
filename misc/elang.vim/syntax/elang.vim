@@ -1,7 +1,7 @@
 syn case match
 
 syn match e_comment         "%.*$"
-syn region e_string	        start=/"/ end=/"/ contains=eStringModifier
+syn region e_string	        start=/"/ end=/"/ contains=e_string_modifier
 syn match e_string_modifier "\\(n|r|t|)"
 syn match e_integer	        "\<\d\+\([Ee]\d\+\)\?\>"
 syn match e_integer	        "\<0x\x\+\>"
@@ -25,4 +25,4 @@ hi def link e_integer       Ingeger
 hi def link e_float         Float
 hi def link Ingeger         Number
 hi def link Float           Number
-hi def link eLabel          Label
+hi def link e_label          Label

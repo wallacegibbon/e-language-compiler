@@ -70,7 +70,7 @@ fun main(argc: i64, argv: i64^^): i64
 
     v3: i64^ = v1@;
 
-    f: fun(i64^) = myfn;
+    f: fun (i64^) = myfn;
     f(v1@);
 
     goto finish;
