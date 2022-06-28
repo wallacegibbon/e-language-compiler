@@ -1,5 +1,5 @@
 -module(e_type).
--export([check_types_in_ast/3, check_type_in_ast_nodes/3, typeof_node/2]).
+-export([check_types_in_ast/3, check_type_in_ast_nodes/3, type_of_node/2]).
 
 -include("e_record_definition.hrl").
 
@@ -10,7 +10,7 @@ check_types_in_ast([#function{var_type_map = VarTypes, stmts = Exprs, type = FnT
     check_types(maps:values(VarTypes), StructMap),
     check_type(FnType#fn_type.ret, StructMap),
     CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
-    typeof_nodes(Exprs, {CurrentVars, FnTypeMap, StructMap, FnType#fn_type.ret}),
+    type_of_nodes(Exprs, {CurrentVars, FnTypeMap, StructMap, FnType#fn_type.ret}),
     check_types_in_ast(Rest, GlobalVarTypes, Maps);
 check_types_in_ast([#struct{name = Name, field_type_map = FieldTypes, field_names = FieldNames, field_default_value_map = FieldDefaults} | Rest],
                    GlobalVarTypes,
@@ -29,37 +29,37 @@ check_types_in_ast([], _, _) ->
 
 -spec check_type_in_ast_nodes([e_expr()], var_type_map(), {fn_type_map(), struct_type_map()}) -> ok.
 check_type_in_ast_nodes(Exprs, GlobalVarTypes, {FnTypeMap, StructMap}) ->
-    typeof_nodes(Exprs, {GlobalVarTypes, FnTypeMap, StructMap, #{}}),
+    type_of_nodes(Exprs, {GlobalVarTypes, FnTypeMap, StructMap, #{}}),
     ok.
 
--spec typeof_nodes([e_expr()], context()) -> [e_type()].
-typeof_nodes(Exprs, Ctx) ->
-    lists:map(fun (Expr) -> typeof_node(Expr, Ctx) end, Exprs).
+-spec type_of_nodes([e_expr()], context()) -> [e_type()].
+type_of_nodes(Exprs, Ctx) ->
+    lists:map(fun (Expr) -> type_of_node(Expr, Ctx) end, Exprs).
 
--spec typeof_node(e_expr(), context()) -> e_type().
-typeof_node(#op2_expr{operator = assign, operand1 = Op1, operand2 = Op2, line = Line}, {_, _, StructMap, _} = Ctx) ->
+-spec type_of_node(e_expr(), context()) -> e_type().
+type_of_node(#op2_expr{operator = assign, operand1 = Op1, operand2 = Op2, line = Line}, {_, _, StructMap, _} = Ctx) ->
     Op1Type = case Op1 of
                   #op2_expr{operator = '.', operand1 = SubOp1, operand2 = SubOp2} ->
-                      type_of_struct_field(typeof_node(SubOp1, Ctx), SubOp2, StructMap, Line);
+                      type_of_struct_field(type_of_node(SubOp1, Ctx), SubOp2, StructMap, Line);
                   #op1_expr{operator = '^', operand = SubOp} ->
-                      dec_pointer_depth(typeof_node(SubOp, Ctx), Line);
+                      dec_pointer_depth(type_of_node(SubOp, Ctx), Line);
                   #var_ref{} ->
-                      typeof_node(Op1, Ctx);
+                      type_of_node(Op1, Ctx);
                   Any ->
                       throw({Line, e_util:fmt("invalid left value (~s)", [e_util:expr_to_str(Any)])})
               end,
-    Op2Type = typeof_node(Op2, Ctx),
+    Op2Type = type_of_node(Op2, Ctx),
     case compare_type(Op1Type, Op2Type) of
         true ->
             Op1Type;
         false ->
             throw({Line, e_util:fmt("type mismatch in \"~s = ~s\"", [type_to_str(Op1Type), type_to_str(Op2Type)])})
     end;
-typeof_node(#op2_expr{operator = '.', operand1 = Op1, operand2 = Op2, line = Line}, {_, _, StructMap, _} = Ctx) ->
-    type_of_struct_field(typeof_node(Op1, Ctx), Op2, StructMap, Line);
-typeof_node(#op2_expr{operator = '+', operand1 = Op1, operand2 = Op2, line = Line}, Ctx) ->
-    Op1Type = typeof_node(Op1, Ctx),
-    Op2Type = typeof_node(Op2, Ctx),
+type_of_node(#op2_expr{operator = '.', operand1 = Op1, operand2 = Op2, line = Line}, {_, _, StructMap, _} = Ctx) ->
+    type_of_struct_field(type_of_node(Op1, Ctx), Op2, StructMap, Line);
+type_of_node(#op2_expr{operator = '+', operand1 = Op1, operand2 = Op2, line = Line}, Ctx) ->
+    Op1Type = type_of_node(Op1, Ctx),
+    Op2Type = type_of_node(Op2, Ctx),
     case are_both_number_of_same_type(Op1Type, Op2Type) of
         {true, T} ->
             T;
@@ -72,9 +72,9 @@ typeof_node(#op2_expr{operator = '+', operand1 = Op1, operand2 = Op2, line = Lin
             end
     end;
 %% integer + pointer is valid, but integer - pointer is invalid
-typeof_node(#op2_expr{operator = '-', operand1 = Op1, operand2 = Op2, line = Line}, Ctx) ->
-    Op1Type = typeof_node(Op1, Ctx),
-    Op2Type = typeof_node(Op2, Ctx),
+type_of_node(#op2_expr{operator = '-', operand1 = Op1, operand2 = Op2, line = Line}, Ctx) ->
+    Op1Type = type_of_node(Op1, Ctx),
+    Op2Type = type_of_node(Op2, Ctx),
     case are_both_number_of_same_type(Op1Type, Op2Type) of
         {true, T} ->
             T;
@@ -86,10 +86,10 @@ typeof_node(#op2_expr{operator = '-', operand1 = Op1, operand2 = Op2, line = Lin
                     throw({Line, type_error_of_op2('-', Op1Type, Op2Type)})
             end
     end;
-typeof_node(#op2_expr{operator = Operator, operand1 = Op1, operand2 = Op2, line = Line}, Ctx)
+type_of_node(#op2_expr{operator = Operator, operand1 = Op1, operand2 = Op2, line = Line}, Ctx)
   when Operator =:= '*'; Operator =:= '/' ->
-    Op1Type = typeof_node(Op1, Ctx),
-    Op2Type = typeof_node(Op2, Ctx),
+    Op1Type = type_of_node(Op1, Ctx),
+    Op2Type = type_of_node(Op2, Ctx),
     case are_both_number_of_same_type(Op1Type, Op2Type) of
         {true, T} ->
             T;
@@ -97,37 +97,37 @@ typeof_node(#op2_expr{operator = Operator, operand1 = Op1, operand2 = Op2, line 
             throw({Line, type_error_of_op2(Operator, Op1Type, Op2Type)})
     end;
 %% the left operators are: and, or, band, bor, bxor, bsl, bsr, >, <, ...
-typeof_node(#op2_expr{operator = Operator, operand1 = Op1, operand2 = Op2, line = Line}, Ctx) ->
-    Op1Type = typeof_node(Op1, Ctx),
-    Op2Type = typeof_node(Op2, Ctx),
+type_of_node(#op2_expr{operator = Operator, operand1 = Op1, operand2 = Op2, line = Line}, Ctx) ->
+    Op1Type = type_of_node(Op1, Ctx),
+    Op2Type = type_of_node(Op2, Ctx),
     case are_both_integers(Op1Type, Op2Type) of
         true ->
             Op1Type;
         false ->
             throw({Line, type_error_of_op2(Operator, Op1Type, Op2Type)})
     end;
-typeof_node(#op1_expr{operator = '^', operand = Operand, line = Line}, Ctx) ->
-    case typeof_node(Operand, Ctx) of
+type_of_node(#op1_expr{operator = '^', operand = Operand, line = Line}, Ctx) ->
+    case type_of_node(Operand, Ctx) of
         #basic_type{} = T ->
             dec_pointer_depth(T, Line);
         _ ->
             throw({Line, e_util:fmt("invalid \"^\" on operand ~s", [e_util:expr_to_str(Operand)])})
     end;
-typeof_node(#op1_expr{operator = '@', operand = Operand, line = Line}, {_, _, StructMap, _} = Ctx) ->
+type_of_node(#op1_expr{operator = '@', operand = Operand, line = Line}, {_, _, StructMap, _} = Ctx) ->
     case Operand of
         #op2_expr{operator = '.', operand1 = Op1, operand2 = Op2} ->
-            T = type_of_struct_field(typeof_node(Op1, Ctx), Op2, StructMap, Line),
+            T = type_of_struct_field(type_of_node(Op1, Ctx), Op2, StructMap, Line),
             inc_pointer_depth(T, Line);
         #var_ref{} ->
-            inc_pointer_depth(typeof_node(Operand, Ctx), Line);
+            inc_pointer_depth(type_of_node(Operand, Ctx), Line);
         _ ->
             throw({Line, e_util:fmt("invalid \"@\" on operand ~s", [e_util:expr_to_str(Operand)])})
     end;
-typeof_node(#op1_expr{operand = Operand}, Ctx) ->
-    typeof_node(Operand, Ctx);
-typeof_node(#call_expr{fn = FunExpr, args = Args, line = Line}, Ctx) ->
-    ArgTypes = typeof_nodes(Args, Ctx),
-    case typeof_node(FunExpr, Ctx) of
+type_of_node(#op1_expr{operand = Operand}, Ctx) ->
+    type_of_node(Operand, Ctx);
+type_of_node(#call_expr{fn = FunExpr, args = Args, line = Line}, Ctx) ->
+    ArgTypes = type_of_nodes(Args, Ctx),
+    case type_of_node(FunExpr, Ctx) of
         #fn_type{params = FnParamTypes, ret = FnRetType} ->
             case compare_types(ArgTypes, FnParamTypes) of
                 true ->
@@ -138,24 +138,24 @@ typeof_node(#call_expr{fn = FunExpr, args = Args, line = Line}, Ctx) ->
         T ->
             throw({Line, e_util:fmt("invalid function expr: ~s", [type_to_str(T)])})
     end;
-typeof_node(#if_stmt{condi = Condi, then = Then, else = Else, line = Line}, Ctx) ->
-    typeof_node(Condi, Ctx),
-    typeof_nodes(Then, Ctx),
-    typeof_nodes(Else, Ctx),
+type_of_node(#if_stmt{condi = Condi, then = Then, else = Else, line = Line}, Ctx) ->
+    type_of_node(Condi, Ctx),
+    type_of_nodes(Then, Ctx),
+    type_of_nodes(Else, Ctx),
     e_util:void_type(Line);
-typeof_node(#while_stmt{condi = Condi, stmts = Exprs, line = Line}, Ctx) ->
-    typeof_node(Condi, Ctx),
-    typeof_nodes(Exprs, Ctx),
+type_of_node(#while_stmt{condi = Condi, stmts = Exprs, line = Line}, Ctx) ->
+    type_of_node(Condi, Ctx),
+    type_of_nodes(Exprs, Ctx),
     e_util:void_type(Line);
-typeof_node(#return_stmt{expr = Expr, line = Line}, {_, _, _, FnRetType} = Ctx) ->
-    RealRet = typeof_node(Expr, Ctx),
+type_of_node(#return_stmt{expr = Expr, line = Line}, {_, _, _, FnRetType} = Ctx) ->
+    RealRet = type_of_node(Expr, Ctx),
     case compare_type(RealRet, FnRetType) of
         true ->
             RealRet;
         false ->
             throw({Line, e_util:fmt("ret type should be (~s), not (~s)", [type_to_str(FnRetType), type_to_str(RealRet)])})
     end;
-typeof_node(#var_ref{name = Name, line = Line}, {VarTypes, FnTypeMap, StructMap, _}) ->
+type_of_node(#var_ref{name = Name, line = Line}, {VarTypes, FnTypeMap, StructMap, _}) ->
     Type = case maps:find(Name, VarTypes) of
                error ->
                    case maps:find(Name, FnTypeMap) of
@@ -169,15 +169,15 @@ typeof_node(#var_ref{name = Name, line = Line}, {VarTypes, FnTypeMap, StructMap,
            end,
     check_type(Type, StructMap),
     Type;
-typeof_node(#array_init_expr{elements = Elements, line = Line}, Ctx) ->
-    ElementTypes = typeof_nodes(Elements, Ctx),
+type_of_node(#array_init_expr{elements = Elements, line = Line}, Ctx) ->
+    ElementTypes = type_of_nodes(Elements, Ctx),
     case are_same_type(ElementTypes) of
         true ->
             #array_type{elem_type = hd(ElementTypes), length = length(ElementTypes), line = Line};
         false ->
             throw({Line, e_util:fmt("array init type conflict: {~s}", [join_types_to_str(ElementTypes)])})
     end;
-typeof_node(#struct_init_expr{name = Name, field_names = FieldNames, field_value_map = FieldValues, line = Line}, {_, _, StructMap, _} = Ctx) ->
+type_of_node(#struct_init_expr{name = Name, field_names = FieldNames, field_value_map = FieldValues, line = Line}, {_, _, StructMap, _} = Ctx) ->
     case maps:find(Name, StructMap) of
         {ok, #struct{field_type_map = FieldTypes}} ->
             check_types_in_struct_fields(FieldNames, FieldTypes, FieldValues, Name, Ctx),
@@ -185,14 +185,14 @@ typeof_node(#struct_init_expr{name = Name, field_names = FieldNames, field_value
         _ ->
             throw({Line, e_util:fmt("struct ~s is not found", [Name])})
     end;
-typeof_node(#sizeof_expr{line = Line}, _) ->
+type_of_node(#sizeof_expr{line = Line}, _) ->
     #basic_type{class = integer, p_depth = 0, tag = i64, line = Line};
-typeof_node(#goto_stmt{line = Line}, _) ->
+type_of_node(#goto_stmt{line = Line}, _) ->
     e_util:void_type(Line);
-typeof_node(#goto_label{line = Line}, _) ->
+type_of_node(#goto_label{line = Line}, _) ->
     e_util:void_type(Line);
-typeof_node(#type_convert{expr = Expr, type = Type, line = Line}, Ctx) ->
-    case {typeof_node(Expr, Ctx), Type} of
+type_of_node(#type_convert{expr = Expr, type = Type, line = Line}, Ctx) ->
+    case {type_of_node(Expr, Ctx), Type} of
         {#basic_type{p_depth = D1}, #basic_type{p_depth = D2}} when D1 > 0, D2 > 0 ->
             Type;
         {#basic_type{class = integer, p_depth = 0}, #basic_type{p_depth = D2}} when D2 > 0 ->
@@ -202,11 +202,11 @@ typeof_node(#type_convert{expr = Expr, type = Type, line = Line}, Ctx) ->
         {ExprType, _} ->
             throw({Line, e_util:fmt("incompatible type: ~w <-> ~w", [ExprType, Type])})
     end;
-typeof_node({float, Line, _}, _) ->
+type_of_node({float, Line, _}, _) ->
     #basic_type{class = float, p_depth = 0, tag = f64, line = Line};
-typeof_node({integer, Line, _}, _) ->
+type_of_node({integer, Line, _}, _) ->
     #basic_type{class = integer, p_depth = 0, tag = i64, line = Line};
-typeof_node({string, Line, _}, _) ->
+type_of_node({string, Line, _}, _) ->
     #basic_type{class = integer, p_depth = 1, tag = i8, line = Line}.
 
 -spec arguments_error_info([e_type()], [e_type()]) -> string().
@@ -236,7 +236,7 @@ check_struct_field(#var_ref{name = FieldName, line = Line}, FieldTypes, ValMap, 
     {ok, Val} = maps:find(FieldName, ValMap),
     ExpectedType = get_field_type(FieldName, FieldTypes, StructName, Line),
     check_type(ExpectedType, StructMap),
-    GivenType = typeof_node(Val, Ctx),
+    GivenType = type_of_node(Val, Ctx),
     case compare_type(ExpectedType, GivenType) of
         true ->
             ok;

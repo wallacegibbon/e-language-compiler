@@ -22,7 +22,7 @@ Here are some comparisons:
 | uint8_t *p                 | p: u8^                   |
 | void **p                   | p: any^^                 |
 | ((struct Blah *) p)->f1    | (p as Blah^)^.f1         |
-| sizeof (struct Blah *)     | sizeof(Blah^)            |
+| sizeof(struct Blah *)      | sizeof(Blah^)            |
 | malloc(sizeof(struct A))   | malloc(sizeof(A))        |
 
 
