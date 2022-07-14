@@ -1,8 +1,7 @@
 -module(e_parse_test).
 
--include_lib("eunit/include/eunit.hrl").
-
 -ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
 
 function_normal_test() ->
     {ok, Tokens, _} = e_scanner:string("fun a(v: i8^) v^ = 10; end"),

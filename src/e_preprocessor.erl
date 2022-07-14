@@ -6,10 +6,6 @@
 -type handle_ret() :: {MacroMap :: macro_map(), RetTokens :: [token()], RestTokens :: [token()]}.
 -type token() :: any().
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
-
 -spec handle_special([token()], context()) -> handle_ret().
 handle_special([{identifier, _, define}, {identifier, LineNumber, Name} | Rest], {MacroMap, RetTokens, EndTag} = Ctx) ->
     case MacroMap of
@@ -159,6 +155,7 @@ replace_line_number(Tokens, LineNumber) ->
     lists:map(fun (Token) -> setelement(2, Token, LineNumber) end, Tokens).
 
 -ifdef(EUNIT).
+-include_lib("eunit/include/eunit.hrl").
 
 process_no_operator_test() ->
     {ok, Tokens, _} = e_scanner:string("u32 a = 1;"),

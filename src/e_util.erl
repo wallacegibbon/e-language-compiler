@@ -4,7 +4,6 @@
 -export([primitive_size_of/1, void_type/1, cut_extra/2, fill_unit_opti/2]).
 -export([fill_unit_pessi/2, make_function_and_struct_map_from_ast/1, assert/2]).
 
--include_lib("eunit/include/eunit.hrl").
 -include("e_record_definition.hrl").
 
 %% when do simple conversions, this function can be used to avoid boilerplate
@@ -60,6 +59,7 @@ get_values_by_keys([], _, Result) ->
     lists:reverse(Result).
 
 -ifdef(EUNIT).
+-include_lib("eunit/include/eunit.hrl").
 
 get_values_by_keys_test() ->
     ?assertEqual([3, 2], get_values_by_keys([a, b], #{c => 1, b => 2, a => 3})).

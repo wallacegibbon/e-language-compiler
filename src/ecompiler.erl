@@ -1,7 +1,6 @@
 -module(ecompiler).
 -export([compile_to_ast/1, compile_to_c/2]).
 
--include_lib("eunit/include/eunit.hrl").
 -include("e_record_definition.hrl").
 
 -spec compile_to_c(string(), string()) -> ok.
