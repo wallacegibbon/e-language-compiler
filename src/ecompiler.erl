@@ -41,13 +41,17 @@ parse_file(Filename) ->
 parse_string(RawContent) ->
 	case e_scanner:string(binary_to_list(RawContent)) of
 		{ok, Tokens, _} ->
-			case e_parser:parse(e_preprocessor:process(Tokens)) of
-				{ok, AST} ->
-					AST;
-				{error, {Line, _, ErrorInfo}} ->
-					throw({Line, ErrorInfo})
-			end;
+			parse_tokens(Tokens);
 		{error, ErrorInfo, Line} ->
+			throw({Line, ErrorInfo})
+	end.
+
+-spec parse_tokens([any()]) -> e_ast().
+parse_tokens(Tokens) ->
+	case e_parser:parse(e_preprocessor:process(Tokens)) of
+		{ok, AST} ->
+			AST;
+		{error, {Line, _, ErrorInfo}} ->
 			throw({Line, ErrorInfo})
 	end.
 

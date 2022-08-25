@@ -36,7 +36,8 @@ fix_function_for_c(
 		stmts = fix_exprs_for_c(
 			Exprs,
 			{FnTypeMap, StructMap, maps:merge(GlobalVars, VarTypes)}
-		)};
+		)
+	};
 fix_function_for_c(Any, _) ->
 	Any.
 
@@ -45,7 +46,10 @@ fix_exprs_for_c(Exprs, Ctx) ->
 	e_util:expr_map(fun (E) -> fix_expr_for_c(E, Ctx) end, Exprs).
 
 -spec fix_expr_for_c(e_expr(), context()) -> e_expr().
-fix_expr_for_c(#op1_expr{operator = '@', operand = Operand, line = Line} = E, {FnTypeMap, StructMap, VarTypes} = Ctx) ->
+fix_expr_for_c(
+	#op1_expr{operator = '@', operand = Operand, line = Line} = E,
+	{FnTypeMap, StructMap, VarTypes} = Ctx
+) ->
 	case
 		e_type:type_of_node(
 			Operand,

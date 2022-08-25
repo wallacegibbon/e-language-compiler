@@ -9,9 +9,15 @@ check_position(#op2_expr{operator = assign, operand2 = Op2})
 			is_record(Op2, array_init_expr) ->
 	ok;
 check_position(#struct_init_expr{line = Line}) ->
-	throw({Line, "struct init expression is only allowed in assignments"});
+	e_util:ethrow(
+		Line,
+		"struct init expression is only allowed in assignments"
+	);
 check_position(#array_init_expr{line = Line}) ->
-	throw({Line, "array init expression is only allowed in assignments"});
+	e_util:ethrow(
+		Line,
+		"array init expression is only allowed in assignments"
+	);
 check_position(_) ->
 	ok.
 
@@ -40,6 +46,7 @@ expand_init_expr(
 		} | NewAST],
 		StructMap
 	);
+
 expand_init_expr(
 	[#while_stmt{stmts = Exprs} = E | Rest],
 	NewAST,
@@ -51,16 +58,20 @@ expand_init_expr(
 			stmts = expand_init_expr(Exprs, [], StructMap)
 		} | NewAST],
 		StructMap);
+
 expand_init_expr([#op2_expr{} = Op | Rest], NewAST, StructMap) ->
 	expand_init_expr(
 		Rest,
 		replace_init_ops(Op, StructMap) ++ NewAST,
 		StructMap
 	);
+
 expand_init_expr([Any | Rest], NewAST, StructMap) ->
 	expand_init_expr(Rest, [Any | NewAST], StructMap);
+
 expand_init_expr([], NewAST, _) ->
 	lists:reverse(NewAST).
+
 
 replace_init_ops(
 	#op2_expr{
@@ -90,11 +101,13 @@ replace_init_ops(
 				StructMap
 			);
 		error ->
-			throw({
+			e_util:ethrow(
 				Line,
-				e_util:fmt("struct ~s is not found", [Name])
-			})
+				"struct ~s is not found",
+				[Name]
+			)
 		end;
+
 replace_init_ops(
 	#op2_expr{
 		operator = assign,
@@ -104,8 +117,10 @@ replace_init_ops(
 	StructMap
 ) ->
 	array_init_to_ops(Op1, Elements, 0, Line, [], StructMap);
+
 replace_init_ops(Any, _) ->
 	[Any].
+
 
 struct_init_to_ops(
 	Target,
@@ -144,8 +159,10 @@ struct_init_to_ops(
 		Ops ++ NewCode,
 		StructMap
 	);
+
 struct_init_to_ops(_, [], _, _, NewCode, _) ->
 	NewCode.
+
 
 default_value_of(#array_type{elem_type = Type, length = Len}, Line) ->
 	#array_init_expr{

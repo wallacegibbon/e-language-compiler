@@ -11,6 +11,7 @@ expand_sizeof([#function{stmts = Exprs} = F | Rest], Ctx) ->
 		F#function{stmts = expand_sizeof_in_exprs(Exprs, Ctx)}
 		| expand_sizeof(Rest, Ctx)
 	];
+
 expand_sizeof(
 	[#struct{field_default_value_map = FieldDefaults} = S | Rest],
 	Ctx
@@ -22,15 +23,19 @@ expand_sizeof(
 		}
 		| expand_sizeof(Rest, Ctx)
 	];
+
 expand_sizeof([], _) ->
 	[].
+
 
 expand_sizeof_in_map(Map, Ctx) ->
 	maps:map(fun (_, V1) -> expand_sizeof_in_expr(V1, Ctx) end, Map).
 
+
 -spec expand_sizeof_in_exprs(e_ast(), context()) -> [e_expr()].
 expand_sizeof_in_exprs(Exprs, Ctx) ->
 	e_util:expr_map(fun (E) -> expand_sizeof_in_expr(E, Ctx) end, Exprs).
+
 
 -spec expand_sizeof_in_expr(e_expr(), context()) -> e_expr().
 expand_sizeof_in_expr(#sizeof_expr{type = T, line = Line}, Ctx) ->
@@ -40,23 +45,29 @@ expand_sizeof_in_expr(#sizeof_expr{type = T, line = Line}, Ctx) ->
 		I ->
 			throw({Line, I})
 	end;
+
 expand_sizeof_in_expr(#op2_expr{operand1 = Op1, operand2 = Op2} = O, Ctx) ->
 	O#op2_expr{
 		operand1 = expand_sizeof_in_expr(Op1, Ctx),
 		operand2 = expand_sizeof_in_expr(Op2, Ctx)
 	};
+
 expand_sizeof_in_expr(#op1_expr{operand = Operand} = O, Ctx) ->
 	O#op1_expr{operand = expand_sizeof_in_expr(Operand, Ctx)};
+
 expand_sizeof_in_expr(#struct_init_expr{field_value_map = ExprMap} = S, Ctx) ->
 	S#struct_init_expr{
 		field_value_map = expand_sizeof_in_map(ExprMap, Ctx)
 	};
+
 expand_sizeof_in_expr(#array_init_expr{elements = Elements} = A, Ctx) ->
 	A#array_init_expr{
 		elements = expand_sizeof_in_exprs(Elements, Ctx)
 	};
+
 expand_sizeof_in_expr(Any, _) ->
 	Any.
+
 
 %% calculate struct size and collect field offsets.
 %%
@@ -150,8 +161,10 @@ size_of_struct_fields(
 				Ctx
 			)
 	end;
+
 size_of_struct_fields([], CurrentOffset, OffsetMap, _) ->
 	{CurrentOffset, OffsetMap}.
+
 
 -spec fix_struct_field_offset(integer(), integer(), integer()) -> integer().
 fix_struct_field_offset(CurrentOffset, NextOffset, PointerWidth) ->
@@ -164,6 +177,7 @@ fix_struct_field_offset(CurrentOffset, NextOffset, PointerWidth) ->
 		false ->
 			CurrentOffset
 	end.
+
 
 -spec size_of(e_type(), context()) -> non_neg_integer().
 size_of(#array_type{elem_type = T, length = Len}, {_, PointerWidth} = Ctx) ->

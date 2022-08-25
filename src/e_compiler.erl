@@ -11,6 +11,7 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	CompileOptions = maps:merge(
 		default_compiler_options(), CustomCompileOptions
 	),
+
 	{AST2, VarTypeMap, InitCode0} = e_variable:fetch_variables(AST),
 
 	{FnTypeMap, StructMap0} =
@@ -54,21 +55,25 @@ ensure_no_recursive_struct(StructTypeMap) ->
 		StructTypeMap
 	).
 
+
 -spec check_struct_recursive(#struct{}, struct_type_map()) -> ok.
 check_struct_recursive(
 	#struct{name = Name, line = Line} = Struct,
 	StructTypeMap
 ) ->
-	case check_struct_object(Struct, StructTypeMap, []) of
-		ok ->
-			ok;
+	try
+		check_struct_object(Struct, StructTypeMap, [])
+	catch
 		{recur, Chain} ->
 			throw({
 				Line,
-				e_util:fmt("recursive struct ~s -> ~w",
-						[Name, Chain])
+				e_util:fmt(
+					"recursive struct ~s -> ~w",
+					[Name, Chain]
+				)
 			})
 	end.
+
 
 -spec check_struct_object(#struct{}, struct_type_map(), [atom()])
 	-> ok | {recur, [any()]}.
@@ -81,27 +86,38 @@ check_struct_object(
     		maps:to_list(FieldTypes), StructMap, [Name | UsedStructs]
 	).
 
+
 -spec check_struct_field([{atom(), e_type()}], struct_type_map(), [atom()])
-	-> ok | {recur, [any()]}.
+	-> ok.
+
 check_struct_field([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
-    case contain_struct(FieldType) of
-        {yes, StructName} ->
-            case e_util:value_in_list(StructName, UsedStructs) of
-                true ->
-                    {recur, lists:reverse([StructName | UsedStructs])};
-                false ->
-                    case check_struct_object(maps:get(StructName, StructMap), StructMap, UsedStructs) of
-                        ok ->
-                            check_struct_field(RestFields, StructMap, UsedStructs);
-                        {recur, _} = Any ->
-                            Any
-                    end
-            end;
-        no ->
-            check_struct_field(RestFields, StructMap, UsedStructs)
-    end;
+	case contain_struct(FieldType) of
+		{yes, StructName} ->
+			check_struct_field_sub(
+				StructName, StructMap, UsedStructs
+			);
+		no ->
+			check_struct_field(RestFields, StructMap, UsedStructs)
+	end;
+
 check_struct_field([], _, _) ->
 	ok.
+
+
+check_struct_field_sub(StructName, StructMap, UsedStructs) ->
+	case e_util:value_in_list(StructName, UsedStructs) of
+		true ->
+			throw({
+				recur,
+				lists:reverse([StructName | UsedStructs])
+			});
+		false ->
+			check_struct_object(
+				maps:get(StructName, StructMap),
+				StructMap,
+				UsedStructs
+			)
+	end.
 
 -spec contain_struct(e_type()) -> {yes, atom()} | no.
 contain_struct(#basic_type{class = struct, p_depth = 0, tag = Name}) ->

@@ -23,6 +23,7 @@ check_types_in_ast(
 		{CurrentVars, FnTypeMap, StructMap, FnType#fn_type.ret}
 	),
 	check_types_in_ast(Rest, GlobalVarTypes, Maps);
+
 check_types_in_ast(
 	[
 		#struct{
@@ -49,13 +50,17 @@ check_types_in_ast(
 		{GlobalVarTypes, FnTypeMap, StructMap, #{}}
 	),
 	check_types_in_ast(Rest, GlobalVarTypes, Maps);
+
 check_types_in_ast([_ | Rest], GlobalVarTypes, Maps) ->
 	check_types_in_ast(Rest, GlobalVarTypes, Maps);
+
 check_types_in_ast([], _, _) ->
 	ok.
 
+
 -type context() ::
 	{var_type_map(), fn_type_map(), struct_type_map(), fn_ret_type_map()}.
+
 
 -spec check_type_in_ast_nodes(
 	[e_expr()], var_type_map(), {fn_type_map(), struct_type_map()}
@@ -65,9 +70,11 @@ check_type_in_ast_nodes(Exprs, GlobalVarTypes, {FnTypeMap, StructMap}) ->
 	type_of_nodes(Exprs, {GlobalVarTypes, FnTypeMap, StructMap, #{}}),
 	ok.
 
+
 -spec type_of_nodes([e_expr()], context()) -> [e_type()].
 type_of_nodes(Exprs, Ctx) ->
 	lists:map(fun (Expr) -> type_of_node(Expr, Ctx) end, Exprs).
+
 
 -spec type_of_node(e_expr(), context()) -> e_type().
 type_of_node(
@@ -97,29 +104,22 @@ type_of_node(
 			#var_ref{} ->
 				type_of_node(Op1, Ctx);
 			Any ->
-				throw({
+				e_util:ethrow(
 					Line,
-					e_util:fmt(
-						"invalid left value (~s)",
-						[e_util:expr_to_str(Any)]
-					)
-				})
-			  end,
+					"invalid left value (~s)",
+					[e_util:expr_to_str(Any)]
+				)
+		end,
 	Op2Type = type_of_node(Op2, Ctx),
 	case compare_type(Op1Type, Op2Type) of
 		true ->
 			Op1Type;
 		false ->
-			throw({
+			e_util:ethrow(
 				Line,
-				e_util:fmt(
-					"type mismatch in \"~s = ~s\"",
-					[
-						type_to_str(Op1Type),
-						type_to_str(Op2Type)
-					]
-				)
-			})
+				"type mismatch in \"~s = ~s\"",
+				[type_to_str(Op1Type), type_to_str(Op2Type)]
+			)
 	end;
 type_of_node(
 	#op2_expr{operator = '.', operand1 = Op1, operand2 = Op2, line = Line},
@@ -140,12 +140,12 @@ type_of_node(
 				{true, PointerType} ->
 					PointerType;
 				false ->
-					throw({
+					e_util:ethrow(
 						Line,
 						type_error_of_op2(
 							'+', Op1Type, Op2Type
 						)
-					})
+					)
 			end
 	end;
 %% integer + pointer is valid, but integer - pointer is invalid
@@ -163,14 +163,14 @@ type_of_node(
 				{true, PointerType} ->
 					PointerType;
 				false ->
-					throw({
+					e_util:ethrow(
 						Line,
 						type_error_of_op2(
 							'-',
 							Op1Type,
 							Op2Type
 						)
-					})
+					)
 			end
 	end;
 type_of_node(
@@ -188,10 +188,10 @@ type_of_node(
 		{true, T} ->
 			T;
 		false ->
-			throw({
+			e_util:ethrow(
 				Line,
 				type_error_of_op2(Operator, Op1Type, Op2Type)
-			})
+			)
 	end;
 %% the left operators are: and, or, band, bor, bxor, bsl, bsr, >, <, ...
 type_of_node(
@@ -209,23 +209,21 @@ type_of_node(
 		true ->
 			Op1Type;
 		false ->
-			throw({
+			e_util:ethrow(
 				Line,
 				type_error_of_op2(Operator, Op1Type, Op2Type)
-			})
+			)
 	end;
 type_of_node(#op1_expr{operator = '^', operand = Operand, line = Line}, Ctx) ->
 	case type_of_node(Operand, Ctx) of
 		#basic_type{} = T ->
 			dec_pointer_depth(T, Line);
 		_ ->
-			throw({
+			e_util:ethrow(
 				Line,
-				e_util:fmt(
-					"invalid \"^\" on operand ~s",
-					[e_util:expr_to_str(Operand)]
-				)
-			})
+				"invalid \"^\" on operand ~s",
+				[e_util:expr_to_str(Operand)]
+			)
 	end;
 type_of_node(
 	#op1_expr{operator = '@', operand = Operand, line = Line},
@@ -240,13 +238,11 @@ type_of_node(
 		#var_ref{} ->
 			inc_pointer_depth(type_of_node(Operand, Ctx), Line);
 		_ ->
-			throw({
+			e_util:ethrow(
 				Line,
-				e_util:fmt(
-					"invalid \"@\" on operand ~s",
-					[e_util:expr_to_str(Operand)]
-				)
-			})
+				"invalid \"@\" on operand ~s",
+				[e_util:expr_to_str(Operand)]
+			)
 	end;
 type_of_node(#op1_expr{operand = Operand}, Ctx) ->
 	type_of_node(Operand, Ctx);
@@ -258,21 +254,19 @@ type_of_node(#call_expr{fn = FunExpr, args = Args, line = Line}, Ctx) ->
 				true ->
 					FnRetType;
 				false ->
-					throw({
+					e_util:ethrow(
 						Line,
 						arguments_error_info(
 							FnParamTypes, ArgTypes
 						)
-					})
+					)
 			end;
 		T ->
-			throw({
+			e_util:ethrow(
 				Line,
-				e_util:fmt(
-					"invalid function expr: ~s",
-					[type_to_str(T)]
-				)
-			})
+				"invalid function expr: ~s",
+				[type_to_str(T)]
+			)
 	end;
 type_of_node(
 	#if_stmt{condi = Condi, then = Then, else = Else, line = Line},
@@ -295,18 +289,16 @@ type_of_node(
 		true ->
 			RealRet;
 		false ->
-			throw({
+			e_util:ethrow(
 				Line,
-				e_util:fmt(
-					"ret type should be (~s), not (~s)",
-					[
-						type_to_str(FnRetType),
-						type_to_str(RealRet)
-					]
-				)
-			})
+				"ret type should be (~s), not (~s)",
+				[type_to_str(FnRetType), type_to_str(RealRet)]
+			)
 	end;
-type_of_node(#var_ref{name = Name, line = Line}, {VarTypes, FnTypeMap, StructMap, _}) ->
+type_of_node(
+	#var_ref{name = Name, line = Line},
+	{VarTypes, FnTypeMap, StructMap, _}
+) ->
 	Type =
 		case maps:find(Name, VarTypes) of
 			error ->
@@ -314,10 +306,11 @@ type_of_node(#var_ref{name = Name, line = Line}, {VarTypes, FnTypeMap, StructMap
 					{ok, T} ->
 						T;
 					error ->
-						throw({
+						e_util:ethrow(
 							Line,
-							e_util:fmt("variable ~s is undefined", [Name])
-						})
+							"variable ~s is undefined",
+							[Name]
+						)
 			       end;
 			   {ok, T} ->
 			       T
@@ -334,13 +327,11 @@ type_of_node(#array_init_expr{elements = Elements, line = Line}, Ctx) ->
 				line = Line
 			};
 		false ->
-			throw({
+			e_util:ethrow(
 				Line,
-				e_util:fmt(
-					"array init type conflict: {~s}",
-					[join_types_to_str(ElementTypes)]
-				)
-			})
+				"array init type conflict: {~s}",
+				[join_types_to_str(ElementTypes)]
+			)
 	end;
 type_of_node(
 	#struct_init_expr{
@@ -363,10 +354,11 @@ type_of_node(
 				line = Line
 			};
 		_ ->
-			throw({
+			e_util:ethrow(
 				Line,
-				e_util:fmt("struct ~s is not found", [Name])
-			})
+				"struct ~s is not found",
+				[Name]
+			)
 	end;
 type_of_node(#sizeof_expr{line = Line}, _) ->
 	#basic_type{class = integer, p_depth = 0, tag = i64, line = Line};
@@ -392,13 +384,11 @@ type_of_node(#type_convert{expr = Expr, type = Type, line = Line}, Ctx) ->
 		} ->
 			Type;
 		{ExprType, _} ->
-			throw({
+			e_util:ethrow(
 				Line,
-				e_util:fmt(
-					"incompatible type: ~w <-> ~w",
-					[ExprType, Type]
-				)
-			})
+				"incompatible type: ~w <-> ~w",
+				[ExprType, Type]
+			)
 	end;
 type_of_node({float, Line, _}, _) ->
 	#basic_type{class = float, p_depth = 0, tag = f64, line = Line};
@@ -423,19 +413,21 @@ inc_pointer_depth(#basic_type{p_depth = PDepth} = T, _) ->
 inc_pointer_depth(#array_type{elem_type = #basic_type{} = T}, OpLine) ->
 	inc_pointer_depth(T, OpLine);
 inc_pointer_depth(T, OpLine) ->
-	throw({
+	e_util:ethrow(
 		OpLine,
-		e_util:fmt("'@' on type ~s is invalid", [type_to_str(T)])
-	}).
+		"'@' on type ~s is invalid",
+		[type_to_str(T)]
+	).
 
 -spec dec_pointer_depth(e_type(), integer()) -> e_type().
 dec_pointer_depth(#basic_type{p_depth = PDepth} = T, _) when PDepth > 0 ->
 	T#basic_type{p_depth = PDepth - 1};
 dec_pointer_depth(T, OpLine) ->
-	throw({
+	e_util:ethrow(
 		OpLine,
-		e_util:fmt("'^' on type ~s is invalid", [type_to_str(T)])
-	}).
+		"'^' on type ~s is invalid",
+		[type_to_str(T)]
+	).
 
 -spec check_types_in_struct_fields(
 	[#var_ref{}],
@@ -465,18 +457,16 @@ check_struct_field(#var_ref{name = FieldName, line = Line}, FieldTypes, ValMap, 
 		true ->
 			ok;
 		false ->
-			throw({
+			e_util:ethrow(
 				Line,
-				e_util:fmt(
-					"~s.~s type error: ~s = ~s",
-					[
-						StructName,
-						FieldName,
-						type_to_str(ExpectedType),
-						type_to_str(GivenType)
-					]
-				)
-			})
+				"~s.~s type error: ~s = ~s",
+				[
+					StructName,
+					FieldName,
+					type_to_str(ExpectedType),
+					type_to_str(GivenType)
+				]
+			)
 	end.
 
 -spec are_same_type([e_type()]) -> boolean().
@@ -499,19 +489,18 @@ type_of_struct_field(
 		{ok, #struct{field_type_map = FieldTypes}} ->
 			get_field_type(FieldName, FieldTypes, Name, Line);
 		error ->
-			throw({
+			e_util:ethrow(
 				Line,
-				e_util:fmt("struct ~s is not found", [Name])
-			})
+				"struct ~s is not found",
+				[Name]
+			)
 	end;
 type_of_struct_field(T, _, _, Line) ->
-	throw({
+	e_util:ethrow(
 		Line,
-		e_util:fmt(
-			"operand1 for \".\" is not struct ~s",
-			[type_to_str(T)]
-		)
-	}).
+		"operand1 for \".\" is not struct ~s",
+		[type_to_str(T)]
+	).
 
 -spec get_field_type(atom(), #{atom() => e_type()}, atom(), integer())
 	-> e_type().
@@ -520,13 +509,11 @@ get_field_type(FieldName, FieldTypes, StructName, Line) ->
 		{ok, Type} ->
 			Type;
 		error ->
-			throw({
+			e_util:ethrow(
 				Line,
-				e_util:fmt(
-					"~s.~s does not exist",
-					[StructName, FieldName]
-				)
-			})
+				"~s.~s does not exist",
+				[StructName, FieldName]
+			)
 	end.
 
 -spec compare_types([e_type()], [e_type()]) -> boolean().
@@ -636,17 +623,14 @@ check_type(#basic_type{class = struct, tag = Tag, line = Line}, StructMap) ->
 		{ok, _} ->
 			ok;
 		error ->
-			throw({
-				Line,
-				e_util:fmt("struct ~s is not found", [Tag])
-			})
+			e_util:ethrow(Line, "struct ~s is not found", [Tag])
 	end;
 check_type(#basic_type{}, _) ->
 	ok;
 check_type(#array_type{elem_type = Type}, StructMap) ->
 	case Type of
 		#array_type{line = Line} ->
-			throw({Line, "nested array is not supported"});
+			e_util:ethrow(Line, "nested array is not supported");
 		_ ->
 			check_type(Type, StructMap)
 	end;

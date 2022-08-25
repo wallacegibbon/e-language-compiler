@@ -1,9 +1,9 @@
 -module(e_util).
--export([expr_to_str/1, expr_map/2, filter_var_refs_in_map/2, fmt/2]).
--export([get_values_by_keys/2]).
+-export([fill_unit_pessi/2, make_function_and_struct_map_from_ast/1, assert/2]).
+-export([expr_to_str/1, expr_map/2, filter_var_refs_in_map/2]).
+-export([get_values_by_keys/2, fmt/2, ethrow/3, ethrow/2]).
 -export([names_of_var_defs/1, names_of_var_refs/1, value_in_list/2]).
 -export([primitive_size_of/1, void_type/1, cut_extra/2, fill_unit_opti/2]).
--export([fill_unit_pessi/2, make_function_and_struct_map_from_ast/1, assert/2]).
 
 -include("e_record_definition.hrl").
 
@@ -22,6 +22,7 @@ expr_map(
 		}
 		| expr_map(Fn, Rest)
 	];
+
 expr_map(
 	Fn,
 	[#while_stmt{condi = Cond, stmts = Exprs} = While | Rest]
@@ -30,6 +31,7 @@ expr_map(
 		While#while_stmt{condi = Fn(Cond), stmts = expr_map(Fn, Exprs)}
 		| expr_map(Fn, Rest)
 	];
+
 expr_map(
 	Fn,
 	[#call_expr{fn = Callee, args = Args} = FnCall | Rest]
@@ -38,12 +40,16 @@ expr_map(
 		FnCall#call_expr{fn = Fn(Callee), args = expr_map(Fn, Args)}
 		| expr_map(Fn, Rest)
 	];
+
 expr_map(Fn, [#return_stmt{expr = Expr} = Ret | Rest]) ->
 	[Ret#return_stmt{expr = Fn(Expr)} | expr_map(Fn, Rest)];
+
 expr_map(Fn, [Any | Rest]) ->
 	[Fn(Any) | expr_map(Fn, Rest)];
+
 expr_map(_, []) ->
 	[].
+
 
 -spec expr_to_str(e_expr()) -> string().
 expr_to_str(#if_stmt{condi = Cond, then = Then, else = Else}) ->
@@ -79,6 +85,14 @@ expr_to_str(Any) ->
 -spec fmt(string(), [any()]) -> string().
 fmt(FmtStr, Args) ->
 	lists:flatten(io_lib:format(FmtStr, Args)).
+
+-spec ethrow(non_neg_integer(), string()) -> no_return().
+ethrow(Line, FmtStr) ->
+	ethrow(Line, FmtStr, []).
+
+-spec ethrow(non_neg_integer(), string(), [any()]) -> no_return().
+ethrow(Line, FmtStr, Args) ->
+	throw({Line, fmt(FmtStr, Args)}).
 
 -spec get_values_by_keys([atom()], #{atom() => any()}) -> [any()].
 get_values_by_keys(Fields, Map) when is_map(Map) ->

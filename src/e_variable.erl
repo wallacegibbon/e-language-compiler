@@ -12,18 +12,23 @@ fetch_variables(AST) ->
 	),
 	{AST3, VarTypes, InitCode}.
 
+
 -spec prepare_struct_init_expr(e_ast()) -> e_ast().
 prepare_struct_init_expr([#function_raw{stmts = Exprs} = F | Rest]) ->
 	[F#function_raw{stmts = fix_struct_init_ast(Exprs)}
 		| prepare_struct_init_expr(Rest)];
+
 prepare_struct_init_expr([#struct_raw{fields = Exprs} = S | Rest]) ->
 	[S#struct_raw{fields = fix_struct_init_ast(Exprs)}
 		| prepare_struct_init_expr(Rest)];
+
 prepare_struct_init_expr([#var_def{init_value = Value} = V | Rest]) ->
 	[V#var_def{init_value = fix_struct_init(Value)}
 		| prepare_struct_init_expr(Rest)];
+
 prepare_struct_init_expr([]) ->
 	[].
+
 
 -spec fix_struct_init_ast(e_ast()) -> e_ast().
 fix_struct_init_ast(Lst) ->
@@ -77,6 +82,7 @@ struct_init_to_map(
 		[Op1 | FieldNames],
 		ExprMap#{Field => fix_struct_init(Val)}
 	);
+
 struct_init_to_map([], FieldNames, ExprMap) ->
 	{FieldNames, ExprMap}.
 

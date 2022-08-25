@@ -154,10 +154,12 @@ assign_test() ->
 		{function_raw, 1, b, [], {basic_type, 1, 0, void, void},
 		[{op2_expr, 1, assign, {var_ref, 1, a},
 		{op2_expr, 1, '*', {var_ref, 1, a}, {integer, 1, 3}}},
-		{op2_expr, 1, assign, {var_ref, 1, c}, {op2_expr, 1, 'bsr', {var_ref, 1, c}, {integer, 1, 5}}}]}
+		{op2_expr, 1, assign, {var_ref, 1, c},
+		{op2_expr, 1, 'bsr', {var_ref, 1, c}, {integer, 1, 5}}}]}
 		],
 		AST
 	),
 	ok.
 
 -endif.
+
