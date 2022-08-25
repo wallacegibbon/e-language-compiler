@@ -42,8 +42,8 @@ expand_sizeof_in_expr(#sizeof_expr{type = T, line = Line}, Ctx) ->
 	try
 		{integer, Line, size_of(T, Ctx)}
 	catch
-		I ->
-			throw({Line, I})
+	I ->
+		throw({Line, I})
 	end;
 
 expand_sizeof_in_expr(#op2_expr{operand1 = Op1, operand2 = Op2} = O, Ctx) ->
@@ -143,23 +143,23 @@ size_of_struct_fields(
 	FieldSize = size_of(FieldType, Ctx),
 	NextOffset = CurrentOffset + FieldSize,
 	case CurrentOffset rem PointerWidth =/= 0 of
-		true ->
-			Offset = fix_struct_field_offset(
-				CurrentOffset, NextOffset, PointerWidth
-			),
-			size_of_struct_fields(
-				Rest,
-				Offset + FieldSize,
-				OffsetMap#{FieldName => Offset},
-				Ctx
-			);
-		false ->
-			size_of_struct_fields(
-				Rest,
-				NextOffset,
-				OffsetMap#{FieldName => CurrentOffset},
-				Ctx
-			)
+	true ->
+		Offset = fix_struct_field_offset(
+			CurrentOffset, NextOffset, PointerWidth
+		),
+		size_of_struct_fields(
+			Rest,
+			Offset + FieldSize,
+			OffsetMap#{FieldName => Offset},
+			Ctx
+		);
+	false ->
+		size_of_struct_fields(
+			Rest,
+			NextOffset,
+			OffsetMap#{FieldName => CurrentOffset},
+			Ctx
+		)
 	end;
 
 size_of_struct_fields([], CurrentOffset, OffsetMap, _) ->
@@ -172,10 +172,10 @@ fix_struct_field_offset(CurrentOffset, NextOffset, PointerWidth) ->
 		e_util:cut_extra(NextOffset, PointerWidth) >
 		e_util:cut_extra(CurrentOffset, PointerWidth)
 	of
-		true ->
-			e_util:fill_unit_opti(CurrentOffset, PointerWidth);
-		false ->
-			CurrentOffset
+	true ->
+		e_util:fill_unit_opti(CurrentOffset, PointerWidth);
+	false ->
+		CurrentOffset
 	end.
 
 
@@ -187,20 +187,20 @@ size_of(#basic_type{p_depth = N}, {_, PointerWidth}) when N > 0 ->
 	PointerWidth;
 size_of(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
 	case maps:find(Tag, StructMap) of
-		{ok, S} ->
-			size_of_struct(S, Ctx);
-		error ->
-			throw(e_util:fmt("~s is not found", [Tag]))
+	{ok, S} ->
+		size_of_struct(S, Ctx);
+	error ->
+		throw(e_util:fmt("~s is not found", [Tag]))
 	end;
 size_of(
 	#basic_type{class = C, tag = Tag},
 	{_, PointerWidth}
 ) when C =:= integer; C =:= float ->
 	case e_util:primitive_size_of(Tag) of
-		pointer_size ->
-			PointerWidth;
-		V when is_integer(V) ->
-			V
+	pointer_size ->
+		PointerWidth;
+	V when is_integer(V) ->
+		V
 	end;
 size_of(#fn_type{}, {_, PointerWidth}) ->
 	PointerWidth;

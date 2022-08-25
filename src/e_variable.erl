@@ -106,31 +106,31 @@ fetch_variables(
 ) ->
 	ensure_no_name_conflict(Name, VarTypes, Line),
 	case CollectInitCode of
-		true ->
-			fetch_variables(
-				Rest,
-				NewAST,
-				{
-					VarTypes#{Name => Type},
-					append_to_ast(
-						InitCode,
-						Name,
-						InitialValue,
-						Line
-					),
-					CollectInitCode
-				}
-			);
-		false ->
-			fetch_variables(
-				Rest,
-				append_to_ast(NewAST, Name, InitialValue, Line),
-				{
-					VarTypes#{Name => Type},
+	true ->
+		fetch_variables(
+			Rest,
+			NewAST,
+			{
+				VarTypes#{Name => Type},
+				append_to_ast(
 					InitCode,
-					CollectInitCode
-				}
-			)
+					Name,
+					InitialValue,
+					Line
+				),
+				CollectInitCode
+			}
+		);
+	false ->
+		fetch_variables(
+			Rest,
+			append_to_ast(NewAST, Name, InitialValue, Line),
+			{
+				VarTypes#{Name => Type},
+				InitCode,
+				CollectInitCode
+			}
+		)
 	end;
 fetch_variables(
 	[
@@ -234,19 +234,19 @@ check_label_conflict([], _, _) ->
 -spec check_variable_conflict(var_type_map(), var_type_map()) -> ok.
 check_variable_conflict(GlobalVars, LocalVars) ->
 	case maps:to_list(maps:with(maps:keys(GlobalVars), LocalVars)) of
-		[{Name, T} | _] ->
-			throw_name_conflict(Name, element(2, T));
-		[] ->
-			ok
+	[{Name, T} | _] ->
+		throw_name_conflict(Name, element(2, T));
+	[] ->
+		ok
 	end.
 
 -spec ensure_no_name_conflict(atom(), var_type_map(), integer()) -> ok.
 ensure_no_name_conflict(Name, VarMap, Line) ->
 	case maps:find(Name, VarMap) of
-		{ok, _} ->
-			throw_name_conflict(Name, Line);
-		_ ->
-			ok
+	{ok, _} ->
+		throw_name_conflict(Name, Line);
+	_ ->
+		ok
 	end.
 
 -spec throw_name_conflict(atom(), integer()) -> no_return().

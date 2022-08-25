@@ -207,9 +207,9 @@ filter_var_refs_in_map_test() ->
 -spec exist_in_map(atom(), #{atom() := any()}) -> boolean().
 exist_in_map(KeyName, Map) ->
 	case maps:find(KeyName, Map) of
-		{ok, _} ->
-			true;
-		_ ->
-			false
+	{ok, _} ->
+		true;
+	_ ->
+		false
 	end.
 

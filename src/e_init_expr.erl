@@ -86,27 +86,23 @@ replace_init_ops(
 	StructMap
 ) ->
 	case maps:find(Name, StructMap) of
-		{ok, #struct{
-			field_names = FieldNames,
-			field_type_map = FieldTypes,
-			field_default_value_map = FieldDefaults
-		}} ->
-			FieldValueMap = maps:merge(FieldDefaults, FieldValues),
-			struct_init_to_ops(
-				Op1,
-				FieldNames,
-				FieldValueMap,
-				FieldTypes,
-				[],
-				StructMap
-			);
-		error ->
-			e_util:ethrow(
-				Line,
-				"struct ~s is not found",
-				[Name]
-			)
-		end;
+	{ok, #struct{
+		field_names = FieldNames,
+		field_type_map = FieldTypes,
+		field_default_value_map = FieldDefaults
+	}} ->
+		FieldValueMap = maps:merge(FieldDefaults, FieldValues),
+		struct_init_to_ops(
+			Op1,
+			FieldNames,
+			FieldValueMap,
+			FieldTypes,
+			[],
+			StructMap
+		);
+	error ->
+		e_util:ethrow(Line, "struct ~s is not found", [Name])
+	end;
 
 replace_init_ops(
 	#op2_expr{
@@ -140,13 +136,13 @@ struct_init_to_ops(
 		},
 		operand2 =
 			case maps:find(Name, FieldInitMap) of
-				{ok, InitOp} ->
-					InitOp;
-				error ->
-					default_value_of(
-						maps:get(Name, FieldTypes),
-						Line
-					)
+			{ok, InitOp} ->
+				InitOp;
+			error ->
+				default_value_of(
+					maps:get(Name, FieldTypes),
+					Line
+				)
 			end,
 		line = Line
 	},

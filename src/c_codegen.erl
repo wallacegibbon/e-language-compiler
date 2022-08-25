@@ -56,13 +56,14 @@ fix_expr_for_c(
 			{VarTypes, FnTypeMap, StructMap, #{}}
 		)
 	of
-		#array_type{} ->
-			#op2_expr{
-				operator = '.',
-				operand1 = fix_expr_for_c(Operand, Ctx),
-				operand2 = #var_ref{name = value, line = Line}};
-			_ ->
-				E
+	#array_type{} ->
+		#op2_expr{
+			operator = '.',
+			operand1 = fix_expr_for_c(Operand, Ctx),
+			operand2 = #var_ref{name = value, line = Line}
+		};
+	_ ->
+		E
 	end;
 fix_expr_for_c(#op1_expr{operand = Operand} = E, Ctx) ->
 	E#op1_expr{operand = fix_expr_for_c(Operand, Ctx)};
@@ -112,8 +113,8 @@ statements_to_str(
 	),
 	Exprs2 =
 		case Name =:= main of
-			true -> InitCode ++ Exprs;
-			false -> Exprs
+		true -> InitCode ++ Exprs;
+		false -> Exprs
 		end,
 	S = io_lib:format(
 		"~s~n{~n~s~n~n~s~n}~n~n",

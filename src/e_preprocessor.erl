@@ -23,18 +23,18 @@ handle_special(
 	{MacroMap, RetTokens, EndTag} = Ctx
 ) ->
 	case MacroMap of
-		#{Name := _} ->
-			e_util:ethrow(
-				LineNumber,
-				"macro name conflict: \"~s\"",
-				[Name]
-			);
-		_ ->
-			{Tokens, RestTokens} = get_expr_till_eol(Rest, Ctx),
-			handle_normal(
-				RestTokens,
-				{MacroMap#{Name => Tokens}, RetTokens, EndTag}
-			)
+	#{Name := _} ->
+		e_util:ethrow(
+			LineNumber,
+			"macro name conflict: \"~s\"",
+			[Name]
+		);
+	_ ->
+		{Tokens, RestTokens} = get_expr_till_eol(Rest, Ctx),
+		handle_normal(
+			RestTokens,
+			{MacroMap#{Name => Tokens}, RetTokens, EndTag}
+		)
 	end;
 
 handle_special(
@@ -42,17 +42,17 @@ handle_special(
 	{MacroMap, RetTokens, EndTag}
 ) ->
 	case MacroMap of
-		#{Name := _} ->
-			handle_normal(
-				Rest,
-				{maps:remove(Name, MacroMap), RetTokens, EndTag}
-			);
-		_ ->
-			e_util:ethrow(
-				LineNumber,
-				"macro \"~s\" is not defined",
-				[Name]
-			)
+	#{Name := _} ->
+		handle_normal(
+			Rest,
+			{maps:remove(Name, MacroMap), RetTokens, EndTag}
+		);
+	_ ->
+		e_util:ethrow(
+			LineNumber,
+			"macro \"~s\" is not defined",
+			[Name]
+		)
 	end;
 
 handle_special(
@@ -61,10 +61,10 @@ handle_special(
 ) ->
 	{MacroMapNew, CollectedTokens, RestTokensNew} =
 		case MacroMap of
-			#{Name := _} ->
-				collect_to_else_and_ignore_to_endif(Rest, Ctx);
-			_ ->
-				ignore_to_else_and_collect_to_endif(Rest, Ctx)
+		#{Name := _} ->
+			collect_to_else_and_ignore_to_endif(Rest, Ctx);
+		_ ->
+			ignore_to_else_and_collect_to_endif(Rest, Ctx)
 		end,
 	handle_normal(RestTokensNew, {MacroMapNew, CollectedTokens, EndTag});
 
@@ -77,10 +77,10 @@ handle_special(
 ) ->
 	{MacroMapNew, CollectedTokens, RestTokensNew} =
 		case MacroMap of
-			#{Name := _} ->
-				ignore_to_else_and_collect_to_endif(Rest, Ctx);
-			_ ->
-				collect_to_else_and_ignore_to_endif(Rest, Ctx)
+		#{Name := _} ->
+			ignore_to_else_and_collect_to_endif(Rest, Ctx);
+		_ ->
+			collect_to_else_and_ignore_to_endif(Rest, Ctx)
 		end,
 	handle_normal(RestTokensNew, {MacroMapNew, CollectedTokens, EndTag});
 
@@ -91,14 +91,10 @@ handle_special([{'if', _} | Rest], {MacroMap, _, EndTag} = Ctx) ->
 	{Tokens, RestTokens} = get_expr_till_eol(Rest, Ctx),
 	{MacroMapNew, CollectedTokens, RestTokensNew} =
 		case eval_token_exprs(Tokens, MacroMap) of
-			true ->
-				collect_to_else_and_ignore_to_endif(
-					RestTokens, Ctx
-				);
-			false ->
-				ignore_to_else_and_collect_to_endif(
-					RestTokens, Ctx
-				)
+		true ->
+			collect_to_else_and_ignore_to_endif(RestTokens, Ctx);
+		false ->
+			ignore_to_else_and_collect_to_endif(RestTokens, Ctx)
 		end,
 	handle_normal(RestTokensNew, {MacroMapNew, CollectedTokens, EndTag});
 
@@ -267,14 +263,10 @@ get_expr_till_eol([], CollectedTokens, _) ->
 
 replace_macro({identifier, LineNumber, Name}, MacroMap, ContinueHandler) ->
 	case MacroMap of
-		#{Name := Value} ->
-			ContinueHandler(replace_line_number(Value, LineNumber));
-		_ ->
-			e_util:ethrow(
-				LineNumber,
-				"undefined macro ~s",
-				[Name]
-			)
+	#{Name := Value} ->
+		ContinueHandler(replace_line_number(Value, LineNumber));
+	_ ->
+		e_util:ethrow(LineNumber, "undefined macro ~s", [Name])
 	end.
 
 %% tokens should be parsed to ast before evaluating them, this function will be updated when the parser is finished

@@ -64,12 +64,12 @@ check_struct_recursive(
 	try
 		check_struct_object(Struct, StructTypeMap, [])
 	catch
-		{recur, Chain} ->
-			e_util:ethrow(
-				Line,
-				"recursive struct ~s -> ~w",
-				[Name, Chain]
-			)
+	{recur, Chain} ->
+		e_util:ethrow(
+			Line,
+			"recursive struct ~s -> ~w",
+			[Name, Chain]
+		)
 	end.
 
 
@@ -90,12 +90,10 @@ check_struct_object(
 
 check_struct_field([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
 	case contain_struct(FieldType) of
-		{yes, StructName} ->
-			check_struct_field_sub(
-				StructName, StructMap, UsedStructs
-			);
-		no ->
-			check_struct_field(RestFields, StructMap, UsedStructs)
+	{yes, StructName} ->
+		check_struct_field_sub(StructName, StructMap, UsedStructs);
+	no ->
+		check_struct_field(RestFields, StructMap, UsedStructs)
 	end;
 
 check_struct_field([], _, _) ->
@@ -104,17 +102,14 @@ check_struct_field([], _, _) ->
 
 check_struct_field_sub(StructName, StructMap, UsedStructs) ->
 	case e_util:value_in_list(StructName, UsedStructs) of
-		true ->
-			throw({
-				recur,
-				lists:reverse([StructName | UsedStructs])
-			});
-		false ->
-			check_struct_object(
-				maps:get(StructName, StructMap),
-				StructMap,
-				UsedStructs
-			)
+	true ->
+		throw({recur, lists:reverse([StructName | UsedStructs])});
+	false ->
+		check_struct_object(
+			maps:get(StructName, StructMap),
+			StructMap,
+			UsedStructs
+		)
 	end.
 
 -spec contain_struct(e_type()) -> {yes, atom()} | no.
