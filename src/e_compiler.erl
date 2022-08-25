@@ -65,13 +65,11 @@ check_struct_recursive(
 		check_struct_object(Struct, StructTypeMap, [])
 	catch
 		{recur, Chain} ->
-			throw({
+			e_util:ethrow(
 				Line,
-				e_util:fmt(
-					"recursive struct ~s -> ~w",
-					[Name, Chain]
-				)
-			})
+				"recursive struct ~s -> ~w",
+				[Name, Chain]
+			)
 	end.
 
 
