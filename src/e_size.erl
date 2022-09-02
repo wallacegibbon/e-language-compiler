@@ -132,7 +132,9 @@ get_kvs_by_refs(RefList, Map) ->
 	integer(),
 	OffsetMap,
 	context()
-) -> {integer(), OffsetMap} when OffsetMap :: #{atom() := integer()}.
+)
+	-> {integer(), OffsetMap}
+	when OffsetMap :: #{atom() := integer()}.
 
 size_of_struct_fields(
 	[{FieldName, FieldType} | Rest],
@@ -195,7 +197,8 @@ size_of(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
 size_of(
 	#basic_type{class = C, tag = Tag},
 	{_, PointerWidth}
-) when C =:= integer; C =:= float ->
+)
+	when C =:= integer; C =:= float ->
 	case e_util:primitive_size_of(Tag) of
 	pointer_size ->
 		PointerWidth;

@@ -7,7 +7,8 @@
 	e_ast(),
 	var_type_map(),
 	{fn_type_map(), struct_type_map()}
-) -> ok.
+) ->
+	ok.
 
 check_types_in_ast(
 	[#function{var_type_map = VarTypes, stmts = Exprs, type = FnType}
@@ -64,7 +65,8 @@ check_types_in_ast([], _, _) ->
 
 -spec check_type_in_ast_nodes(
 	[e_expr()], var_type_map(), {fn_type_map(), struct_type_map()}
-) -> ok.
+) ->
+	ok.
 
 check_type_in_ast_nodes(Exprs, GlobalVarTypes, {FnTypeMap, StructMap}) ->
 	type_of_nodes(Exprs, {GlobalVarTypes, FnTypeMap, StructMap, #{}}),
@@ -176,7 +178,8 @@ type_of_node(
 		line = Line
 	},
 	Ctx
-) when Operator =:= '*'; Operator =:= '/' ->
+)
+	when Operator =:= '*'; Operator =:= '/' ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
 	case are_both_number_of_same_type(Op1Type, Op2Type) of
@@ -431,7 +434,8 @@ dec_pointer_depth(T, OpLine) ->
 	#{atom() := any()},
 	atom(),
 	context()
-) -> ok.
+) ->
+	ok.
 
 check_types_in_struct_fields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
 	lists:foreach(
@@ -554,7 +558,8 @@ compare_type(_, _) ->
 is_pointer_and_integer_ordered(
 	#basic_type{p_depth = PDepth} = Type,
 	#basic_type{class = integer, p_depth = 0}
-) when PDepth > 0 ->
+)
+	when PDepth > 0 ->
 	{true, Type};
 is_pointer_and_integer_ordered(_, _) ->
 	false.
@@ -563,12 +568,14 @@ is_pointer_and_integer_ordered(_, _) ->
 is_pointer_and_integer(
 	#basic_type{p_depth = PDepth} = Type,
 	#basic_type{class = integer, p_depth = 0}
-) when PDepth > 0 ->
+)
+	when PDepth > 0 ->
 	{true, Type};
 is_pointer_and_integer(
 	#basic_type{class = integer, p_depth = 0},
 	#basic_type{p_depth = PDepth} = Type
-) when PDepth > 0 ->
+)
+	when PDepth > 0 ->
 	{true, Type};
 is_pointer_and_integer(_, _) ->
 	false.

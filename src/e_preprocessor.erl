@@ -258,7 +258,8 @@ get_expr_till_eol([], CollectedTokens, _) ->
 	{identifier, non_neg_integer(), atom()},
 	macro_map(),
 	fun (([token()]) -> Result)
-) -> Result
+)
+	-> Result
 	when Result :: any().
 
 replace_macro({identifier, LineNumber, Name}, MacroMap, ContinueHandler) ->
