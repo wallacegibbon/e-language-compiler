@@ -17,11 +17,16 @@ function_normal_test() ->
 	{ok, AST} = e_parser:parse(Tokens),
 	?assertEqual(
 		[
+
 		{function_raw, 1, a,
 		[{var_def, 1, v, {basic_type, 1, 1, integer, i8}, none}],
 		{basic_type, 1, 0, void, void},
-		[{op2_expr, 1, assign, {op1_expr, 1, '^', {var_ref, 1, v}},
-		{integer, 1, 10}}]}
+		[{e_expr, 1, '=',
+			[{e_expr, 1, '^', [{var_ref, 1, v}]},
+				{integer, 1, 10}]}
+		]
+		}
+
 		],
 		AST
 	),
@@ -66,7 +71,7 @@ function_call_test() ->
 	?assertEqual(
 		[
 		{var_def, 1, b, {basic_type, 1, 0, integer, u8},
-		{call_expr, 1, {var_ref, 1, a}, [{integer, 1, 13}]}}
+		{e_expr, 1, {call, {var_ref, 1, a}}, [{integer, 1, 13}]}}
 		],
 		AST
 	),
@@ -130,8 +135,11 @@ struct_init_test() ->
 		[
 		{var_def, 1, a, {basic_type, 1, 0, struct, 'S'},
 		{struct_init_raw_expr, 1, 'S',
-		[{op2_expr, 1, assign, {var_ref, 1, name}, {string, 1, "a"}},
-		{op2_expr, 1, assign, {var_ref, 1, value}, {integer, 1, 2}}]}}
+		[
+		{e_expr, 1, '=',
+			[{var_ref, 1, name}, {string, 1, "a"}]},
+		{e_expr, 1, '=',
+			[{var_ref, 1, value}, {integer, 1, 2}]}]}}
 		],
 		AST
 	),
@@ -152,10 +160,17 @@ assign_test() ->
 	?assertEqual(
 		[
 		{function_raw, 1, b, [], {basic_type, 1, 0, void, void},
-		[{op2_expr, 1, assign, {var_ref, 1, a},
-		{op2_expr, 1, '*', {var_ref, 1, a}, {integer, 1, 3}}},
-		{op2_expr, 1, assign, {var_ref, 1, c},
-		{op2_expr, 1, 'bsr', {var_ref, 1, c}, {integer, 1, 5}}}]}
+		[
+			{e_expr, 1, '=',
+			[{var_ref, 1, a},
+			{e_expr, 1, '*', [{var_ref, 1, a}, {integer, 1, 3}]}]},
+
+			{e_expr, 1, '=',
+			[{var_ref, 1, c},
+			{e_expr, 1, 'bsr', [{var_ref, 1, c}, {integer, 1, 5}]}
+			]}
+		]
+		}
 		],
 		AST
 	),

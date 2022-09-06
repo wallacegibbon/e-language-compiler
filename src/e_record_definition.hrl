@@ -114,29 +114,18 @@
 	value :: string()
 }).
 
--record(op1_expr, {
+-type expr_tag() ::
+	'*' | '/' | 'div' | '+' | '-' | 'rem' | 'sizeof' |
+	{call, atom()} |
+	any().
+
+-record(e_expr, {
 	line = 0 :: integer(),
-	operator :: atom(),
-	operand :: e_expr()
+	tag :: expr_tag(),
+	data :: [e_expr()]
 }).
 
--record(op2_expr, {
-	line = 0 :: integer(),
-	operator :: atom(),
-	operand1 :: e_expr(),
-	operand2 :: e_expr()
-}).
-
--record(call_expr, {
-	line = 0 :: integer(),
-	fn :: e_expr(),
-	args = [] :: [e_expr()]
-}).
-
--record(sizeof_expr, {
-	line = 0 :: integer(),
-	type :: e_type()
-}).
+-type e_expr() :: #e_expr{}.
 
 -record(goto_label, {
 	line = 0 :: integer(),
@@ -156,19 +145,10 @@
 
 %% primitive types: u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
 -type e_type() :: #basic_type{} | #array_type{} | #fn_type{} | any().
-
 -type e_stmt() :: #if_stmt{} | #while_stmt{} | #goto_stmt{} | #return_stmt{}.
-
--type e_expr() ::
-	#op1_expr{} | #op2_expr{} | #call_expr{} | #sizeof_expr{} | any().
-
 -type struct_type_map() :: #{atom() := #struct{}}.
-
 -type fn_type_map() :: #{atom() := #fn_type{}}.
-
 -type fn_ret_type_map() :: #{atom() := e_type()}.
-
 -type var_type_map() :: #{atom() := e_type()}.
-
 -type e_ast() :: [e_expr()].
 

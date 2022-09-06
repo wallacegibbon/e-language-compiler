@@ -80,25 +80,19 @@ type_of_nodes(Exprs, Ctx) ->
 
 -spec type_of_node(e_expr(), context()) -> e_type().
 type_of_node(
-	#op2_expr{
-		operator = assign, operand1 = Op1, operand2 = Op2, line = Line
-	},
+	#e_expr{tag = '=', data = [Op1, Op2], line = Line},
 	{_, _, StructMap, _} = Ctx
 ) ->
 	Op1Type =
 		case Op1 of
-		#op2_expr{
-			operator = '.',
-			operand1 = SubOp1,
-			operand2 = SubOp2
-		} ->
+		#e_expr{tag = '.', data = [SubOp1, SubOp2]} ->
 			type_of_struct_field(
 				type_of_node(SubOp1, Ctx),
 				SubOp2,
 				StructMap,
 				Line
 			);
-		#op1_expr{operator = '^', operand = SubOp} ->
+		#e_expr{tag = '^', data = [SubOp]} ->
 			dec_pointer_depth(type_of_node(SubOp, Ctx), Line);
 		#var_ref{} ->
 			type_of_node(Op1, Ctx);
@@ -121,12 +115,12 @@ type_of_node(
 		)
 	end;
 type_of_node(
-	#op2_expr{operator = '.', operand1 = Op1, operand2 = Op2, line = Line},
+	#e_expr{tag = '.', data = [Op1, Op2], line = Line},
 	{_, _, StructMap, _} = Ctx
 ) ->
 	type_of_struct_field(type_of_node(Op1, Ctx), Op2, StructMap, Line);
 type_of_node(
-	#op2_expr{operator = '+', operand1 = Op1, operand2 = Op2, line = Line},
+	#e_expr{tag = '+', data = [Op1, Op2], line = Line},
 	Ctx
 ) ->
 	Op1Type = type_of_node(Op1, Ctx),
@@ -147,7 +141,7 @@ type_of_node(
 	end;
 %% integer + pointer is valid, but integer - pointer is invalid
 type_of_node(
-	#op2_expr{operator = '-', operand1 = Op1, operand2 = Op2, line = Line},
+	#e_expr{tag = '-', data = [Op1, Op2], line = Line},
 	Ctx
 ) ->
 	Op1Type = type_of_node(Op1, Ctx),
@@ -171,15 +165,10 @@ type_of_node(
 		end
 	end;
 type_of_node(
-	#op2_expr{
-		operator = Operator,
-		operand1 = Op1,
-		operand2 = Op2,
-		line = Line
-	},
+	#e_expr{tag = Tag, data = [Op1, Op2], line = Line},
 	Ctx
 )
-	when Operator =:= '*'; Operator =:= '/' ->
+	when Tag =:= '*'; Tag =:= '/' ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
 	case are_both_number_of_same_type(Op1Type, Op2Type) of
@@ -188,17 +177,12 @@ type_of_node(
 	false ->
 		e_util:ethrow(
 			Line,
-			type_error_of_op2(Operator, Op1Type, Op2Type)
+			type_error_of_op2(Tag, Op1Type, Op2Type)
 		)
 	end;
 %% the left operators are: and, or, band, bor, bxor, bsl, bsr, >, <, ...
 type_of_node(
-	#op2_expr{
-		operator = Operator,
-		operand1 = Op1,
-		operand2 = Op2,
-		line = Line
-	},
+	#e_expr{tag = Tag, data = [Op1, Op2], line = Line},
 	Ctx
 ) ->
 	Op1Type = type_of_node(Op1, Ctx),
@@ -209,10 +193,13 @@ type_of_node(
 	false ->
 		e_util:ethrow(
 			Line,
-			type_error_of_op2(Operator, Op1Type, Op2Type)
+			type_error_of_op2(Tag, Op1Type, Op2Type)
 		)
 	end;
-type_of_node(#op1_expr{operator = '^', operand = Operand, line = Line}, Ctx) ->
+type_of_node(
+	#e_expr{tag = '^', data = [Operand], line = Line},
+	Ctx
+) ->
 	case type_of_node(Operand, Ctx) of
 	#basic_type{} = T ->
 		dec_pointer_depth(T, Line);
@@ -224,11 +211,11 @@ type_of_node(#op1_expr{operator = '^', operand = Operand, line = Line}, Ctx) ->
 		)
 	end;
 type_of_node(
-	#op1_expr{operator = '@', operand = Operand, line = Line},
+	#e_expr{tag = '@', data = [Operand], line = Line},
 	{_, _, StructMap, _} = Ctx
 ) ->
 	case Operand of
-	#op2_expr{operator = '.', operand1 = Op1, operand2 = Op2} ->
+	#e_expr{tag = '.', data = [Op1, Op2]} ->
 		T = type_of_struct_field(
 			type_of_node(Op1, Ctx), Op2, StructMap, Line
 		),
@@ -242,9 +229,12 @@ type_of_node(
 			[e_util:expr_to_str(Operand)]
 		)
 	end;
-type_of_node(#op1_expr{operand = Operand}, Ctx) ->
+type_of_node(#e_expr{data = [Operand]}, Ctx) ->
 	type_of_node(Operand, Ctx);
-type_of_node(#call_expr{fn = FunExpr, args = Args, line = Line}, Ctx) ->
+type_of_node(
+	#e_expr{tag = {call, FunExpr}, data = Args, line = Line},
+	Ctx
+) ->
 	ArgTypes = type_of_nodes(Args, Ctx),
 	case type_of_node(FunExpr, Ctx) of
 	#fn_type{params = FnParamTypes, ret = FnRetType} ->
@@ -356,7 +346,7 @@ type_of_node(
 			[Name]
 		)
 	end;
-type_of_node(#sizeof_expr{line = Line}, _) ->
+type_of_node(#e_expr{tag = {sizeof, _}, line = Line}, _) ->
 	#basic_type{class = integer, p_depth = 0, tag = i64, line = Line};
 type_of_node(#goto_stmt{line = Line}, _) ->
 	e_util:void_type(Line);
@@ -367,19 +357,22 @@ type_of_node(#type_convert{expr = Expr, type = Type, line = Line}, Ctx) ->
 	{
 		#basic_type{p_depth = D1},
 		#basic_type{p_depth = D2}
-	} when D1 > 0, D2 > 0 ->
+	}
+		when D1 > 0, D2 > 0 ->
 		Type;
 
 	{
 		#basic_type{class = integer, p_depth = 0},
 		#basic_type{p_depth = D2}
-	} when D2 > 0 ->
+	}
+		when D2 > 0 ->
 		Type;
 
 	{
 		#basic_type{class = integer, p_depth = 0},
 		#basic_type{class = integer, p_depth = 0}
-	} ->
+	}
+		->
 		Type;
 
 	{ExprType, _} ->
@@ -400,10 +393,7 @@ type_of_node({string, Line, _}, _) ->
 arguments_error_info(FnParamTypes, ArgsTypes) ->
 	e_util:fmt(
 		"args should be (~s), not (~s)",
-		[
-			join_types_to_str(FnParamTypes),
-			join_types_to_str(ArgsTypes)
-		]
+		[join_types_to_str(FnParamTypes), join_types_to_str(ArgsTypes)]
 	).
 
 -spec inc_pointer_depth(e_type(), integer()) -> e_type().
@@ -413,9 +403,7 @@ inc_pointer_depth(#array_type{elem_type = #basic_type{} = T}, OpLine) ->
 	inc_pointer_depth(T, OpLine);
 inc_pointer_depth(T, OpLine) ->
 	e_util:ethrow(
-		OpLine,
-		"'@' on type ~s is invalid",
-		[type_to_str(T)]
+		OpLine, "'@' on type ~s is invalid", [type_to_str(T)]
 	).
 
 -spec dec_pointer_depth(e_type(), integer()) -> e_type().
@@ -423,9 +411,7 @@ dec_pointer_depth(#basic_type{p_depth = PDepth} = T, _) when PDepth > 0 ->
 	T#basic_type{p_depth = PDepth - 1};
 dec_pointer_depth(T, OpLine) ->
 	e_util:ethrow(
-		OpLine,
-		"'^' on type ~s is invalid",
-		[type_to_str(T)]
+		OpLine, "'^' on type ~s is invalid", [type_to_str(T)]
 	).
 
 -spec check_types_in_struct_fields(
@@ -490,9 +476,7 @@ type_of_struct_field(
 		get_field_type(FieldName, FieldTypes, Name, Line);
 	error ->
 		e_util:ethrow(
-			Line,
-			"struct ~s is not found",
-			[Name]
+			Line, "struct ~s is not found", [Name]
 		)
 	end;
 type_of_struct_field(T, _, _, Line) ->
@@ -510,9 +494,7 @@ get_field_type(FieldName, FieldTypes, StructName, Line) ->
 		Type;
 	error ->
 		e_util:ethrow(
-			Line,
-			"~s.~s does not exist",
-			[StructName, FieldName]
+			Line, "~s.~s does not exist", [StructName, FieldName]
 		)
 	end.
 

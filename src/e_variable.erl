@@ -49,13 +49,10 @@ fix_struct_init(#array_init_expr{elements = Elements} = A) ->
 	A#array_init_expr{elements = fix_struct_init_ast(Elements)};
 fix_struct_init(#var_def{init_value = InitialValue} = V) ->
 	V#var_def{init_value = fix_struct_init(InitialValue)};
-fix_struct_init(#op2_expr{operand1 = Op1, operand2 = Op2} = O) ->
-	O#op2_expr{
-		operand1 = fix_struct_init(Op1),
-		operand2 = fix_struct_init(Op2)
+fix_struct_init(#e_expr{data = Operands} = O) ->
+	O#e_expr{
+		data = lists:map(fun fix_struct_init/1, Operands)
 	};
-fix_struct_init(#op1_expr{operand = Operand} = O) ->
-	O#op1_expr{operand = fix_struct_init(Operand)};
 fix_struct_init(Any) ->
 	Any.
 
@@ -63,14 +60,19 @@ fix_struct_init(Any) ->
 struct_init_to_map(Exprs) ->
 	struct_init_to_map(Exprs, [], #{}).
 
--spec struct_init_to_map([#op2_expr{}], [#var_ref{}], #{atom() := e_expr()})
+
+-spec struct_init_to_map(
+	[#e_expr{}],
+	[#var_ref{}],
+	#{atom() := e_expr()}
+)
 	-> {[#var_ref{}], #{atom() := e_expr()}}.
+
 struct_init_to_map(
 	[
-		#op2_expr{
-			operator = assign,
-			operand1 = #var_ref{name = Field} = Op1,
-			operand2 = Val
+		#e_expr{
+			tag = '=',
+			data = [#var_ref{name = Field} = Op1, Val]
 		}
 		| Rest
 	],
@@ -208,10 +210,12 @@ fetch_variables([], NewAST, {VarTypes, InitCode, _}) ->
 -spec append_to_ast(e_ast(), atom(), e_expr(), integer()) -> e_ast().
 append_to_ast(AST, VarName, InitialValue, Line) when InitialValue =/= none ->
 	[
-		#op2_expr{
-			operator = assign,
-			operand1 = #var_ref{name = VarName, line = Line},
-			operand2 = InitialValue,
+		#e_expr{
+			tag = '=',
+			data = [
+				#var_ref{name = VarName, line = Line},
+				InitialValue
+			],
 			line = Line
 		}
 		| AST

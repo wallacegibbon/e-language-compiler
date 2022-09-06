@@ -47,7 +47,7 @@ fix_exprs_for_c(Exprs, Ctx) ->
 
 -spec fix_expr_for_c(e_expr(), context()) -> e_expr().
 fix_expr_for_c(
-	#op1_expr{operator = '@', operand = Operand, line = Line} = E,
+	#e_expr{tag = '@', data = [Operand], line = Line} = E,
 	{FnTypeMap, StructMap, VarTypes} = Ctx
 ) ->
 	case
@@ -57,21 +57,21 @@ fix_expr_for_c(
 		)
 	of
 	#array_type{} ->
-		#op2_expr{
-			operator = '.',
-			operand1 = fix_expr_for_c(Operand, Ctx),
-			operand2 = #var_ref{name = value, line = Line}
+		#e_expr{
+			tag = '.',
+			data = [
+				fix_expr_for_c(Operand, Ctx),
+				#var_ref{name = value, line = Line}
+			]
 		};
 	_ ->
 		E
 	end;
-fix_expr_for_c(#op1_expr{operand = Operand} = E, Ctx) ->
-	E#op1_expr{operand = fix_expr_for_c(Operand, Ctx)};
-fix_expr_for_c(#op2_expr{operand1 = Op1, operand2 = Op2} = E, Ctx) ->
-	E#op2_expr{
-		operand1 = fix_expr_for_c(Op1, Ctx),
-		operand2 = fix_expr_for_c(Op2, Ctx)
-	};
+fix_expr_for_c(#e_expr{data = Operands} = E, Ctx) ->
+	E#e_expr{data = lists:map(
+		fun(D) -> fix_expr_for_c(D, Ctx) end,
+		Operands
+	)};
 fix_expr_for_c(Any, _) ->
 	Any.
 
@@ -89,13 +89,16 @@ statements_to_str(Statements, InitCode) ->
 	statements_to_str(Statements, InitCode, [], []).
 
 statements_to_str(
-	[#function{
-		name = Name,
-		param_names = ParamNames,
-		type = FnType,
-		var_type_map = VarTypes,
-		stmts = Exprs
-	} | Rest],
+	[
+		#function{
+			name = Name,
+			param_names = ParamNames,
+			type = FnType,
+			var_type_map = VarTypes,
+			stmts = Exprs
+		}
+		| Rest
+	],
 	InitCode,
 	StmtStrs,
 	FnDeclars
@@ -127,11 +130,14 @@ statements_to_str(
 		[Declars ++ ";\n" | FnDeclars]
 	);
 statements_to_str(
-	[#struct{
-		name = Name,
-		field_type_map = FieldTypes,
-		field_names = FieldNames
-	} | Rest],
+	[
+		#struct{
+			name = Name,
+			field_type_map = FieldTypes,
+			field_names = FieldNames
+		}
+		| Rest
+	],
 	InitCode,
 	StmtStrs,
 	FnDeclars
@@ -256,34 +262,22 @@ expr_to_str(#while_stmt{condi = Condi, stmts = Exprs}, _) ->
 		"while (~s) {\n~s\n}\n",
 		[expr_to_str(Condi, $\s), exprs_to_str(Exprs)]
 	);
-expr_to_str(
-	#op2_expr{
-		operator = '::',
-		operand1 = #var_ref{name = c},
-		operand2 = Op2
-	},
-	EndChar
-) ->
-	expr_to_str(Op2, EndChar);
-expr_to_str(
-	#op2_expr{operator = Operator, operand1 = Op1, operand2 = Op2},
-	EndChar
-) ->
+expr_to_str(#e_expr{tag = Tag, data = [Op1, Op2]}, EndChar) ->
 	io_lib:format(
 		"(~s ~s ~s)~c",
 		[
 			expr_to_str(Op1, $\s),
-			translate_op(Operator),
+			translate_op(Tag),
 			expr_to_str(Op2, $\s),
 			EndChar
 		]
 	);
-expr_to_str(#op1_expr{operator = Operator, operand = Operand}, EndChar) ->
+expr_to_str(#e_expr{tag = Tag, data = [Operand]}, EndChar) ->
 	io_lib:format(
 		"(~s ~s)~c",
-		[translate_op(Operator), expr_to_str(Operand, $\s), EndChar]
+		[translate_op(Tag), expr_to_str(Operand, $\s), EndChar]
 	);
-expr_to_str(#call_expr{fn = Fn, args = Args}, EndChar) ->
+expr_to_str(#e_expr{tag = {call, Fn}, data = Args}, EndChar) ->
 	ArgStr = lists:join(
 		",",
 		lists:map(fun (E) -> expr_to_str(E, $\s) end, Args)

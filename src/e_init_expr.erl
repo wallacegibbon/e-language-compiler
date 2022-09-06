@@ -4,9 +4,10 @@
 -include("e_record_definition.hrl").
 
 %% for now, array and struct init expression is only allowed in assignment
-check_position(#op2_expr{operator = assign, operand2 = Op2})
-		when is_record(Op2, struct_init_expr);
-			is_record(Op2, array_init_expr) ->
+check_position(#e_expr{tag = '=', data = [_, Op2]})
+	when
+		is_record(Op2, struct_init_expr);
+		is_record(Op2, array_init_expr) ->
 	ok;
 check_position(#struct_init_expr{line = Line}) ->
 	e_util:ethrow(
@@ -59,7 +60,11 @@ expand_init_expr(
 		} | NewAST],
 		StructMap);
 
-expand_init_expr([#op2_expr{} = Op | Rest], NewAST, StructMap) ->
+expand_init_expr(
+	[#e_expr{data = [_, _]} = Op | Rest],
+	NewAST,
+	StructMap
+) ->
 	expand_init_expr(
 		Rest,
 		replace_init_ops(Op, StructMap) ++ NewAST,
@@ -74,14 +79,16 @@ expand_init_expr([], NewAST, _) ->
 
 
 replace_init_ops(
-	#op2_expr{
-		operator = assign,
-		operand1 = Op1,
-		operand2 = #struct_init_expr{
-			name = Name,
-			line = Line,
-			field_value_map = FieldValues
-		}
+	#e_expr{
+		tag = '=',
+		data = [
+			Op1,
+			#struct_init_expr{
+				name = Name,
+				line = Line,
+				field_value_map = FieldValues
+			}
+		]
 	},
 	StructMap
 ) ->
@@ -105,10 +112,12 @@ replace_init_ops(
 	end;
 
 replace_init_ops(
-	#op2_expr{
-		operator = assign,
-		operand1 = Op1,
-		operand2 = #array_init_expr{elements = Elements, line = Line}
+	#e_expr{
+		tag = '=',
+		data = [
+			Op1,
+			#array_init_expr{elements = Elements, line = Line}
+		]
 	},
 	StructMap
 ) ->
@@ -126,15 +135,14 @@ struct_init_to_ops(
 	NewCode,
 	StructMap
 ) ->
-	NewOp = #op2_expr{
-		operator = assign,
-		operand1 = #op2_expr{
-			operator = '.',
-			operand1 = Target,
-			operand2 = Field,
-			line = Line
-		},
-		operand2 =
+	NewOp = #e_expr{
+		tag = '=',
+		data = [
+			#e_expr{
+				tag = '.',
+				data = [Target, Field],
+				line = Line
+			},
 			case maps:find(Name, FieldInitMap) of
 			{ok, InitOp} ->
 				InitOp;
@@ -143,7 +151,8 @@ struct_init_to_ops(
 					maps:get(Name, FieldTypes),
 					Line
 				)
-			end,
+			end
+		],
 		line = Line
 	},
 	Ops = replace_init_ops(NewOp, StructMap),
@@ -180,26 +189,22 @@ default_value_of(#basic_type{p_depth = PDepth}, Line) when PDepth > 0 ->
 	{integer, Line, 0}.
 
 array_init_to_ops(Target, [E | Rest], Cnt, Line, NewCode, StructMap) ->
-	A = #op1_expr{
-		operator = '@',
-		line = Line,
-		operand = Target
+	B = #e_expr{
+		tag = '+',
+		data = [
+			#e_expr{tag = '@', data = [Target], line = Line},
+			#integer{value = Cnt, line = Line}
+		],
+		line = Line
 	},
-	B = #op2_expr{
-		operator = '+',
-		operand2 = {integer, Line, Cnt},
-		line = Line,
-		operand1 = A
+	C = #e_expr{
+		tag = '^',
+		data = [B],
+		line = Line
 	},
-	C = #op1_expr{
-		operator = '^',
-		line = Line,
-		operand = B
-	},
-	NewAssign = #op2_expr{
-		operator = assign,
-		operand1 = C,
-		operand2 = E,
+	NewAssign = #e_expr{
+		tag = '=',
+		data = [C, E],
 		line = Line
 	},
 	Ops = replace_init_ops(NewAssign, StructMap),

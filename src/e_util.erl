@@ -8,8 +8,14 @@
 -include("e_record_definition.hrl").
 
 %% when do simple conversions, this function can be used to avoid boilerplate
-%% code for if, while, return, call..., so you can concentrate on operand1, operand2...
--spec expr_map(fun ((e_expr()) -> e_expr()), [e_expr()]) -> e_expr().
+%% code for if, while, return, call...,
+%% so you can concentrate on operand1, operand2...
+-spec expr_map(
+	fun ((e_expr()) -> e_expr()),
+	[e_expr()]
+)
+	-> e_expr().
+
 expr_map(
 	Fn,
 	[#if_stmt{condi = Cond, then = Then, else = Else} = If | Rest]
@@ -34,10 +40,13 @@ expr_map(
 
 expr_map(
 	Fn,
-	[#call_expr{fn = Callee, args = Args} = FnCall | Rest]
+	[#e_expr{tag = {call, Callee}, data = Args} = FnCall | Rest]
 ) ->
 	[
-		FnCall#call_expr{fn = Fn(Callee), args = expr_map(Fn, Args)}
+		FnCall#e_expr{
+			tag = {call, Fn(Callee)},
+			data = expr_map(Fn, Args)
+		}
 		| expr_map(Fn, Rest)
 	];
 
@@ -62,18 +71,18 @@ expr_to_str(#while_stmt{condi = Cond, stmts = Exprs}) ->
 		"while (~s) ~s end",
 		[expr_to_str(Cond), expr_to_str(Exprs)]
 	);
-expr_to_str(#call_expr{fn = Callee, args = Args}) ->
-	io_lib:format("(~s)(~s)", [expr_to_str(Callee), expr_to_str(Args)]);
 expr_to_str(#return_stmt{expr = Expr}) ->
 	io_lib:format("return (~s)", [expr_to_str(Expr)]);
 expr_to_str(#var_ref{name = Name}) ->
 	io_lib:format("~s", [expr_to_str(Name)]);
-expr_to_str(#op2_expr{operator = Operator, operand1 = Op1, operand2 = Op2}) ->
+expr_to_str(#e_expr{tag = {call, Callee}, data = Args}) ->
+	io_lib:format("(~s)(~s)", [expr_to_str(Callee), expr_to_str(Args)]);
+expr_to_str(#e_expr{tag = Operator, data = [Op1, Op2]}) ->
 	io_lib:format(
 		"~s ~s ~s",
 		[expr_to_str(Op1), Operator, expr_to_str(Op2)]
 	);
-expr_to_str(#op1_expr{operator = Operator, operand = Operand}) ->
+expr_to_str(#e_expr{tag = Operator, data = [Operand]}) ->
 	io_lib:format("~s ~s", [expr_to_str(Operand), Operator]);
 expr_to_str({TypeTag, _, Val}) when TypeTag =:= integer; TypeTag =:= float ->
 	io_lib:format("~w", [Val]);

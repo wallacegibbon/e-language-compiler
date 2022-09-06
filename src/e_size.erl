@@ -38,7 +38,7 @@ expand_sizeof_in_exprs(Exprs, Ctx) ->
 
 
 -spec expand_sizeof_in_expr(e_expr(), context()) -> e_expr().
-expand_sizeof_in_expr(#sizeof_expr{type = T, line = Line}, Ctx) ->
+expand_sizeof_in_expr(#e_expr{tag = {sizeof, T}, line = Line}, Ctx) ->
 	try
 		{integer, Line, size_of(T, Ctx)}
 	catch
@@ -46,15 +46,13 @@ expand_sizeof_in_expr(#sizeof_expr{type = T, line = Line}, Ctx) ->
 		throw({Line, I})
 	end;
 
-expand_sizeof_in_expr(#op2_expr{operand1 = Op1, operand2 = Op2} = O, Ctx) ->
-	O#op2_expr{
-		operand1 = expand_sizeof_in_expr(Op1, Ctx),
-		operand2 = expand_sizeof_in_expr(Op2, Ctx)
+expand_sizeof_in_expr(#e_expr{data = Data} = E, Ctx) ->
+	E#e_expr{
+		data = lists:map(
+			fun (O) -> expand_sizeof_in_expr(O, Ctx) end,
+			Data
+		)
 	};
-
-expand_sizeof_in_expr(#op1_expr{operand = Operand} = O, Ctx) ->
-	O#op1_expr{operand = expand_sizeof_in_expr(Operand, Ctx)};
-
 expand_sizeof_in_expr(#struct_init_expr{field_value_map = ExprMap} = S, Ctx) ->
 	S#struct_init_expr{
 		field_value_map = expand_sizeof_in_map(ExprMap, Ctx)

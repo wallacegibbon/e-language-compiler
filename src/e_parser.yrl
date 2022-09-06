@@ -227,41 +227,45 @@ struct_init_fields -> struct_init_assignment :
 	['$1'].
 
 struct_init_assignment -> identifier '=' expr :
-	#op2_expr{
-		operator = assign,
-		operand1 = #var_ref{name = token_value('$1'),
-		line = token_line('$1')},
-		operand2 = '$3',
+	#e_expr{
+		tag = '=',
+		data = [
+			#var_ref{
+				name = token_value('$1'),
+				line = token_line('$1')
+			},
+			'$3'
+		],
 		line = token_line('$2')
 	}.
 
 %% sizeof
 sizeof_expr -> sizeof '(' type_anno ')' :
-	#sizeof_expr{type = '$3', line = token_line('$2')}.
+	#e_expr{tag = {sizeof, '$3'}, line = token_line('$2')}.
 
 %% function invocation
 call_expr -> expr '(' params ')' :
-	#call_expr{fn = '$1', args = '$3', line = token_line('$2')}.
+	#e_expr{tag = {call, '$1'}, data = '$3', line = token_line('$2')}.
 call_expr -> expr '(' ')' :
-	#call_expr{fn = '$1', args = [], line = token_line('$2')}.
+	#e_expr{tag = {call, '$1'}, data = [], line = token_line('$2')}.
 
 assign_expr -> expr op2_with_assignment expr :
-	#op2_expr{
-		operator = assign,
-		operand1 = '$1',
-		operand2 = #op2_expr{
-			operator = token_symbol('$2'),
-			operand1 = '$1',
-			operand2 = '$3',
-			line = token_line('$2')
-		},
+	#e_expr{
+		tag = '=',
+		data = [
+			'$1',
+			#e_expr{
+				tag = token_symbol('$2'),
+				data = ['$1', '$3'],
+				line = token_line('$2')
+			}
+		],
 		line = token_line('$2')
 	}.
 assign_expr -> expr '=' expr :
-	#op2_expr{
-		operator = assign,
-		operand1 = '$1',
-		operand2 = '$3',
+	#e_expr{
+		tag = '=',
+		data = ['$1', '$3'],
 		line = token_line('$2')
 	}.
 
@@ -300,51 +304,45 @@ expr -> reserved_keyword :
 		e_util:fmt("~s is reserved keyword", [token_symbol('$1')])
 	).
 expr -> expr op30 expr :
-	#op2_expr{
-		operator = token_symbol('$2'),
-		operand1 = '$1',
-		operand2 = '$3',
+	#e_expr{
+		tag = token_symbol('$2'),
+		data = ['$1', '$3'],
 		line=token_line('$2')
 	}.
 expr -> expr op29 expr :
-	#op2_expr{
-		operator = token_symbol('$2'),
-		operand1 = '$1',
-		operand2 = '$3',
+	#e_expr{
+		tag = token_symbol('$2'),
+		data = ['$1', '$3'],
 		line=token_line('$2')
 	}.
 expr -> expr op28 expr :
-	#op2_expr{
-		operator = token_symbol('$2'),
-		operand1 = '$1',
-		operand2 = '$3',
+	#e_expr{
+		tag = token_symbol('$2'),
+		data = ['$1', '$3'],
 		line = token_line('$2')
 	}.
 expr -> expr op27 expr :
-	#op2_expr{
-		operator = token_symbol('$2'),
-		operand1 = '$1',
-		operand2 = '$3',
+	#e_expr{
+		tag = token_symbol('$2'),
+		data = ['$1', '$3'],
 		line = token_line('$2')
 	}.
 expr -> expr op26 expr :
-	#op2_expr{
-		operator = token_symbol('$2'),
-		operand1 = '$1',
-		operand2 = '$3',
+	#e_expr{
+		tag = token_symbol('$2'),
+		data = ['$1', '$3'],
 		line = token_line('$2')
 	}.
 expr -> expr op25 expr :
-	#op2_expr{
-		operator = token_symbol('$2'),
-		operand1 = '$1',
-		operand2 = '$3',
+	#e_expr{
+		tag = token_symbol('$2'),
+		data = ['$1', '$3'],
 		line = token_line('$2')
 	}.
 expr -> expr op19 :
-	#op1_expr{
-		operator = token_symbol('$2'),
-		operand = '$1',
+	#e_expr{
+		tag = token_symbol('$2'),
+		data = ['$1'],
 		line = token_line('$2')
 	}.
 expr -> identifier :
@@ -367,18 +365,18 @@ reserved_keyword -> break : '$1'.
 reserved_keyword -> continue : '$1'.
 
 %% the precedence of 'pre_minus_plus_expr' needs to be
-%% higher than "op2_expr +/-"
+%% higher than "operator +/-"
 Unary 300 pre_minus_plus_expr.
 pre_minus_plus_expr -> '-' expr :
-	#op1_expr{
-		operator = token_symbol('$1'),
-		operand = '$2',
+	#e_expr{
+		tag = token_symbol('$1'),
+		data = ['$2'],
 		line = token_line('$1')
 	}.
 pre_minus_plus_expr -> '+' expr :
-	#op1_expr{
-		operator = token_symbol('$1'),
-		operand = '$2',
+	#e_expr{
+		tag = token_symbol('$1'),
+		data = ['$2'],
 		line = token_line('$1')
 	}.
 
