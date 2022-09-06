@@ -433,8 +433,22 @@ check_types_in_struct_fields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
 		FieldNames
 	).
 
--spec check_struct_field(#var_ref{}, var_type_map(), #{atom() := any()}, atom(), context()) -> ok.
-check_struct_field(#var_ref{name = FieldName, line = Line}, FieldTypes, ValMap, StructName, {_, _, StructMap, _} = Ctx) ->
+
+-spec check_struct_field(
+	#var_ref{},
+	var_type_map(),
+	#{atom() := any()},
+	atom(),
+	context()
+) -> ok.
+
+check_struct_field(
+	#var_ref{name = FieldName, line = Line},
+	FieldTypes,
+	ValMap,
+	StructName,
+	{_, _, StructMap, _} = Ctx
+) ->
 	{ok, Val} = maps:find(FieldName, ValMap),
 	ExpectedType = get_field_type(FieldName, FieldTypes, StructName, Line),
 	check_type(ExpectedType, StructMap),
