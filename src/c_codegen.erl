@@ -5,7 +5,7 @@
 
 -type context() :: {fn_type_map(), struct_type_map(), var_type_map()}.
 
--spec generate_c_code(e_ast(), var_type_map(), e_ast(), string()) -> ok.
+-spec generate_c_code(e_ast(), var_type_map(), [e_stmt()], string()) -> ok.
 generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
 	{FnTypeMap, StructMap} =
 		e_util:make_function_and_struct_map_from_ast(AST),
@@ -16,18 +16,19 @@ generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
 
 	% io:format(">>>~p~n", [AST2]),
 	%% struct definition have to be before function declarations
-	CheckStruct = fun (A) -> element(1, A) =:= struct end,
-	{StructAST, FnAST} = lists:partition(CheckStruct, AST2),
+	{StructAST, FnAST} = lists:partition(
+		fun (A) -> element(1, A) =:= struct end,
+		AST2
+	),
 	{StructStmts, []} = statements_to_str(StructAST, []),
 	{FnStmts, FnDeclars} = statements_to_str(FnAST, InitCode2),
 	VarStmts = var_map_to_str(GlobalVars),
-	Code = lists:join(
-		"\n\n",
-		[common_c_code(), StructStmts, VarStmts, FnDeclars, FnStmts]
-	),
+	Code = lists:join("\n\n", [
+		common_c_code(), StructStmts, VarStmts, FnDeclars, FnStmts
+	]),
 	ok = file:write_file(OutputFile, Code).
 
--spec fix_function_for_c(e_expr(), context()) -> e_expr().
+-spec fix_function_for_c(e_ast_elem(), context()) -> e_ast_elem().
 fix_function_for_c(
 	#function{stmts = Exprs, var_type_map = VarTypes} = F,
 	{FnTypeMap, StructMap, GlobalVars}
@@ -41,7 +42,7 @@ fix_function_for_c(
 fix_function_for_c(Any, _) ->
 	Any.
 
--spec fix_exprs_for_c(e_ast(), context()) -> e_ast().
+-spec fix_exprs_for_c([e_stmt()], context()) -> [e_stmt()].
 fix_exprs_for_c(Exprs, Ctx) ->
 	e_util:expr_map(fun (E) -> fix_expr_for_c(E, Ctx) end, Exprs).
 
@@ -85,6 +86,7 @@ common_c_code() ->
 	"typedef unsigned long u64;\ntypedef long i64;\n"
 	"typedef double f64;\ntypedef float f32;\n\n".
 
+-spec statements_to_str(e_ast(), [e_stmt()]) -> {iolist(), iolist()}.
 statements_to_str(Statements, InitCode) ->
 	statements_to_str(Statements, InitCode, [], []).
 
@@ -119,10 +121,9 @@ statements_to_str(
 		true -> InitCode ++ Exprs;
 		false -> Exprs
 		end,
-	S = io_lib:format(
-		"~s~n{~n~s~n~n~s~n}~n~n",
-		[Declars, var_map_to_str(PureVars), exprs_to_str(Exprs2)]
-	),
+	S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [
+		Declars, var_map_to_str(PureVars), exprs_to_str(Exprs2)
+	]),
 	statements_to_str(
 		Rest,
 		InitCode,
@@ -152,7 +153,7 @@ statements_to_str([], _, StmtStrs, FnDeclars) ->
 	{lists:reverse(StmtStrs), lists:reverse(FnDeclars)}.
 
 function_declaration_to_str(Name, ParamStr, #basic_type{p_depth = N} = RetType)
-		when N > 0 ->
+	when N > 0 ->
 	return_type_to_str(
 		RetType,
 		io_lib:format("(*~s(~s))", [Name, ParamStr])
@@ -208,29 +209,24 @@ return_type_to_str(#basic_type{p_depth = N} = T, NameParams) when N > 0 ->
 	type_to_c_str(T#basic_type{p_depth = N - 1}, NameParams).
 
 %% convert type to C string
--spec type_to_c_str(e_expr(), iolist()) -> iolist().
+-spec type_to_c_str(e_type(), iolist()) -> iolist().
 type_to_c_str(#array_type{length = Len, elem_type = Type}, VarName) ->
-	io_lib:format(
-		"struct {~s value[~w];} ~s",
-		[type_to_c_str(Type, ""), Len, VarName]
-	);
+	io_lib:format("struct {~s value[~w];} ~s", [
+		type_to_c_str(Type, ""), Len, VarName
+	]);
 type_to_c_str(#basic_type{class = Class, tag = Tag, p_depth = Depth}, VarName)
-		when Depth > 0 ->
-	io_lib:format(
-		"~s~s ~s",
-		[
-			type_tag_to_str(Class, Tag),
-			lists:duplicate(Depth, "*"),
-			VarName
-		]
-	);
+	when Depth > 0 ->
+	io_lib:format("~s~s ~s", [
+		type_tag_to_str(Class, Tag),
+		lists:duplicate(Depth, "*"),
+		VarName
+	]);
 type_to_c_str(#basic_type{class = Class, tag = Tag, p_depth = 0}, VarName) ->
 	io_lib:format("~s ~s", [type_tag_to_str(Class, Tag), VarName]);
 type_to_c_str(#fn_type{params = Params, ret = RetType}, VarName) ->
-	NameParams = io_lib:format(
-		"(*~s)(~s)",
-		[VarName, function_params_to_str_no_name(Params)]
-	),
+	NameParams = io_lib:format("(*~s)(~s)", [
+		VarName, function_params_to_str_no_name(Params)
+	]),
 	type_to_c_str(RetType, NameParams).
 
 type_tag_to_str(struct, Name) ->
@@ -249,34 +245,26 @@ exprs_to_str([], ExprList) ->
 
 -spec expr_to_str(e_expr(), char()) -> iolist().
 expr_to_str(#if_stmt{condi = Condi, then = Then, else = Else}, _) ->
-	io_lib:format(
-		"if (~s) {\n~s\n} else {\n~s}",
-		[
-			expr_to_str(Condi, $\s),
-			exprs_to_str(Then),
-			exprs_to_str(Else)
-		]
-	);
+	io_lib:format("if (~s) {\n~s\n} else {\n~s}", [
+		expr_to_str(Condi, $\s),
+		exprs_to_str(Then),
+		exprs_to_str(Else)
+	]);
 expr_to_str(#while_stmt{condi = Condi, stmts = Exprs}, _) ->
-	io_lib:format(
-		"while (~s) {\n~s\n}\n",
-		[expr_to_str(Condi, $\s), exprs_to_str(Exprs)]
-	);
+	io_lib:format("while (~s) {\n~s\n}\n", [
+		expr_to_str(Condi, $\s), exprs_to_str(Exprs)
+	]);
 expr_to_str(#e_expr{tag = Tag, data = [Op1, Op2]}, EndChar) ->
-	io_lib:format(
-		"(~s ~s ~s)~c",
-		[
-			expr_to_str(Op1, $\s),
-			translate_op(Tag),
-			expr_to_str(Op2, $\s),
-			EndChar
-		]
-	);
+	io_lib:format("(~s ~s ~s)~c", [
+		expr_to_str(Op1, $\s),
+		translate_op(Tag),
+		expr_to_str(Op2, $\s),
+		EndChar
+	]);
 expr_to_str(#e_expr{tag = Tag, data = [Operand]}, EndChar) ->
-	io_lib:format(
-		"(~s ~s)~c",
-		[translate_op(Tag), expr_to_str(Operand, $\s), EndChar]
-	);
+	io_lib:format("(~s ~s)~c", [
+		translate_op(Tag), expr_to_str(Operand, $\s), EndChar
+	]);
 expr_to_str(#e_expr{tag = {call, Fn}, data = Args}, EndChar) ->
 	ArgStr = lists:join(
 		",",
@@ -292,10 +280,9 @@ expr_to_str(#goto_label{name = Name}, _) ->
 expr_to_str(#var_ref{name = Name}, EndChar) ->
 	io_lib:format("~s~c", [Name, EndChar]);
 expr_to_str(#type_convert{expr = Expr, type = Type}, EndChar) ->
-	io_lib:format(
-		"((~s) ~s)~c",
-		[type_to_c_str(Type, ""), expr_to_str(Expr, $\s), EndChar]
-	);
+	io_lib:format("((~s) ~s)~c", [
+		type_to_c_str(Type, ""), expr_to_str(Expr, $\s), EndChar
+	]);
 expr_to_str({Any, _Line, Value}, EndChar) when Any =:= integer; Any =:= float ->
 	io_lib:format("~w~c", [Value, EndChar]);
 expr_to_str({Any, _Line, S}, EndChar) when Any =:= string ->

@@ -14,7 +14,7 @@
 	fun ((e_expr()) -> e_expr()),
 	[e_expr()]
 )
-	-> e_expr().
+	-> [e_expr()].
 
 expr_map(
 	Fn,
@@ -62,26 +62,29 @@ expr_map(_, []) ->
 
 -spec expr_to_str(e_expr()) -> string().
 expr_to_str(#if_stmt{condi = Cond, then = Then, else = Else}) ->
-	io_lib:format(
-		"if (~s) ~s else ~s end",
-		[expr_to_str(Cond), expr_to_str(Then), expr_to_str(Else)]
-	);
+	io_lib:format("if (~s) ~s else ~s end", [
+		expr_to_str(Cond),
+		lists:map(fun expr_to_str/1, Then),
+		lists:map(fun expr_to_str/1, Else)
+	]);
 expr_to_str(#while_stmt{condi = Cond, stmts = Exprs}) ->
-	io_lib:format(
-		"while (~s) ~s end",
-		[expr_to_str(Cond), expr_to_str(Exprs)]
-	);
+	io_lib:format( "while (~s) ~s end", [
+		expr_to_str(Cond),
+		lists:map(fun expr_to_str/1, Exprs)
+	]);
 expr_to_str(#return_stmt{expr = Expr}) ->
 	io_lib:format("return (~s)", [expr_to_str(Expr)]);
 expr_to_str(#var_ref{name = Name}) ->
-	io_lib:format("~s", [expr_to_str(Name)]);
+	atom_to_list(Name);
 expr_to_str(#e_expr{tag = {call, Callee}, data = Args}) ->
-	io_lib:format("(~s)(~s)", [expr_to_str(Callee), expr_to_str(Args)]);
+	io_lib:format("(~s)(~s)", [
+		expr_to_str(Callee),
+		lists:map(fun expr_to_str/1, Args)
+	]);
 expr_to_str(#e_expr{tag = Operator, data = [Op1, Op2]}) ->
-	io_lib:format(
-		"~s ~s ~s",
-		[expr_to_str(Op1), Operator, expr_to_str(Op2)]
-	);
+	io_lib:format("~s ~s ~s", [
+		expr_to_str(Op1), Operator, expr_to_str(Op2)
+	]);
 expr_to_str(#e_expr{tag = Operator, data = [Operand]}) ->
 	io_lib:format("~s ~s", [expr_to_str(Operand), Operator]);
 expr_to_str({TypeTag, _, Val}) when TypeTag =:= integer; TypeTag =:= float ->

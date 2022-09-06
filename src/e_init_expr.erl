@@ -22,6 +22,8 @@ check_position(#array_init_expr{line = Line}) ->
 check_position(_) ->
 	ok.
 
+
+-spec expand_in_function(e_ast(), struct_type_map()) -> e_ast().
 expand_in_function([#function{stmts = Exprs} = F | Rest], StructMap) ->
 	e_util:expr_map(fun check_position/1, Exprs),
 	[F#function{stmts = expand_init_expr(Exprs, StructMap)}

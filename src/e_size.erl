@@ -89,13 +89,13 @@ fill_struct_info(AST, {_, PointerWidth} = Ctx) ->
 		AST1
 	).
 
--spec fill_struct_size(e_expr(), context()) -> e_expr().
+-spec fill_struct_size(e_ast_elem(), context()) -> e_ast_elem().
 fill_struct_size(#struct{} = S, Ctx) ->
 	S#struct{size = size_of_struct(S, Ctx)};
 fill_struct_size(Any, _) ->
 	Any.
 
--spec fill_struct_offsets(e_expr(), context()) -> e_expr().
+-spec fill_struct_offsets(e_ast_elem(), context()) -> e_ast_elem().
 fill_struct_offsets(#struct{} = S, Ctx) ->
 	S#struct{field_offset_map = offset_of_struct(S, Ctx)};
 fill_struct_offsets(Any, _) ->

@@ -1,5 +1,7 @@
 -module(e_assembler).
 -export([compile_file/1]).
+-compile({nowarn_unused_function, [assemble_op/1, disassemble_op/1]}).
+-compile({nowarn_unused_function, [decode_reg_name/1]}).
 
 compile_file(FileName) ->
 	AssemblyCodeList = file:consult(FileName),

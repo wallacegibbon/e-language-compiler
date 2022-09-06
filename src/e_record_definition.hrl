@@ -1,3 +1,35 @@
+-record(struct, {
+	line = 0 :: integer(),
+	name :: atom(),
+	size = -1 :: integer(),
+	field_type_map :: var_type_map(),
+	field_offset_map = #{} :: #{atom() := integer()},
+	field_names = [] :: [any()],
+	field_default_value_map = #{} :: #{atom() := e_expr()}
+}).
+
+-record(struct_raw, {
+	line = 0 :: integer(),
+	name :: atom(),
+	fields = [] :: [e_expr()]
+}).
+
+-record(goto_label, {
+	line = 0 :: integer(),
+	name :: atom()
+}).
+
+-record(goto_stmt, {
+	line = 0 :: integer(),
+	expr :: e_expr()
+}).
+
+-record(type_convert, {
+	line = 0 :: integer(),
+	expr :: e_expr(),
+	type :: e_type()
+}).
+
 -record(fn_type, {
 	line = 0 :: integer(),
 	params = [] :: [e_type()],
@@ -10,18 +42,16 @@
 	type :: #fn_type{},
 	param_names = [] :: [atom()],
 	var_type_map :: var_type_map(),
-	labels = [] :: [e_expr()],
-	stmts = [] :: [e_ast()]
+	labels = [] :: [#goto_label{}],
+	stmts = [] :: [e_stmt()]
 }).
 
--record(struct, {
+-record(function_raw, {
 	line = 0 :: integer(),
 	name :: atom(),
-	size = -1 :: integer(),
-	field_type_map :: var_type_map(),
-	field_offset_map = #{} :: #{atom() := integer()},
-	field_names = [] :: [any()],
-	field_default_value_map = #{} :: #{atom() := e_expr()}
+	params = [] :: [e_expr()],
+	ret_type :: e_type(),
+	stmts = [] :: [e_stmt()]
 }).
 
 -record(basic_type, {
@@ -55,20 +85,6 @@
 	elements = [] :: [e_expr()]
 }).
 
--record(function_raw, {
-	line = 0 :: integer(),
-	name :: atom(),
-	params = [] :: [e_expr()],
-	ret_type :: e_type(),
-	stmts = [] :: [e_expr()]
-}).
-
--record(struct_raw, {
-	line = 0 :: integer(),
-	name :: atom(),
-	fields = [] :: [e_expr()]
-}).
-
 -record(return_stmt, {
 	line = 0 :: integer(),
 	expr :: e_expr()
@@ -91,7 +107,7 @@
 	line = 0 :: integer(),
 	name :: atom(),
 	type :: e_type(),
-	init_value = none :: any()
+	init_value = none :: e_expr()
 }).
 
 -record(var_ref, {
@@ -115,40 +131,43 @@
 }).
 
 -type expr_tag() ::
-	'*' | '/' | 'div' | '+' | '-' | 'rem' | 'sizeof' |
-	{call, atom()} |
-	any().
+	'*' | '/' | '+' | '-' | '@' | '^' | 'rem' | 'and' | 'or' |
+	'band' | 'bor' | 'bxor' | 'bsl' | 'bsr' | '~' | '!' | '.' |
+	'=' | '>' | '<' | '>=' | '<=' | '!=' | '==' |
+	{call, e_expr()} | {sizeof, e_type()}.
 
 -record(e_expr, {
 	line = 0 :: integer(),
 	tag :: expr_tag(),
-	data :: [e_expr()]
+	data = [] :: [e_expr()]
 }).
 
--type e_expr() :: #e_expr{}.
-
--record(goto_label, {
-	line = 0 :: integer(),
-	name :: atom()
-}).
-
--record(goto_stmt, {
-	line = 0 :: integer(),
-	expr :: e_expr()
-}).
-
--record(type_convert, {
-	line = 0 :: integer(),
-	expr :: e_expr(),
-	type :: e_type()
-}).
+-type e_expr() ::
+	#e_expr{} | #integer{} | #float{} | #string{} | #var_ref{} |
+	#struct_init_expr{} | #array_init_expr{}.
 
 %% primitive types: u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
--type e_type() :: #basic_type{} | #array_type{} | #fn_type{} | any().
--type e_stmt() :: #if_stmt{} | #while_stmt{} | #goto_stmt{} | #return_stmt{}.
+-type e_type() ::
+	#basic_type{} | #array_type{} | #fn_type{} | any().
+
+-type expr_stmt() ::
+	e_expr().
+
+-type e_stmt() ::
+	#if_stmt{} | #while_stmt{} | #goto_stmt{} | #goto_label{} |
+	#return_stmt{} | expr_stmt().
+
 -type struct_type_map() :: #{atom() := #struct{}}.
+
 -type fn_type_map() :: #{atom() := #fn_type{}}.
+
 -type fn_ret_type_map() :: #{atom() := e_type()}.
+
 -type var_type_map() :: #{atom() := e_type()}.
--type e_ast() :: [e_expr()].
+
+-type e_ast_raw_elem() :: #function_raw{} | #struct_raw{} | #var_def{}.
+-type e_ast_raw() :: [e_ast_raw_elem()].
+
+-type e_ast_elem() :: #function{} | #struct{} | #var_def{}.
+-type e_ast() :: [e_ast_elem()].
 

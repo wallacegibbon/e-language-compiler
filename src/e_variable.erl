@@ -3,7 +3,10 @@
 
 -include("e_record_definition.hrl").
 
--spec fetch_variables(e_ast()) -> {e_ast(), var_type_map(), e_ast()}.
+
+-spec fetch_variables(e_ast_raw())
+	-> {e_ast_raw(), var_type_map(), e_ast_raw()}.
+
 fetch_variables(AST) ->
 	{AST3, VarTypes, InitCode} = fetch_variables(
 		prepare_struct_init_expr(AST),
@@ -13,13 +16,13 @@ fetch_variables(AST) ->
 	{AST3, VarTypes, InitCode}.
 
 
--spec prepare_struct_init_expr(e_ast()) -> e_ast().
-prepare_struct_init_expr([#function_raw{stmts = Exprs} = F | Rest]) ->
-	[F#function_raw{stmts = fix_struct_init_ast(Exprs)}
+-spec prepare_struct_init_expr(e_ast_raw()) -> e_ast_raw().
+prepare_struct_init_expr([#function_raw{stmts = Stmts} = F | Rest]) ->
+	[F#function_raw{stmts = fix_struct_init_ast(Stmts)}
 		| prepare_struct_init_expr(Rest)];
 
-prepare_struct_init_expr([#struct_raw{fields = Exprs} = S | Rest]) ->
-	[S#struct_raw{fields = fix_struct_init_ast(Exprs)}
+prepare_struct_init_expr([#struct_raw{fields = Stmts} = S | Rest]) ->
+	[S#struct_raw{fields = fix_struct_init_ast(Stmts)}
 		| prepare_struct_init_expr(Rest)];
 
 prepare_struct_init_expr([#var_def{init_value = Value} = V | Rest]) ->
@@ -30,11 +33,11 @@ prepare_struct_init_expr([]) ->
 	[].
 
 
--spec fix_struct_init_ast(e_ast()) -> e_ast().
+-spec fix_struct_init_ast([e_stmt()]) -> [e_stmt()].
 fix_struct_init_ast(Lst) ->
 	e_util:expr_map(fun fix_struct_init/1, Lst).
 
--spec fix_struct_init(e_expr()) -> e_expr().
+-spec fix_struct_init(e_stmt()) -> e_stmt().
 fix_struct_init(
 	#struct_init_raw_expr{name = Name, fields = Fields, line = Line}
 ) ->
@@ -56,13 +59,16 @@ fix_struct_init(#e_expr{data = Operands} = O) ->
 fix_struct_init(Any) ->
 	Any.
 
--spec struct_init_to_map([e_expr()]) -> {[#var_ref{}], #{atom() := e_expr()}}.
-struct_init_to_map(Exprs) ->
-	struct_init_to_map(Exprs, [], #{}).
+
+-spec struct_init_to_map([e_expr()])
+	-> {[#var_ref{}], #{atom() := e_expr()}}.
+
+struct_init_to_map(Stmts) ->
+	struct_init_to_map(Stmts, [], #{}).
 
 
 -spec struct_init_to_map(
-	[#e_expr{}],
+	[e_expr()],
 	[#var_ref{}],
 	#{atom() := e_expr()}
 )
@@ -91,8 +97,13 @@ struct_init_to_map([], FieldNames, ExprMap) ->
 %% In function expressions,
 %% the init code of defvar can not be simply fetched out from the code,
 %% it should be replaced as assignment in the same place.
--spec fetch_variables(e_ast(), e_ast(), {var_type_map(), e_ast(), boolean()})
-	-> {e_ast(), var_type_map(), e_ast()}.
+-spec fetch_variables(
+	e_ast_raw(),
+	e_ast_raw(),
+	{var_type_map(), e_ast(), boolean()}
+)
+	-> {e_ast_raw(), var_type_map(), e_ast_raw()}.
+
 fetch_variables(
 	[
 		#var_def{
@@ -140,7 +151,7 @@ fetch_variables(
 			name = Name,
 			ret_type = Ret,
 			params = Params,
-			stmts = Exprs,
+			stmts = Stmts,
 			line = Line
 		}
 		| Rest
@@ -158,7 +169,7 @@ fetch_variables(
 		{Line, "function params can not have default value"}
 	),
 	{NewExprs, FnVarTypes, []} = fetch_variables(
-		Exprs,
+		Stmts,
 		[],
 		{ParamVars, [], false}
 	),
@@ -166,7 +177,10 @@ fetch_variables(
 	check_variable_conflict(GlobalVars, FnVarTypes),
 	%% label names should be different from variables,
 	%% because the operand of goto could be a pointer variable.
-	Labels = lists:filter(fun (E) -> element(1, E) =:= label end, Exprs),
+	Labels = lists:filter(
+		fun (E) -> element(1, E) =:= goto_label end,
+		Stmts
+	),
 	check_label_conflict(Labels, GlobalVars, FnVarTypes),
 	FnType = #fn_type{
 		params = get_values_by_defs(Params, ParamVars),
@@ -207,7 +221,7 @@ fetch_variables([Any | Rest], NewAST, Ctx) ->
 fetch_variables([], NewAST, {VarTypes, InitCode, _}) ->
 	{lists:reverse(NewAST), VarTypes, lists:reverse(InitCode)}.
 
--spec append_to_ast(e_ast(), atom(), e_expr(), integer()) -> e_ast().
+-spec append_to_ast([e_stmt()], atom(), e_expr(), integer()) -> e_ast().
 append_to_ast(AST, VarName, InitialValue, Line) when InitialValue =/= none ->
 	[
 		#e_expr{
@@ -223,7 +237,13 @@ append_to_ast(AST, VarName, InitialValue, Line) when InitialValue =/= none ->
 append_to_ast(AST, _, _, _) ->
 	AST.
 
--spec check_label_conflict([e_expr()], var_type_map(), var_type_map()) -> ok.
+
+%% TODO: dialyzer went crazy here:
+%% The pattern <[{'goto_label', Line, Name} | Rest], GlobalVars, LocalVars>
+%% can never match the type <[],#{atom()=>_},#{atom()=>_}>
+-spec check_label_conflict([#goto_label{}], var_type_map(), var_type_map())
+	-> ok.
+
 check_label_conflict(
 	[#goto_label{name = Name, line = Line} | Rest],
 	GlobalVars,
