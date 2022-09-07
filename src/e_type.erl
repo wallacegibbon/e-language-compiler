@@ -11,7 +11,7 @@
 	ok.
 
 check_types_in_ast(
-	[#function{var_type_map = VarTypes, stmts = Exprs, type = FnType}
+	[#function{var_type_map = VarTypes, stmts = Stmts, type = FnType}
 		| Rest],
 	GlobalVarTypes,
 	{FnTypeMap, StructMap} = Maps
@@ -20,7 +20,7 @@ check_types_in_ast(
 	check_type(FnType#fn_type.ret, StructMap),
 	CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
 	type_of_nodes(
-		Exprs,
+		Stmts,
 		{CurrentVars, FnTypeMap, StructMap, FnType#fn_type.ret}
 	),
 	check_types_in_ast(Rest, GlobalVarTypes, Maps);
@@ -48,7 +48,7 @@ check_types_in_ast(
 		FieldTypes,
 		FieldDefaults,
 		Name,
-		{GlobalVarTypes, FnTypeMap, StructMap, #{}}
+		{GlobalVarTypes, FnTypeMap, StructMap, #basic_type{}}
 	),
 	check_types_in_ast(Rest, GlobalVarTypes, Maps);
 
@@ -60,25 +60,28 @@ check_types_in_ast([], _, _) ->
 
 
 -type context() ::
-	{var_type_map(), fn_type_map(), struct_type_map(), fn_ret_type_map()}.
+	{var_type_map(), fn_type_map(), struct_type_map(), e_type()}.
 
 
 -spec check_type_in_ast_nodes(
-	[e_expr()], var_type_map(), {fn_type_map(), struct_type_map()}
+	[e_stmt()], var_type_map(), {fn_type_map(), struct_type_map()}
 ) ->
 	ok.
 
-check_type_in_ast_nodes(Exprs, GlobalVarTypes, {FnTypeMap, StructMap}) ->
-	type_of_nodes(Exprs, {GlobalVarTypes, FnTypeMap, StructMap, #{}}),
+check_type_in_ast_nodes(Stmts, GlobalVarTypes, {FnTypeMap, StructMap}) ->
+	type_of_nodes(
+		Stmts,
+		{GlobalVarTypes, FnTypeMap, StructMap, #basic_type{}}
+	),
 	ok.
 
 
--spec type_of_nodes([e_expr()], context()) -> [e_type()].
-type_of_nodes(Exprs, Ctx) ->
-	lists:map(fun (Expr) -> type_of_node(Expr, Ctx) end, Exprs).
+-spec type_of_nodes([e_stmt()], context()) -> [e_type()].
+type_of_nodes(Stmts, Ctx) ->
+	lists:map(fun (Expr) -> type_of_node(Expr, Ctx) end, Stmts).
 
 
--spec type_of_node(e_expr(), context()) -> e_type().
+-spec type_of_node(e_stmt(), context()) -> e_type().
 type_of_node(
 	#e_expr{tag = '=', data = [Op1, Op2], line = Line},
 	{_, _, StructMap, _} = Ctx
@@ -180,6 +183,29 @@ type_of_node(
 			type_error_of_op2(Tag, Op1Type, Op2Type)
 		)
 	end;
+type_of_node(
+	#e_expr{tag = {call, FunExpr}, data = Args, line = Line},
+	Ctx
+) ->
+	ArgTypes = type_of_nodes(Args, Ctx),
+	case type_of_node(FunExpr, Ctx) of
+	#fn_type{params = FnParamTypes, ret = FnRetType} ->
+		case compare_types(ArgTypes, FnParamTypes) of
+		true ->
+			FnRetType;
+		false ->
+			e_util:ethrow(
+				Line,
+				arguments_error_info(FnParamTypes, ArgTypes)
+			)
+		end;
+	T ->
+		e_util:ethrow(
+			Line,
+			"invalid function expr: ~s",
+			[type_to_str(T)]
+		)
+	end;
 %% the left operators are: and, or, band, bor, bxor, bsl, bsr, >, <, ...
 type_of_node(
 	#e_expr{tag = Tag, data = [Op1, Op2], line = Line},
@@ -232,29 +258,6 @@ type_of_node(
 type_of_node(#e_expr{data = [Operand]}, Ctx) ->
 	type_of_node(Operand, Ctx);
 type_of_node(
-	#e_expr{tag = {call, FunExpr}, data = Args, line = Line},
-	Ctx
-) ->
-	ArgTypes = type_of_nodes(Args, Ctx),
-	case type_of_node(FunExpr, Ctx) of
-	#fn_type{params = FnParamTypes, ret = FnRetType} ->
-		case compare_types(ArgTypes, FnParamTypes) of
-		true ->
-			FnRetType;
-		false ->
-			e_util:ethrow(
-				Line,
-				arguments_error_info(FnParamTypes, ArgTypes)
-			)
-		end;
-	T ->
-		e_util:ethrow(
-			Line,
-			"invalid function expr: ~s",
-			[type_to_str(T)]
-		)
-	end;
-type_of_node(
 	#if_stmt{condi = Condi, then = Then, else = Else, line = Line},
 	Ctx
 ) ->
@@ -262,9 +265,9 @@ type_of_node(
 	type_of_nodes(Then, Ctx),
 	type_of_nodes(Else, Ctx),
 	e_util:void_type(Line);
-type_of_node(#while_stmt{condi = Condi, stmts = Exprs, line = Line}, Ctx) ->
+type_of_node(#while_stmt{condi = Condi, stmts = Stmts, line = Line}, Ctx) ->
 	type_of_node(Condi, Ctx),
-	type_of_nodes(Exprs, Ctx),
+	type_of_nodes(Stmts, Ctx),
 	e_util:void_type(Line);
 type_of_node(
 	#return_stmt{expr = Expr, line = Line},

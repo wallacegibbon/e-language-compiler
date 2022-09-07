@@ -54,7 +54,7 @@ fix_expr_for_c(
 	case
 		e_type:type_of_node(
 			Operand,
-			{VarTypes, FnTypeMap, StructMap, #{}}
+			{VarTypes, FnTypeMap, StructMap, #basic_type{}}
 		)
 	of
 	#array_type{} ->
@@ -254,6 +254,12 @@ expr_to_str(#while_stmt{condi = Condi, stmts = Exprs}, _) ->
 	io_lib:format("while (~s) {\n~s\n}\n", [
 		expr_to_str(Condi, $\s), exprs_to_str(Exprs)
 	]);
+expr_to_str(#e_expr{tag = {call, Fn}, data = Args}, EndChar) ->
+	ArgStr = lists:join(
+		",",
+		lists:map(fun (E) -> expr_to_str(E, $\s) end, Args)
+	),
+	io_lib:format("~s(~s)~c", [expr_to_str(Fn, $\s), ArgStr, EndChar]);
 expr_to_str(#e_expr{tag = Tag, data = [Op1, Op2]}, EndChar) ->
 	io_lib:format("(~s ~s ~s)~c", [
 		expr_to_str(Op1, $\s),
@@ -265,12 +271,6 @@ expr_to_str(#e_expr{tag = Tag, data = [Operand]}, EndChar) ->
 	io_lib:format("(~s ~s)~c", [
 		translate_op(Tag), expr_to_str(Operand, $\s), EndChar
 	]);
-expr_to_str(#e_expr{tag = {call, Fn}, data = Args}, EndChar) ->
-	ArgStr = lists:join(
-		",",
-		lists:map(fun (E) -> expr_to_str(E, $\s) end, Args)
-	),
-	io_lib:format("~s(~s)~c", [expr_to_str(Fn, $\s), ArgStr, EndChar]);
 expr_to_str(#return_stmt{expr = Expr}, EndChar) ->
 	io_lib:format("return ~s~c", [expr_to_str(Expr, $\s), EndChar]);
 expr_to_str(#goto_stmt{expr = Expr}, EndChar) ->

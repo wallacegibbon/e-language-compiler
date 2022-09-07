@@ -1,10 +1,22 @@
+-record(var_def, {
+	line = 0 :: integer(),
+	name :: atom(),
+	type :: e_type(),
+	init_value = none :: e_expr()
+}).
+
+-record(var_ref, {
+	line = 0 :: integer(),
+	name :: atom()
+}).
+
 -record(struct, {
 	line = 0 :: integer(),
 	name :: atom(),
 	size = -1 :: integer(),
 	field_type_map :: var_type_map(),
 	field_offset_map = #{} :: #{atom() := integer()},
-	field_names = [] :: [any()],
+	field_names = [] :: [#var_ref{}],
 	field_default_value_map = #{} :: #{atom() := e_expr()}
 }).
 
@@ -57,7 +69,7 @@
 -record(basic_type, {
 	line = 0 :: integer(),
 	p_depth = 0 :: integer(),
-	class :: struct | integer | float | void | any,
+	class = void :: struct | integer | float | void | any,
 	tag :: atom()
 }).
 
@@ -76,7 +88,7 @@
 -record(struct_init_expr, {
 	line = 0 :: integer(),
 	name :: atom(),
-	field_names = [] :: [any()],
+	field_names = [] :: [#var_ref{}],
 	field_value_map = #{} :: #{atom() := e_expr()}
 }).
 
@@ -101,18 +113,6 @@
 	condi :: e_expr(),
 	then = [] :: [e_expr()],
 	else = [] :: [e_expr()]
-}).
-
--record(var_def, {
-	line = 0 :: integer(),
-	name :: atom(),
-	type :: e_type(),
-	init_value = none :: e_expr()
-}).
-
--record(var_ref, {
-	line = 0 :: integer(),
-	name :: atom()
 }).
 
 -record(integer, {
@@ -148,7 +148,7 @@
 
 %% primitive types: u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
 -type e_type() ::
-	#basic_type{} | #array_type{} | #fn_type{} | any().
+	#basic_type{} | #array_type{} | #fn_type{}.
 
 -type expr_stmt() ::
 	e_expr().
@@ -160,8 +160,6 @@
 -type struct_type_map() :: #{atom() := #struct{}}.
 
 -type fn_type_map() :: #{atom() := #fn_type{}}.
-
--type fn_ret_type_map() :: #{atom() := e_type()}.
 
 -type var_type_map() :: #{atom() := e_type()}.
 
