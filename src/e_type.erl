@@ -159,11 +159,7 @@ type_of_node(
 		false ->
 			e_util:ethrow(
 				Line,
-				type_error_of_op2(
-					'-',
-					Op1Type,
-					Op2Type
-				)
+				type_error_of_op2('-', Op1Type, Op2Type)
 			)
 		end
 	end;
@@ -460,16 +456,12 @@ check_struct_field(
 	true ->
 		ok;
 	false ->
-		e_util:ethrow(
-			Line,
-			"~s.~s type error: ~s = ~s",
-			[
-				StructName,
-				FieldName,
-				type_to_str(ExpectedType),
-				type_to_str(GivenType)
-			]
-		)
+		e_util:ethrow(Line, "~s.~s type error: ~s = ~s", [
+			StructName,
+			FieldName,
+			type_to_str(ExpectedType),
+			type_to_str(GivenType)
+		])
 	end.
 
 -spec are_same_type([e_type()]) -> boolean().

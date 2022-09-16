@@ -1,6 +1,6 @@
 ## The E Language And Its Compiler
 
-The E language is a simplified C language with fewer concepts and more reasonable syntax. It is designed to be:
+The E language is like a simplified C language with fewer concepts and more reasonable syntax. It is designed to be:
 - **E**xplicit on pointer operations.
 - **E**asy to learn and implement.
 - Suitable for **E**mbeded systems and friendly to **E**lectronic hobbyists.
@@ -32,8 +32,8 @@ Here are some comparisons:
 arr: {i32, 3} = {1, 2, 3};
 
 struct Blah
-    id: i32,
-    name: i8^,
+	id: i32,
+	name: i8^,
 end
 
 b: Blah = Blah{id = 1, name = "hello"};
@@ -42,11 +42,11 @@ c: {Blah, 2} = {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}};
 ```
 
 ```c
-i32 arr[3] = {1, 2, 3};
+int32_t arr[3] = {1, 2, 3};
 
 struct Blah {
-    i32 id;
-    char *name;
+	int32_t id;
+	char *name;
 }
 
 Blah b = {1, "hello"};
@@ -63,11 +63,11 @@ Here is an example about `union` in C language:
 
 ```c
 struct A {
-    unsigned char tag;
-    union {
-        long long num;
-        char buf[8];
-    } value;
+	unsigned char tag;
+	union {
+		long long num;
+		char buf[8];
+	} value;
 };
 
 struct A a = {.tag = 1, .value.num = 0x12345678 };
@@ -80,8 +80,8 @@ In E language (and also in C language), you can use pointer manipulation to achi
 
 ```
 struct A
-    tag: u8,
-    value: i64,
+	tag: u8,
+	value: i64,
 end
 
 a: A = A{tag = 1, value = 0x12345678};
@@ -104,14 +104,14 @@ To keep things minimum, E language do not support `enum`, either.
 
 ```
 fun main(argc: isize, argv: i8^^): isize
-    return 0;
+	return 0;
 end
 ```
 
 ```c
 int main(int argc, char **argv)
 {
-    return 0;
+	return 0;
 }
 ```
 
@@ -120,21 +120,21 @@ int main(int argc, char **argv)
 
 ```
 if fn1(fn2(val1)) >= fn3(val2) then
-    fn4();
+	fn4();
 elif val3 > 100 then
-    fn5();
+	fn5();
 else
-    fn6();
+	fn6();
 end
 ```
 
 ```c
 if (fn1(fn2(val1)) >= fn3(val2)) {
-    fn4();
+	fn4();
 } else if (val3) {
-    fn5();
+	fn5();
 } else {
-    fn6();
+	fn6();
 }
 ```
 
