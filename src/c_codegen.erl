@@ -91,16 +91,13 @@ statements_to_str(Statements, InitCode) ->
 	statements_to_str(Statements, InitCode, [], []).
 
 statements_to_str(
-	[
-		#function{
-			name = Name,
-			param_names = ParamNames,
-			type = FnType,
-			var_type_map = VarTypes,
-			stmts = Exprs
-		}
-		| Rest
-	],
+	[#function{
+		name = Name,
+		param_names = ParamNames,
+		type = FnType,
+		var_type_map = VarTypes,
+		stmts = Exprs
+	} | Rest],
 	InitCode,
 	StmtStrs,
 	FnDeclars

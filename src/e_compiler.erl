@@ -5,8 +5,10 @@
 
 -type compile_options() :: map().
 
+
 -spec compile_from_raw_ast(e_ast(), compile_options())
 	-> {e_ast(), var_type_map(), e_ast()}.
+
 compile_from_raw_ast(AST, CustomCompileOptions) ->
 	CompileOptions = maps:merge(
 		default_compiler_options(), CustomCompileOptions
@@ -65,11 +67,7 @@ check_struct_recursive(
 		check_struct_object(Struct, StructTypeMap, [])
 	catch
 	{recur, Chain} ->
-		e_util:ethrow(
-			Line,
-			"recursive struct ~s -> ~w",
-			[Name, Chain]
-		)
+		e_util:ethrow(Line, "recursive struct ~s -> ~w", [Name, Chain])
 	end.
 
 

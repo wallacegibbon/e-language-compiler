@@ -20,35 +20,27 @@ expr_map(
 	Fn,
 	[#if_stmt{condi = Cond, then = Then, else = Else} = If | Rest]
 ) ->
-	[
-		If#if_stmt{
-			condi = Fn(Cond),
-			then = expr_map(Fn, Then),
-			else = expr_map(Fn, Else)
-		}
-		| expr_map(Fn, Rest)
-	];
+	[If#if_stmt{
+		condi = Fn(Cond),
+		then = expr_map(Fn, Then),
+		else = expr_map(Fn, Else)
+	} | expr_map(Fn, Rest)];
 
 expr_map(
 	Fn,
 	[#while_stmt{condi = Cond, stmts = Exprs} = While | Rest]
 ) ->
-	[
-		While#while_stmt{condi = Fn(Cond), stmts = expr_map(Fn, Exprs)}
-		| expr_map(Fn, Rest)
-	];
+	[While#while_stmt{condi = Fn(Cond), stmts = expr_map(Fn, Exprs)}
+		| expr_map(Fn, Rest)];
 
 expr_map(
 	Fn,
 	[#e_expr{tag = {call, Callee}, data = Args} = FnCall | Rest]
 ) ->
-	[
-		FnCall#e_expr{
-			tag = {call, Fn(Callee)},
-			data = expr_map(Fn, Args)
-		}
-		| expr_map(Fn, Rest)
-	];
+	[FnCall#e_expr{
+		tag = {call, Fn(Callee)},
+		data = expr_map(Fn, Args)
+	} | expr_map(Fn, Rest)];
 
 expr_map(Fn, [#return_stmt{expr = Expr} = Ret | Rest]) ->
 	[Ret#return_stmt{expr = Fn(Expr)} | expr_map(Fn, Rest)];

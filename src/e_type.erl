@@ -26,15 +26,12 @@ check_types_in_ast(
 	check_types_in_ast(Rest, GlobalVarTypes, Maps);
 
 check_types_in_ast(
-	[
-		#struct{
-			name = Name,
-			field_type_map = FieldTypes,
-			field_names = FieldNames,
-			field_default_value_map = FieldDefaults
-		}
-		| Rest
-	],
+	[#struct{
+		name = Name,
+		field_type_map = FieldTypes,
+		field_names = FieldNames,
+		field_default_value_map = FieldDefaults
+	} | Rest ],
 	GlobalVarTypes,
 	{FnTypeMap, StructMap} = Maps
 ) ->

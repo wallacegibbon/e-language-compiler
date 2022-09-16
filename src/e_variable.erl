@@ -75,13 +75,10 @@ struct_init_to_map(Stmts) ->
 	-> {[#var_ref{}], #{atom() := e_expr()}}.
 
 struct_init_to_map(
-	[
-		#e_expr{
-			tag = '=',
-			data = [#var_ref{name = Field} = Op1, Val]
-		}
-		| Rest
-	],
+	[#e_expr{
+		tag = '=',
+		data = [#var_ref{name = Field} = Op1, Val]
+	} | Rest],
 	FieldNames,
 	ExprMap
 ) ->
@@ -105,15 +102,12 @@ struct_init_to_map([], FieldNames, ExprMap) ->
 	-> {e_ast_raw(), var_type_map(), e_ast_raw()}.
 
 fetch_variables(
-	[
-		#var_def{
-			name = Name,
-			type = Type,
-			line = Line,
-			init_value = InitialValue
-		}
-		| Rest
-	],
+	[#var_def{
+		name = Name,
+		type = Type,
+		line = Line,
+		init_value = InitialValue
+	} | Rest],
 	NewAST,
 	{VarTypes, InitCode, CollectInitCode}
 ) ->
@@ -146,16 +140,13 @@ fetch_variables(
 		)
 	end;
 fetch_variables(
-	[
-		#function_raw{
-			name = Name,
-			ret_type = Ret,
-			params = Params,
-			stmts = Stmts,
-			line = Line
-		}
-		| Rest
-	],
+	[#function_raw{
+		name = Name,
+		ret_type = Ret,
+		params = Params,
+		stmts = Stmts,
+		line = Line
+	} | Rest],
 	NewAST,
 	{GlobalVars, _, _} = Ctx
 ) ->
@@ -223,17 +214,14 @@ fetch_variables([], NewAST, {VarTypes, InitCode, _}) ->
 
 -spec append_to_ast([e_stmt()], atom(), e_expr(), integer()) -> e_ast().
 append_to_ast(AST, VarName, InitialValue, Line) when InitialValue =/= none ->
-	[
-		#e_expr{
-			tag = '=',
-			data = [
-				#var_ref{name = VarName, line = Line},
-				InitialValue
-			],
-			line = Line
-		}
-		| AST
-	];
+	[#e_expr{
+		tag = '=',
+		data = [
+			#var_ref{name = VarName, line = Line},
+			InitialValue
+		],
+		line = Line
+	} | AST];
 append_to_ast(AST, _, _, _) ->
 	AST.
 
@@ -284,8 +272,7 @@ get_values_by_defs(DefList, Map) ->
 -spec var_defs_to_refs([#var_def{}]) -> [#var_ref{}].
 var_defs_to_refs(VarDefList) ->
 	lists:map(
-		fun
-		(#var_def{name = N, line = Line}) ->
+		fun (#var_def{name = N, line = Line}) ->
 			#var_ref{name = N, line = Line}
 		end,
 		VarDefList

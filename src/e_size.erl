@@ -7,22 +7,17 @@
 
 -spec expand_sizeof(e_ast(), context()) -> e_ast().
 expand_sizeof([#function{stmts = Exprs} = F | Rest], Ctx) ->
-	[
-		F#function{stmts = expand_sizeof_in_exprs(Exprs, Ctx)}
-		| expand_sizeof(Rest, Ctx)
-	];
+	[F#function{stmts = expand_sizeof_in_exprs(Exprs, Ctx)}
+		| expand_sizeof(Rest, Ctx)];
 
 expand_sizeof(
 	[#struct{field_default_value_map = FieldDefaults} = S | Rest],
 	Ctx
 ) ->
-	[
-		S#struct{
-			field_default_value_map =
-				expand_sizeof_in_map(FieldDefaults, Ctx)
-		}
-		| expand_sizeof(Rest, Ctx)
-	];
+	[S#struct{
+		field_default_value_map =
+			expand_sizeof_in_map(FieldDefaults, Ctx)
+	} | expand_sizeof(Rest, Ctx)];
 
 expand_sizeof([], _) ->
 	[].
