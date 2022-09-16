@@ -188,12 +188,12 @@ it will be compiled directly to machine language. (RISC-V may be the only target
 
 ### Heap And Stack
 
-For now, `malloc` function is the only way to allocate memory on heap, the `new` keyword may be introduced so that you can create a object on heap directly.
+For now, `malloc` function is the only way to allocate memory on heap, the `heap` keyword may be introduced so that you can create a object on heap directly.
 The syntax may look like this: (not decided yet)
 
 ```
-b: Blah = new Blah{id = 1, name = "hello"};
+b: Blah^ = heap Blah{id = 1, name = "hello"};
 
-c: {Blah, 2} = new {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}};
-
+c: Blah^ = heap {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}};
 ```
+
