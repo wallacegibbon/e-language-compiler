@@ -111,7 +111,7 @@ offset_of_struct(
 	OffsetMap.
 
 -spec size_of_struct(#struct{}, context()) -> non_neg_integer().
-size_of_struct(#struct{size = Size}, _) when is_integer(Size), Size > 0 ->
+size_of_struct(#struct{size = Size}, _) when Size > 0 ->
 	Size;
 size_of_struct(#struct{field_names = Names, field_type_map = Types}, Ctx) ->
 	FieldTypeList = get_kvs_by_refs(Names, Types),
@@ -180,17 +180,27 @@ fix_struct_field_offset(CurrentOffset, NextOffset, PointerWidth) ->
 
 
 -spec size_of(e_type(), context()) -> non_neg_integer().
-size_of(#array_type{elem_type = T, length = Len}, {_, PointerWidth} = Ctx) ->
+size_of(
+	#array_type{elem_type = T, length = Len},
+	{_, PointerWidth} = Ctx
+) ->
 	TotalSize = align_fix(size_of(T, Ctx), PointerWidth) * Len,
 	align_fix(TotalSize, PointerWidth);
-size_of(#basic_type{p_depth = N}, {_, PointerWidth}) when N > 0 ->
+size_of(
+	#basic_type{p_depth = N},
+	{_, PointerWidth}
+)
+	when N > 0 ->
 	PointerWidth;
-size_of(#basic_type{class = struct, tag = Tag}, {StructMap, _} = Ctx) ->
+size_of(
+	#basic_type{class = struct, tag = Tag, line = Line},
+	{StructMap, _} = Ctx
+) ->
 	case maps:find(Tag, StructMap) of
 	{ok, S} ->
 		size_of_struct(S, Ctx);
 	error ->
-		throw(e_util:fmt("~s is not found", [Tag]))
+		e_util:ethrow(Line, "~s is not found", [Tag])
 	end;
 size_of(
 	#basic_type{class = C, tag = Tag},
@@ -206,7 +216,8 @@ size_of(
 size_of(#fn_type{}, {_, PointerWidth}) ->
 	PointerWidth;
 size_of(A, _) ->
-	throw(e_util:fmt("invalid type ~p on sizeof", [A])).
+	Line = element(1, A),
+	e_util:ethrow(Line, "invalid type ~p on sizeof", [A]).
 
 -spec align_fix(non_neg_integer(), non_neg_integer()) -> non_neg_integer().
 align_fix(Size, Unit) when Size < Unit, Unit rem Size =:= 0 ->
