@@ -270,7 +270,8 @@ replace_macro({identifier, LineNumber, Name}, MacroMap, ContinueHandler) ->
 		e_util:ethrow(LineNumber, "undefined macro ~s", [Name])
 	end.
 
-%% tokens should be parsed to ast before evaluating them, this function will be updated when the parser is finished
+%% tokens should be parsed to ast before evaluating them,
+%% this function will be updated when the parser is finished
 eval_token_exprs([{integer, _, 0}], _MacroMap) ->
 	false;
 eval_token_exprs([{integer, _, 1}], _MacroMap) ->

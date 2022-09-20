@@ -197,7 +197,10 @@ map_to_kv_list(NameAtoms, ValueMap) ->
 	lists:zip(NameAtoms, e_util:get_values_by_keys(NameAtoms, ValueMap)).
 
 return_type_to_str(#fn_type{params = Params, ret = RetType}, NameParams) ->
-	NewNameParams = io_lib:format("~s(~s)", [NameParams, function_params_to_str_no_name(Params)]),
+	NewNameParams = io_lib:format(
+		"~s(~s)",
+		[NameParams, function_params_to_str_no_name(Params)]
+	),
 	type_to_c_str(RetType, NewNameParams);
 return_type_to_str(#basic_type{p_depth = N} = T, NameParams) when N > 0 ->
 	type_to_c_str(T#basic_type{p_depth = N - 1}, NameParams).
@@ -277,9 +280,9 @@ expr_to_str(#type_convert{expr = Expr, type = Type}, EndChar) ->
 	io_lib:format("((~s) ~s)~c", [
 		type_to_c_str(Type, ""), expr_to_str(Expr, $\s), EndChar
 	]);
-expr_to_str({Any, _Line, Value}, EndChar) when Any =:= integer; Any =:= float ->
+expr_to_str({T, _Line, Value}, EndChar) when T =:= integer; T =:= float ->
 	io_lib:format("~w~c", [Value, EndChar]);
-expr_to_str({Any, _Line, S}, EndChar) when Any =:= string ->
+expr_to_str({string, _Line, S}, EndChar) ->
 	io_lib:format("\"~s\"~c", [fix_special_chars(S), EndChar]).
 
 -define(SPECIAL_CHARACTER_MAP, #{
