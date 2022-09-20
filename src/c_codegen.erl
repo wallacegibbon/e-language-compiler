@@ -128,14 +128,11 @@ statements_to_str(
 		[Declars ++ ";\n" | FnDeclars]
 	);
 statements_to_str(
-	[
-		#struct{
-			name = Name,
-			field_type_map = FieldTypes,
-			field_names = FieldNames
-		}
-		| Rest
-	],
+	[#struct{
+		name = Name,
+		field_type_map = FieldTypes,
+		field_names = FieldNames
+	} | Rest],
 	InitCode,
 	StmtStrs,
 	FnDeclars
