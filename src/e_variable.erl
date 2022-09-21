@@ -3,7 +3,6 @@
 
 -include("e_record_definition.hrl").
 
-
 -spec fetch_variables(e_ast_raw())
 	-> {e_ast_raw(), var_type_map(), e_ast_raw()}.
 
@@ -114,29 +113,22 @@ fetch_variables(
 	ensure_no_name_conflict(Name, VarTypes, Line),
 	case CollectInitCode of
 	true ->
-		fetch_variables(
-			Rest,
-			NewAST,
-			{
-				VarTypes#{Name => Type},
-				append_to_ast(
-					InitCode,
-					Name,
-					InitialValue,
-					Line
-				),
-				CollectInitCode
-			}
-		);
+		NewCtx = {
+			VarTypes#{Name => Type},
+			append_to_ast(InitCode, Name, InitialValue, Line),
+			CollectInitCode
+		},
+		fetch_variables(Rest, NewAST, NewCtx);
 	false ->
+		NewCtx = {
+			VarTypes#{Name => Type},
+			InitCode,
+			CollectInitCode
+		},
 		fetch_variables(
 			Rest,
 			append_to_ast(NewAST, Name, InitialValue, Line),
-			{
-				VarTypes#{Name => Type},
-				InitCode,
-				CollectInitCode
-			}
+			NewCtx
 		)
 	end;
 fetch_variables(
