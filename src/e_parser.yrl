@@ -46,74 +46,27 @@ type_annotations -> type_anno : ['$1'].
 type_anno -> 'fun' '(' type_annotations ')' ':' type_anno :
 	#fn_type{params = '$3', ret = '$6', line = token_line('$1')}.
 type_anno -> 'fun' '(' type_annotations ')' :
-	#fn_type{
-		params = '$3',
-		ret = e_util:void_type(token_line('$4')),
-		line = token_line('$1')
-	}.
+	#fn_type{params = '$3', ret = e_util:void_type(token_line('$4')), line = token_line('$1')}.
 type_anno -> 'fun' '(' ')' ':' type_anno :
 	#fn_type{params = [], ret = '$5', line = token_line('$1')}.
 type_anno -> 'fun' '(' ')' :
-	#fn_type{
-		params = [],
-		ret = e_util:void_type(token_line('$3')),
-		line = token_line('$1')
-	}.
+	#fn_type{params = [], ret = e_util:void_type(token_line('$3')), line = token_line('$1')}.
 type_anno -> '{' type_anno ',' expr '}' :
-	#array_type{
-		elem_type = '$2',
-		length = token_value('$4'),
-		line = token_line('$1')
-	}.
+	#array_type{elem_type = '$2', length = token_value('$4'), line = token_line('$1')}.
 type_anno -> int_type pointer_depth :
-	#basic_type{
-		class = integer,
-		p_depth = '$2',
-		tag = token_value('$1'),
-		line = token_line('$1')
-	}.
+	#basic_type{class = integer, p_depth = '$2', tag = token_value('$1'), line = token_line('$1')}.
 type_anno -> int_type :
-	#basic_type{
-		class = integer,
-		p_depth = 0,
-		tag = token_value('$1'),
-		line = token_line('$1')
-	}.
+	#basic_type{class = integer, p_depth = 0, tag = token_value('$1'), line = token_line('$1')}.
 type_anno -> float_type pointer_depth :
-	#basic_type{
-		class = float,
-		p_depth = '$2',
-		tag = token_value('$1'),
-		line = token_line('$1')
-	}.
+	#basic_type{class = float, p_depth = '$2', tag = token_value('$1'), line = token_line('$1')}.
 type_anno -> float_type :
-	#basic_type{
-		class = float,
-		p_depth = 0,
-		tag = token_value('$1'),
-		line = token_line('$1')
-	}.
+	#basic_type{class = float, p_depth = 0, tag = token_value('$1'), line = token_line('$1')}.
 type_anno -> identifier pointer_depth :
-	#basic_type{
-		class = struct,
-		p_depth = '$2',
-		tag = token_value('$1'),
-		line = token_line('$1')
-	}.
+	#basic_type{class = struct, p_depth = '$2', tag = token_value('$1'), line = token_line('$1')}.
 type_anno -> identifier :
-	#basic_type{
-		class = struct,
-		p_depth = 0,
-		tag = token_value('$1'),
-		line = token_line('$1')
-	}.
+	#basic_type{class = struct, p_depth = 0, tag = token_value('$1'), line = token_line('$1')}.
 type_anno -> any_type pointer_depth :
-	#basic_type{
-		class = any,
-		p_depth = '$2',
-		tag = void,
-		line = token_line('$1')
-	}.
+	#basic_type{class = any, p_depth = '$2', tag = void, line = token_line('$1')}.
 type_anno -> any_type :
 	return_error(token_line('$1'), "type any is not allowed here").
 type_anno -> void_type :
@@ -128,60 +81,24 @@ var_defs -> var_def ',' : ['$1'].
 var_defs -> var_def : ['$1'].
 
 var_def -> identifier ':' type_anno '=' expr :
-	#var_def{
-		name = token_value('$1'),
-		type = '$3',
-		init_value = '$5',
-		line = token_line('$1')
-	}.
+	#var_def{name = token_value('$1'), type = '$3', init_value = '$5', line = token_line('$1')}.
 
 var_def -> identifier ':' type_anno :
-	#var_def{
-		name = token_value('$1'),
-		type = '$3',
-		line = token_line('$1')
-	}.
+	#var_def{name = token_value('$1'), type = '$3', line = token_line('$1')}.
 
 %% struct definition
 struct_def -> struct identifier var_defs 'end' :
-	#struct_raw{
-		name = token_value('$2'),
-		fields = '$3',
-		line = token_line('$2')
-	}.
+	#struct_raw{name = token_value('$2'), fields = '$3', line = token_line('$2')}.
 
 %% function definition
 function_def -> 'fun' identifier '(' var_defs ')' ':' type_anno function_stmts 'end' :
-	#function_raw{
-		name = token_value('$2'),
-		params = '$4',
-		ret_type = '$7',
-		stmts = '$8',
-		line = token_line('$2')
-	}.
+	#function_raw{name = token_value('$2'), params = '$4', ret_type = '$7', stmts = '$8', line = token_line('$2')}.
 function_def -> 'fun' identifier '(' ')' ':' type_anno function_stmts 'end' :
-	#function_raw{
-		name = token_value('$2'),
-		params = [],
-		ret_type = '$6',
-		stmts = '$7',
-		line = token_line('$2')
-	}.
+	#function_raw{name = token_value('$2'), params = [], ret_type = '$6', stmts = '$7', line = token_line('$2')}.
 function_def -> 'fun' identifier '(' var_defs ')' function_stmts 'end' :
-	#function_raw{
-		name = token_value('$2'),
-		params = '$4',
-		ret_type = e_util:void_type(token_line('$5')),
-		stmts = '$6',
-		line = token_line('$2')
-	}.
+	#function_raw{name = token_value('$2'), params = '$4', ret_type = e_util:void_type(token_line('$5')), stmts = '$6', line = token_line('$2')}.
 function_def -> 'fun' identifier '(' ')' function_stmts 'end' :
-	#function_raw{
-		name = token_value('$2'),
-		params = [],
-		ret_type = e_util:void_type(token_line('$4')),
-		stmts = '$5', line = token_line('$2')
-	}.
+	#function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_line('$4')), stmts = '$5', line = token_line('$2')}.
 
 %% while
 while_stmt -> while expr do function_stmts 'end' :
@@ -189,14 +106,10 @@ while_stmt -> while expr do function_stmts 'end' :
 
 %% if
 if_stmt -> 'if' expr then function_stmts else_stmt :
-	#if_stmt{
-		condi = '$2', then = '$4', else = '$5', line = token_line('$1')
-	}.
+	#if_stmt{condi = '$2', then = '$4', else = '$5', line = token_line('$1')}.
 
 else_stmt -> elif expr then function_stmts else_stmt :
-	[#if_stmt{
-		condi = '$2', then = '$4', else = '$5', line = token_line('$1')
-	}].
+	[#if_stmt{condi = '$2', then = '$4', else = '$5', line = token_line('$1')}].
 else_stmt -> else function_stmts 'end' :
 	'$2'.
 else_stmt -> 'end' :
@@ -208,18 +121,14 @@ Unary 2100 array_init_expr.
 array_init_expr -> '{' array_init_elements '}' :
 	#array_init_expr{elements = '$2', line = token_line('$1')}.
 array_init_expr -> '{' string '}' :
-	#array_init_expr{
-		elements = str_to_int_tokens('$2'), line = token_line('$1')
-	}.
+	#array_init_expr{elements = str_to_int_tokens('$2'), line = token_line('$1')}.
 
 array_init_elements -> expr ',' array_init_elements : ['$1' | '$3'].
 array_init_elements -> expr : ['$1'].
 
 Unary 2000 struct_init_expr.
 struct_init_expr -> identifier '{' struct_init_fields '}' :
-	#struct_init_raw_expr{
-		name = token_value('$1'), fields = '$3', line = token_line('$1')
-	}.
+	#struct_init_raw_expr{name = token_value('$1'), fields = '$3', line = token_line('$1')}.
 
 struct_init_fields -> struct_init_assignment ',' struct_init_fields :
 	['$1' | '$3'].
@@ -229,13 +138,7 @@ struct_init_fields -> struct_init_assignment :
 struct_init_assignment -> identifier '=' expr :
 	#e_expr{
 		tag = '=',
-		data = [
-			#var_ref{
-				name = token_value('$1'),
-				line = token_line('$1')
-			},
-			'$3'
-		],
+		data = [#var_ref{name = token_value('$1'), line = token_line('$1')}, '$3'],
 		line = token_line('$2')
 	}.
 
@@ -252,22 +155,11 @@ call_expr -> expr '(' ')' :
 assign_expr -> expr op2_with_assignment expr :
 	#e_expr{
 		tag = '=',
-		data = [
-			'$1',
-			#e_expr{
-				tag = token_symbol('$2'),
-				data = ['$1', '$3'],
-				line = token_line('$2')
-			}
-		],
+		data = ['$1', #e_expr{tag = token_symbol('$2'), data = ['$1', '$3'], line = token_line('$2')}],
 		line = token_line('$2')
 	}.
 assign_expr -> expr '=' expr :
-	#e_expr{
-		tag = '=',
-		data = ['$1', '$3'],
-		line = token_line('$2')
-	}.
+	#e_expr{tag = '=', data = ['$1', '$3'], line = token_line('$2')}.
 
 op2_with_assignment -> op29 '=' : '$1'.
 op2_with_assignment -> op28 '=' : '$1'.
@@ -289,62 +181,29 @@ function_stmt -> var_def ';' : '$1'.
 function_stmt -> assign_expr ';' : '$1'.
 function_stmt -> if_stmt : '$1'.
 function_stmt -> while_stmt : '$1'.
-function_stmt -> goto expr ';' :
-	#goto_stmt{expr = '$2', line = token_line('$1')}.
-function_stmt -> return expr ';' :
-	#return_stmt{expr = '$2', line = token_line('$1')}.
+function_stmt -> goto expr ';' : #goto_stmt{expr = '$2', line = token_line('$1')}.
+function_stmt -> return expr ';' : #return_stmt{expr = '$2', line = token_line('$1')}.
 function_stmt -> goto_label : '$1'.
 
 goto_label -> '@' identifier :
 	#goto_label{name = token_value('$2'), line = token_line('$2')}.
 
 expr -> reserved_keyword :
-	return_error(
-		token_line('$1'),
-		e_util:fmt("~s is reserved keyword", [token_symbol('$1')])
-	).
+	return_error(token_line('$1'), e_util:fmt("~s is reserved keyword", [token_symbol('$1')])).
 expr -> expr op30 expr :
-	#e_expr{
-		tag = token_symbol('$2'),
-		data = ['$1', '$3'],
-		line=token_line('$2')
-	}.
+	#e_expr{tag = token_symbol('$2'), data = ['$1', '$3'], line=token_line('$2')}.
 expr -> expr op29 expr :
-	#e_expr{
-		tag = token_symbol('$2'),
-		data = ['$1', '$3'],
-		line=token_line('$2')
-	}.
+	#e_expr{tag = token_symbol('$2'), data = ['$1', '$3'], line=token_line('$2')}.
 expr -> expr op28 expr :
-	#e_expr{
-		tag = token_symbol('$2'),
-		data = ['$1', '$3'],
-		line = token_line('$2')
-	}.
+	#e_expr{tag = token_symbol('$2'), data = ['$1', '$3'], line = token_line('$2')}.
 expr -> expr op27 expr :
-	#e_expr{
-		tag = token_symbol('$2'),
-		data = ['$1', '$3'],
-		line = token_line('$2')
-	}.
+	#e_expr{tag = token_symbol('$2'), data = ['$1', '$3'], line = token_line('$2')}.
 expr -> expr op26 expr :
-	#e_expr{
-		tag = token_symbol('$2'),
-		data = ['$1', '$3'],
-		line = token_line('$2')
-	}.
+	#e_expr{tag = token_symbol('$2'), data = ['$1', '$3'], line = token_line('$2')}.
 expr -> expr op25 expr :
-	#e_expr{
-		tag = token_symbol('$2'),
-		data = ['$1', '$3'],
-		line = token_line('$2')
-	}.
+	#e_expr{tag = token_symbol('$2'), data = ['$1', '$3'], line = token_line('$2')}.
 expr -> expr op19 :
-	#e_expr{
-		tag = token_symbol('$2'),
-		data = ['$1'],
-		line = token_line('$2')
-	}.
+	#e_expr{tag = token_symbol('$2'), data = ['$1'], line = token_line('$2')}.
 expr -> identifier :
 	#var_ref{name = token_value('$1'), line = token_line('$1')}.
 expr -> pre_minus_plus_expr : '$1'.
@@ -368,17 +227,9 @@ reserved_keyword -> continue : '$1'.
 %% higher than "operator +/-"
 Unary 300 pre_minus_plus_expr.
 pre_minus_plus_expr -> '-' expr :
-	#e_expr{
-		tag = token_symbol('$1'),
-		data = ['$2'],
-		line = token_line('$1')
-	}.
+	#e_expr{tag = token_symbol('$1'), data = ['$2'], line = token_line('$1')}.
 pre_minus_plus_expr -> '+' expr :
-	#e_expr{
-		tag = token_symbol('$1'),
-		data = ['$2'],
-		line = token_line('$1')
-	}.
+	#e_expr{tag = token_symbol('$1'), data = ['$2'], line = token_line('$1')}.
 
 Unary 900 op19.
 op19 -> '^' : '$1'.

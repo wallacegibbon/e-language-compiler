@@ -131,10 +131,8 @@
 }).
 
 -type expr_tag() ::
-	'*' | '/' | '+' | '-' | '@' | '^' | 'rem' | 'and' | 'or' |
-	'band' | 'bor' | 'bxor' | 'bsl' | 'bsr' | '~' | '!' | '.' |
-	'=' | '>' | '<' | '>=' | '<=' | '!=' | '==' |
-	{call, e_expr()} | {sizeof, e_type()}.
+	'*' | '/' | '+' | '-' | '@' | '^' | 'rem' | 'and' | 'or' | 'band' | 'bor' | 'bxor' | 'bsl' | 'bsr' | '~' | '!' | '.' |
+	'=' | '>' | '<' | '>=' | '<=' | '!=' | '==' | {call, e_expr()} | {sizeof, e_type()}.
 
 -record(e_expr, {
 	line = 0 :: integer(),
@@ -142,20 +140,14 @@
 	data = [] :: [e_expr()]
 }).
 
--type e_expr() ::
-	#e_expr{} | #integer{} | #float{} | #string{} | #var_ref{} |
-	#struct_init_expr{} | #array_init_expr{}.
+-type e_expr() :: #e_expr{} | #integer{} | #float{} | #string{} | #var_ref{} | #struct_init_expr{} | #array_init_expr{}.
 
 %% primitive types: u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
--type e_type() ::
-	#basic_type{} | #array_type{} | #fn_type{}.
+-type e_type() :: #basic_type{} | #array_type{} | #fn_type{}.
 
--type expr_stmt() ::
-	e_expr().
+-type expr_stmt() :: e_expr().
 
--type e_stmt() ::
-	#if_stmt{} | #while_stmt{} | #goto_stmt{} | #goto_label{} |
-	#return_stmt{} | expr_stmt().
+-type e_stmt() :: #if_stmt{} | #while_stmt{} | #goto_stmt{} | #goto_label{} | #return_stmt{} | expr_stmt().
 
 -type struct_type_map() :: #{atom() := #struct{}}.
 

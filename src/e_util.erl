@@ -10,73 +10,35 @@
 %% when do simple conversions, this function can be used to avoid boilerplate
 %% code for if, while, return, call...,
 %% so you can concentrate on operand1, operand2...
--spec expr_map(
-	fun ((e_expr()) -> e_expr()),
-	[e_expr()]
-)
-	-> [e_expr()].
+-spec expr_map(fun ((e_expr()) -> e_expr()), [e_expr()]) -> [e_expr()].
 
-expr_map(
-	Fn,
-	[#if_stmt{condi = Cond, then = Then, else = Else} = If | Rest]
-) ->
-	[If#if_stmt{
-		condi = Fn(Cond),
-		then = expr_map(Fn, Then),
-		else = expr_map(Fn, Else)
-	} | expr_map(Fn, Rest)];
-
-expr_map(
-	Fn,
-	[#while_stmt{condi = Cond, stmts = Exprs} = While | Rest]
-) ->
-	[While#while_stmt{condi = Fn(Cond), stmts = expr_map(Fn, Exprs)}
-		| expr_map(Fn, Rest)];
-
-expr_map(
-	Fn,
-	[#e_expr{tag = {call, Callee}, data = Args} = FnCall | Rest]
-) ->
-	[FnCall#e_expr{
-		tag = {call, Fn(Callee)},
-		data = expr_map(Fn, Args)
-	} | expr_map(Fn, Rest)];
-
+expr_map(Fn, [#if_stmt{condi = Cond, then = Then, else = Else} = If | Rest]) ->
+	[If#if_stmt{condi = Fn(Cond), then = expr_map(Fn, Then), else = expr_map(Fn, Else)} | expr_map(Fn, Rest)];
+expr_map(Fn, [#while_stmt{condi = Cond, stmts = Exprs} = While | Rest]) ->
+	[While#while_stmt{condi = Fn(Cond), stmts = expr_map(Fn, Exprs)} | expr_map(Fn, Rest)];
+expr_map(Fn, [#e_expr{tag = {call, Callee}, data = Args} = FnCall | Rest]) ->
+	[FnCall#e_expr{tag = {call, Fn(Callee)}, data = expr_map(Fn, Args)} | expr_map(Fn, Rest)];
 expr_map(Fn, [#return_stmt{expr = Expr} = Ret | Rest]) ->
 	[Ret#return_stmt{expr = Fn(Expr)} | expr_map(Fn, Rest)];
-
 expr_map(Fn, [Any | Rest]) ->
 	[Fn(Any) | expr_map(Fn, Rest)];
-
 expr_map(_, []) ->
 	[].
 
 
 -spec expr_to_str(e_expr()) -> string().
 expr_to_str(#if_stmt{condi = Cond, then = Then, else = Else}) ->
-	io_lib:format("if (~s) ~s else ~s end", [
-		expr_to_str(Cond),
-		lists:map(fun expr_to_str/1, Then),
-		lists:map(fun expr_to_str/1, Else)
-	]);
+	io_lib:format("if (~s) ~s else ~s end", [expr_to_str(Cond), lists:map(fun expr_to_str/1, Then), lists:map(fun expr_to_str/1, Else)]);
 expr_to_str(#while_stmt{condi = Cond, stmts = Exprs}) ->
-	io_lib:format( "while (~s) ~s end", [
-		expr_to_str(Cond),
-		lists:map(fun expr_to_str/1, Exprs)
-	]);
+	io_lib:format( "while (~s) ~s end", [expr_to_str(Cond), lists:map(fun expr_to_str/1, Exprs)]);
 expr_to_str(#return_stmt{expr = Expr}) ->
 	io_lib:format("return (~s)", [expr_to_str(Expr)]);
 expr_to_str(#var_ref{name = Name}) ->
 	atom_to_list(Name);
 expr_to_str(#e_expr{tag = {call, Callee}, data = Args}) ->
-	io_lib:format("(~s)(~s)", [
-		expr_to_str(Callee),
-		lists:map(fun expr_to_str/1, Args)
-	]);
+	io_lib:format("(~s)(~s)", [expr_to_str(Callee), lists:map(fun expr_to_str/1, Args)]);
 expr_to_str(#e_expr{tag = Operator, data = [Op1, Op2]}) ->
-	io_lib:format("~s ~s ~s", [
-		expr_to_str(Op1), Operator, expr_to_str(Op2)
-	]);
+	io_lib:format("~s ~s ~s", [expr_to_str(Op1), Operator, expr_to_str(Op2)]);
 expr_to_str(#e_expr{tag = Operator, data = [Operand]}) ->
 	io_lib:format("~s ~s", [expr_to_str(Operand), Operator]);
 expr_to_str({TypeTag, _, Val}) when TypeTag =:= integer; TypeTag =:= float ->
@@ -112,31 +74,16 @@ get_values_by_keys([], _, Result) ->
 -include_lib("eunit/include/eunit.hrl").
 
 get_values_by_keys_test() ->
-	?assertEqual(
-		[3, 2],
-		get_values_by_keys([a, b], #{c => 1, b => 2, a => 3})
-	).
+	?assertEqual([3, 2], get_values_by_keys([a, b], #{c => 1, b => 2, a => 3})).
 
 -endif.
 
--spec make_function_and_struct_map_from_ast(any())
-	-> {fn_type_map(), struct_type_map()}.
+-spec make_function_and_struct_map_from_ast(any()) -> {fn_type_map(), struct_type_map()}.
 make_function_and_struct_map_from_ast(AST) ->
-	{Fns, Structs} = lists:partition(
-		fun (A) -> element(1, A) =:= function end,
-		AST
-	),
+	{Fns, Structs} = lists:partition(fun (A) -> element(1, A) =:= function end, AST),
 	%% FnTypeMap stores function type only
-	FnTypeMap = maps:from_list(lists:map(
-		fun
-		(#function{name = Name} = Fn) -> {Name, Fn#function.type}
-		end,
-		Fns
-	)),
-	StructMap = maps:from_list(lists:map(
-		fun (#struct{name = Name} = S) -> {Name, S} end,
-		Structs
-	)),
+	FnTypeMap = maps:from_list(lists:map(fun (#function{name = Name} = Fn) -> {Name, Fn#function.type} end, Fns)),
+	StructMap = maps:from_list(lists:map(fun (#struct{name = Name} = S) -> {Name, S} end, Structs)),
 	{FnTypeMap, StructMap}.
 
 %% address calculations
@@ -190,20 +137,12 @@ value_in_list(Value, List) ->
 %% > [#var_ref{name = a}].
 -spec filter_var_refs_in_map([#var_ref{}], #{atom() := any()}) -> [#var_ref{}].
 filter_var_refs_in_map(VarRefList, TargetMap) ->
-	lists:filter(
-		fun
-		(#var_ref{name = Name}) -> exist_in_map(Name, TargetMap)
-		end,
-		VarRefList
-	).
+	lists:filter(fun (#var_ref{name = Name}) -> exist_in_map(Name, TargetMap) end, VarRefList).
 
 -ifdef(EUNIT).
 
 filter_var_refs_in_map_test() ->
-	A = filter_var_refs_in_map(
-		[#var_ref{name = a}, #var_ref{name = b}],
-		#{a => 1}
-	),
+	A = filter_var_refs_in_map([#var_ref{name = a}, #var_ref{name = b}], #{a => 1}),
 	?assertEqual(A, [#var_ref{name = a}]).
 
 -endif.
