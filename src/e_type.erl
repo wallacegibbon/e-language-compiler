@@ -24,7 +24,6 @@ check_types_in_ast([_ | Rest], GlobalVarTypes, Maps) ->
 check_types_in_ast([], _, _) ->
 	ok.
 
-
 -type context() :: {var_type_map(), fn_type_map(), struct_type_map(), e_type()}.
 
 -spec check_type_in_ast_nodes([e_stmt()], var_type_map(), {fn_type_map(), struct_type_map()}) -> ok.
@@ -32,11 +31,9 @@ check_type_in_ast_nodes(Stmts, GlobalVarTypes, {FnTypeMap, StructMap}) ->
 	type_of_nodes(Stmts, {GlobalVarTypes, FnTypeMap, StructMap, #basic_type{}}),
 	ok.
 
-
 -spec type_of_nodes([e_stmt()], context()) -> [e_type()].
 type_of_nodes(Stmts, Ctx) ->
 	lists:map(fun (Expr) -> type_of_node(Expr, Ctx) end, Stmts).
-
 
 -spec type_of_node(e_stmt(), context()) -> e_type().
 type_of_node(#e_expr{tag = '=', data = [Op1, Op2], line = Line}, {_, _, StructMap, _} = Ctx) ->
@@ -180,15 +177,8 @@ type_of_node(#array_init_expr{elements = Elements, line = Line}, Ctx) ->
 	false ->
 		e_util:ethrow(Line, "array init type conflict: {~s}", [join_types_to_str(ElementTypes)])
 	end;
-type_of_node(
-	#struct_init_expr{
-		name = Name,
-		field_names = FieldNames,
-		field_value_map = FieldValues,
-		line = Line
-	},
-	{_, _, StructMap, _} = Ctx
-) ->
+type_of_node(#struct_init_expr{} = S, {_, _, StructMap, _} = Ctx) ->
+	#struct_init_expr{name = Name, field_names = FieldNames, field_value_map = FieldValues, line = Line } = S,
 	case maps:find(Name, StructMap) of
 	{ok, #struct{field_type_map = FieldTypes}} ->
 		check_types_in_struct_fields(FieldNames, FieldTypes, FieldValues, Name, Ctx),
@@ -239,13 +229,10 @@ dec_pointer_depth(T, OpLine) ->
 	e_util:ethrow(OpLine, "'^' on type ~s is invalid", [type_to_str(T)]).
 
 -spec check_types_in_struct_fields([#var_ref{}], var_type_map(), #{atom() := any()}, atom(), context()) -> ok.
-
 check_types_in_struct_fields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
 	lists:foreach(fun (V) -> check_struct_field(V, FieldTypes, ValMap, StructName, Ctx) end, FieldNames).
 
-
 -spec check_struct_field(#var_ref{}, var_type_map(), #{atom() := any()}, atom(), context()) -> ok.
-
 check_struct_field(#var_ref{name = FieldName, line = Line}, FieldTypes, ValMap, StructName, {_, _, StructMap, _} = Ctx) ->
 	{ok, Val} = maps:find(FieldName, ValMap),
 	ExpectedType = get_field_type(FieldName, FieldTypes, StructName, Line),
@@ -259,12 +246,9 @@ check_struct_field(#var_ref{name = FieldName, line = Line}, FieldTypes, ValMap, 
 	end.
 
 -spec are_same_type([e_type()]) -> boolean().
-are_same_type([Type, Type | Rest]) ->
-	are_same_type([Type | Rest]);
-are_same_type([_]) ->
-	true;
-are_same_type(_) ->
-	false.
+are_same_type([Type, Type | Rest])	-> are_same_type([Type | Rest]);
+are_same_type([_])			-> true;
+are_same_type(_)			-> false.
 
 -spec type_of_struct_field(e_type(), #var_ref{}, struct_type_map(), integer()) -> e_type().
 type_of_struct_field(#basic_type{class = struct, tag = Name, p_depth = 0}, #var_ref{name = FieldName}, StructMap, Line) ->
@@ -289,10 +273,8 @@ get_field_type(FieldName, FieldTypes, StructName, Line) ->
 -spec compare_types([e_type()], [e_type()]) -> boolean().
 compare_types([T1 | Types1], [T2 | Types2]) ->
 	case compare_type(T1, T2) of
-	true ->
-		compare_types(Types1, Types2);
-	false ->
-		false
+	true	-> compare_types(Types1, Types2);
+	false	-> false
 	end;
 compare_types([], []) ->
 	true;
@@ -328,10 +310,8 @@ is_pointer_and_integer(_, _) ->
 -spec are_both_number_of_same_type(e_type(), e_type()) -> {true, e_type()} | false.
 are_both_number_of_same_type(T1, T2) ->
 	case are_both_integers(T1, T2) or are_both_floats(T1, T2) of
-	true ->
-		{true, T1};
-	false ->
-		false
+	true	-> {true, T1};
+	false	-> false
 	end.
 
 -spec are_both_integers(e_type(), e_type()) -> boolean().
@@ -358,19 +338,15 @@ check_types(TypeList, StructMap) ->
 -spec check_type(e_type(), struct_type_map()) -> ok.
 check_type(#basic_type{class = struct, tag = Tag, line = Line}, StructMap) ->
 	case maps:find(Tag, StructMap) of
-	{ok, _} ->
-		ok;
-	error ->
-		e_util:ethrow(Line, "struct ~s is not found", [Tag])
+	{ok, _}	-> ok;
+	error	-> e_util:ethrow(Line, "struct ~s is not found", [Tag])
 	end;
 check_type(#basic_type{}, _) ->
 	ok;
 check_type(#array_type{elem_type = Type}, StructMap) ->
 	case Type of
-	#array_type{line = Line} ->
-		e_util:ethrow(Line, "nested array is not supported");
-	_ ->
-		check_type(Type, StructMap)
+	#array_type{line = Line}	-> e_util:ethrow(Line, "nested array is not supported");
+	_				-> check_type(Type, StructMap)
 	end;
 check_type(#fn_type{params = Params, ret = RetType}, StructMap) ->
 	check_types(Params, StructMap),

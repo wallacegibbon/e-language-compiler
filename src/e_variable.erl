@@ -4,11 +4,9 @@
 -include("e_record_definition.hrl").
 
 -spec fetch_variables(e_ast_raw()) -> {e_ast_raw(), var_type_map(), e_ast_raw()}.
-
 fetch_variables(AST) ->
 	{AST3, VarTypes, InitCode} = fetch_variables(prepare_struct_init_expr(AST), [], {#{}, [], true}),
 	{AST3, VarTypes, InitCode}.
-
 
 -spec prepare_struct_init_expr(e_ast_raw()) -> e_ast_raw().
 prepare_struct_init_expr([#function_raw{stmts = Stmts} = F | Rest]) ->
@@ -20,10 +18,8 @@ prepare_struct_init_expr([#var_def{init_value = Value} = V | Rest]) ->
 prepare_struct_init_expr([]) ->
 	[].
 
-
 -spec fix_struct_init_ast([e_stmt()]) -> [e_stmt()].
-fix_struct_init_ast(Lst) ->
-	e_util:expr_map(fun fix_struct_init/1, Lst).
+fix_struct_init_ast(Lst) -> e_util:expr_map(fun fix_struct_init/1, Lst).
 
 -spec fix_struct_init(e_stmt()) -> e_stmt().
 fix_struct_init(#struct_init_raw_expr{name = Name, fields = Fields, line = Line}) ->
@@ -40,13 +36,10 @@ fix_struct_init(Any) ->
 
 
 -spec struct_init_to_map([e_expr()]) -> {[#var_ref{}], #{atom() := e_expr()}}.
-
-struct_init_to_map(Stmts) ->
-	struct_init_to_map(Stmts, [], #{}).
+struct_init_to_map(Stmts) -> struct_init_to_map(Stmts, [], #{}).
 
 
 -spec struct_init_to_map([e_expr()], [#var_ref{}], #{atom() := e_expr()}) -> {[#var_ref{}], #{atom() := e_expr()}}.
-
 struct_init_to_map([#e_expr{tag = '=', data = [#var_ref{name = Field} = Op1, Val]} | Rest], FieldNames, ExprMap) ->
 	struct_init_to_map(Rest, [Op1 | FieldNames], ExprMap#{Field => fix_struct_init(Val)});
 struct_init_to_map([], FieldNames, ExprMap) ->
@@ -105,7 +98,6 @@ append_to_ast(AST, _, _, _) ->
 %% The pattern <[{'goto_label', Line, Name} | Rest], GlobalVars, LocalVars>
 %% can never match the type <[],#{atom()=>_},#{atom()=>_}>
 -spec check_label_conflict([#goto_label{}], var_type_map(), var_type_map()) -> ok.
-
 check_label_conflict([#goto_label{name = Name, line = Line} | Rest], GlobalVars, LocalVars) ->
 	ensure_no_name_conflict(Name, LocalVars, Line),
 	ensure_no_name_conflict(Name, GlobalVars, Line),
@@ -116,19 +108,15 @@ check_label_conflict([], _, _) ->
 -spec check_variable_conflict(var_type_map(), var_type_map()) -> ok.
 check_variable_conflict(GlobalVars, LocalVars) ->
 	case maps:to_list(maps:with(maps:keys(GlobalVars), LocalVars)) of
-	[{Name, T} | _] ->
-		throw_name_conflict(Name, element(2, T));
-	[] ->
-		ok
+	[{Name, T} | _]	-> throw_name_conflict(Name, element(2, T));
+	[]		-> ok
 	end.
 
 -spec ensure_no_name_conflict(atom(), var_type_map(), integer()) -> ok.
 ensure_no_name_conflict(Name, VarMap, Line) ->
 	case maps:find(Name, VarMap) of
-	{ok, _} ->
-		throw_name_conflict(Name, Line);
-	_ ->
-		ok
+	{ok, _}		-> throw_name_conflict(Name, Line);
+	_		-> ok
 	end.
 
 -spec throw_name_conflict(atom(), integer()) -> no_return().

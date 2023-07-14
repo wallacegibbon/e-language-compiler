@@ -1,7 +1,6 @@
 -module(e_util).
 -export([fill_unit_pessi/2, make_function_and_struct_map_from_ast/1, assert/2]).
--export([expr_to_str/1, expr_map/2, filter_var_refs_in_map/2]).
--export([get_values_by_keys/2, fmt/2, ethrow/3, ethrow/2]).
+-export([expr_to_str/1, expr_map/2, filter_var_refs_in_map/2, get_values_by_keys/2, fmt/2, ethrow/3, ethrow/2]).
 -export([names_of_var_defs/1, names_of_var_refs/1, value_in_list/2]).
 -export([primitive_size_of/1, void_type/1, cut_extra/2, fill_unit_opti/2]).
 
@@ -11,7 +10,6 @@
 %% code for if, while, return, call...,
 %% so you can concentrate on operand1, operand2...
 -spec expr_map(fun ((e_expr()) -> e_expr()), [e_expr()]) -> [e_expr()].
-
 expr_map(Fn, [#if_stmt{condi = Cond, then = Then, else = Else} = If | Rest]) ->
 	[If#if_stmt{condi = Fn(Cond), then = expr_map(Fn, Then), else = expr_map(Fn, Else)} | expr_map(Fn, Rest)];
 expr_map(Fn, [#while_stmt{condi = Cond, stmts = Exprs} = While | Rest]) ->
@@ -24,7 +22,6 @@ expr_map(Fn, [Any | Rest]) ->
 	[Fn(Any) | expr_map(Fn, Rest)];
 expr_map(_, []) ->
 	[].
-
 
 -spec expr_to_str(e_expr()) -> string().
 expr_to_str(#if_stmt{condi = Cond, then = Then, else = Else}) ->
@@ -100,19 +97,19 @@ cut_extra(Num, Unit) ->
 	Num div Unit * Unit.
 
 -spec primitive_size_of(atom()) -> pointer_size | 1 | 2 | 4 | 8.
-primitive_size_of(usize) -> pointer_size;
-primitive_size_of(isize) -> pointer_size;
-primitive_size_of(u64) -> 8;
-primitive_size_of(i64) -> 8;
-primitive_size_of(u32) -> 4;
-primitive_size_of(i32) -> 4;
-primitive_size_of(u16) -> 2;
-primitive_size_of(i16) -> 2;
-primitive_size_of(u8) -> 1;
-primitive_size_of(i8) -> 1;
-primitive_size_of(f64) -> 8;
-primitive_size_of(f32) -> 4;
-primitive_size_of(T) -> throw(fmt("size of ~p is not defined", [T])).
+primitive_size_of(usize)	-> pointer_size;
+primitive_size_of(isize)	-> pointer_size;
+primitive_size_of(u64)		-> 8;
+primitive_size_of(i64)		-> 8;
+primitive_size_of(u32)		-> 4;
+primitive_size_of(i32)		-> 4;
+primitive_size_of(u16)		-> 2;
+primitive_size_of(i16)		-> 2;
+primitive_size_of(u8)		-> 1;
+primitive_size_of(i8)		-> 1;
+primitive_size_of(f64)		-> 8;
+primitive_size_of(f32)		-> 4;
+primitive_size_of(T)		-> throw(fmt("size of ~p is not defined", [T])).
 
 void_type(Line) ->
 	#basic_type{class = void, tag = void, p_depth = 0, line = Line}.
@@ -150,9 +147,7 @@ filter_var_refs_in_map_test() ->
 -spec exist_in_map(atom(), #{atom() := any()}) -> boolean().
 exist_in_map(KeyName, Map) ->
 	case maps:find(KeyName, Map) of
-	{ok, _} ->
-		true;
-	_ ->
-		false
+	{ok, _}		-> true;
+	_		-> false
 	end.
 

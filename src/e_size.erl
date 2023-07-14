@@ -8,22 +8,17 @@
 -spec expand_sizeof(e_ast(), context()) -> e_ast().
 expand_sizeof([#function{stmts = Exprs} = F | Rest], Ctx) ->
 	[F#function{stmts = expand_sizeof_in_exprs(Exprs, Ctx)} | expand_sizeof(Rest, Ctx)];
-
 expand_sizeof([#struct{field_default_value_map = FieldDefaults} = S | Rest], Ctx) ->
 	[S#struct{field_default_value_map = expand_sizeof_in_map(FieldDefaults, Ctx)} | expand_sizeof(Rest, Ctx)];
-
 expand_sizeof([], _) ->
 	[].
-
 
 expand_sizeof_in_map(Map, Ctx) ->
 	maps:map(fun (_, V1) -> expand_sizeof_in_expr(V1, Ctx) end, Map).
 
-
 -spec expand_sizeof_in_exprs(e_ast(), context()) -> [e_expr()].
 expand_sizeof_in_exprs(Exprs, Ctx) ->
 	e_util:expr_map(fun (E) -> expand_sizeof_in_expr(E, Ctx) end, Exprs).
-
 
 -spec expand_sizeof_in_expr(e_expr(), context()) -> e_expr().
 expand_sizeof_in_expr(#e_expr{tag = {sizeof, T}, line = Line}, Ctx) ->
@@ -107,7 +102,6 @@ size_of_struct_fields([{FieldName, FieldType} | Rest], CurrentOffset, OffsetMap,
 	false ->
 		size_of_struct_fields(Rest, NextOffset, OffsetMap#{FieldName => CurrentOffset}, Ctx)
 	end;
-
 size_of_struct_fields([], CurrentOffset, OffsetMap, _) ->
 	{CurrentOffset, OffsetMap}.
 
@@ -133,17 +127,13 @@ size_of(#basic_type{p_depth = N}, {_, PointerWidth}) when N > 0 ->
 	PointerWidth;
 size_of(#basic_type{class = struct, tag = Tag, line = Line}, {StructMap, _} = Ctx) ->
 	case maps:find(Tag, StructMap) of
-	{ok, S} ->
-		size_of_struct(S, Ctx);
-	error ->
-		e_util:ethrow(Line, "~s is not found", [Tag])
+	{ok, S}		-> size_of_struct(S, Ctx);
+	error		-> e_util:ethrow(Line, "~s is not found", [Tag])
 	end;
 size_of(#basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
 	case e_util:primitive_size_of(Tag) of
-	pointer_size ->
-		PointerWidth;
-	V when is_integer(V) ->
-		V
+	pointer_size		-> PointerWidth;
+	V when is_integer(V)	-> V
 	end;
 size_of(#fn_type{}, {_, PointerWidth}) ->
 	PointerWidth;

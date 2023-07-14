@@ -29,23 +29,19 @@ expand_init_expr(Exprs, StructMap) ->
 expand_init_expr([#if_stmt{then = Then, else = Else} = E | Rest], NewAST, StructMap) ->
 	NewE = E#if_stmt{then = expand_init_expr(Then, [], StructMap), else = expand_init_expr(Else, [], StructMap)},
 	expand_init_expr(Rest, [NewE | NewAST], StructMap);
-
 expand_init_expr([#while_stmt{stmts = Exprs} = E | Rest], NewAST, StructMap) ->
 	NewE = E#while_stmt{stmts = expand_init_expr(Exprs, [], StructMap)},
 	expand_init_expr(Rest, [NewE | NewAST], StructMap);
-
 expand_init_expr([#e_expr{data = [_, _]} = Op | Rest], NewAST, StructMap) ->
 	expand_init_expr(Rest, replace_init_ops(Op, StructMap) ++ NewAST, StructMap);
-
 expand_init_expr([Any | Rest], NewAST, StructMap) ->
 	expand_init_expr(Rest, [Any | NewAST], StructMap);
-
 expand_init_expr([], NewAST, _) ->
 	lists:reverse(NewAST).
 
 
-replace_init_ops(#e_expr{tag = '=', data = [_, #struct_init_expr{}] = D}, StructMap) ->
-	[Op1, #struct_init_expr{name = Name, line = Line, field_value_map = FieldValues}] = D,
+replace_init_ops(#e_expr{tag = '=', data = [Op1, #struct_init_expr{} = D]}, StructMap) ->
+	#struct_init_expr{name = Name, line = Line, field_value_map = FieldValues} = D,
 	case maps:find(Name, StructMap) of
 	{ok, #struct{field_names = FieldNames, field_type_map = FieldTypes, field_default_value_map = FieldDefaults}} ->
 		FieldValueMap = maps:merge(FieldDefaults, FieldValues),
@@ -53,8 +49,8 @@ replace_init_ops(#e_expr{tag = '=', data = [_, #struct_init_expr{}] = D}, Struct
 	error ->
 		e_util:ethrow(Line, "struct ~s is not found", [Name])
 	end;
-replace_init_ops(#e_expr{tag = '=', data = [_, #array_init_expr{}] = D}, StructMap) ->
-	[Op1, #array_init_expr{elements = Elements, line = Line}] = D,
+replace_init_ops(#e_expr{tag = '=', data = [Op1, #array_init_expr{} = D]}, StructMap) ->
+	#array_init_expr{elements = Elements, line = Line} = D,
 	array_init_to_ops(Op1, Elements, 0, Line, [], StructMap);
 
 replace_init_ops(Any, _) ->
@@ -62,20 +58,14 @@ replace_init_ops(Any, _) ->
 
 
 struct_init_to_ops(Target, [#var_ref{line = Line, name = Name} = Field | Rest], FieldInitMap, FieldTypes, NewCode, StructMap) ->
-	NewOp = #e_expr{tag = '=', data = [
-			#e_expr{tag = '.', data = [Target, Field], line = Line},
-			case maps:find(Name, FieldInitMap) of
-			{ok, InitOp} ->
-				InitOp;
-			error ->
-				default_value_of(maps:get(Name, FieldTypes), Line)
-			end
-		],
-		line = Line
-	},
+	RValue =
+		case maps:find(Name, FieldInitMap) of
+		{ok, InitOp}	-> InitOp;
+		error		-> default_value_of(maps:get(Name, FieldTypes), Line)
+		end,
+	NewOp = #e_expr{tag = '=', data = [#e_expr{tag = '.', data = [Target, Field], line = Line}, RValue], line = Line},
 	Ops = replace_init_ops(NewOp, StructMap),
 	struct_init_to_ops(Target, Rest, FieldInitMap, FieldTypes, Ops ++ NewCode, StructMap);
-
 struct_init_to_ops(_, [], _, _, NewCode, _) ->
 	NewCode.
 

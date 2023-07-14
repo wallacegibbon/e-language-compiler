@@ -1,4 +1,4 @@
--module(c_codegen).
+-module(e_dump_c).
 -export([generate_c_code/4]).
 
 -include("e_record_definition.hrl").
@@ -34,7 +34,8 @@ fix_exprs_for_c(Exprs, Ctx) ->
 	e_util:expr_map(fun (E) -> fix_expr_for_c(E, Ctx) end, Exprs).
 
 -spec fix_expr_for_c(e_expr(), context()) -> e_expr().
-fix_expr_for_c(#e_expr{tag = '@', data = [Operand], line = Line} = E, {FnTypeMap, StructMap, VarTypes} = Ctx) ->
+fix_expr_for_c(#e_expr{tag = '@'} = E, {FnTypeMap, StructMap, VarTypes} = Ctx) ->
+	#e_expr{tag = '@', data = [Operand], line = Line} = E,
 	case e_type:type_of_node(Operand, {VarTypes, FnTypeMap, StructMap, #basic_type{}}) of
 	#array_type{} ->
 		#e_expr{tag = '.', data = [fix_expr_for_c(Operand, Ctx), #var_ref{name = value, line = Line}]};
@@ -68,8 +69,8 @@ statements_to_str([#function{} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
 	Declars = function_declaration_to_str(Name, function_params_to_str(PureParams), FnType#fn_type.ret),
 	Exprs2 =
 		case Name =:= main of
-			true -> InitCode ++ Exprs;
-			false -> Exprs
+			true	-> InitCode ++ Exprs;
+			false	-> Exprs
 		end,
 	S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declars, var_map_to_str(PureVars), exprs_to_str(Exprs2)]),
 	statements_to_str(Rest, InitCode, [S | StmtStrs], [Declars ++ ";\n" | FnDeclars]);
@@ -153,7 +154,7 @@ expr_to_str(#if_stmt{condi = Condi, then = Then, else = Else}, _) ->
 expr_to_str(#while_stmt{condi = Condi, stmts = Exprs}, _) ->
 	io_lib:format("while (~s) {\n~s\n}\n", [expr_to_str(Condi, $\s), exprs_to_str(Exprs)]);
 expr_to_str(#e_expr{tag = {call, Fn}, data = Args}, EndChar) ->
-	ArgStr = lists:join(lists:map(fun (E) -> expr_to_str(E, $\s) end, Args), ","),
+	ArgStr = lists:join(",", lists:map(fun (E) -> expr_to_str(E, $\s) end, Args)),
 	io_lib:format("~s(~s)~c", [expr_to_str(Fn, $\s), ArgStr, EndChar]);
 expr_to_str(#e_expr{tag = Tag, data = [Op1, Op2]}, EndChar) ->
 	io_lib:format("(~s ~s ~s)~c", [expr_to_str(Op1, $\s), translate_op(Tag), expr_to_str(Op2, $\s), EndChar]);
@@ -180,16 +181,16 @@ fix_special_chars(String) ->
 	lists:map(fun (C) -> maps:get(C, ?SPECIAL_CHARACTER_MAP, C) end, String).
 
 -spec translate_op(atom()) -> string() | atom().
-translate_op(assign) -> "=";
-translate_op('rem') -> "%";
-translate_op('bxor') -> "^";
-translate_op('bsr') -> ">>";
-translate_op('bsl') -> "<<";
-translate_op('band') -> "&";
-translate_op('bor') -> "|";
-translate_op('and') -> "&&";
-translate_op('or') -> "||";
-translate_op('@') -> "&";
-translate_op('^') -> "*";
-translate_op(Any) -> Any.
+translate_op(assign)	-> "=";
+translate_op('rem')	-> "%";
+translate_op('bxor')	-> "^";
+translate_op('bsr')	-> ">>";
+translate_op('bsl')	-> "<<";
+translate_op('band')	-> "&";
+translate_op('bor')	-> "|";
+translate_op('and')	-> "&&";
+translate_op('or')	-> "||";
+translate_op('@')	-> "&";
+translate_op('^')	-> "*";
+translate_op(Any)	-> Any.
 
