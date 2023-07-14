@@ -1,19 +1,19 @@
 Definitions.
 
-Delimiter = [@^.~,;:#+\-*/(){}?]|>=|<=|==|!=|!|>|<|=
-Identifier = [_a-zA-Z][_a-zA-Z0-9]*
-StringQuote = "
-CharQuote = "
-StringUnescapedChar = [^\"\\]
-CharUnescapedChar = [^\'\\]
-CommonEscapedChar = \\\\|\\b|\\f|\\n|\\r|\\t|\\/
-StringEscapedChar = ({CommonEscapedChar}|\\")
-CharEscapedChar = ({CommonEscapedChar}|\\')
-BinaryDigit = [01]
-OctalDigit = [0-7]
-DecimalDigit = [0-9]
-HexDigit = [0-9a-f]
-CommentStart = %
+Delimiter		= [@^.~,;:#+\-*/(){}?]|>=|<=|==|!=|!|>|<|=
+Identifier		= [_a-zA-Z][_a-zA-Z0-9]*
+StringQuote		= "
+CharQuote		= '
+StringUnescapedChar	= [^\"\\]
+CharUnescapedChar	= [^\'\\]
+CommonEscapedChar	= \\\\|\\b|\\f|\\n|\\r|\\t|\\/
+StringEscapedChar	= ({CommonEscapedChar}|\\")
+CharEscapedChar		= ({CommonEscapedChar}|\\')
+BinaryDigit		= [01]
+OctalDigit		= [0-7]
+DecimalDigit		= [0-9]
+HexDigit		= [0-9a-f]
+CommentStart		= %
 
 Rules.
 
