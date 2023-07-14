@@ -69,8 +69,8 @@ statements_to_str([#function{} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
 	Declars = function_declaration_to_str(Name, function_params_to_str(PureParams), FnType#fn_type.ret),
 	Exprs2 =
 		case Name =:= main of
-			true	-> InitCode ++ Exprs;
-			false	-> Exprs
+		true	-> InitCode ++ Exprs;
+		false	-> Exprs
 		end,
 	S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declars, var_map_to_str(PureVars), exprs_to_str(Exprs2)]),
 	statements_to_str(Rest, InitCode, [S | StmtStrs], [Declars ++ ";\n" | FnDeclars]);
@@ -134,14 +134,11 @@ type_to_c_str(#fn_type{params = Params, ret = RetType}, VarName) ->
 	NameParams = io_lib:format("(*~s)(~s)", [VarName, function_params_to_str_no_name(Params)]),
 	type_to_c_str(RetType, NameParams).
 
-type_tag_to_str(struct, Name) ->
-	io_lib:format("struct ~s", [Name]);
-type_tag_to_str(_, Name) ->
-	atom_to_list(Name).
+type_tag_to_str(struct, Name)	-> io_lib:format("struct ~s", [Name]);
+type_tag_to_str(_, Name)	-> atom_to_list(Name).
 
 %% convert expression to C string
-exprs_to_str(Exprs) ->
-	[lists:join("\n", exprs_to_str(Exprs, []))].
+exprs_to_str(Exprs) -> [lists:join("\n", exprs_to_str(Exprs, []))].
 
 exprs_to_str([Expr | Rest], ExprList) ->
 	exprs_to_str(Rest, [expr_to_str(Expr, $;) | ExprList]);

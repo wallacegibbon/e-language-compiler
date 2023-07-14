@@ -115,10 +115,8 @@ Unary 2000 struct_init_expr.
 struct_init_expr -> identifier '{' struct_init_fields '}' :
 	#struct_init_raw_expr{name = token_value('$1'), fields = '$3', line = token_line('$1')}.
 
-struct_init_fields -> struct_init_assignment ',' struct_init_fields :
-	['$1' | '$3'].
-struct_init_fields -> struct_init_assignment :
-	['$1'].
+struct_init_fields -> struct_init_assignment ',' struct_init_fields	: ['$1' | '$3'].
+struct_init_fields -> struct_init_assignment				: ['$1'].
 
 struct_init_assignment -> identifier '=' expr :
 	#e_expr{tag = '=', data = [#var_ref{name = token_value('$1'), line = token_line('$1')}, '$3'], line = token_line('$2')}.

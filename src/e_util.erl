@@ -46,20 +46,16 @@ expr_to_str(Any) ->
 	Any.
 
 -spec fmt(string(), [any()]) -> string().
-fmt(FmtStr, Args) ->
-	lists:flatten(io_lib:format(FmtStr, Args)).
+fmt(FmtStr, Args) -> lists:flatten(io_lib:format(FmtStr, Args)).
 
 -spec ethrow(non_neg_integer(), string()) -> no_return().
-ethrow(Line, FmtStr) ->
-	ethrow(Line, FmtStr, []).
+ethrow(Line, FmtStr) -> ethrow(Line, FmtStr, []).
 
 -spec ethrow(non_neg_integer(), string(), [any()]) -> no_return().
-ethrow(Line, FmtStr, Args) ->
-	throw({Line, fmt(FmtStr, Args)}).
+ethrow(Line, FmtStr, Args) -> throw({Line, fmt(FmtStr, Args)}).
 
 -spec get_values_by_keys([atom()], #{atom() => any()}) -> [any()].
-get_values_by_keys(Fields, Map) when is_map(Map) ->
-	get_values_by_keys(Fields, Map, []).
+get_values_by_keys(Fields, Map) when is_map(Map) -> get_values_by_keys(Fields, Map, []).
 
 -spec get_values_by_keys([atom()], #{atom() => any()}, [any()]) -> [any()].
 get_values_by_keys([Field | Rest], Map, Result) ->
@@ -85,16 +81,13 @@ make_function_and_struct_map_from_ast(AST) ->
 
 %% address calculations
 -spec fill_unit_pessi(integer(), non_neg_integer()) -> integer().
-fill_unit_pessi(Num, Unit) ->
-	(Num + Unit - 1) div Unit * Unit.
+fill_unit_pessi(Num, Unit) -> (Num + Unit - 1) div Unit * Unit.
 
 -spec fill_unit_opti(integer(), non_neg_integer()) -> integer().
-fill_unit_opti(Num, Unit) ->
-	(Num + Unit) div Unit * Unit.
+fill_unit_opti(Num, Unit) -> (Num + Unit) div Unit * Unit.
 
 -spec cut_extra(integer(), non_neg_integer()) -> integer().
-cut_extra(Num, Unit) ->
-	Num div Unit * Unit.
+cut_extra(Num, Unit) -> Num div Unit * Unit.
 
 -spec primitive_size_of(atom()) -> pointer_size | 1 | 2 | 4 | 8.
 primitive_size_of(usize)	-> pointer_size;
@@ -123,12 +116,11 @@ names_of_var_defs(VarDefList) ->
 	lists:map(fun (#var_def{name = Name}) -> Name end, VarDefList).
 
 -spec assert(boolean(), any()) -> ok.
-assert(true, _) -> ok;
-assert(false, Info) -> throw(Info).
+assert(true, _)		-> ok;
+assert(false, Info)	-> throw(Info).
 
 -spec value_in_list(any(), [any()]) -> boolean().
-value_in_list(Value, List) ->
-	lists:any(fun (V) -> V =:= Value end, List).
+value_in_list(Value, List) -> lists:any(fun (V) -> V =:= Value end, List).
 
 %% filter_var_refs_in_map([#var_ref{name = a}, #var_ref{name = b}], #{a => 1})
 %% > [#var_ref{name = a}].

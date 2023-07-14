@@ -22,21 +22,16 @@ expand_sizeof_in_exprs(Exprs, Ctx) ->
 
 -spec expand_sizeof_in_expr(e_expr(), context()) -> e_expr().
 expand_sizeof_in_expr(#e_expr{tag = {sizeof, T}, line = Line}, Ctx) ->
-	try
-		{integer, Line, size_of(T, Ctx)}
-	catch
+	try {integer, Line, size_of(T, Ctx)} catch
 	I ->
 		throw({Line, I})
 	end;
-
 expand_sizeof_in_expr(#e_expr{data = Data} = E, Ctx) ->
 	E#e_expr{data = lists:map(fun (O) -> expand_sizeof_in_expr(O, Ctx) end, Data)};
 expand_sizeof_in_expr(#struct_init_expr{field_value_map = ExprMap} = S, Ctx) ->
 	S#struct_init_expr{field_value_map = expand_sizeof_in_map(ExprMap, Ctx)};
-
 expand_sizeof_in_expr(#array_init_expr{elements = Elements} = A, Ctx) ->
 	A#array_init_expr{elements = expand_sizeof_in_exprs(Elements, Ctx)};
-
 expand_sizeof_in_expr(Any, _) ->
 	Any.
 

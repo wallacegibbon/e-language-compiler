@@ -264,10 +264,8 @@ type_of_struct_field(T, _, _, Line) ->
 -spec get_field_type(atom(), #{atom() => e_type()}, atom(), integer()) -> e_type().
 get_field_type(FieldName, FieldTypes, StructName, Line) ->
 	case maps:find(FieldName, FieldTypes) of
-	{ok, Type} ->
-		Type;
-	error ->
-		e_util:ethrow(Line, "~s.~s does not exist", [StructName, FieldName])
+	{ok, Type}	-> Type;
+	error		-> e_util:ethrow(Line, "~s.~s does not exist", [StructName, FieldName])
 	end.
 
 -spec compare_types([e_type()], [e_type()]) -> boolean().
@@ -338,8 +336,8 @@ check_types(TypeList, StructMap) ->
 -spec check_type(e_type(), struct_type_map()) -> ok.
 check_type(#basic_type{class = struct, tag = Tag, line = Line}, StructMap) ->
 	case maps:find(Tag, StructMap) of
-	{ok, _}	-> ok;
-	error	-> e_util:ethrow(Line, "struct ~s is not found", [Tag])
+	{ok, _}		-> ok;
+	error		-> e_util:ethrow(Line, "struct ~s is not found", [Tag])
 	end;
 check_type(#basic_type{}, _) ->
 	ok;

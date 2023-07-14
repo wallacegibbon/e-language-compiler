@@ -14,8 +14,7 @@ compile_to_c(InputFilename, OutputFilename) ->
 	end.
 
 -spec compile_to_ast(string()) -> {e_ast(), var_type_map(), e_ast()}.
-compile_to_ast(Filename) ->
-	parse_and_compile(Filename).
+compile_to_ast(Filename) -> parse_and_compile(Filename).
 
 -spec parse_and_compile(string()) -> {e_ast(), var_type_map(), e_ast()}.
 parse_and_compile(Filename) ->

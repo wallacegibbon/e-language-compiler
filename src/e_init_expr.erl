@@ -23,8 +23,7 @@ expand_in_function([Any | Rest], StructMap) ->
 expand_in_function([], _) ->
 	[].
 
-expand_init_expr(Exprs, StructMap) ->
-	expand_init_expr(Exprs, [], StructMap).
+expand_init_expr(Exprs, StructMap) -> expand_init_expr(Exprs, [], StructMap).
 
 expand_init_expr([#if_stmt{then = Then, else = Else} = E | Rest], NewAST, StructMap) ->
 	NewE = E#if_stmt{then = expand_init_expr(Then, [], StructMap), else = expand_init_expr(Else, [], StructMap)},
@@ -39,7 +38,6 @@ expand_init_expr([Any | Rest], NewAST, StructMap) ->
 expand_init_expr([], NewAST, _) ->
 	lists:reverse(NewAST).
 
-
 replace_init_ops(#e_expr{tag = '=', data = [Op1, #struct_init_expr{} = D]}, StructMap) ->
 	#struct_init_expr{name = Name, line = Line, field_value_map = FieldValues} = D,
 	case maps:find(Name, StructMap) of
@@ -52,7 +50,6 @@ replace_init_ops(#e_expr{tag = '=', data = [Op1, #struct_init_expr{} = D]}, Stru
 replace_init_ops(#e_expr{tag = '=', data = [Op1, #array_init_expr{} = D]}, StructMap) ->
 	#array_init_expr{elements = Elements, line = Line} = D,
 	array_init_to_ops(Op1, Elements, 0, Line, [], StructMap);
-
 replace_init_ops(Any, _) ->
 	[Any].
 
@@ -68,7 +65,6 @@ struct_init_to_ops(Target, [#var_ref{line = Line, name = Name} = Field | Rest], 
 	struct_init_to_ops(Target, Rest, FieldInitMap, FieldTypes, Ops ++ NewCode, StructMap);
 struct_init_to_ops(_, [], _, _, NewCode, _) ->
 	NewCode.
-
 
 default_value_of(#array_type{elem_type = Type, length = Len}, Line) ->
 	#array_init_expr{elements = lists:duplicate(Len, default_value_of(Type, Line)), line = Line};
