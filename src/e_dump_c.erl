@@ -37,10 +37,7 @@ fix_exprs_for_c(Exprs, Ctx) ->
 
 -spec fix_expr_for_c(e_expr(), context()) -> e_expr().
 fix_expr_for_c(#e_expr{tag = '@'} = E, {FnTypeMap, StructMap, VarTypes} = Ctx) ->
-  #e_expr{tag = '@',
-          data = [Operand],
-          line = Line} =
-    E,
+  #e_expr{data = [Operand], line = Line} = E,
   case e_type:type_of_node(Operand, {VarTypes, FnTypeMap, StructMap, #basic_type{}}) of
     #array_type{} ->
       #e_expr{tag = '.',
