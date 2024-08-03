@@ -1,7 +1,5 @@
 -module(e_init_expr).
-
 -export([expand_in_function/2, expand_init_expr/2]).
-
 -include("e_record_definition.hrl").
 
 %% for now, array and struct init expression is only allowed in assignment
@@ -55,7 +53,7 @@ replace_init_ops(#e_expr{tag = '=', data = [Op1, #array_init_expr{} = D]}, Struc
 replace_init_ops(Any, _) ->
 	[Any].
 
-struct_init_to_ops(Target, VarRefs, FieldInitMap, FieldTypes, NewCode, StructMap) ->
+struct_init_to_ops(Target, [#var_ref{} | _] = VarRefs, FieldInitMap, FieldTypes, NewCode, StructMap) ->
 	[#var_ref{line = Line, name = Name} = Field | Rest] = VarRefs,
 	RValue =
 		case maps:find(Name, FieldInitMap) of

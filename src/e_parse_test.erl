@@ -1,6 +1,5 @@
 -module(e_parse_test).
 -ifdef(TEST).
-
 -include_lib("eunit/include/eunit.hrl").
 
 function_normal_test() ->

@@ -43,47 +43,48 @@ any : {token, {any_type, TokenLine, any}}.
 Erlang code.
 
 str_to_int([$0, _ | Chars], Base) ->
-    list_to_integer(Chars, Base).
+	list_to_integer(Chars, Base).
 
 drop_quotes([_ | QuotedString]) ->
-    lists:droplast(QuotedString).
+	lists:droplast(QuotedString).
 
 fix_str([$\\, $\\ | Rest]) ->
-    [$\\ | fix_str(Rest)];
+	[$\\ | fix_str(Rest)];
 fix_str([$\\, $/ | Rest]) ->
-    [$/ | fix_str(Rest)];
+	[$/ | fix_str(Rest)];
 fix_str([$\\, $b | Rest]) ->
-    [$\b | fix_str(Rest)];
+	[$\b | fix_str(Rest)];
 fix_str([$\\, $f | Rest]) ->
-    [$\f | fix_str(Rest)];
+	[$\f | fix_str(Rest)];
 fix_str([$\\, $n | Rest]) ->
-    [$\n | fix_str(Rest)];
+	[$\n | fix_str(Rest)];
 fix_str([$\\, $r | Rest]) ->
-    [$\r | fix_str(Rest)];
+	[$\r | fix_str(Rest)];
 fix_str([$\\, $t | Rest]) ->
-    [$\t | fix_str(Rest)];
+	[$\t | fix_str(Rest)];
 fix_str([$\\, $" | Rest]) ->
-    [$" | fix_str(Rest)];
+	[$" | fix_str(Rest)];
 fix_str([$\\, Any | Rest]) ->
-    [Any | fix_str(Rest)];
+	[Any | fix_str(Rest)];
 fix_str([C | Rest]) ->
-    [C | fix_str(Rest)];
+	[C | fix_str(Rest)];
 fix_str([]) ->
-    [].
+	[].
 
 fix_char([$\\, $\\]) ->
-    $\\;
+	$\\;
 fix_char([$\\, $b]) -> 
-    $\b;
+	$\b;
 fix_char([$\\, $f]) -> 
-    $\f;
+	$\f;
 fix_char([$\\, $n]) -> 
-    $\n;
+	$\n;
 fix_char([$\\, $r]) -> 
-    $\r;
+	$\r;
 fix_char([$\\, $t]) -> 
-    $\t;
+	$\t;
 fix_char([$\\, Any]) ->
-    Any;
+	Any;
 fix_char([Any]) ->
-    Any.
+	Any.
+

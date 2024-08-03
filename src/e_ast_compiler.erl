@@ -1,7 +1,5 @@
 -module(e_ast_compiler).
-
 -export([compile_from_raw_ast/2]).
-
 -include("e_record_definition.hrl").
 
 -type compile_options() :: map().
@@ -9,7 +7,6 @@
 -spec compile_from_raw_ast(e_ast(), compile_options()) -> {e_ast(), var_type_map(), e_ast()}.
 compile_from_raw_ast(AST, CustomCompileOptions) ->
 	CompileOptions = maps:merge(default_compiler_options(), CustomCompileOptions),
-
 	{AST2, VarTypeMap, InitCode0} = e_variable:fetch_variables(AST),
 	{FnTypeMap, StructMap0} = e_util:make_function_and_struct_map_from_ast(AST2),
 
