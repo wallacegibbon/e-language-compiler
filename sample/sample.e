@@ -1,5 +1,3 @@
-%% vim: ft=elang :
-
 struct Blah
 	id: i8^,
 	a: Administrator^,

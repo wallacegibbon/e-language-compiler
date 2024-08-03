@@ -1,5 +1,3 @@
-%% vim: ft=elang :
-
 testglobal: u32 = 10;
 
 fun main(argc: uptr, argv: i64^^): i64
