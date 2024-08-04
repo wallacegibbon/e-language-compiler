@@ -12,11 +12,11 @@ compile_to_c(InputFilename, OutputFilename) ->
 			io:format("~s: ~p~n", [Filename, ErrorInfo])
 	end.
 
--spec compile_to_ast(string()) -> {e_ast(), var_type_map(), e_ast()}.
+-spec compile_to_ast(string()) -> {e_ast(), e_var_type_map(), e_ast()}.
 compile_to_ast(Filename) ->
 	parse_and_compile(Filename).
 
--spec parse_and_compile(string()) -> {e_ast(), var_type_map(), e_ast()}.
+-spec parse_and_compile(string()) -> {e_ast_raw(), e_var_type_map(), e_ast()}.
 parse_and_compile(Filename) ->
 	try
 		e_ast_compiler:compile_from_raw_ast(parse_file(Filename), #{})
@@ -25,7 +25,7 @@ parse_and_compile(Filename) ->
 			throw({Filename, E})
 	end.
 
--spec parse_file(string()) -> e_ast().
+-spec parse_file(string()) -> e_ast_raw().
 parse_file(Filename) ->
 	case file:read_file(Filename) of
 		{ok, RawContent} ->
@@ -36,7 +36,7 @@ parse_file(Filename) ->
 			throw(Reason)
 	end.
 
--spec parse_content(string()) -> e_ast().
+-spec parse_content(binary()) -> e_ast_raw().
 parse_content(RawContent) ->
 	case e_scanner:string(binary_to_list(RawContent)) of
 		{ok, Tokens, _} ->

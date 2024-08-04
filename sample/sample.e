@@ -8,6 +8,7 @@ end
 
 struct Blah1
 	id: i8^,
+	val: f32,
 	blob: u64 = sizeof(Blah),
 end
 

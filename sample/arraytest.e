@@ -2,7 +2,7 @@
 
 testglobal: u32 = 10;
 
-fun main(argc: isize, argv: i64^^): i64
+fun main(argc: uptr, argv: i64^^): i64
 	blah: {u8, 10};
 	tmp: u8^ = blah@;
 	tmp^ = 10;

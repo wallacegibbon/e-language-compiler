@@ -31,7 +31,7 @@ Rules.
 struct|end|fun|return|if|then|elif|else|while|do|goto|sizeof|as|new : {token, {list_to_atom(TokenChars), TokenLine}}.
 rem|and|or|band|bor|bxor|bsl|bsr : {token, {list_to_atom(TokenChars), TokenLine}}.
 cond|case|for|break|continue : {token, {list_to_atom(TokenChars), TokenLine}}.
-u8|i8|u16|i16|u32|i32|u64|i64|usize|isize : {token, {int_type, TokenLine, list_to_atom(TokenChars)}}.
+u8|i8|u16|i16|u32|i32|u64|i64|usize|isize|uptr|iptr : {token, {int_type, TokenLine, list_to_atom(TokenChars)}}.
 f64|f32 : {token, {float_type, TokenLine, list_to_atom(TokenChars)}}.
 void : {token, {void_type, TokenLine, void}}.
 any : {token, {any_type, TokenLine, any}}.

@@ -8,9 +8,9 @@ function_normal_test() ->
 			{'^', 1}, {')', 1}, {identifier, 1, v}, {'^', 1}, {'=', 1}, {integer, 1, 10},
 			{';', 1}, {'end', 1}], Tokens),
 	{ok, AST} = e_parser:parse(Tokens),
-	?assertEqual([{function_raw, 1, a, [{var_def, 1, v, {basic_type, 1, 1, integer, i8}, none}],
-			{basic_type, 1, 0, void, void},
-			[{e_expr, 1, '=', [{e_expr, 1, '^', [{var_ref, 1, v}]}, {integer, 1, 10}]}]}], AST),
+	?assertEqual([{e_function_raw, 1, a, [{e_vardef, 1, v, {e_basic_type, 1, 1, integer, i8}, none}],
+			{e_basic_type, 1, 0, void, void},
+			[{e_op, 1, '=', [{e_op, 1, '^', [{e_varref, 1, v}]}, {e_integer, 1, 10}]}]}], AST),
 	ok.
 
 function_pointer_test() ->
@@ -19,8 +19,8 @@ function_pointer_test() ->
 			{int_type, 1, u8}, {'^', 1}, {')', 1}, {':', 1}, {int_type, 1, u16}, {'^', 1},
 			{'=', 1}, {identifier, 1, b}, {';', 1}], Tokens),
 	{ok, AST} = e_parser:parse(Tokens),
-	?assertEqual([{var_def, 1, a, {fn_type, 1, [{basic_type, 1, 0, integer, u8}, {basic_type, 1, 1, integer, u8}],
-			{basic_type, 1, 1, integer, u16}}, {var_ref, 1, b}}], AST),
+	?assertEqual([{e_vardef, 1, a, {e_fn_type, 1, [{e_basic_type, 1, 0, integer, u8}, {e_basic_type, 1, 1, integer, u8}],
+			{e_basic_type, 1, 1, integer, u16}}, {e_varref, 1, b}}], AST),
 	ok.
 
 function_call_test() ->
@@ -28,8 +28,8 @@ function_call_test() ->
 	?assertEqual([{identifier, 1, b}, {':', 1}, {int_type, 1, u8}, {'=', 1}, {identifier, 1, a},
 			{'(', 1}, {integer, 1, 13}, {')', 1}, {';', 1}], Tokens),
 	{ok, AST} = e_parser:parse(Tokens),
-	?assertEqual([{var_def, 1, b, {basic_type, 1, 0, integer, u8},
-			{e_expr, 1, {call, {var_ref, 1, a}}, [{integer, 1, 13}]}}], AST),
+	?assertEqual([{e_vardef, 1, b, {e_basic_type, 1, 0, integer, u8},
+			{e_op, 1, {call, {e_varref, 1, a}}, [{e_integer, 1, 13}]}}], AST),
 	ok.
 
 array_test() ->
@@ -37,7 +37,7 @@ array_test() ->
 	?assertEqual([{identifier, 1, a}, {':', 1}, {'{', 1}, {int_type, 1, u8}, {',', 1}, {integer, 1, 100},
 			{'}', 1}, {';', 1}], Tokens),
 	{ok, AST} = e_parser:parse(Tokens),
-	?assertEqual([{var_def, 1, a, {array_type, 1, {basic_type, 1, 0, integer, u8}, 100}, none}], AST),
+	?assertEqual([{e_vardef, 1, a, {e_array_type, 1, {e_basic_type, 1, 0, integer, u8}, 100}, none}], AST),
 	ok.
 
 array_init_test() ->
@@ -46,8 +46,8 @@ array_init_test() ->
 			{'}', 1}, {'=', 1}, {'{', 1}, {integer, 1, 11}, {',', 1},
 			{integer, 1, 22}, {'}', 1}, {';', 1}], Tokens),
 	{ok, AST} = e_parser:parse(Tokens),
-	?assertEqual([{var_def, 1, a, {array_type, 1, {basic_type, 1, 0, integer, u8}, 2},
-			{array_init_expr, 1, [{integer, 1, 11}, {integer, 1, 22}]}}], AST),
+	?assertEqual([{e_vardef, 1, a, {e_array_type, 1, {e_basic_type, 1, 0, integer, u8}, 2},
+			{e_array_init_expr, 1, [{e_integer, 1, 11}, {e_integer, 1, 22}]}}], AST),
 	ok.
 
 struct_init_test() ->
@@ -56,21 +56,21 @@ struct_init_test() ->
 			{'{', 1}, {identifier, 1, name}, {'=', 1}, {string, 1, "a"}, {',', 1},
 			{identifier, 1, value}, {'=', 1}, {integer, 1, 2}, {'}', 1}, {';', 1}], Tokens),
 	{ok, AST} = e_parser:parse(Tokens),
-	?assertEqual([{var_def, 1, a, {basic_type, 1, 0, struct, 'S'},
-			{struct_init_raw_expr, 1, 'S',
-			 [{e_expr, 1, '=', [{var_ref, 1, name}, {string, 1, "a"}]},
-				{e_expr, 1, '=', [{var_ref, 1, value}, {integer, 1, 2}]}]}}], AST),
+	?assertEqual([{e_vardef, 1, a, {e_basic_type, 1, 0, struct, 'S'},
+			{e_struct_init_raw_expr, 1, 'S',
+			 [{e_op, 1, '=', [{e_varref, 1, name}, {e_string, 1, "a"}]},
+				{e_op, 1, '=', [{e_varref, 1, value}, {e_integer, 1, 2}]}]}}], AST),
 	ok.
 
 assign_test() ->
-	{ok, Tokens, _} = e_scanner:string("fun b() a * = 3;c bsr = 5;end"),
+	{ok, Tokens, _} = e_scanner:string("fun b() a * = 3; c bsr = 5; end"),
 	?assertEqual([{'fun', 1}, {identifier, 1, b}, {'(', 1}, {')', 1}, {identifier, 1, a}, {'*', 1},
 			{'=', 1}, {integer, 1, 3}, {';', 1}, {identifier, 1, c}, {'bsr', 1}, {'=', 1},
 			{integer, 1, 5}, {';', 1}, {'end', 1}], Tokens),
 	{ok, AST} = e_parser:parse(Tokens),
-	?assertEqual([{function_raw, 1, b, [], {basic_type, 1, 0, void, void},
-		       [{e_expr, 1, '=', [{var_ref, 1, a}, {e_expr, 1, '*', [{var_ref, 1, a}, {integer, 1, 3}]}]},
-			{e_expr, 1, '=', [{var_ref, 1, c}, {e_expr, 1, 'bsr', [{var_ref, 1, c}, {integer, 1, 5}]}]}]}], AST),
+	?assertEqual([{e_function_raw, 1, b, [], {e_basic_type, 1, 0, void, void},
+		       [{e_op, 1, '=', [{e_varref, 1, a}, {e_op, 1, '*', [{e_varref, 1, a}, {e_integer, 1, 3}]}]},
+			{e_op, 1, '=', [{e_varref, 1, c}, {e_op, 1, 'bsr', [{e_varref, 1, c}, {e_integer, 1, 5}]}]}]}], AST),
 	ok.
 
 -endif.

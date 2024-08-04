@@ -10,33 +10,33 @@
 %% code for if, while, return, call...,
 %% so you can concentrate on operand1, operand2...
 -spec expr_map(fun((e_expr()) -> e_expr()), [e_expr()]) -> [e_expr()].
-expr_map(Fn, [#if_stmt{} = If | Rest]) ->
-	[If#if_stmt{condi = Fn(If#if_stmt.condi), then = expr_map(Fn, If#if_stmt.then), else = expr_map(Fn, If#if_stmt.else)} | expr_map(Fn, Rest)];
-expr_map(Fn, [#while_stmt{condi = Cond, stmts = Exprs} = While | Rest]) ->
-	[While#while_stmt{condi = Fn(Cond), stmts = expr_map(Fn, Exprs)} | expr_map(Fn, Rest)];
-expr_map(Fn, [#e_expr{tag = {call, Callee}, data = Args} = FnCall | Rest]) ->
-	[FnCall#e_expr{tag = {call, Fn(Callee)}, data = expr_map(Fn, Args)} | expr_map(Fn, Rest)];
-expr_map(Fn, [#return_stmt{expr = Expr} = Ret | Rest]) ->
-	[Ret#return_stmt{expr = Fn(Expr)} | expr_map(Fn, Rest)];
+expr_map(Fn, [#e_if_stmt{} = If | Rest]) ->
+	[If#e_if_stmt{condi = Fn(If#e_if_stmt.condi), then = expr_map(Fn, If#e_if_stmt.then), else = expr_map(Fn, If#e_if_stmt.else)} | expr_map(Fn, Rest)];
+expr_map(Fn, [#e_while_stmt{condi = Cond, stmts = Exprs} = While | Rest]) ->
+	[While#e_while_stmt{condi = Fn(Cond), stmts = expr_map(Fn, Exprs)} | expr_map(Fn, Rest)];
+expr_map(Fn, [#e_op{tag = {call, Callee}, data = Args} = FnCall | Rest]) ->
+	[FnCall#e_op{tag = {call, Fn(Callee)}, data = expr_map(Fn, Args)} | expr_map(Fn, Rest)];
+expr_map(Fn, [#e_return_stmt{expr = Expr} = Ret | Rest]) ->
+	[Ret#e_return_stmt{expr = Fn(Expr)} | expr_map(Fn, Rest)];
 expr_map(Fn, [Any | Rest]) ->
 	[Fn(Any) | expr_map(Fn, Rest)];
 expr_map(_, []) ->
 	[].
 
 -spec expr_to_str(e_expr()) -> string().
-expr_to_str(#if_stmt{condi = Cond, then = Then, else = Else}) ->
+expr_to_str(#e_if_stmt{condi = Cond, then = Then, else = Else}) ->
 	io_lib:format("if (~s) ~s else ~s end", [expr_to_str(Cond), lists:map(fun expr_to_str/1, Then), lists:map(fun expr_to_str/1, Else)]);
-expr_to_str(#while_stmt{condi = Cond, stmts = Exprs}) ->
+expr_to_str(#e_while_stmt{condi = Cond, stmts = Exprs}) ->
 	io_lib:format("while (~s) ~s end", [expr_to_str(Cond), lists:map(fun expr_to_str/1, Exprs)]);
-expr_to_str(#return_stmt{expr = Expr}) ->
+expr_to_str(#e_return_stmt{expr = Expr}) ->
 	io_lib:format("return (~s)", [expr_to_str(Expr)]);
-expr_to_str(#var_ref{name = Name}) ->
+expr_to_str(#e_varref{name = Name}) ->
 	atom_to_list(Name);
-expr_to_str(#e_expr{tag = {call, Callee}, data = Args}) ->
+expr_to_str(#e_op{tag = {call, Callee}, data = Args}) ->
 	io_lib:format("(~s)(~s)", [expr_to_str(Callee), lists:map(fun expr_to_str/1, Args)]);
-expr_to_str(#e_expr{tag = Operator, data = [Op1, Op2]}) ->
+expr_to_str(#e_op{tag = Operator, data = [Op1, Op2]}) ->
 	io_lib:format("~s ~s ~s", [expr_to_str(Op1), Operator, expr_to_str(Op2)]);
-expr_to_str(#e_expr{tag = Operator, data = [Operand]}) ->
+expr_to_str(#e_op{tag = Operator, data = [Operand]}) ->
 	io_lib:format("~s ~s", [expr_to_str(Operand), Operator]);
 expr_to_str({TypeTag, _, Val}) when TypeTag =:= integer; TypeTag =:= float ->
 	io_lib:format("~w", [Val]);
@@ -76,12 +76,12 @@ get_values_by_keys_test() ->
 
 -endif.
 
--spec make_function_and_struct_map_from_ast(any()) -> {fn_type_map(), struct_type_map()}.
+-spec make_function_and_struct_map_from_ast(any()) -> {e_fn_type_map(), e_struct_type_map()}.
 make_function_and_struct_map_from_ast(AST) ->
-	{Fns, Structs} = lists:partition(fun(A) -> element(1, A) =:= function end, AST),
+	{Fns, Structs} = lists:partition(fun(A) -> element(1, A) =:= e_function end, AST),
 	%% FnTypeMap stores function type only
-	FnTypeMap = maps:from_list(lists:map(fun(#function{name = Name} = Fn) -> {Name, Fn#function.type} end, Fns)),
-	StructMap = maps:from_list(lists:map(fun(#struct{name = Name} = S) -> {Name, S} end, Structs)),
+	FnTypeMap = maps:from_list(lists:map(fun(#e_function{name = Name} = Fn) -> {Name, Fn#e_function.type} end, Fns)),
+	StructMap = maps:from_list(lists:map(fun(#e_struct{name = Name} = S) -> {Name, S} end, Structs)),
 	{FnTypeMap, StructMap}.
 
 %% address calculations
@@ -101,6 +101,10 @@ cut_extra(Num, Unit) ->
 primitive_size_of(usize) ->
 	pointer_size;
 primitive_size_of(isize) ->
+	pointer_size;
+primitive_size_of(uptr) ->
+	pointer_size;
+primitive_size_of(iptr) ->
 	pointer_size;
 primitive_size_of(u64) ->
 	8;
@@ -126,15 +130,15 @@ primitive_size_of(T) ->
 	throw(fmt("size of ~p is not defined", [T])).
 
 void_type(Line) ->
-	#basic_type{class = void, tag = void, p_depth = 0, line = Line}.
+	#e_basic_type{class = void, tag = void, p_depth = 0, line = Line}.
 
--spec names_of_var_refs([#var_ref{}]) -> [atom()].
+-spec names_of_var_refs([#e_varref{}]) -> [atom()].
 names_of_var_refs(VarRefList) ->
-	lists:map(fun(#var_ref{name = Name}) -> Name end, VarRefList).
+	lists:map(fun(#e_varref{name = Name}) -> Name end, VarRefList).
 
--spec names_of_var_defs([#var_def{}]) -> [atom()].
+-spec names_of_var_defs([#e_vardef{}]) -> [atom()].
 names_of_var_defs(VarDefList) ->
-	lists:map(fun(#var_def{name = Name}) -> Name end, VarDefList).
+	lists:map(fun(#e_vardef{name = Name}) -> Name end, VarDefList).
 
 -spec assert(boolean(), any()) -> ok.
 assert(true, _) ->
@@ -146,17 +150,17 @@ assert(false, Info) ->
 value_in_list(Value, List) ->
 	lists:any(fun(V) -> V =:= Value end, List).
 
-%% filter_var_refs_in_map([#var_ref{name = a}, #var_ref{name = b}], #{a => 1})
-%% > [#var_ref{name = a}].
--spec filter_var_refs_in_map([#var_ref{}], #{atom() := any()}) -> [#var_ref{}].
+%% filter_var_refs_in_map([#e_varref{name = a}, #e_varref{name = b}], #{a => 1})
+%% > [#e_varref{name = a}].
+-spec filter_var_refs_in_map([#e_varref{}], #{atom() := any()}) -> [#e_varref{}].
 filter_var_refs_in_map(VarRefList, TargetMap) ->
-	lists:filter(fun(#var_ref{name = Name}) -> exist_in_map(Name, TargetMap) end, VarRefList).
+	lists:filter(fun(#e_varref{name = Name}) -> exist_in_map(Name, TargetMap) end, VarRefList).
 
 -ifdef(EUNIT).
 
 filter_var_refs_in_map_test() ->
-	A = filter_var_refs_in_map([#var_ref{name = a}, #var_ref{name = b}], #{a => 1}),
-	?assertEqual(A, [#var_ref{name = a}]).
+	A = filter_var_refs_in_map([#e_varref{name = a}, #e_varref{name = b}], #{a => 1}),
+	?assertEqual(A, [#e_varref{name = a}]).
 
 -endif.
 

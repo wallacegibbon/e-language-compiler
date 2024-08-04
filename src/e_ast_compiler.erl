@@ -2,9 +2,9 @@
 -export([compile_from_raw_ast/2]).
 -include("e_record_definition.hrl").
 
--type compile_options() :: map().
+-type e_compile_options() :: map().
 
--spec compile_from_raw_ast(e_ast(), compile_options()) -> {e_ast(), var_type_map(), e_ast()}.
+-spec compile_from_raw_ast(e_ast(), e_compile_options()) -> {e_ast(), e_var_type_map(), e_ast()}.
 compile_from_raw_ast(AST, CustomCompileOptions) ->
 	CompileOptions = maps:merge(default_compiler_options(), CustomCompileOptions),
 	{AST2, VarTypeMap, InitCode0} = e_variable:fetch_variables(AST),
@@ -37,16 +37,16 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	InitCode2 = e_init_expr:expand_init_expr(InitCode1, StructMap2),
 	{AST5, VarTypeMap, InitCode2}.
 
--spec default_compiler_options() -> compile_options().
+-spec default_compiler_options() -> e_compile_options().
 default_compiler_options() ->
 	#{pointer_width => 8}.
 
--spec ensure_no_recursive_struct(struct_type_map()) -> ok.
+-spec ensure_no_recursive_struct(e_struct_type_map()) -> ok.
 ensure_no_recursive_struct(StructTypeMap) ->
 	maps:foreach(fun(_, S) -> check_struct_recursive(S, StructTypeMap) end, StructTypeMap).
 
--spec check_struct_recursive(#struct{}, struct_type_map()) -> ok.
-check_struct_recursive(#struct{name = Name, line = Line} = Struct, StructTypeMap) ->
+-spec check_struct_recursive(#e_struct{}, e_struct_type_map()) -> ok.
+check_struct_recursive(#e_struct{name = Name, line = Line} = Struct, StructTypeMap) ->
 	try
 		check_struct_object(Struct, StructTypeMap, [])
 	catch
@@ -54,11 +54,11 @@ check_struct_recursive(#struct{name = Name, line = Line} = Struct, StructTypeMap
 			e_util:ethrow(Line, "recursive struct ~s -> ~w", [Name, Chain])
 	end.
 
--spec check_struct_object(#struct{}, struct_type_map(), [atom()]) -> ok | {recur, [any()]}.
-check_struct_object(#struct{name = Name, field_type_map = FieldTypes}, StructMap, UsedStructs) ->
+-spec check_struct_object(#e_struct{}, e_struct_type_map(), [atom()]) -> ok | {recur, [any()]}.
+check_struct_object(#e_struct{name = Name, field_type_map = FieldTypes}, StructMap, UsedStructs) ->
 	check_struct_field(maps:to_list(FieldTypes), StructMap, [Name | UsedStructs]).
 
--spec check_struct_field([{atom(), e_type()}], struct_type_map(), [atom()]) -> ok.
+-spec check_struct_field([{atom(), e_type()}], e_struct_type_map(), [atom()]) -> ok.
 check_struct_field([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
 	case contain_struct(FieldType) of
 		{yes, StructName} ->
@@ -78,9 +78,9 @@ check_struct_field_sub(StructName, StructMap, UsedStructs) ->
 	end.
 
 -spec contain_struct(e_type()) -> {yes, atom()} | no.
-contain_struct(#basic_type{class = struct, p_depth = 0, tag = Name}) ->
+contain_struct(#e_basic_type{class = struct, p_depth = 0, tag = Name}) ->
 	{yes, Name};
-contain_struct(#array_type{elem_type = BaseType}) ->
+contain_struct(#e_array_type{elem_type = BaseType}) ->
 	contain_struct(BaseType);
 contain_struct(_) ->
 	no.
