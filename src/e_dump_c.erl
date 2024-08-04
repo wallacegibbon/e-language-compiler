@@ -2,7 +2,7 @@
 -export([generate_c_code/4]).
 -include("e_record_definition.hrl").
 
--type e_context() :: {e_fn_type_map(), e_struct_type_map(), e_var_type_map()}.
+-type context() :: {e_fn_type_map(), e_struct_type_map(), e_var_type_map()}.
 
 -spec generate_c_code(e_ast(), e_var_type_map(), [e_stmt()], string()) -> ok.
 generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
@@ -21,18 +21,18 @@ generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
 	Code = lists:join("\n\n", [common_c_code(), StructStmts, VarStmts, FnDeclars, FnStmts]),
 	ok = file:write_file(OutputFile, Code).
 
--spec fix_function_for_c(e_ast_elem(), e_context()) -> e_ast_elem().
+-spec fix_function_for_c(e_ast_elem(), context()) -> e_ast_elem().
 fix_function_for_c(#e_function{} = F, {FnTypeMap, StructMap, GlobalVars}) ->
 	#e_function{stmts = Exprs, e_var_type_map = VarTypes} = F,
 	F#e_function{stmts = fix_exprs_for_c(Exprs, {FnTypeMap, StructMap, maps:merge(GlobalVars, VarTypes)})};
 fix_function_for_c(Any, _) ->
 	Any.
 
--spec fix_exprs_for_c([e_stmt()], e_context()) -> [e_stmt()].
+-spec fix_exprs_for_c([e_stmt()], context()) -> [e_stmt()].
 fix_exprs_for_c(Exprs, Ctx) ->
 	e_util:expr_map(fun(E) -> fix_expr_for_c(E, Ctx) end, Exprs).
 
--spec fix_expr_for_c(e_expr(), e_context()) -> e_expr().
+-spec fix_expr_for_c(e_expr(), context()) -> e_expr().
 fix_expr_for_c(#e_op{tag = '@'} = E, {FnTypeMap, StructMap, VarTypes} = Ctx) ->
 	#e_op{data = [Operand], line = L} = E,
 	case e_type:type_of_node(Operand, {VarTypes, FnTypeMap, StructMap, #e_basic_type{}}) of
