@@ -12,8 +12,8 @@ end
 
 struct User
 	id: i64 = 10 * 20 + 3 * 4 + 22,
-	%desc: {i64, 10} = {"hello"},
-	desc: {i64, 10} = {1, 2, 3, 4, 5, 6, 7, 8, 9, 22},
+	%desc: {i8, 10} = {"hello"},
+	desc: {i8, 10} = {1, 2, 3, 4, 5, 6, 7, 8, 9, 22},
 	count: u32,
 	blah: Blah,
 	b2: {Blah, 3},
@@ -46,6 +46,7 @@ blah1: i64 = sizeof(Blah1);
 u1: User = User{id = 8};
 
 fun main(argc: i64, argv: i64^^): i64
+	%invalid_u: User^ = User{id = 3}@;
 	%users: {User, 22} = {User{nameref = 1}, User{id = 1}};
 	%users: {User, 2} = {User{non = 1}, User{id = 1}};
 	users: {User, 2} = {User{id = 1, blah = Blah{id = "a"}}, User{id = 1}};
@@ -92,12 +93,12 @@ end
 
 fun init_users(users: User^, size: i64)
 	cnt: i64 = 30 + 52 * size / 2 + 100 / 10;
-	%while cnt < size do
-	%	init_user((users + cnt)^, cnt, "test");
-	%end
+	while cnt < size do
+		init_user(users + cnt, cnt, "test");
+	end
 end
 
-fun init_user(user: User^, id: i64, desc: i64^)
+fun init_user(user: User^, id: i64, desc: i8^)
 	if id < 1 then
 		user^.id = 1;
 		user^.id = user^.id + 1;

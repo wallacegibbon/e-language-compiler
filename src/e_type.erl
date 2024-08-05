@@ -131,6 +131,8 @@ type_of_node(#e_op{tag = '@', data = [Operand], line = Line}, {_, _, StructMap, 
 			inc_pointer_depth(T, Line);
 		#e_varref{} ->
 			inc_pointer_depth(type_of_node(Operand, Ctx), Line);
+		#e_struct_init_expr{} ->
+			inc_pointer_depth(type_of_node(Operand, Ctx), Line);
 		_ ->
 			e_util:ethrow(Line, "invalid \"@\" on operand ~s", [e_util:expr_to_str(Operand)])
 	end;

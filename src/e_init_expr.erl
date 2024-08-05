@@ -3,8 +3,12 @@
 -include("e_record_definition.hrl").
 
 %% for now, array and struct init expression is only allowed in assignment
-check_position(#e_op{tag = '=', data = [_, Op2]}) when is_record(Op2, e_struct_init_expr); is_record(Op2, e_array_init_expr) ->
+check_position(#e_op{tag = '=', data = [_, #e_struct_init_expr{}]}) ->
 	ok;
+check_position(#e_op{tag = '=', data = [_, #e_array_init_expr{}]}) ->
+	ok;
+check_position(#e_op{data = Data}) ->
+	lists:map(fun check_position/1, Data);
 check_position(#e_struct_init_expr{line = Line}) ->
 	e_util:ethrow(Line, "struct init expression is only allowed in assignments");
 check_position(#e_array_init_expr{line = Line}) ->

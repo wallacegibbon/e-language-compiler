@@ -6,18 +6,17 @@
 
 -include("e_record_definition.hrl").
 
-%% when do simple conversions, this function can be used to avoid boilerplate
-%% code for if, while, return, call...,
-%% so you can concentrate on operand1, operand2...
+%% This function can be used to avoid boilerplate code for if, while, return, call...
+%% So you can concentrate on operators.
 -spec expr_map(fun((e_expr()) -> e_expr()), [e_expr()]) -> [e_expr()].
 expr_map(Fn, [#e_if_stmt{} = If | Rest]) ->
 	[If#e_if_stmt{condi = Fn(If#e_if_stmt.condi), then = expr_map(Fn, If#e_if_stmt.then), else = expr_map(Fn, If#e_if_stmt.else)} | expr_map(Fn, Rest)];
 expr_map(Fn, [#e_while_stmt{condi = Cond, stmts = Exprs} = While | Rest]) ->
 	[While#e_while_stmt{condi = Fn(Cond), stmts = expr_map(Fn, Exprs)} | expr_map(Fn, Rest)];
-expr_map(Fn, [#e_op{tag = {call, Callee}, data = Args} = FnCall | Rest]) ->
-	[FnCall#e_op{tag = {call, Fn(Callee)}, data = expr_map(Fn, Args)} | expr_map(Fn, Rest)];
 expr_map(Fn, [#e_return_stmt{expr = Expr} = Ret | Rest]) ->
 	[Ret#e_return_stmt{expr = Fn(Expr)} | expr_map(Fn, Rest)];
+expr_map(Fn, [#e_op{tag = {call, Callee}, data = Args} = FnCall | Rest]) ->
+	[FnCall#e_op{tag = {call, Fn(Callee)}, data = expr_map(Fn, Args)} | expr_map(Fn, Rest)];
 expr_map(Fn, [Any | Rest]) ->
 	[Fn(Any) | expr_map(Fn, Rest)];
 expr_map(_, []) ->
@@ -172,3 +171,4 @@ exist_in_map(KeyName, Map) ->
 		_ ->
 			false
 	end.
+
