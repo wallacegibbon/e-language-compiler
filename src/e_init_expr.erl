@@ -8,7 +8,7 @@ check_position(#e_op{tag = '=', data = [_, #e_struct_init_expr{}]}) ->
 check_position(#e_op{tag = '=', data = [_, #e_array_init_expr{}]}) ->
 	ok;
 check_position(#e_op{data = Data}) ->
-	lists:map(fun check_position/1, Data);
+	lists:foreach(fun check_position/1, Data);
 check_position(#e_struct_init_expr{line = Line}) ->
 	e_util:ethrow(Line, "struct init expression is only allowed in assignments");
 check_position(#e_array_init_expr{line = Line}) ->
