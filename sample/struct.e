@@ -10,6 +10,7 @@ end
 
 fun blah()
 	sprite: Sprite = Sprite{id = 11, pos = Pos{x = 100, y = 200}};
+	sprite.id = 12;
 	sprite@;
 end
 

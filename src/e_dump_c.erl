@@ -7,14 +7,12 @@
 -spec generate_c_code(e_ast(), e_var_type_map(), [e_stmt()], string()) -> ok.
 generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
 	{FnTypeMap, StructMap} = e_util:make_function_and_struct_map_from_ast(AST),
-
 	Ctx = {FnTypeMap, StructMap, GlobalVars},
 	AST2 = lists:map(fun(A) -> fix_function_for_c(A, Ctx) end, AST),
 	InitCode2 = fix_exprs_for_c(InitCode, Ctx),
-
 	% io:format(">>>~p~n", [AST2]),
 	%% struct definition have to be before function declarations
-	{StructAST, FnAST} = lists:partition(fun(A) -> element(1, A) =:= struct end, AST2),
+	{StructAST, FnAST} = lists:partition(fun(A) -> element(1, A) =:= e_struct end, AST2),
 	{StructStmts, []} = statements_to_str(StructAST, []),
 	{FnStmts, FnDeclars} = statements_to_str(FnAST, InitCode2),
 	VarStmts = var_map_to_str(GlobalVars),
@@ -22,19 +20,18 @@ generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
 	ok = file:write_file(OutputFile, Code).
 
 -spec fix_function_for_c(e_ast_elem(), context()) -> e_ast_elem().
-fix_function_for_c(#e_function{} = F, {FnTypeMap, StructMap, GlobalVars}) ->
-	#e_function{stmts = Exprs, e_var_type_map = VarTypes} = F,
-	F#e_function{stmts = fix_exprs_for_c(Exprs, {FnTypeMap, StructMap, maps:merge(GlobalVars, VarTypes)})};
+fix_function_for_c(#e_function{} = Fn, {FnTypeMap, StructMap, GlobalVars}) ->
+	#e_function{stmts = Stmts, e_var_type_map = VarTypes} = Fn,
+	Fn#e_function{stmts = fix_exprs_for_c(Stmts, {FnTypeMap, StructMap, maps:merge(GlobalVars, VarTypes)})};
 fix_function_for_c(Any, _) ->
 	Any.
 
 -spec fix_exprs_for_c([e_stmt()], context()) -> [e_stmt()].
-fix_exprs_for_c(Exprs, Ctx) ->
-	e_util:expr_map(fun(E) -> fix_expr_for_c(E, Ctx) end, Exprs).
+fix_exprs_for_c(Stmts, Ctx) ->
+	e_util:expr_map(fun(E) -> fix_expr_for_c(E, Ctx) end, Stmts).
 
 -spec fix_expr_for_c(e_expr(), context()) -> e_expr().
-fix_expr_for_c(#e_op{tag = '@'} = E, {FnTypeMap, StructMap, VarTypes} = Ctx) ->
-	#e_op{data = [Operand], line = L} = E,
+fix_expr_for_c(#e_op{tag = '@', data = [Operand], line = L} = E, {FnTypeMap, StructMap, VarTypes} = Ctx) ->
 	case e_type:type_of_node(Operand, {VarTypes, FnTypeMap, StructMap, #e_basic_type{}}) of
 		#e_array_type{} ->
 			#e_op{tag = '.', data = [fix_expr_for_c(Operand, Ctx), #e_varref{name = value, line = L}]};
@@ -51,6 +48,7 @@ common_c_code() ->
 	"#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <stdint.h>\n"
 	"typedef size_t usize;\ntypedef ssize_t isize;\n"
 	"typedef uintptr_t uptr;\ntypedef intptr_t iptr;\n"
+	"typedef unsigned char byte;\n"
 	"typedef uint8_t u8;\ntypedef int8_t i8;\n"
 	"typedef uint16_t u16;\ntypedef int16_t i16;\n"
 	"typedef uint32_t u32;\ntypedef int32_t i32;\n"
@@ -62,19 +60,17 @@ statements_to_str(Statements, InitCode) ->
 	statements_to_str(Statements, InitCode, [], []).
 
 statements_to_str([#e_function{} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
-	#e_function{name = Name, param_names = ParamNames, type = FnType, e_var_type_map = VarTypes, stmts = Exprs} = Hd,
+	#e_function{name = Name, param_names = ParamNames, type = FnType, e_var_type_map = VarTypes, stmts = Stmts} = Hd,
 	ParamNameAtoms = names_from_varrefs(ParamNames),
 	PureParams = map_to_kv_list(ParamNameAtoms, maps:with(ParamNameAtoms, VarTypes)),
 	PureVars = maps:without(ParamNameAtoms, VarTypes),
 	Declars = function_to_str(Name, params_to_str(PureParams), FnType#e_fn_type.ret),
-	Exprs2 =
+	Stmts2 =
 		case Name =:= main of
-			true ->
-				InitCode ++ Exprs;
-			false ->
-				Exprs
+			true -> InitCode ++ Stmts;
+			false -> Stmts
 		end,
-	S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declars, var_map_to_str(PureVars), exprs_to_str(Exprs2)]),
+	S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declars, var_map_to_str(PureVars), exprs_to_str(Stmts2)]),
 	statements_to_str(Rest, InitCode, [S | StmtStrs], [Declars ++ ";\n" | FnDeclars]);
 statements_to_str([#e_struct{} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
 	#e_struct{name = Name, field_type_map = FieldTypes, field_names = FieldNames} = Hd,
@@ -136,14 +132,14 @@ type_to_c_str(#e_fn_type{params = Params, ret = RetType}, VarName) ->
 	NameParams = io_lib:format("(*~s)(~s)", [VarName, params_to_str_no_name(Params)]),
 	type_to_c_str(RetType, NameParams).
 
-type_tag_to_str(struct, Name) ->
+type_tag_to_str(e_struct, Name) ->
 	io_lib:format("struct ~s", [Name]);
 type_tag_to_str(_, Name) ->
 	atom_to_list(Name).
 
 %% convert expression to C string
-exprs_to_str(Exprs) ->
-	[lists:join("\n", exprs_to_str(Exprs, []))].
+exprs_to_str(Stmts) ->
+	[lists:join("\n", exprs_to_str(Stmts, []))].
 
 exprs_to_str([Expr | Rest], ExprList) ->
 	exprs_to_str(Rest, [stmt_to_str(Expr, $;) | ExprList]);
@@ -153,8 +149,8 @@ exprs_to_str([], ExprList) ->
 -spec stmt_to_str(e_expr(), char()) -> iolist().
 stmt_to_str(#e_if_stmt{condi = Condi, then = Then, else = Else}, _) ->
 	io_lib:format("if (~s) {\n~s\n} else {\n~s}", [stmt_to_str(Condi, $\s), exprs_to_str(Then), exprs_to_str(Else)]);
-stmt_to_str(#e_while_stmt{condi = Condi, stmts = Exprs}, _) ->
-	io_lib:format("while (~s) {\n~s\n}\n", [stmt_to_str(Condi, $\s), exprs_to_str(Exprs)]);
+stmt_to_str(#e_while_stmt{condi = Condi, stmts = Stmts}, _) ->
+	io_lib:format("while (~s) {\n~s\n}\n", [stmt_to_str(Condi, $\s), exprs_to_str(Stmts)]);
 stmt_to_str(#e_op{tag = {call, Fn}, data = Args}, EndChar) ->
 	ArgStr = lists:join(",", lists:map(fun(E) -> stmt_to_str(E, $\s) end, Args)),
 	io_lib:format("~s(~s)~c", [stmt_to_str(Fn, $\s), ArgStr, EndChar]);
@@ -185,27 +181,16 @@ fix_special_chars(String) ->
 	lists:map(fun(C) -> maps:get(C, ?SPECIAL_CHARACTER_MAP, C) end, String).
 
 -spec translate_op(atom()) -> string() | atom().
-translate_op(assign) ->
-	"=";
-translate_op('rem') ->
-	"%";
-translate_op('bxor') ->
-	"^";
-translate_op('bsr') ->
-	">>";
-translate_op('bsl') ->
-	"<<";
-translate_op('band') ->
-	"&";
-translate_op('bor') ->
-	"|";
-translate_op('and') ->
-	"&&";
-translate_op('or') ->
-	"||";
-translate_op('@') ->
-	"&";
-translate_op('^') ->
-	"*";
-translate_op(Any) ->
-	Any.
+translate_op(assign) -> "=";
+translate_op('rem') -> "%";
+translate_op('bxor') -> "^";
+translate_op('bsr') -> ">>";
+translate_op('bsl') -> "<<";
+translate_op('band') -> "&";
+translate_op('bor') -> "|";
+translate_op('and') -> "&&";
+translate_op('or') -> "||";
+translate_op('@') -> "&";
+translate_op('^') -> "*";
+translate_op(Any) -> Any.
+

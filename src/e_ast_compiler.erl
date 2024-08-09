@@ -27,16 +27,19 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	InitCode1 = e_size:expand_sizeof_in_exprs(InitCode0, Ctx1),
 	%% sizeof expressions are expanded, so StructMap needs to be updated
 	{_, StructMap2} = e_util:make_function_and_struct_map_from_ast(AST4),
-	%% type checking
+
+	%% type checking & converting
 	Maps = {FnTypeMap, StructMap2},
+
 	e_type:check_types_in_ast(AST4, VarTypeMap, Maps),
-	e_type:check_type_in_ast_nodes(InitCode1, VarTypeMap, Maps),
+	e_type:check_type_in_stmts(InitCode1, VarTypeMap, Maps),
+
 	%% expand init exprs like A{a=1} and {1,2,3}
 	AST5 = e_init_expr:expand_in_function(AST4, StructMap2),
 	InitCode2 = e_init_expr:expand_init_expr(InitCode1, StructMap2),
 
 	%% convert `.` into `@`, `+` and `^`
-	AST6 = e_struct:eliminate_dot(AST5, StructMap2),
+	AST6 = e_struct:eliminate_dot(AST5, VarTypeMap, Maps),
 
 	{AST6, VarTypeMap, InitCode2}.
 

@@ -5,8 +5,8 @@
 -type context() :: {e_struct_type_map(), non_neg_integer()}.
 
 -spec expand_sizeof(e_ast(), context()) -> e_ast().
-expand_sizeof([#e_function{stmts = Exprs} = F | Rest], Ctx) ->
-	[F#e_function{stmts = expand_sizeof_in_exprs(Exprs, Ctx)} | expand_sizeof(Rest, Ctx)];
+expand_sizeof([#e_function{stmts = Stmts} = Fn | Rest], Ctx) ->
+	[Fn#e_function{stmts = expand_sizeof_in_exprs(Stmts, Ctx)} | expand_sizeof(Rest, Ctx)];
 expand_sizeof([#e_struct{field_default_value_map = FieldDefaults} = S | Rest], Ctx) ->
 	[S#e_struct{field_default_value_map = expand_sizeof_in_map(FieldDefaults, Ctx)} | expand_sizeof(Rest, Ctx)];
 expand_sizeof([], _) ->
@@ -16,8 +16,8 @@ expand_sizeof_in_map(Map, Ctx) ->
 	maps:map(fun(_, V1) -> expand_sizeof_in_expr(V1, Ctx) end, Map).
 
 -spec expand_sizeof_in_exprs([e_stmt()], context()) -> [e_stmt()].
-expand_sizeof_in_exprs(Exprs, Ctx) ->
-	e_util:expr_map(fun(E) -> expand_sizeof_in_expr(E, Ctx) end, Exprs).
+expand_sizeof_in_exprs(Stmts, Ctx) ->
+	e_util:expr_map(fun(E) -> expand_sizeof_in_expr(E, Ctx) end, Stmts).
 
 -spec expand_sizeof_in_expr(e_expr(), context()) -> e_expr().
 expand_sizeof_in_expr(#e_op{tag = {sizeof, T}, line = Line}, Ctx) ->
@@ -127,8 +127,7 @@ size_of(#e_basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integ
 size_of(#e_fn_type{}, {_, PointerWidth}) ->
 	PointerWidth;
 size_of(A, _) ->
-	Line = element(1, A),
-	e_util:ethrow(Line, "invalid type ~p on sizeof", [A]).
+	e_util:ethrow(element(2, A), "invalid type ~p on sizeof", [A]).
 
 -spec align_fix(non_neg_integer(), non_neg_integer()) -> non_neg_integer().
 align_fix(Size, Unit) when Size < Unit, Unit rem Size =:= 0 ->

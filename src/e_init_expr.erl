@@ -17,9 +17,9 @@ check_position(_) ->
 	ok.
 
 -spec expand_in_function(e_ast(), e_struct_type_map()) -> e_ast().
-expand_in_function([#e_function{stmts = Stmts} = F | Rest], StructMap) ->
+expand_in_function([#e_function{stmts = Stmts} = Fn | Rest], StructMap) ->
 	e_util:expr_map(fun check_position/1, Stmts),
-	[F#e_function{stmts = expand_init_expr(Stmts, StructMap)} | expand_in_function(Rest, StructMap)];
+	[Fn#e_function{stmts = expand_init_expr(Stmts, StructMap)} | expand_in_function(Rest, StructMap)];
 expand_in_function([Any | Rest], StructMap) ->
 	[Any | expand_in_function(Rest, StructMap)];
 expand_in_function([], _) ->

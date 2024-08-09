@@ -1,33 +1,35 @@
 -module(e_type).
--export([check_types_in_ast/3, check_type_in_ast_nodes/3, type_of_node/2]).
+-export([check_types_in_ast/3, check_type_in_stmts/3, type_of_node/2]).
 -include("e_record_definition.hrl").
 
 -spec check_types_in_ast(e_ast(), e_var_type_map(), {e_fn_type_map(), e_struct_type_map()}) -> ok.
-check_types_in_ast([#e_function{} = Fn | Rest], GlobalVarTypes, {FnTypeMap, StructMap} = Maps) ->
-	#e_function{e_var_type_map = VarTypes, stmts = Stmts, type = FnType} = Fn,
+check_types_in_ast([#e_function{stmts = Stmts} = Fn | Rest], GlobalVarTypes, {FnTypeMap, StructMap} = Maps) ->
+	#e_function{e_var_type_map = VarTypes, type = FnType} = Fn,
 	check_types(maps:values(VarTypes), StructMap),
 	check_type(FnType#e_fn_type.ret, StructMap),
 	CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
+	%% The `#e_fn_type.ret` is used to check the operand of `return` statement.
 	type_of_nodes(Stmts, {CurrentVars, FnTypeMap, StructMap, FnType#e_fn_type.ret}),
 	check_types_in_ast(Rest, GlobalVarTypes, Maps);
-check_types_in_ast([#e_struct{} = S | Rest], GlobalVarTypes, {FnTypeMap, StructMap} = Maps) ->
-	#e_struct{name = Name, field_type_map = FieldTypes, field_names = FieldNames, field_default_value_map = FieldDefaults} = S,
+check_types_in_ast([#e_struct{name = Name} = S | Rest], GlobalVarTypes, {FnTypeMap, StructMap} = Maps) ->
+	#e_struct{field_type_map = FieldTypes, field_names = FieldNames, field_default_value_map = FieldDefaults} = S,
 	check_types(maps:values(FieldTypes), StructMap),
 	%% check the default values for fields
 	InitFieldNames = e_util:filter_var_refs_in_map(FieldNames, FieldDefaults),
-	check_types_in_struct_fields(InitFieldNames, FieldTypes, FieldDefaults, Name, {GlobalVarTypes, FnTypeMap, StructMap, #e_basic_type{}}),
+	Ctx = {GlobalVarTypes, FnTypeMap, StructMap, #e_basic_type{}},
+	check_types_in_struct_fields(InitFieldNames, FieldTypes, FieldDefaults, Name, Ctx),
 	check_types_in_ast(Rest, GlobalVarTypes, Maps);
 check_types_in_ast([_ | Rest], GlobalVarTypes, Maps) ->
 	check_types_in_ast(Rest, GlobalVarTypes, Maps);
 check_types_in_ast([], _, _) ->
 	ok.
 
--type context() :: {e_var_type_map(), e_fn_type_map(), e_struct_type_map(), e_type()}.
-
--spec check_type_in_ast_nodes([e_stmt()], e_var_type_map(), {e_fn_type_map(), e_struct_type_map()}) -> ok.
-check_type_in_ast_nodes(Stmts, GlobalVarTypes, {FnTypeMap, StructMap}) ->
+-spec check_type_in_stmts([e_stmt()], e_var_type_map(), {e_fn_type_map(), e_struct_type_map()}) -> ok.
+check_type_in_stmts(Stmts, GlobalVarTypes, {FnTypeMap, StructMap}) ->
 	type_of_nodes(Stmts, {GlobalVarTypes, FnTypeMap, StructMap, #e_basic_type{}}),
 	ok.
+
+-type context() :: {e_var_type_map(), e_fn_type_map(), e_struct_type_map(), e_type()}.
 
 -spec type_of_nodes([e_stmt()], context()) -> [e_type()].
 type_of_nodes(Stmts, Ctx) ->
@@ -158,15 +160,15 @@ type_of_node(#e_return_stmt{expr = Expr, line = Line}, {_, _, _, FnRetType} = Ct
 type_of_node(#e_varref{name = Name, line = Line}, {VarTypes, FnTypeMap, StructMap, _}) ->
 	Type =
 		case maps:find(Name, VarTypes) of
+			{ok, T} ->
+				T;
 			error ->
 				case maps:find(Name, FnTypeMap) of
 					{ok, T} ->
 						T;
 					error ->
 						e_util:ethrow(Line, "variable ~s is undefined", [Name])
-				end;
-			{ok, T} ->
-				T
+				end
 		end,
 	check_type(Type, StructMap),
 	Type;
