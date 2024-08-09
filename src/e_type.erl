@@ -188,7 +188,7 @@ type_of_node(#e_struct_init_expr{} = S, {_, _, StructMap, _} = Ctx) ->
 			e_util:ethrow(Line, "struct ~s is not found", [Name])
 	end;
 type_of_node(#e_op{tag = {sizeof, _}, line = Line}, _) ->
-	#e_basic_type{class = integer, p_depth = 0, tag = i64, line = Line};
+	#e_basic_type{class = integer, p_depth = 0, tag = usize, line = Line};
 type_of_node(#e_goto_stmt{line = Line}, _) ->
 	e_util:void_type(Line);
 type_of_node(#e_goto_label{line = Line}, _) ->
@@ -209,7 +209,7 @@ type_of_node(#e_float{line = Line}, _) ->
 type_of_node(#e_integer{line = Line}, _) ->
 	#e_basic_type{class = integer, p_depth = 0, tag = i64, line = Line};
 type_of_node(#e_string{line = Line}, _) ->
-	#e_basic_type{class = integer, p_depth = 1, tag = i8, line = Line}.
+	#e_basic_type{class = integer, p_depth = 1, tag = byte, line = Line}.
 
 -spec arguments_error_info([e_type()], [e_type()]) -> string().
 arguments_error_info(FnParamTypes, ArgsTypes) ->
@@ -378,3 +378,4 @@ type_to_str(#e_basic_type{tag = Tag, p_depth = PDepth}) when PDepth > 0 ->
 	io_lib:format("(~s~s)", [Tag, lists:duplicate(PDepth, "^")]);
 type_to_str(#e_basic_type{tag = Tag, p_depth = 0}) ->
 	atom_to_list(Tag).
+

@@ -272,6 +272,6 @@ token_symbol({Sym, _}) -> Sym.
 
 token_line(T) -> element(2, T).
 
-replace_tag({Old, Line, Val}, NewTag) -> {NewTag, Line, Val};
-replace_tag({Old, Line}, NewTag) -> {NewTag, Line}.
+replace_tag({_, Line, Val}, NewTag) -> {NewTag, Line, Val};
+replace_tag({_, Line}, NewTag) -> {NewTag, Line}.
 

@@ -1,13 +1,13 @@
 struct Blah
-	id: i8^,
+	id: byte^,
 	a: Administrator^,
 	%b: Administrator,
 end
 
 struct Blah1
-	id: i8^,
+	id: byte^,
 	val: f32,
-	blob: u64 = sizeof(Blah),
+	blob: usize = sizeof(Blah),
 end
 
 struct User
@@ -35,7 +35,7 @@ end
 % global variable
 mod_info: {i64, 100};
 blah: i64 = 10;
-blah1: i64 = sizeof(Blah1);
+blah1: usize = sizeof(Blah1);
 
 % t: {i64, 3} = {0, 1, 2}; % t@^
 % struct {i64 val[3];} t = {{0, 1, 2}}; // *(t.val)
@@ -45,7 +45,7 @@ blah1: i64 = sizeof(Blah1);
 
 u1: User = User{id = 8};
 
-fun main(argc: i64, argv: i64^^): i64
+fun main(argc: isize, argv: byte^^): i64
 	%invalid_u: User^ = User{id = 3}@;
 	%users: {User, 22} = {User{nameref = 1}, User{id = 1}};
 	%users: {User, 2} = {User{non = 1}, User{id = 1}};
@@ -91,14 +91,14 @@ fun main(argc: i64, argv: i64^^): i64
 	return 0;
 end
 
-fun init_users(users: User^, size: i64)
+fun init_users(users: User^, size: usize)
 	cnt: i64 = 30 + 52 * size / 2 + 100 / 10;
 	while cnt < size do
 		init_user(users + cnt, cnt, "test");
 	end
 end
 
-fun init_user(user: User^, id: i64, desc: i8^)
+fun init_user(user: User^, id: i64, desc: byte^)
 	if id < 1 then
 		user^.id = 1;
 		user^.id = user^.id + 1;

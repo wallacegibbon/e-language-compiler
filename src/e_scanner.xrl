@@ -31,7 +31,7 @@ Rules.
 struct|end|fun|return|if|then|elif|else|while|do|goto|sizeof|as|new : {token, {list_to_atom(TokenChars), TokenLine}}.
 rem|and|or|band|bor|bxor|bsl|bsr : {token, {list_to_atom(TokenChars), TokenLine}}.
 cond|case|for|break|continue : {token, {list_to_atom(TokenChars), TokenLine}}.
-u8|i8|u16|i16|u32|i32|u64|i64|usize|isize|uptr|iptr : {token, {int_type, TokenLine, list_to_atom(TokenChars)}}.
+byte|u8|i8|u16|i16|u32|i32|u64|i64|usize|isize|uptr|iptr : {token, {int_type, TokenLine, list_to_atom(TokenChars)}}.
 f64|f32 : {token, {float_type, TokenLine, list_to_atom(TokenChars)}}.
 void : {token, {void_type, TokenLine, void}}.
 any : {token, {any_type, TokenLine, any}}.
@@ -48,43 +48,24 @@ str_to_int([$0, _ | Chars], Base) ->
 drop_quotes([_ | QuotedString]) ->
 	lists:droplast(QuotedString).
 
-fix_str([$\\, $\\ | Rest]) ->
-	[$\\ | fix_str(Rest)];
-fix_str([$\\, $/ | Rest]) ->
-	[$/ | fix_str(Rest)];
-fix_str([$\\, $b | Rest]) ->
-	[$\b | fix_str(Rest)];
-fix_str([$\\, $f | Rest]) ->
-	[$\f | fix_str(Rest)];
-fix_str([$\\, $n | Rest]) ->
-	[$\n | fix_str(Rest)];
-fix_str([$\\, $r | Rest]) ->
-	[$\r | fix_str(Rest)];
-fix_str([$\\, $t | Rest]) ->
-	[$\t | fix_str(Rest)];
-fix_str([$\\, $" | Rest]) ->
-	[$" | fix_str(Rest)];
-fix_str([$\\, Any | Rest]) ->
-	[Any | fix_str(Rest)];
-fix_str([C | Rest]) ->
-	[C | fix_str(Rest)];
-fix_str([]) ->
-	[].
+fix_str([$\\, $\\ | Rest]) -> [$\\ | fix_str(Rest)];
+fix_str([$\\, $/ | Rest]) -> [$/ | fix_str(Rest)];
+fix_str([$\\, $b | Rest]) -> [$\b | fix_str(Rest)];
+fix_str([$\\, $f | Rest]) -> [$\f | fix_str(Rest)];
+fix_str([$\\, $n | Rest]) -> [$\n | fix_str(Rest)];
+fix_str([$\\, $r | Rest]) -> [$\r | fix_str(Rest)];
+fix_str([$\\, $t | Rest]) -> [$\t | fix_str(Rest)];
+fix_str([$\\, $" | Rest]) -> [$" | fix_str(Rest)];
+fix_str([$\\, Any | Rest]) -> [Any | fix_str(Rest)];
+fix_str([C | Rest]) -> [C | fix_str(Rest)];
+fix_str([]) -> [].
 
-fix_char([$\\, $\\]) ->
-	$\\;
-fix_char([$\\, $b]) -> 
-	$\b;
-fix_char([$\\, $f]) -> 
-	$\f;
-fix_char([$\\, $n]) -> 
-	$\n;
-fix_char([$\\, $r]) -> 
-	$\r;
-fix_char([$\\, $t]) -> 
-	$\t;
-fix_char([$\\, Any]) ->
-	Any;
-fix_char([Any]) ->
-	Any.
+fix_char([$\\, $\\]) -> $\\;
+fix_char([$\\, $b]) -> $\b;
+fix_char([$\\, $f]) -> $\f;
+fix_char([$\\, $n]) -> $\n;
+fix_char([$\\, $r]) -> $\r;
+fix_char([$\\, $t]) -> $\t;
+fix_char([$\\, Any]) -> Any;
+fix_char([Any]) -> Any.
 
