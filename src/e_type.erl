@@ -44,7 +44,7 @@ type_of_node(#e_op{tag = '=', data = [Op1, Op2], line = Line}, {_, _, StructMap,
 			#e_varref{} ->
 				type_of_node(Op1, Ctx);
 			Any ->
-				e_util:ethrow(Line, "invalid left value (~s)", [e_util:expr_to_str(Any)])
+				e_util:ethrow(Line, "invalid left value (~s)", [e_util:stmt_to_str(Any)])
 		end,
 	Op2Type = type_of_node(Op2, Ctx),
 		case compare_type(Op1Type, Op2Type) of
@@ -122,7 +122,7 @@ type_of_node(#e_op{tag = '^', data = [Operand], line = Line}, Ctx) ->
 		#e_basic_type{} = T ->
 			dec_pointer_depth(T, Line);
 		_ ->
-			e_util:ethrow(Line, "invalid \"^\" on operand ~s", [e_util:expr_to_str(Operand)])
+			e_util:ethrow(Line, "invalid \"^\" on operand ~s", [e_util:stmt_to_str(Operand)])
 	end;
 type_of_node(#e_op{tag = '@', data = [Operand], line = Line}, {_, _, StructMap, _} = Ctx) ->
 	case Operand of
@@ -134,7 +134,7 @@ type_of_node(#e_op{tag = '@', data = [Operand], line = Line}, {_, _, StructMap, 
 		#e_struct_init_expr{} ->
 			inc_pointer_depth(type_of_node(Operand, Ctx), Line);
 		_ ->
-			e_util:ethrow(Line, "invalid \"@\" on operand ~s", [e_util:expr_to_str(Operand)])
+			e_util:ethrow(Line, "invalid \"@\" on operand ~s", [e_util:stmt_to_str(Operand)])
 	end;
 type_of_node(#e_op{data = [Operand]}, Ctx) ->
 	type_of_node(Operand, Ctx);

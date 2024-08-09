@@ -146,37 +146,37 @@ exprs_to_str(Exprs) ->
 	[lists:join("\n", exprs_to_str(Exprs, []))].
 
 exprs_to_str([Expr | Rest], ExprList) ->
-	exprs_to_str(Rest, [expr_to_str(Expr, $;) | ExprList]);
+	exprs_to_str(Rest, [stmt_to_str(Expr, $;) | ExprList]);
 exprs_to_str([], ExprList) ->
 	lists:reverse(ExprList).
 
--spec expr_to_str(e_expr(), char()) -> iolist().
-expr_to_str(#e_if_stmt{condi = Condi, then = Then, else = Else}, _) ->
-	io_lib:format("if (~s) {\n~s\n} else {\n~s}", [expr_to_str(Condi, $\s), exprs_to_str(Then), exprs_to_str(Else)]);
-expr_to_str(#e_while_stmt{condi = Condi, stmts = Exprs}, _) ->
-	io_lib:format("while (~s) {\n~s\n}\n", [expr_to_str(Condi, $\s), exprs_to_str(Exprs)]);
-expr_to_str(#e_op{tag = {call, Fn}, data = Args}, EndChar) ->
-	ArgStr = lists:join(",", lists:map(fun(E) -> expr_to_str(E, $\s) end, Args)),
-	io_lib:format("~s(~s)~c", [expr_to_str(Fn, $\s), ArgStr, EndChar]);
-expr_to_str(#e_op{tag = Tag, data = [Op1, Op2]}, EndChar) ->
-	io_lib:format("(~s ~s ~s)~c", [expr_to_str(Op1, $\s), translate_op(Tag), expr_to_str(Op2, $\s), EndChar]);
-expr_to_str(#e_op{tag = Tag, data = [Operand]}, EndChar) ->
-	io_lib:format("(~s ~s)~c", [translate_op(Tag), expr_to_str(Operand, $\s), EndChar]);
-expr_to_str(#e_return_stmt{expr = Expr}, EndChar) ->
-	io_lib:format("return ~s~c", [expr_to_str(Expr, $\s), EndChar]);
-expr_to_str(#e_goto_stmt{expr = Expr}, EndChar) ->
-	io_lib:format("goto ~s~c", [expr_to_str(Expr, $\s), EndChar]);
-expr_to_str(#e_goto_label{name = Name}, _) ->
+-spec stmt_to_str(e_expr(), char()) -> iolist().
+stmt_to_str(#e_if_stmt{condi = Condi, then = Then, else = Else}, _) ->
+	io_lib:format("if (~s) {\n~s\n} else {\n~s}", [stmt_to_str(Condi, $\s), exprs_to_str(Then), exprs_to_str(Else)]);
+stmt_to_str(#e_while_stmt{condi = Condi, stmts = Exprs}, _) ->
+	io_lib:format("while (~s) {\n~s\n}\n", [stmt_to_str(Condi, $\s), exprs_to_str(Exprs)]);
+stmt_to_str(#e_op{tag = {call, Fn}, data = Args}, EndChar) ->
+	ArgStr = lists:join(",", lists:map(fun(E) -> stmt_to_str(E, $\s) end, Args)),
+	io_lib:format("~s(~s)~c", [stmt_to_str(Fn, $\s), ArgStr, EndChar]);
+stmt_to_str(#e_op{tag = Tag, data = [Op1, Op2]}, EndChar) ->
+	io_lib:format("(~s ~s ~s)~c", [stmt_to_str(Op1, $\s), translate_op(Tag), stmt_to_str(Op2, $\s), EndChar]);
+stmt_to_str(#e_op{tag = Tag, data = [Operand]}, EndChar) ->
+	io_lib:format("(~s ~s)~c", [translate_op(Tag), stmt_to_str(Operand, $\s), EndChar]);
+stmt_to_str(#e_return_stmt{expr = Expr}, EndChar) ->
+	io_lib:format("return ~s~c", [stmt_to_str(Expr, $\s), EndChar]);
+stmt_to_str(#e_goto_stmt{expr = Expr}, EndChar) ->
+	io_lib:format("goto ~s~c", [stmt_to_str(Expr, $\s), EndChar]);
+stmt_to_str(#e_goto_label{name = Name}, _) ->
 	io_lib:format("~s:", [Name]);
-expr_to_str(#e_varref{name = Name}, EndChar) ->
+stmt_to_str(#e_varref{name = Name}, EndChar) ->
 	io_lib:format("~s~c", [Name, EndChar]);
-expr_to_str(#e_type_convert{expr = Expr, type = Type}, EndChar) ->
-	io_lib:format("((~s) ~s)~c", [type_to_c_str(Type, ""), expr_to_str(Expr, $\s), EndChar]);
-expr_to_str(#e_integer{value = Value}, EndChar) ->
+stmt_to_str(#e_type_convert{expr = Expr, type = Type}, EndChar) ->
+	io_lib:format("((~s) ~s)~c", [type_to_c_str(Type, ""), stmt_to_str(Expr, $\s), EndChar]);
+stmt_to_str(#e_integer{value = Value}, EndChar) ->
 	io_lib:format("~w~c", [Value, EndChar]);
-expr_to_str(#e_float{value = Value}, EndChar) ->
+stmt_to_str(#e_float{value = Value}, EndChar) ->
 	io_lib:format("~w~c", [Value, EndChar]);
-expr_to_str(#e_string{value = S}, EndChar) ->
+stmt_to_str(#e_string{value = S}, EndChar) ->
 	io_lib:format("\"~s\"~c", [fix_special_chars(S), EndChar]).
 
 -define(SPECIAL_CHARACTER_MAP, #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}).

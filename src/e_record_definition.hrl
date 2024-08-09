@@ -7,15 +7,15 @@
 -record(e_type_convert, {line = 0 :: integer(), expr :: e_expr(), type :: e_type()}).
 -record(e_fn_type, {line = 0 :: integer(), params = [] :: [e_type()], ret :: e_type()}).
 -record(e_function, {line = 0 :: integer(), name :: atom(), type :: #e_fn_type{}, param_names = [] :: [atom()], e_var_type_map :: e_var_type_map(), labels = [] :: [#e_goto_label{}], stmts = [] :: [e_stmt()]}).
--record(e_function_raw, {line = 0 :: integer(), name :: atom(), params = [] :: [e_expr()], ret_type :: e_type(), stmts = [] :: [e_stmt()]}).
+-record(e_function_raw, {line = 0 :: integer(), name :: atom(), params = [] :: [e_stmt()], ret_type :: e_type(), stmts = [] :: [e_stmt()]}).
 -record(e_basic_type, {line = 0 :: integer(), p_depth = 0 :: integer(), class = void :: struct | integer | float | void | any, tag :: atom()}).
 -record(e_array_type, {line = 0 :: integer(), elem_type :: e_type(), length :: integer()}).
 -record(e_struct_init_raw_expr, {line = 0 :: integer(), name :: atom(), fields = [] :: [e_expr()]}).
 -record(e_struct_init_expr, {line = 0 :: integer(), name :: atom(), field_names = [] :: [#e_varref{}], field_value_map = #{} :: #{atom() := e_expr()}}).
 -record(e_array_init_expr, {line = 0 :: integer(), elements = [] :: [e_expr()]}).
 -record(e_return_stmt, {line = 0 :: integer(), expr :: e_expr()}).
--record(e_while_stmt, {line = 0 :: integer(), condi :: e_expr(), stmts = [] :: [e_expr()]}).
--record(e_if_stmt, {line = 0 :: integer(), condi :: e_expr(), then = [] :: [e_expr()], else = [] :: [e_expr()]}).
+-record(e_while_stmt, {line = 0 :: integer(), condi :: e_expr(), stmts = [] :: [e_stmt()]}).
+-record(e_if_stmt, {line = 0 :: integer(), condi :: e_expr(), then = [] :: [e_stmt()], else = [] :: [e_stmt()]}).
 -record(e_integer, {line = 0 :: integer(), value :: integer()}).
 -record(e_float, {line = 0 :: integer(), value :: float()}).
 -record(e_string, {line = 0 :: integer(), value :: string()}).
@@ -26,7 +26,7 @@
 	'~' | '!' | '.' | '=' | '>' | '<' | '>=' | '<=' | '!=' | '==' | {call, e_expr()} | {sizeof, e_type()}.
 
 -type e_expr() :: #e_op{} | #e_integer{} | #e_float{} | #e_string{} | #e_varref{} | #e_struct_init_expr{} | #e_array_init_expr{}.
-%% primitive types: u8|i8|u16|i16|u32|i32|u64|i64|f64|f32|void|any.
+%% primitive types: u8|i8|u16|i16|u32|i32|u64|i64|byte|uptr|iptr|usize|isize|f64|f32|void|any.
 -type e_type() :: #e_basic_type{} | #e_array_type{} | #e_fn_type{}.
 -type e_expr_stmt() :: e_expr().
 -type e_stmt() :: #e_if_stmt{} | #e_while_stmt{} | #e_goto_stmt{} | #e_goto_label{} | #e_return_stmt{} | e_expr_stmt().

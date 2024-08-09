@@ -33,9 +33,12 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	e_type:check_type_in_ast_nodes(InitCode1, VarTypeMap, Maps),
 	%% expand init exprs like A{a=1} and {1,2,3}
 	AST5 = e_init_expr:expand_in_function(AST4, StructMap2),
-
 	InitCode2 = e_init_expr:expand_init_expr(InitCode1, StructMap2),
-	{AST5, VarTypeMap, InitCode2}.
+
+	%% convert `.` into `@`, `+` and `^`
+	AST6 = e_struct:eliminate_dot(AST5, StructMap2),
+
+	{AST6, VarTypeMap, InitCode2}.
 
 -spec default_compiler_options() -> e_compile_options().
 default_compiler_options() ->

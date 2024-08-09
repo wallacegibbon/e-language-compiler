@@ -55,6 +55,8 @@ fun main(argc: isize, argv: byte^^): i64
 	cnt: i64 = 22;
 	init_users(users@, 22);
 
+	%finish: byte;
+
 	%goto a;
 
 	v1: i64 = 1;

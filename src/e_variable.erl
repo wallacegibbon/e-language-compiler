@@ -45,22 +45,21 @@ struct_init_to_map([#e_op{tag = '=', data = [#e_varref{name = Field} = Op1, Val]
 struct_init_to_map([], FieldNames, ExprMap) ->
 	{FieldNames, ExprMap}.
 
-%% In function expressions,
-%% the init code of defvar can not be simply fetched out from the code,
+%% In function expressions, the init code of defvar can not be simply fetched out from the code,
 %% it should be replaced as assignment in the same place.
--spec fetch_variables(e_ast_raw(), e_ast_raw(), {e_var_type_map(), e_ast(), boolean()}) ->
-	{e_ast_raw(), e_var_type_map(), e_ast_raw()}.
-fetch_variables([#e_vardef{} = Hd | Rest], NewAST, {VarTypes, InitCode, CollectInitCode}) ->
+-spec fetch_variables(e_ast_raw(), e_ast_raw(), {e_var_type_map(), e_ast(), CollectInitCode :: boolean()})
+	-> {e_ast_raw(), e_var_type_map(), e_ast_raw()}.
+
+fetch_variables([#e_vardef{} = Hd | Rest], NewAST, {VarTypes, InitCode, true}) ->
 	#e_vardef{name = Name, type = Type, line = Line, init_value = InitialValue} = Hd,
 	ensure_no_name_conflict(Name, VarTypes, Line),
-	case CollectInitCode of
-		true ->
-			NewCtx = {VarTypes#{Name => Type}, append_to_ast(InitCode, Name, InitialValue, Line), CollectInitCode},
-			fetch_variables(Rest, NewAST, NewCtx);
-		false ->
-			NewCtx = {VarTypes#{Name => Type}, InitCode, CollectInitCode},
-			fetch_variables(Rest, append_to_ast(NewAST, Name, InitialValue, Line), NewCtx)
-	end;
+	NewCtx = {VarTypes#{Name => Type}, append_to_ast(InitCode, Name, InitialValue, Line), true},
+	fetch_variables(Rest, NewAST, NewCtx);
+fetch_variables([#e_vardef{} = Hd | Rest], NewAST, {VarTypes, InitCode, false}) ->
+	#e_vardef{name = Name, type = Type, line = Line, init_value = InitialValue} = Hd,
+	ensure_no_name_conflict(Name, VarTypes, Line),
+	NewCtx = {VarTypes#{Name => Type}, InitCode, false},
+	fetch_variables(Rest, append_to_ast(NewAST, Name, InitialValue, Line), NewCtx);
 fetch_variables([#e_function_raw{} = Hd | Rest], NewAST, {GlobalVars, _, _} = Ctx) ->
 	#e_function_raw{name = Name, ret_type = Ret, params = Params, stmts = Stmts, line = Line} = Hd,
 	{[], ParamVars, ParamInitCode} = fetch_variables(Params, [], {#{}, [], true}),
@@ -68,8 +67,7 @@ fetch_variables([#e_function_raw{} = Hd | Rest], NewAST, {GlobalVars, _, _} = Ct
 	{NewExprs, FnVarTypes, []} = fetch_variables(Stmts, [], {ParamVars, [], false}),
 	%% local variables should have different names from global variables
 	check_variable_conflict(GlobalVars, FnVarTypes),
-	%% label names should be different from variables,
-	%% because the operand of goto could be a pointer variable.
+	%% label names should be different from variables since the operand of goto could be a pointer.
 	Labels = lists:filter(fun(E) -> element(1, E) =:= e_goto_label end, Stmts),
 	check_label_conflict(Labels, GlobalVars, FnVarTypes),
 	FnType = #e_fn_type{params = get_values_by_defs(Params, ParamVars), ret = Ret, line = Line},

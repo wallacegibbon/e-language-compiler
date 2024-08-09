@@ -15,7 +15,7 @@ expand_sizeof([], _) ->
 expand_sizeof_in_map(Map, Ctx) ->
 	maps:map(fun(_, V1) -> expand_sizeof_in_expr(V1, Ctx) end, Map).
 
--spec expand_sizeof_in_exprs(e_ast(), context()) -> [e_expr()].
+-spec expand_sizeof_in_exprs([e_stmt()], context()) -> [e_stmt()].
 expand_sizeof_in_exprs(Exprs, Ctx) ->
 	e_util:expr_map(fun(E) -> expand_sizeof_in_expr(E, Ctx) end, Exprs).
 
