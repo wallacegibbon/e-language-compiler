@@ -39,9 +39,10 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	InitCode2 = e_init_expr:expand_init_expr(InitCode1, StructMap2),
 
 	%% convert `.` into `@`, `+` and `^`
-	AST6 = e_struct:eliminate_dot(AST5, VarTypeMap, Maps),
+	AST6 = e_struct:eliminate_dot_in_ast(AST5, VarTypeMap, Maps),
+	InitCode3 = e_struct:eliminate_dot_in_stmts(InitCode2, VarTypeMap, Maps),
 
-	{AST6, VarTypeMap, InitCode2}.
+	{AST6, VarTypeMap, InitCode3}.
 
 -spec default_compiler_options() -> e_compile_options().
 default_compiler_options() ->
