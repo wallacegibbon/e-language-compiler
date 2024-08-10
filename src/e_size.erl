@@ -2,7 +2,7 @@
 -export([expand_sizeof_in_ast/2, expand_sizeof_in_stmts/2, fill_struct_info/2]).
 -include("e_record_definition.hrl").
 
--type context() :: {e_struct_type_map(), non_neg_integer()}.
+-type context() :: {StructMap :: e_struct_type_map(), PointerWidth :: non_neg_integer()}.
 
 -spec expand_sizeof_in_ast(e_ast(), context()) -> e_ast().
 expand_sizeof_in_ast([#e_function{stmts = Stmts} = Fn | Rest], Ctx) ->
