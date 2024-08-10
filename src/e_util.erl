@@ -1,8 +1,8 @@
 -module(e_util).
--export([fill_unit_pessi/2, make_function_and_struct_map_from_ast/1, assert/2]).
--export([stmt_to_str/1, expr_map/2, filter_var_refs_in_map/2, get_values_by_keys/2, fmt/2, ethrow/3, ethrow/2]).
+-export([make_function_and_struct_map_from_ast/1, expr_map/2, merge_plus/1, assert/2]).
+-export([stmt_to_str/1, filter_var_refs_in_map/2, get_values_by_keys/2, fmt/2, ethrow/3, ethrow/2]).
 -export([names_of_var_defs/1, names_of_var_refs/1, value_in_list/2]).
--export([primitive_size_of/1, void_type/1, cut_extra/2, fill_unit_opti/2]).
+-export([primitive_size_of/1, void_type/1, cut_extra/2, fill_unit_opti/2, fill_unit_pessi/2]).
 
 -include("e_record_definition.hrl").
 
@@ -21,6 +21,16 @@ expr_map(Fn, [Any | Rest]) ->
 	[Fn(Any) | expr_map(Fn, Rest)];
 expr_map(_, []) ->
 	[].
+
+-define(PLUS_OP(O1, O2), #e_op{tag = '+', data = [O1, O2]}).
+
+-spec merge_plus(e_expr()) -> e_expr().
+merge_plus(?PLUS_OP(?PLUS_OP(O1, #e_integer{value = N1} = I), #e_integer{value = N2})) ->
+	merge_plus(?PLUS_OP(O1, I#e_integer{value = N1 + N2}));
+merge_plus(#e_op{data = Args} = Op) ->
+	Op#e_op{data = e_util:expr_map(fun merge_plus/1, Args)};
+merge_plus(Any) ->
+	Any.
 
 -spec stmt_to_str(e_stmt()) -> string().
 stmt_to_str(#e_if_stmt{condi = Cond, then = Then, else = Else}) ->

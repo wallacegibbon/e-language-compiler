@@ -21,7 +21,7 @@ generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
 
 -spec fix_function_for_c(e_ast_elem(), context()) -> e_ast_elem().
 fix_function_for_c(#e_function{} = Fn, {FnTypeMap, StructMap, GlobalVars}) ->
-	#e_function{stmts = Stmts, e_var_type_map = VarTypes} = Fn,
+	#e_function{stmts = Stmts, var_type_map = VarTypes} = Fn,
 	Fn#e_function{stmts = fix_exprs_for_c(Stmts, {FnTypeMap, StructMap, maps:merge(GlobalVars, VarTypes)})};
 fix_function_for_c(Any, _) ->
 	Any.
@@ -59,8 +59,8 @@ common_c_code() ->
 statements_to_str(Statements, InitCode) ->
 	statements_to_str(Statements, InitCode, [], []).
 
-statements_to_str([#e_function{} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
-	#e_function{name = Name, param_names = ParamNames, type = FnType, e_var_type_map = VarTypes, stmts = Stmts} = Hd,
+statements_to_str([#e_function{name = Name} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
+	#e_function{param_names = ParamNames, type = FnType, var_type_map = VarTypes, stmts = Stmts} = Hd,
 	ParamNameAtoms = names_from_varrefs(ParamNames),
 	PureParams = map_to_kv_list(ParamNameAtoms, maps:with(ParamNameAtoms, VarTypes)),
 	PureVars = maps:without(ParamNameAtoms, VarTypes),
@@ -70,7 +70,7 @@ statements_to_str([#e_function{} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
 			true -> InitCode ++ Stmts;
 			false -> Stmts
 		end,
-	S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declars, var_map_to_str(PureVars), exprs_to_str(Stmts2)]),
+	S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declars, var_map_to_str(PureVars), stmts_to_str(Stmts2)]),
 	statements_to_str(Rest, InitCode, [S | StmtStrs], [Declars ++ ";\n" | FnDeclars]);
 statements_to_str([#e_struct{} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
 	#e_struct{name = Name, field_type_map = FieldTypes, field_names = FieldNames} = Hd,
@@ -132,25 +132,25 @@ type_to_c_str(#e_fn_type{params = Params, ret = RetType}, VarName) ->
 	NameParams = io_lib:format("(*~s)(~s)", [VarName, params_to_str_no_name(Params)]),
 	type_to_c_str(RetType, NameParams).
 
-type_tag_to_str(e_struct, Name) ->
+type_tag_to_str(struct, Name) ->
 	io_lib:format("struct ~s", [Name]);
 type_tag_to_str(_, Name) ->
 	atom_to_list(Name).
 
 %% convert expression to C string
-exprs_to_str(Stmts) ->
-	[lists:join("\n", exprs_to_str(Stmts, []))].
+stmts_to_str(Stmts) ->
+	[lists:join("\n", stmts_to_str(Stmts, []))].
 
-exprs_to_str([Expr | Rest], ExprList) ->
-	exprs_to_str(Rest, [stmt_to_str(Expr, $;) | ExprList]);
-exprs_to_str([], ExprList) ->
+stmts_to_str([Expr | Rest], ExprList) ->
+	stmts_to_str(Rest, [stmt_to_str(Expr, $;) | ExprList]);
+stmts_to_str([], ExprList) ->
 	lists:reverse(ExprList).
 
 -spec stmt_to_str(e_expr(), char()) -> iolist().
 stmt_to_str(#e_if_stmt{condi = Condi, then = Then, else = Else}, _) ->
-	io_lib:format("if (~s) {\n~s\n} else {\n~s}", [stmt_to_str(Condi, $\s), exprs_to_str(Then), exprs_to_str(Else)]);
+	io_lib:format("if (~s) {\n~s\n} else {\n~s}", [stmt_to_str(Condi, $\s), stmts_to_str(Then), stmts_to_str(Else)]);
 stmt_to_str(#e_while_stmt{condi = Condi, stmts = Stmts}, _) ->
-	io_lib:format("while (~s) {\n~s\n}\n", [stmt_to_str(Condi, $\s), exprs_to_str(Stmts)]);
+	io_lib:format("while (~s) {\n~s\n}\n", [stmt_to_str(Condi, $\s), stmts_to_str(Stmts)]);
 stmt_to_str(#e_op{tag = {call, Fn}, data = Args}, EndChar) ->
 	ArgStr = lists:join(",", lists:map(fun(E) -> stmt_to_str(E, $\s) end, Args)),
 	io_lib:format("~s(~s)~c", [stmt_to_str(Fn, $\s), ArgStr, EndChar]);

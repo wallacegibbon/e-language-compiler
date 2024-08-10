@@ -4,7 +4,7 @@
 
 -spec check_types_in_ast(e_ast(), e_var_type_map(), {e_fn_type_map(), e_struct_type_map()}) -> ok.
 check_types_in_ast([#e_function{stmts = Stmts} = Fn | Rest], GlobalVarTypes, {FnTypeMap, StructMap} = Maps) ->
-	#e_function{e_var_type_map = VarTypes, type = FnType} = Fn,
+	#e_function{var_type_map = VarTypes, type = FnType} = Fn,
 	check_types(maps:values(VarTypes), StructMap),
 	check_type(FnType#e_fn_type.ret, StructMap),
 	CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
@@ -185,12 +185,12 @@ type_of_node(#e_struct_init_expr{} = S, {_, _, StructMap, _} = Ctx) ->
 	case maps:find(Name, StructMap) of
 		{ok, #e_struct{field_type_map = FieldTypes}} ->
 			check_types_in_struct_fields(FieldNames, FieldTypes, FieldValues, Name, Ctx),
-			#e_basic_type{class = struct, tag = Name, p_depth = 0, line = Line};
+			#e_basic_type{class = struct, tag = Name, line = Line};
 		_ ->
 			e_util:ethrow(Line, "struct ~s is not found", [Name])
 	end;
 type_of_node(#e_op{tag = {sizeof, _}, line = Line}, _) ->
-	#e_basic_type{class = integer, p_depth = 0, tag = usize, line = Line};
+	#e_basic_type{class = integer, tag = usize, line = Line};
 type_of_node(#e_goto_stmt{line = Line}, _) ->
 	e_util:void_type(Line);
 type_of_node(#e_goto_label{line = Line}, _) ->
@@ -207,9 +207,9 @@ type_of_node(#e_type_convert{expr = Expr, type = Type, line = Line}, Ctx) ->
 			e_util:ethrow(Line, "incompatible type: ~w <-> ~w", [ExprType, Type])
 	end;
 type_of_node(#e_float{line = Line}, _) ->
-	#e_basic_type{class = float, p_depth = 0, tag = f64, line = Line};
+	#e_basic_type{class = float, tag = f64, line = Line};
 type_of_node(#e_integer{line = Line}, _) ->
-	#e_basic_type{class = integer, p_depth = 0, tag = i64, line = Line};
+	#e_basic_type{class = integer, tag = i64, line = Line};
 type_of_node(#e_string{line = Line}, _) ->
 	#e_basic_type{class = integer, p_depth = 1, tag = byte, line = Line}.
 

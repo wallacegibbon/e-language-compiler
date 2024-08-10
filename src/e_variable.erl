@@ -9,16 +9,16 @@ fetch_variables(AST) ->
 
 -spec prepare_struct_init_expr(e_ast_raw()) -> e_ast_raw().
 prepare_struct_init_expr([#e_function_raw{stmts = Stmts} = Fn | Rest]) ->
-	[Fn#e_function_raw{stmts = fix_struct_init_ast(Stmts)} | prepare_struct_init_expr(Rest)];
+	[Fn#e_function_raw{stmts = fix_struct_init_expr_in_stmts(Stmts)} | prepare_struct_init_expr(Rest)];
 prepare_struct_init_expr([#e_struct_raw{fields = Stmts} = S | Rest]) ->
-	[S#e_struct_raw{fields = fix_struct_init_ast(Stmts)} | prepare_struct_init_expr(Rest)];
+	[S#e_struct_raw{fields = fix_struct_init_expr_in_stmts(Stmts)} | prepare_struct_init_expr(Rest)];
 prepare_struct_init_expr([#e_vardef{init_value = Value} = V | Rest]) ->
 	[V#e_vardef{init_value = fix_struct_init(Value)} | prepare_struct_init_expr(Rest)];
 prepare_struct_init_expr([]) ->
 	[].
 
--spec fix_struct_init_ast([e_stmt()]) -> [e_stmt()].
-fix_struct_init_ast(Lst) ->
+-spec fix_struct_init_expr_in_stmts([e_stmt()]) -> [e_stmt()].
+fix_struct_init_expr_in_stmts(Lst) ->
 	e_util:expr_map(fun fix_struct_init/1, Lst).
 
 -spec fix_struct_init(e_stmt()) -> e_stmt().
@@ -26,7 +26,7 @@ fix_struct_init(#e_struct_init_raw_expr{name = Name, fields = Fields, line = Lin
 	{FieldNames, InitExprMap} = struct_init_to_map(Fields),
 	#e_struct_init_expr{name = Name, field_names = FieldNames, field_value_map = InitExprMap, line = Line};
 fix_struct_init(#e_array_init_expr{elements = Elements} = A) ->
-	A#e_array_init_expr{elements = fix_struct_init_ast(Elements)};
+	A#e_array_init_expr{elements = fix_struct_init_expr_in_stmts(Elements)};
 fix_struct_init(#e_vardef{init_value = InitialValue} = V) ->
 	V#e_vardef{init_value = fix_struct_init(InitialValue)};
 fix_struct_init(#e_op{data = Operands} = O) ->
@@ -64,13 +64,13 @@ fetch_variables([#e_function_raw{} = Hd | Rest], NewAST, {GlobalVars, _, _} = Ct
 	{[], ParamVars, ParamInitCode} = fetch_variables(Params, [], {#{}, [], true}),
 	e_util:assert(ParamInitCode =:= [], {Line, "function params can not have default value"}),
 	{NewStmts, FnVarTypes, []} = fetch_variables(Stmts, [], {ParamVars, [], false}),
-	%% local variables should have different names from global variables
+	%% local variables should have different names from global variables.
 	check_variable_conflict(GlobalVars, FnVarTypes),
 	%% label names should be different from variables since the operand of goto could be a pointer.
 	Labels = lists:filter(fun(E) -> element(1, E) =:= e_goto_label end, Stmts),
 	check_label_conflict(Labels, GlobalVars, FnVarTypes),
 	FnType = #e_fn_type{params = get_values_by_defs(Params, ParamVars), ret = Ret, line = Line},
-	Function = #e_function{name = Name, e_var_type_map = FnVarTypes, stmts = NewStmts, param_names = var_defs_to_refs(Params), line = Line, type = FnType},
+	Function = #e_function{name = Name, var_type_map = FnVarTypes, stmts = NewStmts, param_names = var_defs_to_refs(Params), line = Line, type = FnType},
 	fetch_variables(Rest, [Function | NewAST], Ctx);
 fetch_variables([#e_struct_raw{name = Name, fields = Fields, line = Line} | Rest], NewAST, Ctx) ->
 	%% struct can have default value

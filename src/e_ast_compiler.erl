@@ -20,11 +20,11 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	{_, StructMap1} = e_util:make_function_and_struct_map_from_ast(AST3),
 	%% expand sizeof expression
 	Ctx1 = {StructMap1, PointerWidth},
-	AST4 = e_size:expand_sizeof(AST3, Ctx1),
+	AST4 = e_size:expand_sizeof_in_ast(AST3, Ctx1),
 
 	%% Initializing code for global variables are not in main ast,
 	%% do not forget it
-	InitCode1 = e_size:expand_sizeof_in_exprs(InitCode0, Ctx1),
+	InitCode1 = e_size:expand_sizeof_in_stmts(InitCode0, Ctx1),
 	%% sizeof expressions are expanded, so StructMap needs to be updated
 	{_, StructMap2} = e_util:make_function_and_struct_map_from_ast(AST4),
 

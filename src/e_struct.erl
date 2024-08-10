@@ -7,7 +7,7 @@
 
 -spec eliminate_dot_in_ast(e_ast(), e_var_type_map(), {e_fn_type_map(), e_struct_type_map()}) -> e_ast().
 eliminate_dot_in_ast([#e_function{stmts = Stmts0} = Fn | Rest], GlobalVarTypes, {FnTypeMap, StructMap} = Maps) ->
-	CurrentVars = maps:merge(GlobalVarTypes, Fn#e_function.e_var_type_map),
+	CurrentVars = maps:merge(GlobalVarTypes, Fn#e_function.var_type_map),
 	Ctx = {CurrentVars, FnTypeMap, StructMap, #e_basic_type{}},
 	Stmts1 = eliminate_dot(Stmts0, Ctx),
 	[Fn#e_function{stmts = Stmts1} | eliminate_dot_in_ast(Rest, GlobalVarTypes, Maps)];
@@ -25,7 +25,7 @@ eliminate_dot_in_stmts(Stmts, GlobalVarTypes, {FnTypeMap, StructMap}) ->
 eliminate_dot(Stmts0, Ctx) ->
 	Stmts1 = e_util:expr_map(fun(E) -> eliminate_dot_in_expr(E, Ctx) end, Stmts0),
 	Stmts2 = e_util:expr_map(fun eliminate_pointer_ops/1, Stmts1),
-	Stmts3 = e_util:expr_map(fun merge_plus/1, Stmts2),
+	Stmts3 = e_util:expr_map(fun e_util:merge_plus/1, Stmts2),
 	Stmts3.
 
 %% `a.b` will be converted to `(a@ + OFFSET_OF_b)^`.
@@ -51,15 +51,5 @@ eliminate_pointer_ops(#e_op{tag = '@', data = [#e_op{tag = '^', data = [E]}]}) -
 eliminate_pointer_ops(#e_op{data = Args} = Op) ->
 	Op#e_op{data = e_util:expr_map(fun eliminate_pointer_ops/1, Args)};
 eliminate_pointer_ops(Any) ->
-	Any.
-
--define(PLUS_OP(O1, O2), #e_op{tag = '+', data = [O1, O2]}).
-
--spec merge_plus(e_expr()) -> e_expr().
-merge_plus(?PLUS_OP(?PLUS_OP(O1, #e_integer{value = N1} = I), #e_integer{value = N2})) ->
-	merge_plus(?PLUS_OP(O1, I#e_integer{value = N1 + N2}));
-merge_plus(#e_op{data = Args} = Op) ->
-	Op#e_op{data = e_util:expr_map(fun merge_plus/1, Args)};
-merge_plus(Any) ->
 	Any.
 
