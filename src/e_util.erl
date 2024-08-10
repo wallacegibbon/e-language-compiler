@@ -1,8 +1,8 @@
 -module(e_util).
 -export([make_function_and_struct_map_from_ast/1, expr_map/2, merge_plus/1, assert/2]).
 -export([stmt_to_str/1, filter_var_refs_in_map/2, get_values_by_keys/2, fmt/2, ethrow/3, ethrow/2]).
--export([names_of_var_defs/1, names_of_var_refs/1, value_in_list/2]).
--export([primitive_size_of/1, void_type/1, cut_extra/2, fill_unit_opti/2, fill_unit_pessi/2]).
+-export([names_of_var_defs/1, names_of_var_refs/1, value_in_list/2, get_struct_from_type/2]).
+-export([primitive_size_of/2, void_type/1, cut_extra/2, fill_unit_opti/2, fill_unit_pessi/2]).
 
 -include("e_record_definition.hrl").
 
@@ -106,23 +106,23 @@ fill_unit_opti(Num, Unit) ->
 cut_extra(Num, Unit) ->
 	Num div Unit * Unit.
 
--spec primitive_size_of(atom()) -> pointer_size | 1 | 2 | 4 | 8.
-primitive_size_of(usize) -> pointer_size;
-primitive_size_of(isize) -> pointer_size;
-primitive_size_of(uptr) -> pointer_size;
-primitive_size_of(iptr) -> pointer_size;
-primitive_size_of(byte) -> 1;
-primitive_size_of(u64) -> 8;
-primitive_size_of(i64) -> 8;
-primitive_size_of(u32) -> 4;
-primitive_size_of(i32) -> 4;
-primitive_size_of(u16) -> 2;
-primitive_size_of(i16) -> 2;
-primitive_size_of(u8) -> 1;
-primitive_size_of(i8) -> 1;
-primitive_size_of(f64) -> 8;
-primitive_size_of(f32) -> 4;
-primitive_size_of(T) -> throw(fmt("size of ~p is not defined", [T])).
+-spec primitive_size_of(atom(), PointerSize) -> 1 | 2 | 4 | 8 | 16 when PointerSize :: 2 | 4 | 8.
+primitive_size_of(usize, PointerSize) -> PointerSize;
+primitive_size_of(isize, PointerSize) -> PointerSize;
+primitive_size_of(uptr, PointerSize) -> PointerSize;
+primitive_size_of(iptr, PointerSize) -> PointerSize;
+primitive_size_of(byte, _) -> 1;
+primitive_size_of(u64, _) -> 8;
+primitive_size_of(i64, _) -> 8;
+primitive_size_of(u32, _) -> 4;
+primitive_size_of(i32, _) -> 4;
+primitive_size_of(u16, _) -> 2;
+primitive_size_of(i16, _) -> 2;
+primitive_size_of(u8, _) -> 1;
+primitive_size_of(i8, _) -> 1;
+primitive_size_of(f64, _) -> 8;
+primitive_size_of(f32, _) -> 4;
+primitive_size_of(T, _) -> throw(fmt("size of ~p is not defined", [T])).
 
 void_type(Line) ->
 	#e_basic_type{class = void, tag = void, p_depth = 0, line = Line}.
@@ -166,5 +166,14 @@ exist_in_map(KeyName, Map) ->
 			true;
 		_ ->
 			false
+	end.
+
+-spec get_struct_from_type(#e_basic_type{}, e_struct_type_map()) -> #e_struct{}.
+get_struct_from_type(#e_basic_type{class = struct, tag = Tag, line = Line}, StructMap) ->
+	case maps:find(Tag, StructMap) of
+		{ok, S} ->
+			S;
+		error ->
+			e_util:ethrow(Line, "struct ~s is not found", [Tag])
 	end.
 

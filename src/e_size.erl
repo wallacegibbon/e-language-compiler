@@ -109,20 +109,10 @@ size_of(#e_fn_type{}, {_, PointerWidth}) ->
 	PointerWidth;
 size_of(#e_basic_type{p_depth = N}, {_, PointerWidth}) when N > 0 ->
 	PointerWidth;
-size_of(#e_basic_type{class = struct, tag = Tag, line = Line}, {StructMap, _} = Ctx) ->
-	case maps:find(Tag, StructMap) of
-		{ok, S} ->
-			size_of_struct(S, Ctx);
-		error ->
-			e_util:ethrow(Line, "~s is not found", [Tag])
-	end;
+size_of(#e_basic_type{class = struct} = S, {StructMap, _} = Ctx) ->
+	size_of_struct(e_util:get_struct_from_type(S, StructMap), Ctx);
 size_of(#e_basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
-	case e_util:primitive_size_of(Tag) of
-		pointer_size ->
-			PointerWidth;
-		V ->
-			V
-	end;
+	e_util:primitive_size_of(Tag, PointerWidth);
 size_of(Any, _) ->
 	e_util:ethrow(element(2, Any), "invalid type ~p on sizeof", [Any]).
 
@@ -133,20 +123,10 @@ align_of(#e_fn_type{}, {_, PointerWidth}) ->
 	PointerWidth;
 align_of(#e_basic_type{p_depth = N}, {_, PointerWidth}) when N > 0 ->
 	PointerWidth;
-align_of(#e_basic_type{class = struct, tag = Tag, line = Line}, {StructMap, _} = Ctx) ->
-	case maps:find(Tag, StructMap) of
-		{ok, S} ->
-			align_of_struct(S, Ctx);
-		error ->
-			e_util:ethrow(Line, "~s is not found", [Tag])
-	end;
+align_of(#e_basic_type{class = struct} = S, {StructMap, _} = Ctx) ->
+	align_of_struct(e_util:get_struct_from_type(S, StructMap), Ctx);
 align_of(#e_basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
-	case e_util:primitive_size_of(Tag) of
-		pointer_size ->
-			PointerWidth;
-		V ->
-			V
-	end;
+	e_util:primitive_size_of(Tag, PointerWidth);
 align_of(Any, _) ->
 	e_util:ethrow(element(2, Any), "invalid type ~p on alignof", [Any]).
 

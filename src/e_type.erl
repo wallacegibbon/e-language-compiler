@@ -258,13 +258,9 @@ are_same_type(_) ->
 	false.
 
 -spec type_of_struct_field(e_type(), #e_varref{}, e_struct_type_map(), integer()) -> e_type().
-type_of_struct_field(#e_basic_type{class = struct, tag = Name, p_depth = 0}, #e_varref{name = FieldName}, StructMap, Line) ->
-	case maps:find(Name, StructMap) of
-		{ok, #e_struct{field_type_map = FieldTypes}} ->
-			get_field_type(FieldName, FieldTypes, Name, Line);
-		error ->
-			e_util:ethrow(Line, "struct ~s is not found", [Name])
-	end;
+type_of_struct_field(#e_basic_type{class = struct, tag = Name, p_depth = 0} = S, #e_varref{name = FieldName}, StructMap, Line) ->
+	#e_struct{field_type_map = FieldTypes} = e_util:get_struct_from_type(S, StructMap),
+	get_field_type(FieldName, FieldTypes, Name, Line);
 type_of_struct_field(T, _, _, Line) ->
 	e_util:ethrow(Line, "operand1 for \".\" is not struct ~s", [type_to_str(T)]).
 
@@ -346,14 +342,9 @@ check_types(TypeList, StructMap) ->
 	lists:foreach(fun(T) -> check_type(T, StructMap) end, TypeList).
 
 %% check type, ensure that all struct used by type exists.
--spec check_type(e_type(), e_struct_type_map()) -> ok.
-check_type(#e_basic_type{class = struct, tag = Tag, line = Line}, StructMap) ->
-	case maps:find(Tag, StructMap) of
-		{ok, _} ->
-			ok;
-		error ->
-			e_util:ethrow(Line, "struct ~s is not found", [Tag])
-	end;
+-spec check_type(e_type(), e_struct_type_map()) -> any().
+check_type(#e_basic_type{class = struct} = S, StructMap) ->
+	e_util:get_struct_from_type(S, StructMap);
 check_type(#e_basic_type{}, _) ->
 	ok;
 check_type(#e_array_type{elem_type = Type}, StructMap) ->

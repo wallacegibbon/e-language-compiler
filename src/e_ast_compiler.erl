@@ -67,7 +67,7 @@ check_struct_object(#e_struct{name = Name, field_type_map = FieldTypes}, StructM
 
 -spec check_struct_field([{atom(), e_type()}], e_struct_type_map(), [atom()]) -> ok.
 check_struct_field([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
-	case contain_struct(FieldType) of
+	case contain_struct(FieldType, StructMap) of
 		{yes, StructName} ->
 			check_struct_field_sub(StructName, StructMap, UsedStructs);
 		no ->
@@ -84,11 +84,16 @@ check_struct_field_sub(StructName, StructMap, UsedStructs) ->
 			check_struct_object(maps:get(StructName, StructMap), StructMap, UsedStructs)
 	end.
 
--spec contain_struct(e_type()) -> {yes, atom()} | no.
-contain_struct(#e_basic_type{class = struct, p_depth = 0, tag = Name}) ->
-	{yes, Name};
-contain_struct(#e_array_type{elem_type = BaseType}) ->
-	contain_struct(BaseType);
-contain_struct(_) ->
+-spec contain_struct(e_type(), e_struct_type_map()) -> {yes, atom()} | no.
+contain_struct(#e_basic_type{class = struct, p_depth = 0, tag = Name, line = Line}, StructMap) ->
+	case maps:find(Name, StructMap) of
+		{ok, _} ->
+			{yes, Name};
+		_ ->
+			e_util:ethrow(Line, "undefined struct \"~s\"", [Name])
+	end;
+contain_struct(#e_array_type{elem_type = BaseType}, StructMap) ->
+	contain_struct(BaseType, StructMap);
+contain_struct(_, _) ->
 	no.
 
