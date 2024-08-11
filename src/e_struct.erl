@@ -6,7 +6,7 @@
 
 -spec eliminate_dot_in_ast(e_ast(), #{atom() => e_type()}, interface_context()) -> e_ast().
 eliminate_dot_in_ast([#e_function{stmts = Stmts0} = Fn | Rest], GlobalVarTypes, {FnTypeMap, StructMap} = Ctx) ->
-	CurrentVarTypes = maps:merge(GlobalVarTypes, Fn#e_function.var_type_map),
+	CurrentVarTypes = maps:merge(GlobalVarTypes, Fn#e_function.vars#e_vars.type_map),
 	Stmts1 = eliminate_dot(Stmts0, {CurrentVarTypes, FnTypeMap, StructMap, #e_basic_type{}}),
 	[Fn#e_function{stmts = Stmts1} | eliminate_dot_in_ast(Rest, GlobalVarTypes, Ctx)];
 eliminate_dot_in_ast([Any | Rest], GlobalVarTypes, Ctx) ->
@@ -39,7 +39,7 @@ eliminate_dot(Stmts0, Ctx) ->
 eliminate_dot_in_expr(#e_op{tag = '.', line = L} = Op, {_, _, StructMap, _} = Ctx) ->
 	#e_op{data = [O, #e_varref{name = FieldName}]} = Op,
 	#e_basic_type{class = struct, tag = Name, p_depth = 0} = e_type:type_of_node(O, Ctx),
-	{ok, #e_struct{field_offset_map = FieldOffsetMap}} = maps:find(Name, StructMap),
+	{ok, #e_struct{fields = #e_vars{offset_map = FieldOffsetMap}}} = maps:find(Name, StructMap),
 	{ok, Offset} = maps:find(FieldName, FieldOffsetMap),
 	A = #e_op{tag = '@', data = [eliminate_dot_in_expr(O, Ctx)], line = L},
 	B = #e_op{tag = '+', data = [A, #e_integer{value = Offset, line = L}], line = L},

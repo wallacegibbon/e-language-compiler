@@ -23,8 +23,7 @@ fix_struct_init_expr_in_stmts(List) ->
 
 -spec fix_struct_init(e_stmt()) -> e_stmt().
 fix_struct_init(#e_struct_init_raw_expr{name = Name, fields = Fields, line = Line}) ->
-	{FieldNames, InitExprMap} = struct_init_to_map(Fields),
-	#e_struct_init_expr{name = Name, field_names = FieldNames, field_value_map = InitExprMap, line = Line};
+	#e_struct_init_expr{name = Name, field_value_map = struct_init_to_map(Fields, #{}), line = Line};
 fix_struct_init(#e_array_init_expr{elements = Elements} = A) ->
 	A#e_array_init_expr{elements = fix_struct_init_expr_in_stmts(Elements)};
 fix_struct_init(#e_vardef{init_value = InitialValue} = V) ->
@@ -34,15 +33,11 @@ fix_struct_init(#e_op{data = Operands} = O) ->
 fix_struct_init(Any) ->
 	Any.
 
--spec struct_init_to_map([e_expr()]) -> {[#e_varref{}], #{atom() => e_expr()}}.
-struct_init_to_map(Stmts) ->
-	struct_init_to_map(Stmts, [], #{}).
-
--spec struct_init_to_map([e_expr()], [#e_varref{}], #{atom() => e_expr()}) -> {[#e_varref{}], #{atom() => e_expr()}}.
-struct_init_to_map([#e_op{tag = '=', data = [#e_varref{name = Field} = Op1, Val]} | Rest], FieldNames, ExprMap) ->
-	struct_init_to_map(Rest, [Op1 | FieldNames], ExprMap#{Field => fix_struct_init(Val)});
-struct_init_to_map([], FieldNames, ExprMap) ->
-	{FieldNames, ExprMap}.
+-spec struct_init_to_map([e_expr()], #{atom() => e_expr()}) -> #{atom() => e_expr()}.
+struct_init_to_map([#e_op{tag = '=', data = [#e_varref{name = Field}, Val]} | Rest], ExprMap) ->
+	struct_init_to_map(Rest, ExprMap#{Field => fix_struct_init(Val)});
+struct_init_to_map([], ExprMap) ->
+	ExprMap.
 
 %% In function expressions, the init code of defvar can not be simply fetched out from the code,
 %% it should be replaced as assignment in the same place.
@@ -70,13 +65,17 @@ fetch_variables([#e_function_raw{} = Hd | Rest], NewAST, {GlobalVars, _, _} = Ct
 	Labels = lists:filter(fun(E) -> element(1, E) =:= e_goto_label end, Stmts),
 	check_label_conflict(Labels, GlobalVars, FnVarTypes),
 	FnType = #e_fn_type{params = get_values_by_defs(Params, ParamVars), ret = Ret, line = Line},
-	Function = #e_function{name = Name, var_type_map = FnVarTypes, stmts = NewStmts, param_names = var_defs_to_refs(Params), line = Line, type = FnType},
-	fetch_variables(Rest, [Function | NewAST], Ctx);
-fetch_variables([#e_struct_raw{name = Name, fields = Fields, line = Line} | Rest], NewAST, Ctx) ->
+	Vars = #e_vars{type_map = FnVarTypes},
+	ParamNames = e_util:names_of_var_defs(Params),
+	Fn = #e_function{name = Name, vars = Vars, stmts = NewStmts, param_names = ParamNames, type = FnType, line = Line},
+	fetch_variables(Rest, [Fn | NewAST], Ctx);
+fetch_variables([#e_struct_raw{name = Name, fields = RawFields, line = Line} | Rest], NewAST, Ctx) ->
 	%% struct can have default value
-	{[], FieldTypes, StructInitCode} = fetch_variables(Fields, [], {#{}, [], true}),
-	{_, FieldInitMap} = struct_init_to_map(StructInitCode),
-	S = #e_struct{name = Name, field_type_map = FieldTypes, field_names = var_defs_to_refs(Fields), field_default_value_map = FieldInitMap, line = Line},
+	{[], FieldTypes, StructInitCode} = fetch_variables(RawFields, [], {#{}, [], true}),
+	FieldInitMap = struct_init_to_map(StructInitCode, #{}),
+	FieldNames = lists:map(fun(#e_vardef{name = N}) -> N end, RawFields),
+	Fields = #e_vars{names = FieldNames, type_map = FieldTypes},
+	S = #e_struct{name = Name, fields = Fields, default_value_map = FieldInitMap, line = Line},
 	fetch_variables(Rest, [S | NewAST], Ctx);
 fetch_variables([Any | Rest], NewAST, Ctx) ->
 	fetch_variables(Rest, [Any | NewAST], Ctx);
@@ -125,8 +124,4 @@ throw_name_conflict(Name, Line) ->
 -spec get_values_by_defs([#e_vardef{}], #{atom() => any()}) -> [any()].
 get_values_by_defs(DefList, Map) ->
 	e_util:get_values_by_keys(e_util:names_of_var_defs(DefList), Map).
-
--spec var_defs_to_refs([#e_vardef{}]) -> [#e_varref{}].
-var_defs_to_refs(VarDefList) ->
-	lists:map(fun(#e_vardef{name = N, line = Line}) -> #e_varref{name = N, line = Line} end, VarDefList).
 

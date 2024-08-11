@@ -6,7 +6,7 @@
 
 -spec check_types_in_ast(e_ast(), #{atom() => e_type()}, interface_context()) -> ok.
 check_types_in_ast([#e_function{stmts = Stmts} = Fn | Rest], GlobalVarTypes, {FnTypeMap, StructMap} = Maps) ->
-	#e_function{var_type_map = VarTypes, type = FnType} = Fn,
+	#e_function{vars = #e_vars{type_map = VarTypes}, type = FnType} = Fn,
 	check_types(maps:values(VarTypes), StructMap),
 	check_type(FnType#e_fn_type.ret, StructMap),
 	CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
@@ -14,12 +14,11 @@ check_types_in_ast([#e_function{stmts = Stmts} = Fn | Rest], GlobalVarTypes, {Fn
 	type_of_nodes(Stmts, {CurrentVars, FnTypeMap, StructMap, FnType#e_fn_type.ret}),
 	check_types_in_ast(Rest, GlobalVarTypes, Maps);
 check_types_in_ast([#e_struct{name = Name} = S | Rest], GlobalVarTypes, {FnTypeMap, StructMap} = Maps) ->
-	#e_struct{field_type_map = FieldTypes, field_names = FieldNames, field_default_value_map = FieldDefaults} = S,
-	check_types(maps:values(FieldTypes), StructMap),
+	#e_struct{fields = #e_vars{type_map = FieldTypeMap}, default_value_map = ValMap} = S,
+	check_types(maps:values(FieldTypeMap), StructMap),
 	%% check the default values for fields
-	InitFieldNames = e_util:filter_var_refs_in_map(FieldNames, FieldDefaults),
 	Ctx = {GlobalVarTypes, FnTypeMap, StructMap, #e_basic_type{}},
-	check_types_in_struct_fields(InitFieldNames, FieldTypes, FieldDefaults, Name, Ctx),
+	check_types_in_struct_fields(FieldTypeMap, ValMap, Name, Ctx),
 	check_types_in_ast(Rest, GlobalVarTypes, Maps);
 check_types_in_ast([_ | Rest], GlobalVarTypes, Maps) ->
 	check_types_in_ast(Rest, GlobalVarTypes, Maps);
@@ -189,10 +188,10 @@ type_of_node(#e_array_init_expr{elements = Elements, line = Line}, Ctx) ->
 			e_util:ethrow(Line, "array init type conflict: {~s}", [join_types_to_str(ElementTypes)])
 	end;
 type_of_node(#e_struct_init_expr{} = S, {_, _, StructMap, _} = Ctx) ->
-	#e_struct_init_expr{name = Name, field_names = FieldNames, field_value_map = FieldValues, line = Line} = S,
+	#e_struct_init_expr{name = Name, field_value_map = ValMap, line = Line} = S,
 	case maps:find(Name, StructMap) of
-		{ok, #e_struct{field_type_map = FieldTypes}} ->
-			check_types_in_struct_fields(FieldNames, FieldTypes, FieldValues, Name, Ctx),
+		{ok, #e_struct{fields = #e_vars{type_map = FieldTypeMap}}} ->
+			check_types_in_struct_fields(FieldTypeMap, ValMap, Name, Ctx),
 			#e_basic_type{class = struct, tag = Name, line = Line};
 		_ ->
 			e_util:ethrow(Line, "struct ~s is not found", [Name])
@@ -239,15 +238,14 @@ dec_pointer_depth(#e_basic_type{p_depth = PDepth} = T, _) when PDepth > 0 ->
 dec_pointer_depth(T, OpLine) ->
 	e_util:ethrow(OpLine, "'^' on type ~s is invalid", [type_to_str(T)]).
 
--spec check_types_in_struct_fields([#e_varref{}], #{atom() => e_type()}, #{atom() := any()}, atom(), context()) -> ok.
-check_types_in_struct_fields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
-	lists:foreach(fun(V) -> check_struct_field(V, FieldTypes, ValMap, StructName, Ctx) end, FieldNames).
+-spec check_types_in_struct_fields(#{atom() => e_type()}, #{atom() := e_expr()}, atom(), context()) -> ok.
+check_types_in_struct_fields(FieldTypeMap, ValMap, StructName, Ctx) ->
+	maps:foreach(fun(N, Val) -> check_struct_field(FieldTypeMap, N, Val, StructName, Ctx) end, ValMap).
 
--spec check_struct_field(#e_varref{}, #{atom() => e_type()}, #{atom() := any()}, atom(), context()) -> ok.
-check_struct_field(#e_varref{name = FieldName, line = Line}, FieldTypes, ValMap, StructName, Ctx) ->
-	{_, _, StructMap, _} = Ctx,
-	{ok, Val} = maps:find(FieldName, ValMap),
-	ExpectedType = get_field_type(FieldName, FieldTypes, StructName, Line),
+-spec check_struct_field(#{atom() => e_type()}, atom(), e_expr(), atom(), context()) -> ok.
+check_struct_field(FieldTypeMap, FieldName, Val, StructName, {_, _, StructMap, _} = Ctx) ->
+	Line = element(2, Val),
+	ExpectedType = get_field_type(FieldName, FieldTypeMap, StructName, Line),
 	check_type(ExpectedType, StructMap),
 	GivenType = type_of_node(Val, Ctx),
 	case compare_type(ExpectedType, GivenType) of
@@ -267,14 +265,14 @@ are_same_type(_) ->
 
 -spec type_of_struct_field(e_type(), #e_varref{}, #{atom() => #e_struct{}}, integer()) -> e_type().
 type_of_struct_field(#e_basic_type{class = struct, tag = Name, p_depth = 0} = S, #e_varref{name = FieldName}, StructMap, Line) ->
-	#e_struct{field_type_map = FieldTypes} = e_util:get_struct_from_type(S, StructMap),
-	get_field_type(FieldName, FieldTypes, Name, Line);
+	#e_struct{fields = #e_vars{type_map = FieldTypeMap}} = e_util:get_struct_from_type(S, StructMap),
+	get_field_type(FieldName, FieldTypeMap, Name, Line);
 type_of_struct_field(T, _, _, Line) ->
 	e_util:ethrow(Line, "operand1 for \".\" is not struct ~s", [type_to_str(T)]).
 
 -spec get_field_type(atom(), #{atom() => e_type()}, atom(), integer()) -> e_type().
-get_field_type(FieldName, FieldTypes, StructName, Line) ->
-	case maps:find(FieldName, FieldTypes) of
+get_field_type(FieldName, FieldTypeMap, StructName, Line) ->
+	case maps:find(FieldName, FieldTypeMap) of
 		{ok, Type} ->
 			Type;
 		error ->

@@ -29,11 +29,11 @@ expand_init_expr(Stmts, StructMap) ->
 	expand_init_expr(Stmts, [], StructMap).
 
 expand_init_expr([#e_if_stmt{then = Then, else = Else} = E | Rest], NewAST, StructMap) ->
-	NewE = E#e_if_stmt{then = expand_init_expr(Then, [], StructMap), else = expand_init_expr(Else, [], StructMap)},
-	expand_init_expr(Rest, [NewE | NewAST], StructMap);
+	E2 = E#e_if_stmt{then = expand_init_expr(Then, [], StructMap), else = expand_init_expr(Else, [], StructMap)},
+	expand_init_expr(Rest, [E2 | NewAST], StructMap);
 expand_init_expr([#e_while_stmt{stmts = Stmts} = E | Rest], NewAST, StructMap) ->
-	NewE = E#e_while_stmt{stmts = expand_init_expr(Stmts, [], StructMap)},
-	expand_init_expr(Rest, [NewE | NewAST], StructMap);
+	E2 = E#e_while_stmt{stmts = expand_init_expr(Stmts, [], StructMap)},
+	expand_init_expr(Rest, [E2 | NewAST], StructMap);
 expand_init_expr([#e_op{data = [_, _]} = Op | Rest], NewAST, StructMap) ->
 	expand_init_expr(Rest, replace_init_ops(Op, StructMap) ++ NewAST, StructMap);
 expand_init_expr([Any | Rest], NewAST, StructMap) ->
@@ -43,39 +43,32 @@ expand_init_expr([], NewAST, _) ->
 
 replace_init_ops(#e_op{tag = '=', data = [Op1, #e_struct_init_expr{} = D]}, StructMap) ->
 	#e_struct_init_expr{name = Name, line = Line, field_value_map = FieldValues} = D,
-	case maps:find(Name, StructMap) of
-		{ok, #e_struct{field_names = FieldNames, field_type_map = FieldTypes, field_default_value_map = FieldDefaults}} ->
-			FieldValueMap = maps:merge(FieldDefaults, FieldValues),
-			struct_init_to_ops(Op1, FieldNames, FieldValueMap, FieldTypes, [], StructMap);
-		error ->
-			e_util:ethrow(Line, "struct ~s is not found", [Name])
-	end;
+	Struct = e_util:get_struct_from_name(Name, StructMap, Line),
+	#e_struct{fields = Fields, default_value_map = FieldDefaultMap} = Struct,
+	#e_vars{names = FieldNames, type_map = FieldTypeMap} = Fields,
+	VarRefs = lists:map(fun(N) -> #e_varref{line = Line, name = N} end, FieldNames),
+	FieldInitMap = maps:merge(FieldDefaultMap, FieldValues),
+	struct_init_to_ops(Op1, VarRefs, FieldInitMap, FieldTypeMap, [], StructMap);
 replace_init_ops(#e_op{tag = '=', data = [Op1, #e_array_init_expr{} = D]}, StructMap) ->
 	#e_array_init_expr{elements = Elements, line = Line} = D,
 	array_init_to_ops(Op1, Elements, 0, Line, [], StructMap);
 replace_init_ops(Any, _) ->
 	[Any].
 
-struct_init_to_ops(Target, [#e_varref{} | _] = VarRefs, FieldInitMap, FieldTypes, NewCode, StructMap) ->
+struct_init_to_ops(Target, [#e_varref{} | _] = VarRefs, FieldInitMap, FieldTypeMap, NewCode, StructMap) ->
 	[#e_varref{line = Line, name = Name} = Field | Rest] = VarRefs,
-	RValue =
-		case maps:find(Name, FieldInitMap) of
-			{ok, InitOp} ->
-				InitOp;
-			error ->
-				default_value_of(maps:get(Name, FieldTypes), Line)
-		end,
+	RValue = maps:get(Name, FieldInitMap, default_value_of(maps:get(Name, FieldTypeMap), Line)),
 	NewData = [#e_op{tag = '.', data = [Target, Field], line = Line}, RValue],
 	NewOp = #e_op{tag = '=', data = NewData, line = Line},
 	Ops = replace_init_ops(NewOp, StructMap),
-	struct_init_to_ops(Target, Rest, FieldInitMap, FieldTypes, Ops ++ NewCode, StructMap);
+	struct_init_to_ops(Target, Rest, FieldInitMap, FieldTypeMap, Ops ++ NewCode, StructMap);
 struct_init_to_ops(_, [], _, _, NewCode, _) ->
 	NewCode.
 
 default_value_of(#e_array_type{elem_type = Type, length = Len}, Line) ->
 	#e_array_init_expr{elements = lists:duplicate(Len, default_value_of(Type, Line)), line = Line};
 default_value_of(#e_basic_type{class = struct, tag = Tag, p_depth = 0}, Line) ->
-	#e_struct_init_expr{name = Tag, line = Line, field_value_map = #{}, field_names = []};
+	#e_struct_init_expr{name = Tag, line = Line, field_value_map = #{}};
 default_value_of(#e_basic_type{class = integer, p_depth = 0}, Line) ->
 	#e_integer{line = Line, value = 0};
 default_value_of(#e_basic_type{class = float, p_depth = 0}, Line) ->

@@ -1,7 +1,7 @@
 -module(e_util).
 -export([make_function_and_struct_map_from_ast/1, expr_map/2, merge_plus/1, assert/2]).
--export([stmt_to_str/1, filter_var_refs_in_map/2, get_values_by_keys/2, fmt/2, ethrow/3, ethrow/2]).
--export([names_of_var_defs/1, names_of_var_refs/1, value_in_list/2, get_struct_from_type/2]).
+-export([stmt_to_str/1, get_values_by_keys/2, fmt/2, ethrow/3, ethrow/2]).
+-export([names_of_var_defs/1, names_of_var_refs/1, value_in_list/2, get_struct_from_type/2, get_struct_from_name/3]).
 -export([primitive_size_of/2, void_type/1, cut_extra/2, fill_unit_opti/2, fill_unit_pessi/2]).
 
 -include("e_record_definition.hrl").
@@ -145,35 +145,21 @@ assert(false, Info) ->
 value_in_list(Value, List) ->
 	lists:any(fun(V) -> V =:= Value end, List).
 
-%% filter_var_refs_in_map([#e_varref{name = a}, #e_varref{name = b}], #{a => 1})
-%% > [#e_varref{name = a}].
--spec filter_var_refs_in_map([#e_varref{}], #{atom() => any()}) -> [#e_varref{}].
-filter_var_refs_in_map(VarRefList, TargetMap) ->
-	lists:filter(fun(#e_varref{name = Name}) -> exist_in_map(Name, TargetMap) end, VarRefList).
-
--ifdef(EUNIT).
-
-filter_var_refs_in_map_test() ->
-	A = filter_var_refs_in_map([#e_varref{name = a}, #e_varref{name = b}], #{a => 1}),
-	?assertEqual(A, [#e_varref{name = a}]).
-
--endif.
-
--spec exist_in_map(atom(), #{atom() => any()}) -> boolean().
-exist_in_map(KeyName, Map) ->
-	case maps:find(KeyName, Map) of
-		{ok, _} ->
-			true;
-		_ ->
-			false
-	end.
-
 -spec get_struct_from_type(#e_basic_type{}, #{atom() => #e_struct{}}) -> #e_struct{}.
-get_struct_from_type(#e_basic_type{class = struct, tag = Tag, line = Line}, StructMap) ->
-	case maps:find(Tag, StructMap) of
+get_struct_from_type(#e_basic_type{class = struct, tag = Name, line = Line}, StructMap) ->
+	case maps:find(Name, StructMap) of
 		{ok, S} ->
 			S;
 		error ->
-			e_util:ethrow(Line, "struct ~s is not found", [Tag])
+			e_util:ethrow(Line, "struct ~s is not found", [Name])
+	end.
+
+-spec get_struct_from_name(atom(), #{atom() => #e_struct{}}, integer()) -> #e_struct{}.
+get_struct_from_name(Name, StructMap, Line) ->
+	case maps:find(Name, StructMap) of
+		{ok, S} ->
+			S;
+		error ->
+			e_util:ethrow(Line, "struct ~s is not found", [Name])
 	end.
 

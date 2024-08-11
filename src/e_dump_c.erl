@@ -21,7 +21,7 @@ generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
 
 -spec fix_function_for_c(e_ast_elem(), context()) -> e_ast_elem().
 fix_function_for_c(#e_function{} = Fn, {FnTypeMap, StructMap, GlobalVars}) ->
-	#e_function{stmts = Stmts, var_type_map = VarTypes} = Fn,
+	#e_function{stmts = Stmts, vars = #e_vars{type_map = VarTypes}} = Fn,
 	Fn#e_function{stmts = fix_exprs_for_c(Stmts, {FnTypeMap, StructMap, maps:merge(GlobalVars, VarTypes)})};
 fix_function_for_c(Any, _) ->
 	Any.
@@ -60,10 +60,9 @@ statements_to_str(Statements, InitCode) ->
 	statements_to_str(Statements, InitCode, [], []).
 
 statements_to_str([#e_function{name = Name} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
-	#e_function{param_names = ParamNames, type = FnType, var_type_map = VarTypes, stmts = Stmts} = Hd,
-	ParamNameAtoms = names_from_varrefs(ParamNames),
-	PureParams = map_to_kv_list(ParamNameAtoms, maps:with(ParamNameAtoms, VarTypes)),
-	PureVars = maps:without(ParamNameAtoms, VarTypes),
+	#e_function{param_names = ParamNames, type = FnType, vars = #e_vars{type_map = VarTypes}, stmts = Stmts} = Hd,
+	PureParams = map_to_kv_list(ParamNames, maps:with(ParamNames, VarTypes)),
+	PureVars = maps:without(ParamNames, VarTypes),
 	Declars = function_to_str(Name, params_to_str(PureParams), FnType#e_fn_type.ret),
 	Stmts2 =
 		case Name =:= main of
@@ -73,8 +72,8 @@ statements_to_str([#e_function{name = Name} = Hd | Rest], InitCode, StmtStrs, Fn
 	S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declars, var_map_to_str(PureVars), stmts_to_str(Stmts2)]),
 	statements_to_str(Rest, InitCode, [S | StmtStrs], [Declars ++ ";\n" | FnDeclars]);
 statements_to_str([#e_struct{} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
-	#e_struct{name = Name, field_type_map = FieldTypes, field_names = FieldNames} = Hd,
-	FieldList = map_to_kv_list(names_from_varrefs(FieldNames), FieldTypes),
+	#e_struct{name = Name, fields = #e_vars{names = FieldNames, type_map = FieldTypes}} = Hd,
+	FieldList = map_to_kv_list(FieldNames, FieldTypes),
 	S = io_lib:format("struct ~s {~n~s~n};~n~n", [Name, var_list_to_str(FieldList)]),
 	statements_to_str(Rest, InitCode, [S | StmtStrs], FnDeclars);
 statements_to_str([], _, StmtStrs, FnDeclars) ->
@@ -107,9 +106,6 @@ vars_to_str([{Name, Type} | Rest], Strs) ->
 	vars_to_str(Rest, [type_to_c_str(Type, Name) | Strs]);
 vars_to_str([], Strs) ->
 	lists:reverse(Strs).
-
-names_from_varrefs(VarRefList) ->
-	lists:map(fun(#e_varref{name = N}) -> N end, VarRefList).
 
 map_to_kv_list(NameAtoms, ValueMap) ->
 	lists:zip(NameAtoms, e_util:get_values_by_keys(NameAtoms, ValueMap)).

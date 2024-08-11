@@ -7,8 +7,8 @@
 -spec expand_sizeof_in_ast(e_ast(), context()) -> e_ast().
 expand_sizeof_in_ast([#e_function{stmts = Stmts} = Fn | Rest], Ctx) ->
 	[Fn#e_function{stmts = expand_sizeof_in_stmts(Stmts, Ctx)} | expand_sizeof_in_ast(Rest, Ctx)];
-expand_sizeof_in_ast([#e_struct{field_default_value_map = FieldDefaults} = S | Rest], Ctx) ->
-	[S#e_struct{field_default_value_map = expand_sizeof_in_map(FieldDefaults, Ctx)} | expand_sizeof_in_ast(Rest, Ctx)];
+expand_sizeof_in_ast([#e_struct{default_value_map = FieldDefaults} = S | Rest], Ctx) ->
+	[S#e_struct{default_value_map = expand_sizeof_in_map(FieldDefaults, Ctx)} | expand_sizeof_in_ast(Rest, Ctx)];
 expand_sizeof_in_ast([], _) ->
 	[].
 
@@ -50,32 +50,31 @@ fill_struct_size_and_align(Any, _) ->
 	Any.
 
 -spec fill_struct_offsets(e_ast_elem(), context()) -> e_ast_elem().
-fill_struct_offsets(#e_struct{field_names = FieldNames, field_type_map = Types} = S, Ctx) ->
-	FieldTypeList = get_kvs_by_refs(FieldNames, Types),
+fill_struct_offsets(#e_struct{fields = #e_vars{names = FieldNames, type_map = TypeMap} = OldVars} = S, Ctx) ->
+	FieldTypeList = get_kvs_by_names(FieldNames, TypeMap),
 	{_, OffsetMap} = size_of_struct_fields(FieldTypeList, {0, #{}}, Ctx),
-	S#e_struct{field_offset_map = OffsetMap};
+	S#e_struct{fields = OldVars#e_vars{offset_map = OffsetMap}};
 fill_struct_offsets(Any, _) ->
 	Any.
 
 -spec size_of_struct(#e_struct{}, context()) -> non_neg_integer().
 size_of_struct(#e_struct{size = Size}, _) when Size > 0 ->
 	Size;
-size_of_struct(#e_struct{field_names = FieldNames, field_type_map = Types}, Ctx) ->
-	FieldTypeList = get_kvs_by_refs(FieldNames, Types),
+size_of_struct(#e_struct{fields = #e_vars{names = FieldNames, type_map = TypeMap}}, Ctx) ->
+	FieldTypeList = get_kvs_by_names(FieldNames, TypeMap),
 	{Size, _} = size_of_struct_fields(FieldTypeList, {0, #{}}, Ctx),
 	Size.
 
 -spec align_of_struct(#e_struct{}, context()) -> non_neg_integer().
 align_of_struct(#e_struct{align = Align}, _) when Align > 0 ->
 	Align;
-align_of_struct(#e_struct{field_type_map = Types}, Ctx) ->
-	maps:fold(fun(_, Type, Align) -> erlang:max(align_of(Type, Ctx), Align) end, 0, Types).
+align_of_struct(#e_struct{fields = #e_vars{type_map = TypeMap}}, Ctx) ->
+	maps:fold(fun(_, Type, Align) -> erlang:max(align_of(Type, Ctx), Align) end, 0, TypeMap).
 
--spec get_kvs_by_refs([#e_varref{}], #{atom() => any()}) -> [{atom(), any()}].
-get_kvs_by_refs(RefList, Map) ->
-	Keys = e_util:names_of_var_refs(RefList),
-	Values = e_util:get_values_by_keys(Keys, Map),
-	lists:zip(Keys, Values).
+-spec get_kvs_by_names([atom()], #{atom() => any()}) -> [{atom(), any()}].
+get_kvs_by_names(Names, Map) ->
+	Values = e_util:get_values_by_keys(Names, Map),
+	lists:zip(Names, Values).
 
 %% this is the function that calculate size and offsets
 -spec size_of_struct_fields([{atom(), e_type()}], R, context()) -> R when R :: {integer(), #{atom() => integer()}}.

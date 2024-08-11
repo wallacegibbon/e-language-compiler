@@ -46,16 +46,27 @@
 	name :: atom()
 	}).
 
+%% `e_vars` is used by functions and structs to hold variables (including parameters) and fields.
+-record(e_vars,
+	{
+	%% `names` keeps the order that variables/fields got declared.
+	names = [] :: [#e_varref{}],
+	type_map = #{} :: #{atom() => e_type()},
+	offset_map = #{} :: #{atom() => non_neg_integer()}
+	}).
+
 -record(e_function,
 	{
 	line = 0 :: integer(),
 	name :: atom(),
-	%% `param_names` stores variable references in the order they got declared.
-	param_names = [] :: [#e_varref{}],
+	%% `param_names` keeps the order that parameters got declared.
+	param_names = [] :: [atom()],
+	%% `var_names` keeps the order that variables got declared.
+	var_names = [] :: [atom()],
+	%% `vars` contains both parameters and variables.
+	vars = #e_vars{} :: #e_vars{},
 	%% The returning type.
 	type :: #e_fn_type{},
-	var_type_map = #{} :: #{atom() => e_type()},
-	var_offset_map = #{} :: #{atom() => integer()},
 	labels = [] :: [#e_goto_label{}],
 	stmts = [] :: [e_stmt()]
 	}).
@@ -64,15 +75,12 @@
 	{
 	line = 0 :: integer(),
 	name :: atom(),
-	%% `field_names` stores field references in the order they got declared.
-	field_names = [] :: [#e_varref{}],
+	fields = #e_vars{} :: #e_vars{},
 	%% The size of the whole struct.
-	size = -1 :: integer(),
+	size = 0 :: non_neg_integer(),
 	%% The align of the struct. (which is the align of the biggest element in the struct)
-	align = -1 :: integer(),
-	field_type_map = #{} :: #{atom() => e_type()},
-	field_offset_map = #{} :: #{atom() => integer()},
-	field_default_value_map = #{} :: #{atom() => e_expr()}
+	align = 0 :: non_neg_integer(),
+	default_value_map = #{} :: #{atom() => e_expr()}
 	}).
 
 -record(e_struct_init_raw_expr,
@@ -86,7 +94,6 @@
 	{
 	line = 0 :: integer(),
 	name :: atom(),
-	field_names = [] :: [#e_varref{}],
 	field_value_map = #{} :: #{atom() => e_expr()}
 	}).
 

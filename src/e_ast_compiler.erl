@@ -62,8 +62,8 @@ check_struct_recursive(#e_struct{name = Name, line = Line} = Struct, StructTypeM
 	end.
 
 -spec check_struct_object(#e_struct{}, #{atom() => #e_struct{}}, [atom()]) -> ok | {recur, [any()]}.
-check_struct_object(#e_struct{name = Name, field_type_map = FieldTypes}, StructMap, UsedStructs) ->
-	check_struct_field(maps:to_list(FieldTypes), StructMap, [Name | UsedStructs]).
+check_struct_object(#e_struct{name = Name, fields = #e_vars{type_map = FieldTypeMap}}, StructMap, UsedStructs) ->
+	check_struct_field(maps:to_list(FieldTypeMap), StructMap, [Name | UsedStructs]).
 
 -spec check_struct_field([{atom(), e_type()}], #{atom() => #e_struct{}}, [atom()]) -> ok.
 check_struct_field([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
