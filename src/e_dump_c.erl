@@ -2,9 +2,9 @@
 -export([generate_c_code/4]).
 -include("e_record_definition.hrl").
 
--type context() :: {e_fn_type_map(), e_struct_type_map(), e_var_type_map()}.
+-type context() :: {#{atom() := #e_fn_type{}}, #{atom() => #e_struct{}}, #{atom() => e_type()}}.
 
--spec generate_c_code(e_ast(), e_var_type_map(), [e_stmt()], string()) -> ok.
+-spec generate_c_code(e_ast(), #{atom() => e_type()}, [e_stmt()], string()) -> ok.
 generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
 	{FnTypeMap, StructMap} = e_util:make_function_and_struct_map_from_ast(AST),
 	Ctx = {FnTypeMap, StructMap, GlobalVars},

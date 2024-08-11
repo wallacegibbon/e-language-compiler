@@ -2,7 +2,9 @@
 -export([check_types_in_ast/3, check_type_in_stmts/3, type_of_node/2]).
 -include("e_record_definition.hrl").
 
--spec check_types_in_ast(e_ast(), e_var_type_map(), {e_fn_type_map(), e_struct_type_map()}) -> ok.
+-type interface_context() :: {#{atom() => #e_fn_type{}}, #{atom() => #e_struct{}}}.
+
+-spec check_types_in_ast(e_ast(), #{atom() => e_type()}, interface_context()) -> ok.
 check_types_in_ast([#e_function{stmts = Stmts} = Fn | Rest], GlobalVarTypes, {FnTypeMap, StructMap} = Maps) ->
 	#e_function{var_type_map = VarTypes, type = FnType} = Fn,
 	check_types(maps:values(VarTypes), StructMap),
@@ -24,12 +26,18 @@ check_types_in_ast([_ | Rest], GlobalVarTypes, Maps) ->
 check_types_in_ast([], _, _) ->
 	ok.
 
--spec check_type_in_stmts([e_stmt()], e_var_type_map(), {e_fn_type_map(), e_struct_type_map()}) -> ok.
+-spec check_type_in_stmts([e_stmt()], #{atom() => e_type()}, interface_context()) -> ok.
 check_type_in_stmts(Stmts, GlobalVarTypes, {FnTypeMap, StructMap}) ->
 	type_of_nodes(Stmts, {GlobalVarTypes, FnTypeMap, StructMap, #e_basic_type{}}),
 	ok.
 
--type context() :: {e_var_type_map(), e_fn_type_map(), e_struct_type_map(), e_type()}.
+-type context() ::
+	{
+ 	GlobalVarTypes :: #{atom() => e_type()},
+	FnTypeMap :: #{atom() := #e_fn_type{}},
+	StructMap :: #{atom() => #e_struct{}},
+	ReturnType :: e_type()
+	}.
 
 -spec type_of_nodes([e_stmt()], context()) -> [e_type()].
 type_of_nodes(Stmts, Ctx) ->
@@ -231,11 +239,11 @@ dec_pointer_depth(#e_basic_type{p_depth = PDepth} = T, _) when PDepth > 0 ->
 dec_pointer_depth(T, OpLine) ->
 	e_util:ethrow(OpLine, "'^' on type ~s is invalid", [type_to_str(T)]).
 
--spec check_types_in_struct_fields([#e_varref{}], e_var_type_map(), #{atom() := any()}, atom(), context()) -> ok.
+-spec check_types_in_struct_fields([#e_varref{}], #{atom() => e_type()}, #{atom() := any()}, atom(), context()) -> ok.
 check_types_in_struct_fields(FieldNames, FieldTypes, ValMap, StructName, Ctx) ->
 	lists:foreach(fun(V) -> check_struct_field(V, FieldTypes, ValMap, StructName, Ctx) end, FieldNames).
 
--spec check_struct_field(#e_varref{}, e_var_type_map(), #{atom() := any()}, atom(), context()) -> ok.
+-spec check_struct_field(#e_varref{}, #{atom() => e_type()}, #{atom() := any()}, atom(), context()) -> ok.
 check_struct_field(#e_varref{name = FieldName, line = Line}, FieldTypes, ValMap, StructName, Ctx) ->
 	{_, _, StructMap, _} = Ctx,
 	{ok, Val} = maps:find(FieldName, ValMap),
@@ -257,7 +265,7 @@ are_same_type([_]) ->
 are_same_type(_) ->
 	false.
 
--spec type_of_struct_field(e_type(), #e_varref{}, e_struct_type_map(), integer()) -> e_type().
+-spec type_of_struct_field(e_type(), #e_varref{}, #{atom() => #e_struct{}}, integer()) -> e_type().
 type_of_struct_field(#e_basic_type{class = struct, tag = Name, p_depth = 0} = S, #e_varref{name = FieldName}, StructMap, Line) ->
 	#e_struct{field_type_map = FieldTypes} = e_util:get_struct_from_type(S, StructMap),
 	get_field_type(FieldName, FieldTypes, Name, Line);
@@ -337,12 +345,12 @@ are_both_floats(_, _) ->
 type_error_of_op2(Operator, TypeofOp1, TypeofOp2) ->
 	e_util:fmt("type error in \"~s ~s ~s\"", [type_to_str(TypeofOp1), Operator, type_to_str(TypeofOp2)]).
 
--spec check_types([e_type()], e_struct_type_map()) -> ok.
+-spec check_types([e_type()], #{atom() => #e_struct{}}) -> ok.
 check_types(TypeList, StructMap) ->
 	lists:foreach(fun(T) -> check_type(T, StructMap) end, TypeList).
 
 %% check type, ensure that all struct used by type exists.
--spec check_type(e_type(), e_struct_type_map()) -> any().
+-spec check_type(e_type(), #{atom() => #e_struct{}}) -> any().
 check_type(#e_basic_type{class = struct} = S, StructMap) ->
 	e_util:get_struct_from_type(S, StructMap);
 check_type(#e_basic_type{}, _) ->

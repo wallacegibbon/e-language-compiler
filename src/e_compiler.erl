@@ -12,11 +12,11 @@ compile_to_c(InputFilename, OutputFilename) ->
 			io:format("~s: ~p~n", [Filename, ErrorInfo])
 	end.
 
--spec compile_to_ast(string()) -> {e_ast(), e_var_type_map(), e_ast()}.
+-spec compile_to_ast(string()) -> {e_ast(), #{atom() => e_type()}, e_ast()}.
 compile_to_ast(Filename) ->
 	parse_and_compile(Filename).
 
--spec parse_and_compile(string()) -> {e_ast_raw(), e_var_type_map(), e_ast()}.
+-spec parse_and_compile(string()) -> {e_ast_raw(), #{atom() => e_type()}, e_ast()}.
 parse_and_compile(Filename) ->
 	try
 		e_ast_compiler:compile_from_raw_ast(parse_file(Filename), #{})

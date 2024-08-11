@@ -85,7 +85,7 @@ get_values_by_keys_test() ->
 
 -endif.
 
--spec make_function_and_struct_map_from_ast(any()) -> {e_fn_type_map(), e_struct_type_map()}.
+-spec make_function_and_struct_map_from_ast(any()) -> {#{atom() => #e_fn_type{}}, #{atom() => #e_struct{}}}.
 make_function_and_struct_map_from_ast(AST) ->
 	{Fns, Structs} = lists:partition(fun(A) -> element(1, A) =:= e_function end, AST),
 	%% FnTypeMap stores function type only
@@ -106,7 +106,7 @@ fill_unit_opti(Num, Unit) ->
 cut_extra(Num, Unit) ->
 	Num div Unit * Unit.
 
--spec primitive_size_of(atom(), PointerSize) -> 1 | 2 | 4 | 8 | 16 when PointerSize :: 2 | 4 | 8.
+-spec primitive_size_of(atom(), PointerSize) -> 1 | 2 | 4 | 8 when PointerSize :: 2 | 4 | 8.
 primitive_size_of(usize, PointerSize) -> PointerSize;
 primitive_size_of(isize, PointerSize) -> PointerSize;
 primitive_size_of(uptr, PointerSize) -> PointerSize;
@@ -147,7 +147,7 @@ value_in_list(Value, List) ->
 
 %% filter_var_refs_in_map([#e_varref{name = a}, #e_varref{name = b}], #{a => 1})
 %% > [#e_varref{name = a}].
--spec filter_var_refs_in_map([#e_varref{}], #{atom() := any()}) -> [#e_varref{}].
+-spec filter_var_refs_in_map([#e_varref{}], #{atom() => any()}) -> [#e_varref{}].
 filter_var_refs_in_map(VarRefList, TargetMap) ->
 	lists:filter(fun(#e_varref{name = Name}) -> exist_in_map(Name, TargetMap) end, VarRefList).
 
@@ -159,7 +159,7 @@ filter_var_refs_in_map_test() ->
 
 -endif.
 
--spec exist_in_map(atom(), #{atom() := any()}) -> boolean().
+-spec exist_in_map(atom(), #{atom() => any()}) -> boolean().
 exist_in_map(KeyName, Map) ->
 	case maps:find(KeyName, Map) of
 		{ok, _} ->
@@ -168,7 +168,7 @@ exist_in_map(KeyName, Map) ->
 			false
 	end.
 
--spec get_struct_from_type(#e_basic_type{}, e_struct_type_map()) -> #e_struct{}.
+-spec get_struct_from_type(#e_basic_type{}, #{atom() => #e_struct{}}) -> #e_struct{}.
 get_struct_from_type(#e_basic_type{class = struct, tag = Tag, line = Line}, StructMap) ->
 	case maps:find(Tag, StructMap) of
 		{ok, S} ->

@@ -2,7 +2,7 @@
 -export([fetch_variables/1]).
 -include("e_record_definition.hrl").
 
--spec fetch_variables(e_ast_raw()) -> {e_ast_raw(), e_var_type_map(), e_ast_raw()}.
+-spec fetch_variables(e_ast_raw()) -> {e_ast_raw(), #{atom() => e_type()}, e_ast_raw()}.
 fetch_variables(AST) ->
 	{AST3, VarTypes, InitCode} = fetch_variables(prepare_struct_init_expr(AST), [], {#{}, [], true}),
 	{AST3, VarTypes, InitCode}.
@@ -18,8 +18,8 @@ prepare_struct_init_expr([]) ->
 	[].
 
 -spec fix_struct_init_expr_in_stmts([e_stmt()]) -> [e_stmt()].
-fix_struct_init_expr_in_stmts(Lst) ->
-	e_util:expr_map(fun fix_struct_init/1, Lst).
+fix_struct_init_expr_in_stmts(List) ->
+	e_util:expr_map(fun fix_struct_init/1, List).
 
 -spec fix_struct_init(e_stmt()) -> e_stmt().
 fix_struct_init(#e_struct_init_raw_expr{name = Name, fields = Fields, line = Line}) ->
@@ -34,11 +34,11 @@ fix_struct_init(#e_op{data = Operands} = O) ->
 fix_struct_init(Any) ->
 	Any.
 
--spec struct_init_to_map([e_expr()]) -> {[#e_varref{}], #{atom() := e_expr()}}.
+-spec struct_init_to_map([e_expr()]) -> {[#e_varref{}], #{atom() => e_expr()}}.
 struct_init_to_map(Stmts) ->
 	struct_init_to_map(Stmts, [], #{}).
 
--spec struct_init_to_map([e_expr()], [#e_varref{}], #{atom() := e_expr()}) -> {[#e_varref{}], #{atom() := e_expr()}}.
+-spec struct_init_to_map([e_expr()], [#e_varref{}], #{atom() => e_expr()}) -> {[#e_varref{}], #{atom() => e_expr()}}.
 struct_init_to_map([#e_op{tag = '=', data = [#e_varref{name = Field} = Op1, Val]} | Rest], FieldNames, ExprMap) ->
 	struct_init_to_map(Rest, [Op1 | FieldNames], ExprMap#{Field => fix_struct_init(Val)});
 struct_init_to_map([], FieldNames, ExprMap) ->
@@ -46,8 +46,8 @@ struct_init_to_map([], FieldNames, ExprMap) ->
 
 %% In function expressions, the init code of defvar can not be simply fetched out from the code,
 %% it should be replaced as assignment in the same place.
--spec fetch_variables(e_ast_raw(), e_ast_raw(), {e_var_type_map(), e_ast(), CollectInitCode :: boolean()})
-	-> {e_ast_raw(), e_var_type_map(), e_ast_raw()}.
+-spec fetch_variables(e_ast_raw(), e_ast_raw(), {#{atom() => e_type()}, e_ast(), CollectInitCode :: boolean()})
+	-> {e_ast_raw(), #{atom() => e_type()}, e_ast_raw()}.
 
 fetch_variables([#e_vardef{} = Hd | Rest], NewAST, {VarTypes, InitCode, true}) ->
 	#e_vardef{name = Name, type = Type, line = Line, init_value = InitialValue} = Hd,
@@ -92,7 +92,7 @@ append_to_ast(AST, _, _, _) ->
 %% TODO: dialyzer went crazy here:
 %% The pattern <[{'e_goto_label', Line, Name} | Rest], GlobalVars, LocalVars>
 %% can never match the type <[],#{atom()=>_},#{atom()=>_}>
--spec check_label_conflict([#e_goto_label{}], e_var_type_map(), e_var_type_map()) -> ok.
+-spec check_label_conflict([#e_goto_label{}], #{atom() => e_type()}, #{atom() => e_type()}) -> ok.
 check_label_conflict([#e_goto_label{name = Name, line = Line} | Rest], GlobalVars, LocalVars) ->
 	ensure_no_name_conflict(Name, LocalVars, Line),
 	ensure_no_name_conflict(Name, GlobalVars, Line),
@@ -100,7 +100,7 @@ check_label_conflict([#e_goto_label{name = Name, line = Line} | Rest], GlobalVar
 check_label_conflict([], _, _) ->
 	ok.
 
--spec check_variable_conflict(e_var_type_map(), e_var_type_map()) -> ok.
+-spec check_variable_conflict(#{atom() => e_type()}, #{atom() => e_type()}) -> ok.
 check_variable_conflict(GlobalVars, LocalVars) ->
 	case maps:to_list(maps:with(maps:keys(GlobalVars), LocalVars)) of
 		[{Name, T} | _] ->
@@ -109,7 +109,7 @@ check_variable_conflict(GlobalVars, LocalVars) ->
 			ok
 	end.
 
--spec ensure_no_name_conflict(atom(), e_var_type_map(), integer()) -> ok.
+-spec ensure_no_name_conflict(atom(), #{atom() => e_type()}, integer()) -> ok.
 ensure_no_name_conflict(Name, VarMap, Line) ->
 	case maps:find(Name, VarMap) of
 		{ok, _} ->

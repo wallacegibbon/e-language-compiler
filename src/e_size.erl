@@ -2,7 +2,7 @@
 -export([expand_sizeof_in_ast/2, expand_sizeof_in_stmts/2, fill_struct_info/2]).
 -include("e_record_definition.hrl").
 
--type context() :: {StructMap :: e_struct_type_map(), PointerWidth :: non_neg_integer()}.
+-type context() :: {StructMap :: #{atom() => #e_struct{}}, PointerWidth :: non_neg_integer()}.
 
 -spec expand_sizeof_in_ast(e_ast(), context()) -> e_ast().
 expand_sizeof_in_ast([#e_function{stmts = Stmts} = Fn | Rest], Ctx) ->
@@ -71,14 +71,14 @@ align_of_struct(#e_struct{align = Align}, _) when Align > 0 ->
 align_of_struct(#e_struct{field_type_map = Types}, Ctx) ->
 	maps:fold(fun(_, Type, Align) -> erlang:max(align_of(Type, Ctx), Align) end, 0, Types).
 
--spec get_kvs_by_refs([#e_varref{}], #{atom() := any()}) -> [{atom(), any()}].
+-spec get_kvs_by_refs([#e_varref{}], #{atom() => any()}) -> [{atom(), any()}].
 get_kvs_by_refs(RefList, Map) ->
 	Keys = e_util:names_of_var_refs(RefList),
 	Values = e_util:get_values_by_keys(Keys, Map),
 	lists:zip(Keys, Values).
 
 %% this is the function that calculate size and offsets
--spec size_of_struct_fields([{atom(), e_type()}], R, context()) -> R when R :: {integer(), #{atom() := integer()}}.
+-spec size_of_struct_fields([{atom(), e_type()}], R, context()) -> R when R :: {integer(), #{atom() => integer()}}.
 size_of_struct_fields([{Name, Type} | Rest], {CurrentOffset, OffsetMap}, Ctx) ->
 	FieldSize = size_of(Type, Ctx),
 	NextOffset = CurrentOffset + FieldSize,

@@ -2,24 +2,30 @@
 -export([eliminate_dot_in_ast/3, eliminate_dot_in_stmts/3]).
 -include("e_record_definition.hrl").
 
-%% This `context()` is the same as the one in `e_type.erl`.
--type context() :: {e_var_type_map(), e_fn_type_map(), e_struct_type_map(), e_type()}.
+-type interface_context() :: {#{atom() => #e_fn_type{}}, #{atom() => #e_struct{}}}.
 
--spec eliminate_dot_in_ast(e_ast(), e_var_type_map(), {e_fn_type_map(), e_struct_type_map()}) -> e_ast().
-eliminate_dot_in_ast([#e_function{stmts = Stmts0} = Fn | Rest], GlobalVarTypes, {FnTypeMap, StructMap} = Maps) ->
-	CurrentVars = maps:merge(GlobalVarTypes, Fn#e_function.var_type_map),
-	Ctx = {CurrentVars, FnTypeMap, StructMap, #e_basic_type{}},
-	Stmts1 = eliminate_dot(Stmts0, Ctx),
-	[Fn#e_function{stmts = Stmts1} | eliminate_dot_in_ast(Rest, GlobalVarTypes, Maps)];
+-spec eliminate_dot_in_ast(e_ast(), #{atom() => e_type()}, interface_context()) -> e_ast().
+eliminate_dot_in_ast([#e_function{stmts = Stmts0} = Fn | Rest], GlobalVarTypes, {FnTypeMap, StructMap} = Ctx) ->
+	CurrentVarTypes = maps:merge(GlobalVarTypes, Fn#e_function.var_type_map),
+	Stmts1 = eliminate_dot(Stmts0, {CurrentVarTypes, FnTypeMap, StructMap, #e_basic_type{}}),
+	[Fn#e_function{stmts = Stmts1} | eliminate_dot_in_ast(Rest, GlobalVarTypes, Ctx)];
 eliminate_dot_in_ast([Any | Rest], GlobalVarTypes, Ctx) ->
 	[Any | eliminate_dot_in_ast(Rest, GlobalVarTypes, Ctx)];
 eliminate_dot_in_ast([], _, _) ->
 	[].
 
--spec eliminate_dot_in_stmts([e_stmt()], e_var_type_map(), {e_fn_type_map(), e_struct_type_map()}) -> [e_stmt()].
-eliminate_dot_in_stmts(Stmts, GlobalVarTypes, {FnTypeMap, StructMap}) ->
-	Ctx = {GlobalVarTypes, FnTypeMap, StructMap, #e_basic_type{}},
-	eliminate_dot(Stmts, Ctx).
+-spec eliminate_dot_in_stmts([e_stmt()], #{atom() => e_type()}, interface_context()) -> [e_stmt()].
+eliminate_dot_in_stmts(Stmts, VariableTypes, {FnTypeMap, StructMap}) ->
+	eliminate_dot(Stmts, {VariableTypes, FnTypeMap, StructMap, #e_basic_type{}}).
+
+%% This `context()` is the same as the one in `e_type.erl`.
+-type context() ::
+	{
+ 	GlobalVarTypes :: #{atom() => e_type()},
+	FnTypeMap :: #{atom() := #e_fn_type{}},
+	StructMap :: #{atom() => #e_struct{}},
+	ReturnType :: e_type()
+	}.
 
 -spec eliminate_dot([e_stmt()], context()) -> [e_stmt()].
 eliminate_dot(Stmts0, Ctx) ->

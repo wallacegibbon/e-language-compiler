@@ -42,3 +42,8 @@ fun main()
 	s2.pos.y = 222;
 end
 
+fun blah(tag: byte, s: Sprite^): byte
+	s^.pos.x = tag;
+	return tag + 1;
+end
+

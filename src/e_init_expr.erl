@@ -16,7 +16,7 @@ check_position(#e_array_init_expr{line = Line}) ->
 check_position(_) ->
 	ok.
 
--spec expand_in_function(e_ast(), e_struct_type_map()) -> e_ast().
+-spec expand_in_function(e_ast(), #{atom() => #e_struct{}}) -> e_ast().
 expand_in_function([#e_function{stmts = Stmts} = Fn | Rest], StructMap) ->
 	e_util:expr_map(fun check_position/1, Stmts),
 	[Fn#e_function{stmts = expand_init_expr(Stmts, StructMap)} | expand_in_function(Rest, StructMap)];
