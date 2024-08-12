@@ -134,7 +134,7 @@ e_struct_init_fields -> e_struct_init_assignment :
 	['$1'].
 
 e_struct_init_assignment -> identifier '=' e_expr :
-  #e_op{tag = '=', data = [#e_varref{name = token_value('$1'), line = token_line('$1')}, '$3'], line = token_line('$2')}.
+	#e_op{tag = '=', data = [#e_varref{name = token_value('$1'), line = token_line('$1')}, '$3'], line = token_line('$2')}.
 
 %% sizeof
 e_sizeof_expr -> sizeof '(' e_type_anno ')' :

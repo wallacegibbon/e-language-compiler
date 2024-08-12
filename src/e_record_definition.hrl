@@ -59,14 +59,11 @@
 	{
 	line = 0 :: integer(),
 	name :: atom(),
-	%% `param_names` keeps the order that parameters got declared.
-	param_names = [] :: [atom()],
-	%% `var_names` keeps the order that variables got declared.
-	var_names = [] :: [atom()],
 	%% `vars` contains both parameters and variables.
 	vars = #e_vars{} :: #e_vars{},
-	%% The returning type.
+	param_names = [] :: [atom()],
 	type :: #e_fn_type{},
+	%% TODO: remove `labels` here. (labels should be in `stmts`).
 	labels = [] :: [#e_goto_label{}],
 	stmts = [] :: [e_stmt()]
 	}).

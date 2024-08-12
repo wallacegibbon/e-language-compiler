@@ -2,27 +2,26 @@
 -export([generate_c_code/4]).
 -include("e_record_definition.hrl").
 
--type context() :: {#{atom() := #e_fn_type{}}, #{atom() => #e_struct{}}, #{atom() => e_type()}}.
+-type context() :: {#{atom() := #e_fn_type{}}, #{atom() => #e_struct{}}, #e_vars{}}.
 
--spec generate_c_code(e_ast(), #{atom() => e_type()}, [e_stmt()], string()) -> ok.
-generate_c_code(AST, GlobalVars, InitCode, OutputFile) ->
+-spec generate_c_code(e_ast(), #e_vars{}, [e_stmt()], string()) -> ok.
+generate_c_code(AST, #e_vars{type_map = GlobalVarMap} = GlobalVars, InitCode, OutputFile) ->
 	{FnTypeMap, StructMap} = e_util:make_function_and_struct_map_from_ast(AST),
 	Ctx = {FnTypeMap, StructMap, GlobalVars},
 	AST2 = lists:map(fun(A) -> fix_function_for_c(A, Ctx) end, AST),
 	InitCode2 = fix_exprs_for_c(InitCode, Ctx),
-	% io:format(">>>~p~n", [AST2]),
 	%% struct definition have to be before function declarations
 	{StructAST, FnAST} = lists:partition(fun(A) -> element(1, A) =:= e_struct end, AST2),
 	{StructStmts, []} = statements_to_str(StructAST, []),
 	{FnStmts, FnDeclars} = statements_to_str(FnAST, InitCode2),
-	VarStmts = var_map_to_str(GlobalVars),
+	VarStmts = var_map_to_str(GlobalVarMap),
 	Code = lists:join("\n\n", [common_c_code(), StructStmts, VarStmts, FnDeclars, FnStmts]),
 	ok = file:write_file(OutputFile, Code).
 
 -spec fix_function_for_c(e_ast_elem(), context()) -> e_ast_elem().
 fix_function_for_c(#e_function{} = Fn, {FnTypeMap, StructMap, GlobalVars}) ->
-	#e_function{stmts = Stmts, vars = #e_vars{type_map = VarTypes}} = Fn,
-	Fn#e_function{stmts = fix_exprs_for_c(Stmts, {FnTypeMap, StructMap, maps:merge(GlobalVars, VarTypes)})};
+	#e_function{stmts = Stmts, vars = LocalVars} = Fn,
+	Fn#e_function{stmts = fix_exprs_for_c(Stmts, {FnTypeMap, StructMap, e_util:merge_vars(GlobalVars, LocalVars)})};
 fix_function_for_c(Any, _) ->
 	Any.
 
@@ -31,8 +30,8 @@ fix_exprs_for_c(Stmts, Ctx) ->
 	e_util:expr_map(fun(E) -> fix_expr_for_c(E, Ctx) end, Stmts).
 
 -spec fix_expr_for_c(e_expr(), context()) -> e_expr().
-fix_expr_for_c(#e_op{tag = '@', data = [Operand], line = L} = E, {FnTypeMap, StructMap, VarTypes} = Ctx) ->
-	case e_type:type_of_node(Operand, {VarTypes, FnTypeMap, StructMap, #e_basic_type{}}) of
+fix_expr_for_c(#e_op{tag = '@', data = [Operand], line = L} = E, {FnTypeMap, StructMap, Vars} = Ctx) ->
+	case e_type:type_of_node(Operand, {Vars, FnTypeMap, StructMap, #e_basic_type{}}) of
 		#e_array_type{} ->
 			#e_op{tag = '.', data = [fix_expr_for_c(Operand, Ctx), #e_varref{name = value, line = L}]};
 		_ ->

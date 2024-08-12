@@ -1,6 +1,6 @@
 -module(e_util).
 -export([make_function_and_struct_map_from_ast/1, expr_map/2, merge_plus/1, assert/2]).
--export([stmt_to_str/1, get_values_by_keys/2, fmt/2, ethrow/3, ethrow/2]).
+-export([fmt/2, ethrow/3, ethrow/2, stmt_to_str/1, get_values_by_keys/2, merge_vars/2]).
 -export([names_of_var_defs/1, names_of_var_refs/1, value_in_list/2, get_struct_from_type/2, get_struct_from_name/3]).
 -export([primitive_size_of/2, void_type/1, cut_extra/2, fill_unit_opti/2, fill_unit_pessi/2]).
 
@@ -162,4 +162,8 @@ get_struct_from_name(Name, StructMap, Line) ->
 		error ->
 			e_util:ethrow(Line, "struct ~s is not found", [Name])
 	end.
+
+-spec merge_vars(#e_vars{}, #e_vars{}) -> #e_vars{}.
+merge_vars(#e_vars{names = N1, type_map = M1, offset_map = O1}, #e_vars{names = N2, type_map = M2, offset_map = O2}) ->
+	#e_vars{names = lists:append(N1, N2), type_map = maps:merge(M1, M2), offset_map = maps:merge(O1, O2)}.
 

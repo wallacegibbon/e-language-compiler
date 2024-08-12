@@ -4,45 +4,50 @@
 
 -type e_compile_options() :: map().
 
--spec compile_from_raw_ast(e_ast(), e_compile_options()) -> {e_ast(), #{atom() => e_type()}, e_ast()}.
+-spec compile_from_raw_ast(e_ast(), e_compile_options()) -> {e_ast(), #e_vars{}, e_ast()}.
 compile_from_raw_ast(AST, CustomCompileOptions) ->
 	CompileOptions = maps:merge(default_compiler_options(), CustomCompileOptions),
-	{AST2, VarTypeMap, InitCode0} = e_variable:fetch_variables(AST),
-	{FnTypeMap, StructMap0} = e_util:make_function_and_struct_map_from_ast(AST2),
+	{GlobalVars0, AST02, InitCode0} = e_variable:fetch_variables(AST),
+	{FnTypeMap, StructMap0} = e_util:make_function_and_struct_map_from_ast(AST02),
 
-	%% struct recursion is not allowed.
+	%% Struct recursion is not allowed.
 	ensure_no_recursive_struct(StructMap0),
 	#{pointer_width := PointerWidth} = CompileOptions,
-	%% calculate struct size, filed offsets
-	AST3 = e_size:fill_struct_info(AST2, {StructMap0, PointerWidth}),
 
-	%% struct size is updated, so StructMap needs to be updated, too
-	{_, StructMap1} = e_util:make_function_and_struct_map_from_ast(AST3),
-	%% expand sizeof expression
+	%% Calculate struct size, filed offsets
+	SizeContext = {StructMap0, PointerWidth},
+	AST03 = e_size:fill_struct_info(AST02, SizeContext),
+	%% Fill offset of variables and struct fields.
+	AST04 = e_size:fill_offsets(AST03, SizeContext),
+	GlobalVars = e_size:fill_var_offsets(GlobalVars0, SizeContext),
+
+	%% Struct size is updated, so StructMap needs to be updated, too
+	{_, StructMap1} = e_util:make_function_and_struct_map_from_ast(AST04),
+	%% Expand `sizeof` expression
 	Ctx1 = {StructMap1, PointerWidth},
-	AST4 = e_size:expand_sizeof_in_ast(AST3, Ctx1),
+	AST05 = e_size:expand_sizeof_in_ast(AST04, Ctx1),
 
 	%% Initializing code for global variables are not in main ast,
 	%% do not forget it
 	InitCode1 = e_size:expand_sizeof_in_stmts(InitCode0, Ctx1),
 	%% sizeof expressions are expanded, so StructMap needs to be updated
-	{_, StructMap2} = e_util:make_function_and_struct_map_from_ast(AST4),
+	{_, StructMap2} = e_util:make_function_and_struct_map_from_ast(AST05),
 
 	%% type checking & converting
 	Maps = {FnTypeMap, StructMap2},
 
-	e_type:check_types_in_ast(AST4, VarTypeMap, Maps),
-	e_type:check_type_in_stmts(InitCode1, VarTypeMap, Maps),
+	e_type:check_types_in_ast(AST05, GlobalVars, Maps),
+	e_type:check_type_in_stmts(InitCode1, GlobalVars, Maps),
 
-	%% expand init exprs like A{a=1} and {1,2,3}
-	AST5 = e_init_expr:expand_in_function(AST4, StructMap2),
+	%% expand init exprs like A{a = 1} and {1, 2, 3}
+	AST06 = e_init_expr:expand_in_function(AST05, StructMap2),
 	InitCode2 = e_init_expr:expand_init_expr(InitCode1, StructMap2),
 
 	%% convert `.` into `@`, `+` and `^`
-	AST6 = e_struct:eliminate_dot_in_ast(AST5, VarTypeMap, Maps),
-	InitCode3 = e_struct:eliminate_dot_in_stmts(InitCode2, VarTypeMap, Maps),
+	AST07 = e_struct:eliminate_dot_in_ast(AST06, GlobalVars, Maps),
+	InitCode3 = e_struct:eliminate_dot_in_stmts(InitCode2, GlobalVars, Maps),
 
-	{AST6, VarTypeMap, InitCode3}.
+	{AST07, GlobalVars, InitCode3}.
 
 -spec default_compiler_options() -> e_compile_options().
 default_compiler_options() ->

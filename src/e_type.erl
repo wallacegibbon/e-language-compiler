@@ -4,35 +4,35 @@
 
 -type interface_context() :: {#{atom() => #e_fn_type{}}, #{atom() => #e_struct{}}}.
 
--spec check_types_in_ast(e_ast(), #{atom() => e_type()}, interface_context()) -> ok.
-check_types_in_ast([#e_function{stmts = Stmts} = Fn | Rest], GlobalVarTypes, {FnTypeMap, StructMap} = Maps) ->
-	#e_function{vars = #e_vars{type_map = VarTypes}, type = FnType} = Fn,
-	check_types(maps:values(VarTypes), StructMap),
+-spec check_types_in_ast(e_ast(), #e_vars{}, interface_context()) -> ok.
+check_types_in_ast([#e_function{stmts = Stmts} = Fn | Rest], GlobalVars, {FnTypeMap, StructMap} = Maps) ->
+	#e_function{vars = #e_vars{type_map = TypeMap} = LocalVars, type = FnType} = Fn,
+	check_types(maps:values(TypeMap), StructMap),
 	check_type(FnType#e_fn_type.ret, StructMap),
-	CurrentVars = maps:merge(GlobalVarTypes, VarTypes),
+	Vars = e_util:merge_vars(GlobalVars, LocalVars),
 	%% The `#e_fn_type.ret` is used to check the operand of `return` statement.
-	type_of_nodes(Stmts, {CurrentVars, FnTypeMap, StructMap, FnType#e_fn_type.ret}),
-	check_types_in_ast(Rest, GlobalVarTypes, Maps);
-check_types_in_ast([#e_struct{name = Name} = S | Rest], GlobalVarTypes, {FnTypeMap, StructMap} = Maps) ->
+	type_of_nodes(Stmts, {Vars, FnTypeMap, StructMap, FnType#e_fn_type.ret}),
+	check_types_in_ast(Rest, GlobalVars, Maps);
+check_types_in_ast([#e_struct{name = Name} = S | Rest], GlobalVars, {FnTypeMap, StructMap} = Maps) ->
 	#e_struct{fields = #e_vars{type_map = FieldTypeMap}, default_value_map = ValMap} = S,
 	check_types(maps:values(FieldTypeMap), StructMap),
 	%% check the default values for fields
-	Ctx = {GlobalVarTypes, FnTypeMap, StructMap, #e_basic_type{}},
+	Ctx = {GlobalVars, FnTypeMap, StructMap, #e_basic_type{}},
 	check_types_in_struct_fields(FieldTypeMap, ValMap, Name, Ctx),
-	check_types_in_ast(Rest, GlobalVarTypes, Maps);
-check_types_in_ast([_ | Rest], GlobalVarTypes, Maps) ->
-	check_types_in_ast(Rest, GlobalVarTypes, Maps);
+	check_types_in_ast(Rest, GlobalVars, Maps);
+check_types_in_ast([_ | Rest], GlobalVars, Maps) ->
+	check_types_in_ast(Rest, GlobalVars, Maps);
 check_types_in_ast([], _, _) ->
 	ok.
 
--spec check_type_in_stmts([e_stmt()], #{atom() => e_type()}, interface_context()) -> ok.
-check_type_in_stmts(Stmts, GlobalVarTypes, {FnTypeMap, StructMap}) ->
-	type_of_nodes(Stmts, {GlobalVarTypes, FnTypeMap, StructMap, #e_basic_type{}}),
+-spec check_type_in_stmts([e_stmt()], #e_vars{}, interface_context()) -> ok.
+check_type_in_stmts(Stmts, GlobalVars, {FnTypeMap, StructMap}) ->
+	type_of_nodes(Stmts, {GlobalVars, FnTypeMap, StructMap, #e_basic_type{}}),
 	ok.
 
 -type context() ::
 	{
- 	GlobalVarTypes :: #{atom() => e_type()},
+	GlobalVars :: #e_vars{},
 	FnTypeMap :: #{atom() := #e_fn_type{}},
 	StructMap :: #{atom() => #e_struct{}},
 	ReturnType :: e_type()
@@ -93,8 +93,7 @@ type_of_node(#e_op{tag = '-', data = [Op1, Op2], line = Line}, Ctx) ->
 					e_util:ethrow(Line, type_error_of_op2('-', Op1Type, Op2Type))
 			end
 	end;
-type_of_node(#e_op{tag = Tag, data = [Op1, Op2], line = Line}, Ctx)
-  when Tag =:= '*'; Tag =:= '/' ->
+type_of_node(#e_op{tag = Tag, data = [Op1, Op2], line = Line}, Ctx) when Tag =:= '*'; Tag =:= '/' ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
 	case are_both_number_of_same_type(Op1Type, Op2Type) of
@@ -164,9 +163,9 @@ type_of_node(#e_return_stmt{expr = Expr, line = Line}, {_, _, _, FnRetType} = Ct
 		false ->
 			e_util:ethrow(Line, "ret type should be (~s), not (~s)", [type_to_str(FnRetType), type_to_str(RealRet)])
 	end;
-type_of_node(#e_varref{name = Name, line = Line}, {VarTypes, FnTypeMap, StructMap, _}) ->
+type_of_node(#e_varref{name = Name, line = Line}, {#e_vars{type_map = TypeMap}, FnTypeMap, StructMap, _}) ->
 	Type =
-		case maps:find(Name, VarTypes) of
+		case maps:find(Name, TypeMap) of
 			{ok, T} ->
 				T;
 			error ->

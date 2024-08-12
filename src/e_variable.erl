@@ -2,10 +2,10 @@
 -export([fetch_variables/1]).
 -include("e_record_definition.hrl").
 
--spec fetch_variables(e_ast_raw()) -> {e_ast_raw(), #{atom() => e_type()}, e_ast_raw()}.
+-spec fetch_variables(e_ast_raw()) -> {#e_vars{}, e_ast_raw(), e_ast_raw()}.
 fetch_variables(AST) ->
-	{AST3, VarTypes, InitCode} = fetch_variables(prepare_struct_init_expr(AST), [], {#{}, [], true}),
-	{AST3, VarTypes, InitCode}.
+	{Vars, AST3, InitCode} = fetch_variables(prepare_struct_init_expr(AST), [], {#e_vars{}, [], [], true}),
+	{Vars, AST3, InitCode}.
 
 -spec prepare_struct_init_expr(e_ast_raw()) -> e_ast_raw().
 prepare_struct_init_expr([#e_function_raw{stmts = Stmts} = Fn | Rest]) ->
@@ -41,46 +41,47 @@ struct_init_to_map([], ExprMap) ->
 
 %% In function expressions, the init code of defvar can not be simply fetched out from the code,
 %% it should be replaced as assignment in the same place.
--spec fetch_variables(e_ast_raw(), e_ast_raw(), {#{atom() => e_type()}, e_ast(), CollectInitCode :: boolean()})
-	-> {e_ast_raw(), #{atom() => e_type()}, e_ast_raw()}.
+-spec fetch_variables(e_ast_raw(), e_ast_raw(), {#e_vars{}, Names :: [atom()], e_ast(), CollectInitCode :: boolean()})
+	-> {#e_vars{}, e_ast_raw(), e_ast_raw()}.
 
-fetch_variables([#e_vardef{} = Hd | Rest], NewAST, {VarTypes, InitCode, true}) ->
+fetch_variables([#e_vardef{} = Hd | Rest], NewAST, {#e_vars{type_map = TypeMap} = Vars, Names, InitCode, true}) ->
 	#e_vardef{name = Name, type = Type, line = Line, init_value = InitialValue} = Hd,
-	ensure_no_name_conflict(Name, VarTypes, Line),
-	NewCtx = {VarTypes#{Name => Type}, append_to_ast(InitCode, Name, InitialValue, Line), true},
+	ensure_no_name_conflict(Name, Vars, Line),
+	NewInitCode = append_to_ast(InitCode, Name, InitialValue, Line),
+	NewVars = Vars#e_vars{type_map = TypeMap#{Name => Type}},
+	NewCtx = {NewVars, [Name | Names], NewInitCode, true},
 	fetch_variables(Rest, NewAST, NewCtx);
-fetch_variables([#e_vardef{} = Hd | Rest], NewAST, {VarTypes, InitCode, false}) ->
+fetch_variables([#e_vardef{} = Hd | Rest], NewAST, {#e_vars{type_map = TypeMap} = Vars, Names, InitCode, false}) ->
 	#e_vardef{name = Name, type = Type, line = Line, init_value = InitialValue} = Hd,
-	ensure_no_name_conflict(Name, VarTypes, Line),
-	NewCtx = {VarTypes#{Name => Type}, InitCode, false},
+	ensure_no_name_conflict(Name, Vars, Line),
+	NewCtx = {Vars#e_vars{type_map = TypeMap#{Name => Type}}, [Name | Names], InitCode, false},
 	fetch_variables(Rest, append_to_ast(NewAST, Name, InitialValue, Line), NewCtx);
-fetch_variables([#e_function_raw{} = Hd | Rest], NewAST, {GlobalVars, _, _} = Ctx) ->
+fetch_variables([#e_function_raw{} = Hd | Rest], NewAST, {GlobalVars, _, _, _} = Ctx) ->
 	#e_function_raw{name = Name, ret_type = Ret, params = Params, stmts = Stmts, line = Line} = Hd,
-	{[], ParamVars, ParamInitCode} = fetch_variables(Params, [], {#{}, [], true}),
+	{ParamVars, [], ParamInitCode} = fetch_variables(Params, [], {#e_vars{}, [], [], true}),
 	e_util:assert(ParamInitCode =:= [], {Line, "function params can not have default value"}),
-	{NewStmts, FnVarTypes, []} = fetch_variables(Stmts, [], {ParamVars, [], false}),
-	%% local variables should have different names from global variables.
-	check_variable_conflict(GlobalVars, FnVarTypes),
+	check_variable_conflict(GlobalVars, ParamVars),
+	{LocalVars, NewStmts, []} = fetch_variables(Stmts, [], {ParamVars, [], [], false}),
+	check_variable_conflict(GlobalVars, LocalVars),
+	Vars = e_util:merge_vars(ParamVars, LocalVars),
 	%% label names should be different from variables since the operand of goto could be a pointer.
 	Labels = lists:filter(fun(E) -> element(1, E) =:= e_goto_label end, Stmts),
-	check_label_conflict(Labels, GlobalVars, FnVarTypes),
+	check_label_conflict(Labels, GlobalVars),
+	check_label_conflict(Labels, Vars),
 	FnType = #e_fn_type{params = get_values_by_defs(Params, ParamVars), ret = Ret, line = Line},
-	Vars = #e_vars{type_map = FnVarTypes},
 	ParamNames = e_util:names_of_var_defs(Params),
-	Fn = #e_function{name = Name, vars = Vars, stmts = NewStmts, param_names = ParamNames, type = FnType, line = Line},
+	Fn = #e_function{name = Name, vars = Vars, param_names = ParamNames, type = FnType, stmts = NewStmts, line = Line},
 	fetch_variables(Rest, [Fn | NewAST], Ctx);
 fetch_variables([#e_struct_raw{name = Name, fields = RawFields, line = Line} | Rest], NewAST, Ctx) ->
 	%% struct can have default value
-	{[], FieldTypes, StructInitCode} = fetch_variables(RawFields, [], {#{}, [], true}),
+	{Fields, [], StructInitCode} = fetch_variables(RawFields, [], {#e_vars{}, [], [], true}),
 	FieldInitMap = struct_init_to_map(StructInitCode, #{}),
-	FieldNames = lists:map(fun(#e_vardef{name = N}) -> N end, RawFields),
-	Fields = #e_vars{names = FieldNames, type_map = FieldTypes},
 	S = #e_struct{name = Name, fields = Fields, default_value_map = FieldInitMap, line = Line},
 	fetch_variables(Rest, [S | NewAST], Ctx);
 fetch_variables([Any | Rest], NewAST, Ctx) ->
 	fetch_variables(Rest, [Any | NewAST], Ctx);
-fetch_variables([], NewAST, {VarTypes, InitCode, _}) ->
-	{lists:reverse(NewAST), VarTypes, lists:reverse(InitCode)}.
+fetch_variables([], NewAST, {Vars, Names, InitCode, _}) ->
+	{Vars#e_vars{names = lists:reverse(Names)}, lists:reverse(NewAST), lists:reverse(InitCode)}.
 
 -spec append_to_ast([e_stmt()], atom(), e_expr(), integer()) -> e_ast().
 append_to_ast(AST, VarName, InitialValue, Line) when InitialValue =/= none ->
@@ -89,27 +90,26 @@ append_to_ast(AST, _, _, _) ->
 	AST.
 
 %% TODO: dialyzer went crazy here:
-%% The pattern <[{'e_goto_label', Line, Name} | Rest], GlobalVars, LocalVars>
+%% The pattern <[{'e_goto_label', Line, Name} | Rest], GlobalVarMap, LocalVarMap>
 %% can never match the type <[],#{atom()=>_},#{atom()=>_}>
--spec check_label_conflict([#e_goto_label{}], #{atom() => e_type()}, #{atom() => e_type()}) -> ok.
-check_label_conflict([#e_goto_label{name = Name, line = Line} | Rest], GlobalVars, LocalVars) ->
-	ensure_no_name_conflict(Name, LocalVars, Line),
-	ensure_no_name_conflict(Name, GlobalVars, Line),
-	check_label_conflict(Rest, GlobalVars, LocalVars);
-check_label_conflict([], _, _) ->
+-spec check_label_conflict([#e_goto_label{}], #e_vars{}) -> ok.
+check_label_conflict([#e_goto_label{name = Name, line = Line} | Rest], #e_vars{type_map = VarMap} = Vars) ->
+	ensure_no_name_conflict(Name, VarMap, Line),
+	check_label_conflict(Rest, Vars);
+check_label_conflict([], _) ->
 	ok.
 
--spec check_variable_conflict(#{atom() => e_type()}, #{atom() => e_type()}) -> ok.
-check_variable_conflict(GlobalVars, LocalVars) ->
-	case maps:to_list(maps:with(maps:keys(GlobalVars), LocalVars)) of
+-spec check_variable_conflict(#e_vars{}, #e_vars{}) -> ok.
+check_variable_conflict(#e_vars{type_map = GlobalVarMap}, #e_vars{type_map = LocalVarMap}) ->
+	case maps:to_list(maps:with(maps:keys(GlobalVarMap), LocalVarMap)) of
 		[{Name, T} | _] ->
 			throw_name_conflict(Name, element(2, T));
 		[] ->
 			ok
 	end.
 
--spec ensure_no_name_conflict(atom(), #{atom() => e_type()}, integer()) -> ok.
-ensure_no_name_conflict(Name, VarMap, Line) ->
+-spec ensure_no_name_conflict(atom(), #e_vars{}, integer()) -> ok.
+ensure_no_name_conflict(Name, #e_vars{type_map = VarMap}, Line) ->
 	case maps:find(Name, VarMap) of
 		{ok, _} ->
 			throw_name_conflict(Name, Line);
@@ -121,7 +121,7 @@ ensure_no_name_conflict(Name, VarMap, Line) ->
 throw_name_conflict(Name, Line) ->
 	throw({Line, e_util:fmt("name ~s has already been used", [Name])}).
 
--spec get_values_by_defs([#e_vardef{}], #{atom() => any()}) -> [any()].
-get_values_by_defs(DefList, Map) ->
+-spec get_values_by_defs([#e_vardef{}], #e_vars{}) -> [any()].
+get_values_by_defs(DefList, #e_vars{type_map = Map}) ->
 	e_util:get_values_by_keys(e_util:names_of_var_defs(DefList), Map).
 

@@ -1,5 +1,5 @@
 -module(e_size).
--export([expand_sizeof_in_ast/2, expand_sizeof_in_stmts/2, fill_struct_info/2]).
+-export([expand_sizeof_in_ast/2, expand_sizeof_in_stmts/2, fill_struct_info/2, fill_offsets/2, fill_var_offsets/2]).
 -include("e_record_definition.hrl").
 
 -type context() :: {StructMap :: #{atom() => #e_struct{}}, PointerWidth :: non_neg_integer()}.
@@ -37,11 +37,8 @@ expand_sizeof_in_expr(Any, _) ->
 	Any.
 
 -spec fill_struct_info(e_ast(), context()) -> e_ast().
-fill_struct_info(AST, {_, PointerWidth} = Ctx) ->
-	%% struct definition are only allowed in top level of an AST.
-	AST1 = lists:map(fun(E) -> fill_struct_size_and_align(E, Ctx) end, AST),
-	{_, StructMap1} = e_util:make_function_and_struct_map_from_ast(AST1),
-	lists:map(fun(E) -> fill_struct_offsets(E, {StructMap1, PointerWidth}) end, AST1).
+fill_struct_info(AST, Ctx) ->
+	lists:map(fun(E) -> fill_struct_size_and_align(E, Ctx) end, AST).
 
 -spec fill_struct_size_and_align(e_ast_elem(), context()) -> e_ast_elem().
 fill_struct_size_and_align(#e_struct{} = S, Ctx) ->
@@ -49,20 +46,30 @@ fill_struct_size_and_align(#e_struct{} = S, Ctx) ->
 fill_struct_size_and_align(Any, _) ->
 	Any.
 
--spec fill_struct_offsets(e_ast_elem(), context()) -> e_ast_elem().
-fill_struct_offsets(#e_struct{fields = #e_vars{names = FieldNames, type_map = TypeMap} = OldVars} = S, Ctx) ->
-	FieldTypeList = get_kvs_by_names(FieldNames, TypeMap),
-	{_, OffsetMap} = size_of_struct_fields(FieldTypeList, {0, #{}}, Ctx),
-	S#e_struct{fields = OldVars#e_vars{offset_map = OffsetMap}};
-fill_struct_offsets(Any, _) ->
+-spec fill_offsets(e_ast(), context()) -> e_ast().
+fill_offsets(AST, Ctx) ->
+	lists:map(fun(E) -> fill_offsets_stmt(E, Ctx) end, AST).
+
+-spec fill_offsets_stmt(e_ast_elem(), context()) -> e_ast_elem().
+fill_offsets_stmt(#e_function{vars = Old} = S, Ctx) ->
+	S#e_function{vars = fill_var_offsets(Old, Ctx)};
+fill_offsets_stmt(#e_struct{fields = Old} = S, Ctx) ->
+	S#e_struct{fields = fill_var_offsets(Old, Ctx)};
+fill_offsets_stmt(Any, _) ->
 	Any.
+
+-spec fill_var_offsets(#e_vars{}, context()) -> #e_vars{}.
+fill_var_offsets(#e_vars{names = Names, type_map = TypeMap} = Old, Ctx) ->
+	TypeList = get_kvs_by_names(Names, TypeMap),
+	{_, OffsetMap} = size_and_offsets(TypeList, {0, #{}}, Ctx),
+	Old#e_vars{offset_map = OffsetMap}.
 
 -spec size_of_struct(#e_struct{}, context()) -> non_neg_integer().
 size_of_struct(#e_struct{size = Size}, _) when Size > 0 ->
 	Size;
 size_of_struct(#e_struct{fields = #e_vars{names = FieldNames, type_map = TypeMap}}, Ctx) ->
 	FieldTypeList = get_kvs_by_names(FieldNames, TypeMap),
-	{Size, _} = size_of_struct_fields(FieldTypeList, {0, #{}}, Ctx),
+	{Size, _} = size_and_offsets(FieldTypeList, {0, #{}}, Ctx),
 	Size.
 
 -spec align_of_struct(#e_struct{}, context()) -> non_neg_integer().
@@ -76,20 +83,19 @@ get_kvs_by_names(Names, Map) ->
 	Values = e_util:get_values_by_keys(Names, Map),
 	lists:zip(Names, Values).
 
-%% this is the function that calculate size and offsets
--spec size_of_struct_fields([{atom(), e_type()}], R, context()) -> R when R :: {integer(), #{atom() => integer()}}.
-size_of_struct_fields([{Name, Type} | Rest], {CurrentOffset, OffsetMap}, Ctx) ->
+-spec size_and_offsets([{atom(), e_type()}], R, context()) -> R when R :: {integer(), #{atom() => integer()}}.
+size_and_offsets([{Name, Type} | Rest], {CurrentOffset, OffsetMap}, Ctx) ->
 	FieldSize = size_of(Type, Ctx),
 	NextOffset = CurrentOffset + FieldSize,
 	Align = align_of(Type, Ctx),
 	case CurrentOffset rem Align =/= 0 of
 		true ->
 			Offset = fix_struct_field_offset(CurrentOffset, NextOffset, Align),
-			size_of_struct_fields(Rest, {Offset + FieldSize, OffsetMap#{Name => Offset}}, Ctx);
+			size_and_offsets(Rest, {Offset + FieldSize, OffsetMap#{Name => Offset}}, Ctx);
 		false ->
-			size_of_struct_fields(Rest, {NextOffset, OffsetMap#{Name => CurrentOffset}}, Ctx)
+			size_and_offsets(Rest, {NextOffset, OffsetMap#{Name => CurrentOffset}}, Ctx)
 	end;
-size_of_struct_fields([], {CurrentOffset, OffsetMap}, _) ->
+size_and_offsets([], {CurrentOffset, OffsetMap}, _) ->
 	{CurrentOffset, OffsetMap}.
 
 -spec fix_struct_field_offset(integer(), integer(), integer()) -> integer().
