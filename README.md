@@ -1,32 +1,32 @@
-## The E Language And Its Compiler
+# The E Language And Its Compiler
 
 The E language is like a simplified C language with fewer concepts and more reasonable syntax. It is designed to be:
 - **E**xplicit on pointer operations.
 - **E**asy to learn and implement.
 - Suitable for **E**mbeded systems and friendly to **E**lectronic hobbyists.
 
-Here are some comparisons:
+Here are some comparisons of C language and E language:
 
-### Basic Operations
+## Basic Operations
 
 |         C language         |        E language        |
 |----------------------------|--------------------------|
 | &p                         | p@                       |
-| *p                         | p^                       |
-| ***p                       | p^^^                     |
+| \*p                        | p^                       |
+| \*\*\*p                    | p^^^                     |
+| &p[3]                      | p+3                      |
 | p[3]                       | (p+3)^                   |
 | p.m                        | p.m                      |
-| (*p).m                     | p^.m                     |
-| p->m                       | p^.m                     |
-| &p[3]                      | p+3                      |
-| uint8_t *p                 | p: u8^                   |
-| void **p                   | p: any^^                 |
-| ((struct Blah *) p)->f1    | (p as Blah^)^.f1         |
-| sizeof(struct Blah *)      | sizeof(Blah^)            |
+| (\*p).m                    | p^.m                     |
+| p-\>m                      | p^.m                     |
+| uint8\_t \*p               | p: u8^                   |
+| void \*\*p                 | p: any^^                 |
+| ((struct Blah \*) p)->f1   | (p as Blah^)^.f1         |
+| sizeof(struct Blah \*)     | sizeof(Blah^)            |
 | malloc(sizeof(struct A))   | malloc(sizeof(A))        |
 
 
-### Array And Struct
+## Array And Struct
 
 ```
 arr: {i32, 3} = {1, 2, 3};
@@ -56,7 +56,7 @@ Blah c[2] = {{1, "a"}, {2, "b}};
 ```
 
 
-### Union
+## Union
 
 The most common usage of `union` is to reuse memory, which is useful in specific situations. But most union can be simply replaced by pointer operations.
 Here is an example about `union` in C language: 
@@ -92,15 +92,14 @@ printf("%x\n", ((a.value@ as i8^) + 2)^);
 To keep things minimum, E language do not support `union`.
 
 
-### Enum
+## Enum
 
 Enum is good, it brings better type checking to some extent. But on the other hand, everything will still work without `enum`.
-The preprocessor of E language support constant definition `#define xx xxx`, which has reduced the necessity of `enum`.
 
 To keep things minimum, E language do not support `enum`, either.
 
 
-### Function Definition
+## Function Definition
 
 ```
 fun main(argc: isize, argv: i8^^): isize
@@ -116,7 +115,7 @@ int main(int argc, char **argv)
 ```
 
 
-### Condition
+## Condition
 
 ```
 if fn1(fn2(val1)) >= fn3(val2) then
@@ -139,7 +138,7 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 ```
 
 
-### Function Pointer
+## Function Pointer
 
 ```
 my_fn1: fun (): fun (): fun () = another_fn1;
@@ -155,45 +154,18 @@ unsigned char * (*(*(*my_fn2)(char *, unsigned int))(char *, char *))(int, unsig
 ```
 
 
-## Why Another C ?
+# Why Another C ?
 
 - The syntax of C language is bad in many situations like complex function pointers.
 - The goto statement in C language is not powerful enough, gcc have "labels as values" to solve this, but it is not standard C, and it introduces new keyword.
 
 
-## Editor Support
+# Editor Support
 
 A simple Vim plugin is inside this project. Install it by copying it to the certain directory:
 
 ```sh
 mkdir -p ~/.vim/pack/my/start/
 cp -r ./misc/elang.vim/ ~/.vim/pack/my/start/
-```
-
-
-## Macro
-
-A *token-level* macro system like C and Erlang is supported. (still under developing...)
-
-Macro can bring many problems like overriding predefined variables. e.g. In C language, you can do dangerous things like `#define true 0`.
-To solve this problem, a prefix "?" should be used to make it explicit when invoking macros. (just like erlang)
-
-
-## Plans
-
-### Target
-
-This compiler only compile E language to C language for now, in the future,
-it will be compiled directly to machine language. (RISC-V may be the only target)
-
-### Heap And Stack
-
-For now, `malloc` function is the only way to allocate memory on heap, the `heap` keyword may be introduced so that you can create a object on heap directly.
-The syntax may look like this: (not decided yet)
-
-```
-b: Blah^ = heap Blah{id = 1, name = "hello"};
-
-c: Blah^ = heap {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}};
 ```
 
