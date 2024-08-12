@@ -52,7 +52,11 @@
 	%% `names` keeps the order that variables/fields got declared.
 	names = [] :: [#e_varref{}],
 	type_map = #{} :: #{atom() => e_type()},
-	offset_map = #{} :: #{atom() => non_neg_integer()}
+	offset_map = #{} :: #{atom() => non_neg_integer()},
+	%% The align of the biggest element in this `e_vars`.
+	align = 0 :: non_neg_integer(),
+	%% The whole size of this `e_vars`.
+	size = 0 :: non_neg_integer()
 	}).
 
 -record(e_function,
@@ -73,10 +77,6 @@
 	line = 0 :: integer(),
 	name :: atom(),
 	fields = #e_vars{} :: #e_vars{},
-	%% The size of the whole struct.
-	size = 0 :: non_neg_integer(),
-	%% The align of the struct. (which is the align of the biggest element in the struct)
-	align = 0 :: non_neg_integer(),
 	default_value_map = #{} :: #{atom() => e_expr()}
 	}).
 

@@ -16,9 +16,8 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 
 	%% Calculate struct size, filed offsets
 	SizeContext = {StructMap0, PointerWidth},
-	AST03 = e_size:fill_struct_info(AST02, SizeContext),
 	%% Fill offset of variables and struct fields.
-	AST04 = e_size:fill_offsets(AST03, SizeContext),
+	AST04 = e_size:fill_offsets(AST02, SizeContext),
 	GlobalVars = e_size:fill_var_offsets(GlobalVars0, SizeContext),
 
 	%% Struct size is updated, so StructMap needs to be updated, too
