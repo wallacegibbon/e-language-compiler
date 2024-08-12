@@ -67,14 +67,8 @@ ethrow(Line, FmtStr, Args) ->
 	throw({Line, fmt(FmtStr, Args)}).
 
 -spec get_values_by_keys([atom()], #{atom() => any()}) -> [any()].
-get_values_by_keys(Fields, Map) when is_map(Map) ->
-	get_values_by_keys(Fields, Map, []).
-
--spec get_values_by_keys([atom()], #{atom() => any()}, [any()]) -> [any()].
-get_values_by_keys([Field | Rest], Map, Result) ->
-	get_values_by_keys(Rest, Map, [maps:get(Field, Map) | Result]);
-get_values_by_keys([], _, Result) ->
-	lists:reverse(Result).
+get_values_by_keys(Fields, Map) ->
+	lists:map(fun(K) -> maps:get(K, Map) end, Fields).
 
 -ifdef(EUNIT).
 

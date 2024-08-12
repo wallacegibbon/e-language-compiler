@@ -1,5 +1,6 @@
 -module(e_size).
 -export([expand_sizeof_in_ast/2, expand_sizeof_in_stmts/2, fill_offsets/2, fill_var_offsets/2]).
+-export([size_of/2, align_of/2]).
 -include("e_record_definition.hrl").
 
 -type context() :: {StructMap :: #{atom() => #e_struct{}}, PointerWidth :: non_neg_integer()}.
@@ -70,8 +71,7 @@ align_of_struct(#e_struct{fields = #e_vars{type_map = TypeMap}}, Ctx) ->
 
 -spec get_kvs_by_names([atom()], #{atom() => any()}) -> [{atom(), any()}].
 get_kvs_by_names(Names, Map) ->
-	Values = e_util:get_values_by_keys(Names, Map),
-	lists:zip(Names, Values).
+	lists:zip(Names, e_util:get_values_by_keys(Names, Map)).
 
 -spec size_and_offsets([{atom(), e_type()}], R, context()) -> R
 	when R :: {Size :: integer(), Align :: integer(), OffsetMap :: #{atom() => integer()}}.
