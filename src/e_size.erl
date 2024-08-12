@@ -67,10 +67,12 @@ fill_var_offsets(#e_vars{names = Names, type_map = TypeMap} = Old, Ctx) ->
 -spec size_of_struct(#e_struct{}, context()) -> non_neg_integer().
 size_of_struct(#e_struct{size = Size}, _) when Size > 0 ->
 	Size;
-size_of_struct(#e_struct{fields = #e_vars{names = FieldNames, type_map = TypeMap}}, Ctx) ->
+size_of_struct(#e_struct{fields = #e_vars{names = FieldNames, type_map = TypeMap}} = S, Ctx) ->
 	FieldTypeList = get_kvs_by_names(FieldNames, TypeMap),
 	{Size, _} = size_and_offsets(FieldTypeList, {0, #{}}, Ctx),
-	Size.
+	%% The size of the struct should be aligned to its alignment. So we can put it into array easier.
+	Align = align_of_struct(S, Ctx),
+	e_util:fill_unit_pessi(Size, Align).
 
 -spec align_of_struct(#e_struct{}, context()) -> non_neg_integer().
 align_of_struct(#e_struct{align = Align}, _) when Align > 0 ->
@@ -90,7 +92,7 @@ size_and_offsets([{Name, Type} | Rest], {CurrentOffset, OffsetMap}, Ctx) ->
 	Align = align_of(Type, Ctx),
 	case CurrentOffset rem Align =/= 0 of
 		true ->
-			Offset = fix_struct_field_offset(CurrentOffset, NextOffset, Align),
+			Offset = fix_offset(CurrentOffset, NextOffset, Align),
 			size_and_offsets(Rest, {Offset + FieldSize, OffsetMap#{Name => Offset}}, Ctx);
 		false ->
 			size_and_offsets(Rest, {NextOffset, OffsetMap#{Name => CurrentOffset}}, Ctx)
@@ -98,8 +100,8 @@ size_and_offsets([{Name, Type} | Rest], {CurrentOffset, OffsetMap}, Ctx) ->
 size_and_offsets([], {CurrentOffset, OffsetMap}, _) ->
 	{CurrentOffset, OffsetMap}.
 
--spec fix_struct_field_offset(integer(), integer(), integer()) -> integer().
-fix_struct_field_offset(CurrentOffset, NextOffset, TargetGap) ->
+-spec fix_offset(integer(), integer(), integer()) -> integer().
+fix_offset(CurrentOffset, NextOffset, TargetGap) ->
 	case e_util:cut_extra(NextOffset, TargetGap) > e_util:cut_extra(CurrentOffset, TargetGap) of
 		true ->
 			e_util:fill_unit_opti(CurrentOffset, TargetGap);

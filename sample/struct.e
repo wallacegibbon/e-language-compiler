@@ -26,6 +26,7 @@ struct Sprite
 	id: byte = 0,
 	tag: u16 = 3,
 	pos: Pos,
+	tail: u8,
 end
 
 struct Pos
