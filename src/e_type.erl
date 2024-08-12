@@ -193,7 +193,7 @@ type_of_node(#e_struct_init_expr{} = S, {_, _, StructMap, _} = Ctx) ->
 			check_types_in_struct_fields(FieldTypeMap, ValMap, Name, Ctx),
 			#e_basic_type{class = struct, tag = Name, line = Line};
 		_ ->
-			e_util:ethrow(Line, "struct ~s is not found", [Name])
+			e_util:ethrow(Line, "type ~s is not found", [Name])
 	end;
 type_of_node(#e_op{tag = {sizeof, _}, line = Line}, _) ->
 	#e_basic_type{class = integer, tag = usize, line = Line};

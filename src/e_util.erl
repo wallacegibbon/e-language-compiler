@@ -151,7 +151,7 @@ get_struct_from_type(#e_basic_type{class = struct, tag = Name, line = Line}, Str
 		{ok, S} ->
 			S;
 		error ->
-			e_util:ethrow(Line, "struct ~s is not found", [Name])
+			e_util:ethrow(Line, "type \"~s\" is not found", [Name])
 	end.
 
 -spec get_struct_from_name(atom(), #{atom() => #e_struct{}}, integer()) -> #e_struct{}.
@@ -160,7 +160,7 @@ get_struct_from_name(Name, StructMap, Line) ->
 		{ok, S} ->
 			S;
 		error ->
-			e_util:ethrow(Line, "struct ~s is not found", [Name])
+			e_util:ethrow(Line, "type \"~s\" is not found", [Name])
 	end.
 
 -spec merge_vars(#e_vars{}, #e_vars{}) -> #e_vars{}.

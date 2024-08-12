@@ -34,12 +34,16 @@ struct Pos
 	h: u64 = 1000,
 end
 
-s1: Sprite = Sprite{id = 1, pos = Pos{x = 2, y = 3}};
+g1: Sprite = Sprite{id = 1, pos = Pos{x = 2, y = 3}};
+g2: u16 = 12;
+g3: byte = 34;
+g4: u32 = 56;
+g9: Sprite = Sprite{id = 10, pos = Pos{x = 20, y = 30}};
 
 fun main()
-	s2: Sprite = Sprite{id = 11, pos = Pos{x = 12, y = 13}};
-	s1.pos.y = 111;
-	s2.pos.y = 222;
+	l1: Sprite = Sprite{id = 11, pos = Pos{x = 12, y = 13}};
+	g1.pos.y = 111;
+	l1.pos.y = 222;
 end
 
 fun blah(tag: byte, s: Sprite^): byte

@@ -8,13 +8,18 @@ compile_to_c(InputFilename, OutputFilename) ->
 		{AST, Vars, InitCode} = parse_and_compile(InputFilename),
 		e_dump_c:generate_c_code(AST, Vars, InitCode, OutputFilename)
 	catch
-		{Filename, ErrorInfo} ->
-			io:format("~s: ~p~n", [Filename, ErrorInfo])
+		{Filename, {Line, ErrorInfo}} ->
+			io:format(standard_error, "~s:~w: ~s~n", [Filename, Line, ErrorInfo])
 	end.
 
 -spec compile_to_ast(string()) -> {e_ast(), #e_vars{}, e_ast()}.
 compile_to_ast(Filename) ->
-	parse_and_compile(Filename).
+	try
+		parse_and_compile(Filename)
+	catch
+		{Filename, {Line, ErrorInfo}} ->
+			io:format(standard_error, "~s:~w: ~s~n", [Filename, Line, ErrorInfo])
+	end.
 
 -spec parse_and_compile(string()) -> {e_ast_raw(), #e_vars{}, e_ast()}.
 parse_and_compile(Filename) ->
