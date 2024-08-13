@@ -73,7 +73,9 @@ size_and_offsets_of_vars(#e_vars{names = Names, type_map = TypeMap}, Ctx) ->
 	TypeList = e_util:get_kvpair_by_keys(Names, TypeMap),
 	size_and_offsets(TypeList, {0, 1, #{}}, Ctx).
 
--spec size_and_offsets([{atom(), e_type()}], R, context()) -> R when R :: size_and_offsets_result().
+-spec size_and_offsets([{atom(), e_type()}], In, context()) -> Out
+	when In :: size_and_offsets_result(), Out :: size_and_offsets_result().
+
 size_and_offsets([{Name, Type} | Rest], {CurrentOffset, MaxAlign, OffsetMap}, Ctx) ->
 	FieldSize = size_of(Type, Ctx),
 	NextOffset = CurrentOffset + FieldSize,

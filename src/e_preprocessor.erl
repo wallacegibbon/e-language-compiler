@@ -137,8 +137,7 @@ get_expr_till_eol([Token | Rest], CollectedTokens, Ctx) ->
 get_expr_till_eol([], CollectedTokens, _) ->
 	{lists:reverse(CollectedTokens), []}.
 
--spec replace_macro({identifier, non_neg_integer(), atom()}, macro_map(), fun(([token()]) -> Result)) -> Result
-	when Result :: any().
+-spec replace_macro({identifier, non_neg_integer(), atom()}, macro_map(), fun(([token()]) -> any())) -> any().
 replace_macro({identifier, LineNumber, Name}, MacroMap, ContinueHandler) ->
 	case MacroMap of
 		#{Name := Value} ->
@@ -251,8 +250,7 @@ process_undef_2_test() ->
 convert_elif_to_else_and_if(Tokens) ->
 	lists:flatten(convert_elif_to_else_and_if(Tokens, 0)).
 
--spec convert_elif_to_else_and_if([token()], integer()) ->
-	TokenTree when TokenTree :: [token() | TokenTree].
+-spec convert_elif_to_else_and_if([token()], integer()) -> maybe_improper_list(token(), token()).
 convert_elif_to_else_and_if([{'#', _} = PreTag, {'if', _} = Token | Rest], _) ->
 	[PreTag, Token | convert_elif_to_else_and_if(Rest, 0)];
 convert_elif_to_else_and_if([{'#', _}, {elif, LineNumber} | Rest], ElifDepth) ->

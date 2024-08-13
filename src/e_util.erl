@@ -205,7 +205,7 @@ merge_vars(?E_VARS(N1, M1, O1) = V, ?E_VARS(N2, M2, O2), _) ->
 	V#e_vars{names = lists:append(N1, N2), type_map = maps:merge(M1, M2), offset_map = maps:merge(O1, O2)}.
 
 
--spec map_find_multi(K, [#{K => any()}]) -> {ok, _} | notfound when K :: any().
+-spec map_find_multi(any(), [#{any() => any()}]) -> {ok, _} | notfound.
 map_find_multi(Key, [Map| RestMaps]) ->
 	case maps:find(Key, Map) of
 		{ok, _} = R ->

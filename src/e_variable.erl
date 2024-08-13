@@ -106,7 +106,9 @@ check_variable_conflict(#e_vars{type_map = GlobalVarMap}, #e_vars{type_map = Loc
 check_label_conflict(Stmts) ->
 	lists:foldl(fun check_label_fold_fn/2, #{}, Stmts).
 
--spec check_label_fold_fn(any(), Map) -> Map when Map :: #{atom() => integer()}.
+-spec check_label_fold_fn(any(), MapIn) -> MapOut
+	when MapIn :: #{atom() => integer()}, MapOut :: #{atom() => integer()}.
+
 check_label_fold_fn(#e_label{name = Name, line = Line}, Map) ->
 	case maps:find(Name, Map) of
 		{ok, Line0} ->
