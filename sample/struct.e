@@ -45,9 +45,18 @@ fun main()
 	l1: Sprite = Sprite{id = 11, pos = Pos{x = 12, y = 13}};
 	g1.pos.y = 111;
 	l1.pos.y = 222;
+
+	if l1.pos.y / 2 != 0 then
+		goto alignof_anchor;
+	end
+
+@@sizeof_anchor
 	l1.pos.x = sizeof(Sprite);
 	l1.pos.x = sizeof(Pos);
 	l1.pos.x = sizeof(u32);
+
+@@alignof_anchor
+
 	l1.pos.x = alignof(Sprite);
 	l1.pos.x = alignof(Pos);
 	l1.pos.x = alignof(u32);

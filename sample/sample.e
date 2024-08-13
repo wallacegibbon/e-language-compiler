@@ -88,7 +88,7 @@ fun main(argc: isize, argv: byte^^): i64
 	1 + x@;
 	%1 - x@;
 
-@finish
+@@finish
 
 	return 0;
 end

@@ -28,8 +28,8 @@ expand_in_ast([], _) ->
 expand_in_stmts(Stmts, StructMap) ->
 	expand(Stmts, [], StructMap).
 
-expand([#e_if_stmt{then = Then, else = Else} = E | Rest], NewAST, StructMap) ->
-	expand(Rest, [E#e_if_stmt{then = expand(Then, [], StructMap), else = expand(Else, [], StructMap)} | NewAST], StructMap);
+expand([#e_if_stmt{then = Then, 'else' = Else} = E | Rest], NewAST, StructMap) ->
+	expand(Rest, [E#e_if_stmt{then = expand(Then, [], StructMap), 'else' = expand(Else, [], StructMap)} | NewAST], StructMap);
 expand([#e_while_stmt{stmts = Stmts} = E | Rest], NewAST, StructMap) ->
 	expand(Rest, [E#e_while_stmt{stmts = expand(Stmts, [], StructMap)} | NewAST], StructMap);
 expand([#e_op{data = [_, _]} = Op | Rest], NewAST, StructMap) ->

@@ -1,7 +1,7 @@
 Nonterminals
 
 e_root_stmts e_root_stmt e_struct_def e_function_def e_vardefs e_vardef e_params
-e_function_stmts e_function_stmt e_if_stmt e_else_stmt e_while_stmt e_goto_label
+e_function_stmts e_function_stmt e_if_stmt e_else_stmt e_while_stmt e_label
 e_expr e_call_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr e_assign_expr
 e_type_annos e_type_anno e_op19 e_op30 e_op29 e_op28 e_op27 e_op26 e_op25 e_op2_with_assignment
 e_pointer_depth e_atomic_literal_values e_reserved_keyword
@@ -16,7 +16,7 @@ Terminals
 
 %% keywords
 struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
-while do 'if' then elif else return sizeof alignof goto as new
+while do 'if' then elif 'else' return sizeof alignof goto as new
 
 %% reserved keywords
 'cond' 'case' for break continue
@@ -102,11 +102,11 @@ e_while_stmt -> while e_expr do e_function_stmts 'end' :
 
 %% if
 e_if_stmt -> 'if' e_expr then e_function_stmts e_else_stmt :
-	#e_if_stmt{condi = '$2', then = '$4', else = '$5', line = token_line('$1')}.
+	#e_if_stmt{condi = '$2', then = '$4', 'else' = '$5', line = token_line('$1')}.
 
 e_else_stmt -> elif e_expr then e_function_stmts e_else_stmt :
-	[#e_if_stmt{condi = '$2', then = '$4', else = '$5', line = token_line('$1')}].
-e_else_stmt -> else e_function_stmts 'end' :
+	[#e_if_stmt{condi = '$2', then = '$4', 'else' = '$5', line = token_line('$1')}].
+e_else_stmt -> 'else' e_function_stmts 'end' :
 	'$2'.
 e_else_stmt -> 'end' :
 	[].
@@ -175,12 +175,12 @@ e_function_stmt -> e_vardef ';' : '$1'.
 e_function_stmt -> e_assign_expr ';' : '$1'.
 e_function_stmt -> e_if_stmt : '$1'.
 e_function_stmt -> e_while_stmt : '$1'.
-e_function_stmt -> goto e_expr ';' : #e_goto_stmt{expr = '$2', line = token_line('$1')}.
+e_function_stmt -> goto identifier ';' : #e_goto_stmt{label = token_value('$2'), line = token_line('$1')}.
 e_function_stmt -> return e_expr ';' : #e_return_stmt{expr = '$2', line = token_line('$1')}.
-e_function_stmt -> e_goto_label : '$1'.
+e_function_stmt -> e_label : '$1'.
 
-e_goto_label -> '@' identifier :
-	#e_goto_label{name = token_value('$2'), line = token_line('$2')}.
+e_label -> '@' '@' identifier :
+	#e_label{name = token_value('$3'), line = token_line('$3')}.
 
 e_expr -> e_reserved_keyword :
 	return_error(token_line('$1'), e_util:fmt("~s is reserved keyword", [token_symbol('$1')])).

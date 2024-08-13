@@ -5,7 +5,7 @@
 -spec compile_to_e(string(), string()) -> ok.
 compile_to_e(InputFilename, OutputFilename) ->
 	try
-		{AST, Vars, InitCode} = parse_and_compile(InputFilename),
+		{AST, _, InitCode} = parse_and_compile(InputFilename),
 		e_dump_e:generate_e_code(AST, InitCode, OutputFilename)
 	catch
 		{Filename, {Line, ErrorInfo}} ->

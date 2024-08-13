@@ -47,12 +47,16 @@ merge_pointer(Any) ->
 	Any.
 
 -spec stmt_to_str(e_stmt()) -> string().
-stmt_to_str(#e_if_stmt{condi = Cond, then = Then, else = Else}) ->
+stmt_to_str(#e_if_stmt{condi = Cond, then = Then, 'else' = Else}) ->
 	io_lib:format("if ~s then ~s else ~s end", [stmt_to_str(Cond), lists:map(fun stmt_to_str/1, Then), lists:map(fun stmt_to_str/1, Else)]);
 stmt_to_str(#e_while_stmt{condi = Cond, stmts = Stmts}) ->
 	io_lib:format("while ~s do ~s end", [stmt_to_str(Cond), lists:map(fun stmt_to_str/1, Stmts)]);
 stmt_to_str(#e_return_stmt{expr = Expr}) ->
 	io_lib:format("return (~s)", [stmt_to_str(Expr)]);
+stmt_to_str(#e_goto_stmt{label = Label}) ->
+	io_lib:format("goto ~s", [Label]);
+stmt_to_str(#e_label{name = Name}) ->
+	io_lib:format("@@~s", [Name]);
 stmt_to_str(#e_varref{name = Name}) ->
 	atom_to_list(Name);
 stmt_to_str(#e_op{tag = {call, Callee}, data = Args}) ->

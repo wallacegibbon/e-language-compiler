@@ -2,7 +2,7 @@
 -export([process/1]).
 
 -type macro_map() :: #{atom() => [token()]}.
--type context() :: {MacroMap :: macro_map(), RetTokens :: [token()], EndTag :: else | endif | normal}.
+-type context() :: {MacroMap :: macro_map(), RetTokens :: [token()], EndTag :: 'else' | endif | normal}.
 -type handle_ret() :: {MacroMap :: macro_map(), RetTokens :: [token()], RestTokens :: [token()]}.
 -type token() :: any().
 
@@ -58,15 +58,15 @@ handle_special([{'if', _} | Rest], {MacroMap, _, EndTag} = Ctx) ->
 				ignore_to_else_and_collect_to_endif(RestTokens, Ctx)
 		end,
 	handle_normal(RestTokensNew, {MacroMapNew, CollectedTokens, EndTag});
-handle_special([{else, _} | RestContent], {MacroMap, RetTokens, else}) ->
+handle_special([{'else', _} | RestContent], {MacroMap, RetTokens, 'else'}) ->
 	{MacroMap, RetTokens, RestContent};
-handle_special([{else, LineNumber} | _], {_, _, normal}) ->
+handle_special([{'else', LineNumber} | _], {_, _, normal}) ->
 	e_util:ethrow(LineNumber, "\"#else\" is not expected here");
 handle_special([{identifier, _, endif} | RestContent], {MacroMap, RetTokens, endif}) ->
 	{MacroMap, RetTokens, RestContent};
 %% when the "#else" part is missing ("#if" following "#endif"),
 %% pretend that the "#else\n" exists and has been swallowed, and put the "#endif" back to unhandled tokens.
-handle_special([{identifier, LineNumber, endif} | _] = Content, {MacroMap, RetTokens, else}) ->
+handle_special([{identifier, LineNumber, endif} | _] = Content, {MacroMap, RetTokens, 'else'}) ->
 	{MacroMap, RetTokens, [{'#', LineNumber} | Content]};
 handle_special([{identifier, LineNumber, error} | _], _) ->
 	e_util:ethrow(LineNumber, "compile error... (todo)");
@@ -85,7 +85,7 @@ handle_special([], {_, _, EndTag}) ->
 -spec collect_to_else_and_ignore_to_endif([token()], context()) -> handle_ret().
 collect_to_else_and_ignore_to_endif(Tokens, {MacroMap, RetTokens, _}) ->
 	%% collect "then" part
-	{MacroMapNew, CollectedTokens, RestTokensRaw} = handle_normal(Tokens, {MacroMap, [], else}),
+	{MacroMapNew, CollectedTokens, RestTokensRaw} = handle_normal(Tokens, {MacroMap, [], 'else'}),
 	%% ignore "else" part
 	{_, _, RestTokens} = handle_normal(RestTokensRaw, {MacroMap, [], endif}),
 	{MacroMapNew, CollectedTokens ++ RetTokens, RestTokens}.
@@ -93,10 +93,9 @@ collect_to_else_and_ignore_to_endif(Tokens, {MacroMap, RetTokens, _}) ->
 -spec ignore_to_else_and_collect_to_endif([token()], context()) -> handle_ret().
 ignore_to_else_and_collect_to_endif(Tokens, {MacroMap, RetTokens, _}) ->
 	%% ignore "then" part
-	{_, _, RestTokensRaw} = handle_normal(Tokens, {MacroMap, [], else}),
+	{_, _, RestTokensRaw} = handle_normal(Tokens, {MacroMap, [], 'else'}),
 	%% collect "else" part
-	{MacroMapNew, CollectedTokens, RestTokens} =
-	handle_normal(RestTokensRaw, {MacroMap, [], endif}),
+	{MacroMapNew, CollectedTokens, RestTokens} = handle_normal(RestTokensRaw, {MacroMap, [], endif}),
 	{MacroMapNew, CollectedTokens ++ RetTokens, RestTokens}.
 
 -spec handle_normal([token()], context()) -> handle_ret().
@@ -187,23 +186,19 @@ process_ifndef_false_test() ->
 	?assertEqual([{identifier, 2, a}], process(Tokens)).
 
 process_ifndef_true_test() ->
-	{ok, Tokens, _} =
-	e_scanner:string("#define BLAH\n #ifndef BLAH\n a\n #else\n b\n #endif"),
+	{ok, Tokens, _} = e_scanner:string("#define BLAH\n #ifndef BLAH\n a\n #else\n b\n #endif"),
 	?assertEqual([{identifier, 5, b}], process(Tokens)).
 
 process_recursive_1_test() ->
-	{ok, Tokens, _} =
-	e_scanner:string("#if 1\n #if 1\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
+	{ok, Tokens, _} = e_scanner:string("#if 1\n #if 1\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
 	?assertEqual([{identifier, 3, a}], process(Tokens)).
 
 process_recursive_2_test() ->
-	{ok, Tokens, _} =
-	e_scanner:string("#if 1\n #if 0\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
+	{ok, Tokens, _} = e_scanner:string("#if 1\n #if 0\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
 	?assertEqual([{identifier, 5, b}], process(Tokens)).
 
 process_recursive_3_test() ->
-	{ok, Tokens, _} =
-	e_scanner:string("#if 0\n #if 1\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
+	{ok, Tokens, _} = e_scanner:string("#if 0\n #if 1\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
 	?assertEqual([{identifier, 8, c}], process(Tokens)).
 
 process_elif_1_test() ->
@@ -211,18 +206,15 @@ process_elif_1_test() ->
 	?assertEqual([{identifier, 2, a}], process(Tokens)).
 
 process_elif_2_test() ->
-	{ok, Tokens, _} =
-	e_scanner:string("#if 0\n a\n #elif 0\n b\n #elif 0\n c\n #else\n d\n #endif"),
+	{ok, Tokens, _} = e_scanner:string("#if 0\n a\n #elif 0\n b\n #elif 0\n c\n #else\n d\n #endif"),
 	?assertEqual([{identifier, 8, d}], process(Tokens)).
 
 process_elif_3_test() ->
-	{ok, Tokens, _} =
-	e_scanner:string("#if 0\n a\n #elif 0\n b\n #elif 1\n c\n #else\n d\n #endif"),
+	{ok, Tokens, _} = e_scanner:string("#if 0\n a\n #elif 0\n b\n #elif 1\n c\n #else\n d\n #endif"),
 	?assertEqual([{identifier, 6, c}], process(Tokens)).
 
 process_elif_4_test() ->
-	{ok, Tokens, _} =
-	e_scanner:string("#if 0\n a\n #elif 1\n b\n #elif 1\n c\n #else\n d\n #endif"),
+	{ok, Tokens, _} = e_scanner:string("#if 0\n a\n #elif 1\n b\n #elif 1\n c\n #else\n d\n #endif"),
 	?assertEqual([{identifier, 4, b}], process(Tokens)).
 
 process_define_line_number_test() ->
@@ -276,7 +268,7 @@ convert_elif_to_else_and_if([], 0) ->
 
 -spec mk_elif_replacement(integer()) -> [any()].
 mk_elif_replacement(LineNumber) ->
-	[{'#', LineNumber}, {else, LineNumber}, {'#', LineNumber}, {'if', LineNumber}].
+	[{'#', LineNumber}, {'else', LineNumber}, {'#', LineNumber}, {'if', LineNumber}].
 
 -ifdef(EUNIT).
 
@@ -285,8 +277,7 @@ convert_elif_to_else_and_if_1_test() ->
 	?assertEqual("# if 1 \n a \n # else # if 1 \n b \n # endif # endif", tokens_to_str(convert_elif_to_else_and_if(Tokens))).
 
 convert_elif_to_else_and_if_2_test() ->
-	{ok, Tokens, _} =
-	e_scanner:string("#if 0\n a\n #elif 0\n b\n #elif 1\n c\n #else\n d\n #endif"),
+	{ok, Tokens, _} = e_scanner:string("#if 0\n a\n #elif 0\n b\n #elif 1\n c\n #else\n d\n #endif"),
 	?assertEqual("# if 0 \n a \n # else # if 0 \n b \n # else # if 1 \n c \n # else \n d \n # endif # endif # endif", tokens_to_str(convert_elif_to_else_and_if(Tokens))).
 
 convert_elif_to_else_and_if_3_test() ->
@@ -319,3 +310,4 @@ tokens_to_str_test() ->
 	?assertEqual("* + \n \n", tokens_to_str([{'*', 1}, {'+', 1}, {newline, 1}, {newline, 2}])).
 
 -endif.
+

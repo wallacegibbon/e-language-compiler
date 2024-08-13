@@ -184,7 +184,7 @@ type_of_node(#e_integer{line = Line}, _) ->
 	#e_basic_type{class = integer, tag = i64, line = Line};
 type_of_node(#e_string{line = Line}, _) ->
 	#e_basic_type{class = integer, p_depth = 1, tag = byte, line = Line};
-type_of_node(#e_if_stmt{condi = Condi, then = Then, else = Else, line = Line}, Ctx) ->
+type_of_node(#e_if_stmt{condi = Condi, then = Then, 'else' = Else, line = Line}, Ctx) ->
 	type_of_node(Condi, Ctx),
 	type_of_nodes(Then, Ctx),
 	type_of_nodes(Else, Ctx),
@@ -203,7 +203,7 @@ type_of_node(#e_return_stmt{expr = Expr, line = Line}, {_, _, _, FnRetType} = Ct
 	end;
 type_of_node(#e_goto_stmt{line = Line}, _) ->
 	e_util:void_type(Line);
-type_of_node(#e_goto_label{line = Line}, _) ->
+type_of_node(#e_label{line = Line}, _) ->
 	e_util:void_type(Line).
 
 -spec compare_expect_left(e_type(), e_type(), non_neg_integer()) -> e_type().

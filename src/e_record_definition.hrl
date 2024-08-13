@@ -25,7 +25,7 @@
 
 -type e_type() :: #e_basic_type{} | #e_array_type{} | #e_fn_type{}.
 
--record(e_goto_label,
+-record(e_label,
 	{
 	line = 0 :: integer(),
 	name :: atom()
@@ -137,7 +137,7 @@
 -record(e_goto_stmt,
 	{
 	line = 0 :: integer(),
-	expr :: e_expr()
+	label :: atom()
 	}).
 
 -record(e_return_stmt,
@@ -158,7 +158,7 @@
 	line = 0 :: integer(),
 	condi :: e_expr(),
 	then = [] :: [e_stmt()],
-	else = [] :: [e_stmt()]
+	'else' = [] :: [e_stmt()]
 	}).
 
 -record(e_struct_raw,
@@ -180,7 +180,7 @@
 -type e_op_tag() :: '*' | '/' | '+' | '-' | '@' | '^' | 'rem' | 'and' | 'or' | 'band' | 'bor' | 'bxor' | 'bsl' | 'bsr' | '~' | '!' | '.' | '=' | '>' | '<' | '>=' | '<=' | '!=' | '==' | {call, e_expr()} | {sizeof, e_type()} | {alignof, e_type()}.
 
 -type e_expr() :: #e_op{} | #e_integer{} | #e_float{} | #e_string{} | #e_varref{} | #e_struct_init_expr{} | #e_array_init_expr{}.
--type e_stmt() :: #e_if_stmt{} | #e_while_stmt{} | #e_goto_stmt{} | #e_goto_label{} | #e_return_stmt{} | e_expr().
+-type e_stmt() :: #e_if_stmt{} | #e_while_stmt{} | #e_goto_stmt{} | #e_label{} | #e_return_stmt{} | e_expr().
 
 -type e_ast_raw() :: [#e_function_raw{} | #e_struct_raw{} | #e_vardef{}].
 -type e_ast_elem() :: #e_function{} | #e_struct{} | #e_vardef{}.
