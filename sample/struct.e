@@ -54,7 +54,7 @@ fun main()
 end
 
 fun blah(tag: byte, s: Sprite^): byte
-	s^.pos.x = tag;
+	s^.pos.y = tag;
 	return tag + 1;
 end
 

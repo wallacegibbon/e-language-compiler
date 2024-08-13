@@ -46,6 +46,8 @@
 	name :: atom()
 	}).
 
+-type e_var_type() :: none | local | global.
+
 %% `e_vars` is used by functions and structs to hold variables (including parameters) and fields.
 -record(e_vars,
 	{
@@ -53,10 +55,12 @@
 	names = [] :: [#e_varref{}],
 	type_map = #{} :: #{atom() => e_type()},
 	offset_map = #{} :: #{atom() => non_neg_integer()},
-	%% The align of the biggest element in this `e_vars`.
+	%% The alignment of e_vars is the alignment of the biggest element in this `e_vars`.
+	%% The alignment should be higher than or equals `1`. `0` is the uninitialized value for alignments.
 	align = 0 :: non_neg_integer(),
 	%% The whole size of this `e_vars`.
-	size = 0 :: non_neg_integer()
+	size = 0 :: non_neg_integer(),
+	tag = none :: e_var_type()
 	}).
 
 -record(e_function,
@@ -67,8 +71,6 @@
 	vars = #e_vars{} :: #e_vars{},
 	param_names = [] :: [atom()],
 	type :: #e_fn_type{},
-	%% TODO: remove `labels` here. (labels should be in `stmts`).
-	labels = [] :: [#e_goto_label{}],
 	stmts = [] :: [e_stmt()]
 	}).
 

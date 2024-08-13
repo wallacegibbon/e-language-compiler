@@ -1,8 +1,9 @@
 -module(e_util).
--export([make_function_and_struct_map_from_ast/1, expr_map/2, merge_plus/1, stmt_to_str/1, merge_vars/2]).
+-export([make_function_and_struct_map_from_ast/1, expr_map/2, eliminate_pointer/1, stmt_to_str/1, merge_vars/3]).
 -export([names_of_var_defs/1, names_of_var_refs/1, value_in_list/2, get_struct_from_type/2, get_struct_from_name/3]).
 -export([primitive_size_of/2, void_type/1, cut_extra/2, fill_unit_opti/2, fill_unit_pessi/2]).
--export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, map_find_multi/2]).
+-export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2, map_find_multi/2]).
+-export([fix_special_chars/1]).
 
 -include("e_record_definition.hrl").
 
@@ -10,26 +11,39 @@
 %% So you can concentrate on operators.
 -spec expr_map(fun((e_expr()) -> e_expr()), [e_stmt()]) -> [e_stmt()].
 expr_map(Fn, [#e_if_stmt{} = If | Rest]) ->
-	[If#e_if_stmt{condi = Fn(If#e_if_stmt.condi), then = expr_map(Fn, If#e_if_stmt.then), else = expr_map(Fn, If#e_if_stmt.else)} | expr_map(Fn, Rest)];
+	[If#e_if_stmt{condi = Fn(If#e_if_stmt.condi), then = expr_map(Fn, If#e_if_stmt.then), 'else' = expr_map(Fn, If#e_if_stmt.'else')} | expr_map(Fn, Rest)];
 expr_map(Fn, [#e_while_stmt{condi = Cond, stmts = Stmts} = While | Rest]) ->
 	[While#e_while_stmt{condi = Fn(Cond), stmts = expr_map(Fn, Stmts)} | expr_map(Fn, Rest)];
 expr_map(Fn, [#e_return_stmt{expr = Expr} = Ret | Rest]) ->
 	[Ret#e_return_stmt{expr = Fn(Expr)} | expr_map(Fn, Rest)];
 expr_map(Fn, [#e_op{tag = {call, Callee}, data = Args} = FnCall | Rest]) ->
-	[FnCall#e_op{tag = {call, Fn(Callee)}, data = expr_map(Fn, Args)} | expr_map(Fn, Rest)];
+	[FnCall#e_op{tag = {call, Fn(Callee)}, data = lists:map(Fn, Args)} | expr_map(Fn, Rest)];
 expr_map(Fn, [Any | Rest]) ->
 	[Fn(Any) | expr_map(Fn, Rest)];
 expr_map(_, []) ->
 	[].
 
--define(PLUS_OP(O1, O2), #e_op{tag = '+', data = [O1, O2]}).
+-spec eliminate_pointer([e_stmt()]) -> [e_stmt()].
+eliminate_pointer(Stmts1) ->
+	expr_map(fun merge_plus/1, expr_map(fun merge_pointer/1, Stmts1)).
 
+-define(PLUS_OP(O1, O2), #e_op{tag = '+', data = [O1, O2]}).
 -spec merge_plus(e_expr()) -> e_expr().
 merge_plus(?PLUS_OP(?PLUS_OP(O1, #e_integer{value = N1} = I), #e_integer{value = N2})) ->
 	merge_plus(?PLUS_OP(O1, I#e_integer{value = N1 + N2}));
 merge_plus(#e_op{data = Args} = Op) ->
-	Op#e_op{data = e_util:expr_map(fun merge_plus/1, Args)};
+	Op#e_op{data = lists:map(fun merge_plus/1, Args)};
 merge_plus(Any) ->
+	Any.
+
+-spec merge_pointer(e_expr()) -> e_expr().
+merge_pointer(#e_op{tag = '^', data = [#e_op{tag = '@', data = [E]}]}) ->
+	merge_pointer(E);
+merge_pointer(#e_op{tag = '@', data = [#e_op{tag = '^', data = [E]}]}) ->
+	merge_pointer(E);
+merge_pointer(#e_op{data = Args} = Op) ->
+	Op#e_op{data = lists:map(fun merge_pointer/1, Args)};
+merge_pointer(Any) ->
 	Any.
 
 -spec stmt_to_str(e_stmt()) -> string().
@@ -44,9 +58,9 @@ stmt_to_str(#e_varref{name = Name}) ->
 stmt_to_str(#e_op{tag = {call, Callee}, data = Args}) ->
 	io_lib:format("(~s)(~s)", [stmt_to_str(Callee), lists:map(fun stmt_to_str/1, Args)]);
 stmt_to_str(#e_op{tag = Operator, data = [Op1, Op2]}) ->
-	io_lib:format("~s ~s ~s", [stmt_to_str(Op1), Operator, stmt_to_str(Op2)]);
+	io_lib:format("(~s ~s ~s)", [stmt_to_str(Op1), Operator, stmt_to_str(Op2)]);
 stmt_to_str(#e_op{tag = Operator, data = [Operand]}) ->
-	io_lib:format("~s ~s", [stmt_to_str(Operand), Operator]);
+	io_lib:format("(~s ~s)", [stmt_to_str(Operand), Operator]);
 stmt_to_str(#e_array_init_expr{elements = Elements}) ->
 	ElementStr = string:join(lists:map(fun(#e_integer{value = V}) -> integer_to_list(V) end, Elements), ","),
 	io_lib:format("{~s}", [ElementStr]);
@@ -57,9 +71,16 @@ stmt_to_str(#e_integer{value = Val}) ->
 stmt_to_str(#e_float{value = Val}) ->
 	io_lib:format("~w", [Val]);
 stmt_to_str(#e_string{value = Val}) ->
-	Val;
+	io_lib:format("\"~s\"", [fix_special_chars(Val)]);
+stmt_to_str(#e_type_convert{expr = Expr, type = _Type}) ->
+	io_lib:format("(~s as ~s)", [stmt_to_str(Expr), type_to_str_unimplemented]);
 stmt_to_str(Any) ->
 	Any.
+
+-define(SPECIAL_CHARACTER_MAP, #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}).
+
+fix_special_chars(String) ->
+	lists:map(fun(C) -> maps:get(C, ?SPECIAL_CHARACTER_MAP, C) end, String).
 
 -spec fmt(string(), [any()]) -> string().
 fmt(FmtStr, Args) ->
@@ -76,6 +97,10 @@ ethrow(Line, FmtStr, Args) ->
 -spec get_values_by_keys([atom()], #{atom() => any()}) -> [any()].
 get_values_by_keys(Fields, Map) ->
 	lists:map(fun(K) -> maps:get(K, Map) end, Fields).
+
+-spec get_kvpair_by_keys([atom()], #{atom() => any()}) -> [{atom(), any()}].
+get_kvpair_by_keys(Names, Map) ->
+	lists:zip(Names, get_values_by_keys(Names, Map)).
 
 -ifdef(EUNIT).
 
@@ -152,7 +177,7 @@ get_struct_from_type(#e_basic_type{class = struct, tag = Name, line = Line}, Str
 		{ok, S} ->
 			S;
 		error ->
-			e_util:ethrow(Line, "type \"~s\" is not found", [Name])
+			ethrow(Line, "type \"~s\" is not found", [Name])
 	end.
 
 -spec get_struct_from_name(atom(), #{atom() => #e_struct{}}, integer()) -> #e_struct{}.
@@ -161,12 +186,20 @@ get_struct_from_name(Name, StructMap, Line) ->
 		{ok, S} ->
 			S;
 		error ->
-			e_util:ethrow(Line, "type \"~s\" is not found", [Name])
+			ethrow(Line, "type \"~s\" is not found", [Name])
 	end.
 
--spec merge_vars(#e_vars{}, #e_vars{}) -> #e_vars{}.
-merge_vars(#e_vars{names = N1, type_map = M1, offset_map = O1}, #e_vars{names = N2, type_map = M2, offset_map = O2}) ->
-	#e_vars{names = lists:append(N1, N2), type_map = maps:merge(M1, M2), offset_map = maps:merge(O1, O2)}.
+
+%% `merge_vars` will NOT merge all fields of e_vars. Only name, type_map and offset_map are merged.
+
+-define(E_VARS(Names, TypeMap, OffsetMap), #e_vars{names = Names, type_map = TypeMap, offset_map = OffsetMap}).
+
+-spec merge_vars(#e_vars{}, #e_vars{}, check_tag | ignore_tag) -> #e_vars{}.
+merge_vars(#e_vars{tag = Tag1}, #e_vars{tag = Tag2}, check_tag) when Tag1 =/= Tag2 ->
+	ethrow(0, "only vars with the same tag can be merged. (~s, ~s)", [Tag1, Tag2]);
+merge_vars(?E_VARS(N1, M1, O1) = V, ?E_VARS(N2, M2, O2), _) ->
+	V#e_vars{names = lists:append(N1, N2), type_map = maps:merge(M1, M2), offset_map = maps:merge(O1, O2)}.
+
 
 -spec map_find_multi(K, [#{K => any()}]) -> {ok, _} | notfound when K :: any().
 map_find_multi(Key, [Map| RestMaps]) ->

@@ -9,7 +9,7 @@ check_types_in_ast([#e_function{stmts = Stmts} = Fn | Rest], GlobalVars, {FnType
 	#e_function{vars = #e_vars{type_map = TypeMap} = LocalVars, type = FnType} = Fn,
 	check_types(maps:values(TypeMap), StructMap),
 	check_type(FnType#e_fn_type.ret, StructMap),
-	Vars = e_util:merge_vars(GlobalVars, LocalVars),
+	Vars = e_util:merge_vars(GlobalVars, LocalVars, ignore_tag),
 	%% The `#e_fn_type.ret` is used to check the operand of `return` statement.
 	type_of_nodes(Stmts, {Vars, FnTypeMap, StructMap, FnType#e_fn_type.ret}),
 	check_types_in_ast(Rest, GlobalVars, Maps);

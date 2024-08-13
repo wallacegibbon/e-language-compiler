@@ -1,5 +1,5 @@
 -module(e_init_expr).
--export([expand_in_function/2, expand_init_expr/2]).
+-export([expand_in_ast/2, expand_in_stmts/2]).
 -include("e_record_definition.hrl").
 
 %% for now, array and struct init expression is only allowed in assignment
@@ -16,29 +16,27 @@ check_position(#e_array_init_expr{line = Line}) ->
 check_position(_) ->
 	ok.
 
--spec expand_in_function(e_ast(), #{atom() => #e_struct{}}) -> e_ast().
-expand_in_function([#e_function{stmts = Stmts} = Fn | Rest], StructMap) ->
+-spec expand_in_ast(e_ast(), #{atom() => #e_struct{}}) -> e_ast().
+expand_in_ast([#e_function{stmts = Stmts} = Fn | Rest], StructMap) ->
 	e_util:expr_map(fun check_position/1, Stmts),
-	[Fn#e_function{stmts = expand_init_expr(Stmts, StructMap)} | expand_in_function(Rest, StructMap)];
-expand_in_function([Any | Rest], StructMap) ->
-	[Any | expand_in_function(Rest, StructMap)];
-expand_in_function([], _) ->
+	[Fn#e_function{stmts = expand_in_stmts(Stmts, StructMap)} | expand_in_ast(Rest, StructMap)];
+expand_in_ast([Any | Rest], StructMap) ->
+	[Any | expand_in_ast(Rest, StructMap)];
+expand_in_ast([], _) ->
 	[].
 
-expand_init_expr(Stmts, StructMap) ->
-	expand_init_expr(Stmts, [], StructMap).
+expand_in_stmts(Stmts, StructMap) ->
+	expand(Stmts, [], StructMap).
 
-expand_init_expr([#e_if_stmt{then = Then, else = Else} = E | Rest], NewAST, StructMap) ->
-	E2 = E#e_if_stmt{then = expand_init_expr(Then, [], StructMap), else = expand_init_expr(Else, [], StructMap)},
-	expand_init_expr(Rest, [E2 | NewAST], StructMap);
-expand_init_expr([#e_while_stmt{stmts = Stmts} = E | Rest], NewAST, StructMap) ->
-	E2 = E#e_while_stmt{stmts = expand_init_expr(Stmts, [], StructMap)},
-	expand_init_expr(Rest, [E2 | NewAST], StructMap);
-expand_init_expr([#e_op{data = [_, _]} = Op | Rest], NewAST, StructMap) ->
-	expand_init_expr(Rest, replace_init_ops(Op, StructMap) ++ NewAST, StructMap);
-expand_init_expr([Any | Rest], NewAST, StructMap) ->
-	expand_init_expr(Rest, [Any | NewAST], StructMap);
-expand_init_expr([], NewAST, _) ->
+expand([#e_if_stmt{then = Then, else = Else} = E | Rest], NewAST, StructMap) ->
+	expand(Rest, [E#e_if_stmt{then = expand(Then, [], StructMap), else = expand(Else, [], StructMap)} | NewAST], StructMap);
+expand([#e_while_stmt{stmts = Stmts} = E | Rest], NewAST, StructMap) ->
+	expand(Rest, [E#e_while_stmt{stmts = expand(Stmts, [], StructMap)} | NewAST], StructMap);
+expand([#e_op{data = [_, _]} = Op | Rest], NewAST, StructMap) ->
+	expand(Rest, replace_init_ops(Op, StructMap) ++ NewAST, StructMap);
+expand([Any | Rest], NewAST, StructMap) ->
+	expand(Rest, [Any | NewAST], StructMap);
+expand([], NewAST, _) ->
 	lists:reverse(NewAST).
 
 replace_init_ops(#e_op{tag = '=', data = [Op1, #e_struct_init_expr{} = D]}, StructMap) ->

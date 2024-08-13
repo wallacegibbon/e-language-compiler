@@ -21,7 +21,7 @@ Here are some comparisons of C language and E language:
 | p-\>m                      | p^.m                     |
 | uint8\_t \*p               | p: u8^                   |
 | void \*\*p                 | p: any^^                 |
-| ((struct Blah \*) p)->f1   | (p as Blah^)^.f1         |
+| ((struct Blah \*) p)-\>f1  | (p as Blah^)^.f1         |
 | sizeof(struct Blah \*)     | sizeof(Blah^)            |
 | malloc(sizeof(struct A))   | malloc(sizeof(A))        |
 
@@ -152,12 +152,6 @@ void (*(*(*my_fn1)())())() = another_fn1;
 
 unsigned char * (*(*(*my_fn2)(char *, unsigned int))(char *, char *))(int, unsigned int) = another_fn2;
 ```
-
-
-# Why Another C ?
-
-- The syntax of C language is bad in many situations like complex function pointers.
-- The goto statement in C language is not powerful enough, gcc have "labels as values" to solve this, but it is not standard C, and it introduces new keyword.
 
 
 # Editor Support

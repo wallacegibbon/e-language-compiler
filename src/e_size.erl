@@ -27,7 +27,7 @@ expand_kw_in_expr(#e_op{data = Data} = E, Ctx) ->
 expand_kw_in_expr(#e_struct_init_expr{field_value_map = ExprMap} = S, Ctx) ->
 	S#e_struct_init_expr{field_value_map = expand_kw_in_map(ExprMap, Ctx)};
 expand_kw_in_expr(#e_array_init_expr{elements = Elements} = A, Ctx) ->
-	A#e_array_init_expr{elements = expand_kw_in_stmts(Elements, Ctx)};
+	A#e_array_init_expr{elements = lists:map(fun(E) -> expand_kw_in_expr(E, Ctx) end, Elements)};
 expand_kw_in_expr(Any, _) ->
 	Any.
 
@@ -47,17 +47,15 @@ fill_offsets_stmt(Any, _) ->
 	Any.
 
 -spec fill_var_offsets(#e_vars{}, context()) -> #e_vars{}.
-fill_var_offsets(#e_vars{names = Names, type_map = TypeMap} = Old, Ctx) ->
-	TypeList = get_kvs_by_names(Names, TypeMap),
-	{Size, Align, OffsetMap} = size_and_offsets(TypeList, {0, 0, #{}}, Ctx),
-	Old#e_vars{offset_map = OffsetMap, size = Size, align = Align}.
+fill_var_offsets(#e_vars{} = Var, Ctx) ->
+	{Size, Align, OffsetMap} = size_and_offsets_of_vars(Var, Ctx),
+	Var#e_vars{offset_map = OffsetMap, size = Size, align = Align}.
 
 -spec size_of_struct(#e_struct{}, context()) -> non_neg_integer().
 size_of_struct(#e_struct{fields = #e_vars{size = Size}}, _) when Size > 0 ->
 	Size;
-size_of_struct(#e_struct{fields = #e_vars{names = FieldNames, type_map = TypeMap}}, Ctx) ->
-	FieldTypeList = get_kvs_by_names(FieldNames, TypeMap),
-	{Size, _, _} = size_and_offsets(FieldTypeList, {0, 0, #{}}, Ctx),
+size_of_struct(#e_struct{fields = Fields}, Ctx) ->
+	{Size, _, _} = size_and_offsets_of_vars(Fields, Ctx),
 	Size.
 
 -spec align_of_struct(#e_struct{}, context()) -> non_neg_integer().
@@ -66,13 +64,16 @@ align_of_struct(#e_struct{fields = #e_vars{align = Align}}, _) when Align > 0 ->
 align_of_struct(#e_struct{fields = #e_vars{type_map = TypeMap}}, Ctx) ->
 	maps:fold(fun(_, Type, Align) -> erlang:max(align_of(Type, Ctx), Align) end, 0, TypeMap).
 
--spec get_kvs_by_names([atom()], #{atom() => any()}) -> [{atom(), any()}].
-get_kvs_by_names(Names, Map) ->
-	lists:zip(Names, e_util:get_values_by_keys(Names, Map)).
 
--spec size_and_offsets([{atom(), e_type()}], R, context()) -> R
-	when R :: {Size :: integer(), Align :: integer(), OffsetMap :: #{atom() => integer()}}.
+-type size_and_offsets_result() ::
+	{Size :: integer(), Align :: integer(), OffsetMap :: #{atom() => integer()}}.
 
+-spec size_and_offsets_of_vars(#e_vars{}, context()) -> size_and_offsets_result().
+size_and_offsets_of_vars(#e_vars{names = Names, type_map = TypeMap}, Ctx) ->
+	TypeList = e_util:get_kvpair_by_keys(Names, TypeMap),
+	size_and_offsets(TypeList, {0, 1, #{}}, Ctx).
+
+-spec size_and_offsets([{atom(), e_type()}], R, context()) -> R when R :: size_and_offsets_result().
 size_and_offsets([{Name, Type} | Rest], {CurrentOffset, MaxAlign, OffsetMap}, Ctx) ->
 	FieldSize = size_of(Type, Ctx),
 	NextOffset = CurrentOffset + FieldSize,

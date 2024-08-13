@@ -19,9 +19,9 @@ generate_c_code(AST, #e_vars{type_map = GlobalVarMap} = GlobalVars, InitCode, Ou
 	ok = file:write_file(OutputFile, Code).
 
 -spec fix_function_for_c(e_ast_elem(), context()) -> e_ast_elem().
-fix_function_for_c(#e_function{} = Fn, {FnTypeMap, StructMap, GlobalVars}) ->
-	#e_function{stmts = Stmts, vars = LocalVars} = Fn,
-	Fn#e_function{stmts = fix_exprs_for_c(Stmts, {FnTypeMap, StructMap, e_util:merge_vars(GlobalVars, LocalVars)})};
+fix_function_for_c(#e_function{stmts = Stmts, vars = LocalVars} = Fn, {FnTypeMap, StructMap, GlobalVars}) ->
+	Vars = e_util:merge_vars(GlobalVars, LocalVars, ignore_tag),
+	Fn#e_function{stmts = fix_exprs_for_c(Stmts, {FnTypeMap, StructMap, Vars})};
 fix_function_for_c(Any, _) ->
 	Any.
 
@@ -168,12 +168,7 @@ stmt_to_str(#e_integer{value = Value}, EndChar) ->
 stmt_to_str(#e_float{value = Value}, EndChar) ->
 	io_lib:format("~w~c", [Value, EndChar]);
 stmt_to_str(#e_string{value = S}, EndChar) ->
-	io_lib:format("\"~s\"~c", [fix_special_chars(S), EndChar]).
-
--define(SPECIAL_CHARACTER_MAP, #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}).
-
-fix_special_chars(String) ->
-	lists:map(fun(C) -> maps:get(C, ?SPECIAL_CHARACTER_MAP, C) end, String).
+	io_lib:format("\"~s\"~c", [e_util:fix_special_chars(S), EndChar]).
 
 -spec translate_op(atom()) -> string() | atom().
 translate_op(assign) -> "=";

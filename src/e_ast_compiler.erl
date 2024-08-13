@@ -37,14 +37,17 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	e_type:check_type_in_stmts(InitCode1, GlobalVars, Maps),
 
 	%% expand init exprs like A{a = 1} and {1, 2, 3}
-	AST30 = e_init_expr:expand_in_function(AST20, StructMap2),
-	InitCode2 = e_init_expr:expand_init_expr(InitCode1, StructMap2),
+	AST30 = e_init_expr:expand_in_ast(AST20, StructMap2),
+	InitCode2 = e_init_expr:expand_in_stmts(InitCode1, StructMap2),
 
 	%% convert `.` into `@`, `+` and `^`
 	AST40 = e_struct:eliminate_dot_in_ast(AST30, GlobalVars, Maps),
 	InitCode3 = e_struct:eliminate_dot_in_stmts(InitCode2, GlobalVars, Maps),
 
-	{AST40, GlobalVars, InitCode3}.
+	AST50 = e_ref_trans:varref_to_offset_in_ast(AST40, GlobalVars),
+	InitCode4 = e_ref_trans:varref_to_offset_in_stmts(InitCode3, GlobalVars),
+
+	{AST50, GlobalVars, InitCode4}.
 
 -spec default_compiler_options() -> e_compile_options().
 default_compiler_options() ->

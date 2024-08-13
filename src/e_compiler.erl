@@ -1,6 +1,16 @@
 -module(e_compiler).
--export([compile_to_ast/1, compile_to_c/2]).
+-export([compile_to_ast/1, compile_to_c/2, compile_to_e/2]).
 -include("e_record_definition.hrl").
+
+-spec compile_to_e(string(), string()) -> ok.
+compile_to_e(InputFilename, OutputFilename) ->
+	try
+		{AST, Vars, InitCode} = parse_and_compile(InputFilename),
+		e_dump_e:generate_e_code(AST, InitCode, OutputFilename)
+	catch
+		{Filename, {Line, ErrorInfo}} ->
+			throw(e_util:fmt("~s:~w: ~s~n", [Filename, Line, ErrorInfo]))
+	end.
 
 -spec compile_to_c(string(), string()) -> ok.
 compile_to_c(InputFilename, OutputFilename) ->
