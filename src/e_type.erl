@@ -43,25 +43,20 @@ type_of_nodes(Stmts, Ctx) ->
 	lists:map(fun(Expr) -> type_of_node(Expr, Ctx) end, Stmts).
 
 -spec type_of_node(e_stmt(), context()) -> e_type().
-type_of_node(#e_op{tag = '=', data = [Op1, Op2], line = Line}, {_, _, StructMap, _} = Ctx) ->
-	Op1Type =
-		case Op1 of
-			#e_op{tag = '.', data = [SubOp1, SubOp2]} ->
-				type_of_struct_field(type_of_node(SubOp1, Ctx), SubOp2, StructMap, Line);
-			#e_op{tag = '^', data = [SubOp]} ->
-				dec_pointer_depth(type_of_node(SubOp, Ctx), Line);
-			#e_varref{} ->
-				type_of_node(Op1, Ctx);
-			Any ->
-				e_util:ethrow(Line, "invalid left value (~s)", [e_util:stmt_to_str(Any)])
-		end,
+type_of_node(#e_op{tag = '=', data = [#e_op{tag = '.', data = [Op11, Op12]}, Op2], line = Line}, {_, _, StructMap, _} = Ctx) ->
+	Op1Type = type_of_struct_field(type_of_node(Op11, Ctx), Op12, StructMap, Line),
 	Op2Type = type_of_node(Op2, Ctx),
-		case compare_type(Op1Type, Op2Type) of
-			true ->
-				Op1Type;
-			false ->
-				e_util:ethrow(Line, "type mismatch in \"~s = ~s\"", [type_to_str(Op1Type), type_to_str(Op2Type)])
-		end;
+	compare_expect_left(Op1Type, Op2Type, Line);
+type_of_node(#e_op{tag = '=', data = [#e_op{tag = '^', data = [SubOp]}, Op2], line = Line}, Ctx) ->
+	Op1Type = dec_pointer_depth(type_of_node(SubOp, Ctx), Line),
+	Op2Type = type_of_node(Op2, Ctx),
+	compare_expect_left(Op1Type, Op2Type, Line);
+type_of_node(#e_op{tag = '=', data = [#e_varref{} = Op1, Op2], line = Line}, Ctx) ->
+	Op1Type = type_of_node(Op1, Ctx),
+	Op2Type = type_of_node(Op2, Ctx),
+	compare_expect_left(Op1Type, Op2Type, Line);
+type_of_node(#e_op{tag = '=', data = [Any, _], line = Line}, _) ->
+	e_util:ethrow(Line, "invalid left value (~s)", [e_util:stmt_to_str(Any)]);
 type_of_node(#e_op{tag = '.', data = [Op1, Op2], line = Line}, {_, _, StructMap, _} = Ctx) ->
 	type_of_struct_field(type_of_node(Op1, Ctx), Op2, StructMap, Line);
 type_of_node(#e_op{tag = '+', data = [Op1, Op2], line = Line}, Ctx) ->
@@ -132,52 +127,29 @@ type_of_node(#e_op{tag = '^', data = [Operand], line = Line}, Ctx) ->
 		_ ->
 			e_util:ethrow(Line, "invalid \"^\" on operand ~s", [e_util:stmt_to_str(Operand)])
 	end;
-type_of_node(#e_op{tag = '@', data = [Operand], line = Line}, {_, _, StructMap, _} = Ctx) ->
-	case Operand of
-		#e_op{tag = '.', data = [Op1, Op2]} ->
-			T = type_of_struct_field(type_of_node(Op1, Ctx), Op2, StructMap, Line),
-			inc_pointer_depth(T, Line);
-		#e_varref{} ->
-			inc_pointer_depth(type_of_node(Operand, Ctx), Line);
-		#e_struct_init_expr{} ->
-			inc_pointer_depth(type_of_node(Operand, Ctx), Line);
-		_ ->
-			e_util:ethrow(Line, "invalid \"@\" on operand ~s", [e_util:stmt_to_str(Operand)])
-	end;
+type_of_node(#e_op{tag = '@', data = [#e_op{tag = '.', data = [Op1, Op2]}], line = Line}, {_, _, StructMap, _} = Ctx) ->
+	T = type_of_struct_field(type_of_node(Op1, Ctx), Op2, StructMap, Line),
+	inc_pointer_depth(T, Line);
+type_of_node(#e_op{tag = '@', data = [#e_varref{} = Op], line = Line}, Ctx) ->
+	inc_pointer_depth(type_of_node(Op, Ctx), Line);
+type_of_node(#e_op{tag = '@', data = [#e_struct_init_expr{} = Op], line = Line}, Ctx) ->
+	inc_pointer_depth(type_of_node(Op, Ctx), Line);
+type_of_node(#e_op{tag = '@', data = [Op], line = Line}, _) ->
+	e_util:ethrow(Line, "invalid \"@\" on operand ~s", [e_util:stmt_to_str(Op)]);
+type_of_node(#e_op{tag = {sizeof, _}, line = Line}, _) ->
+	#e_basic_type{class = integer, tag = usize, line = Line};
+type_of_node(#e_op{tag = {alignof, _}, line = Line}, _) ->
+	#e_basic_type{class = integer, tag = usize, line = Line};
 type_of_node(#e_op{data = [Operand]}, Ctx) ->
 	type_of_node(Operand, Ctx);
-type_of_node(#e_if_stmt{condi = Condi, then = Then, else = Else, line = Line}, Ctx) ->
-	type_of_node(Condi, Ctx),
-	type_of_nodes(Then, Ctx),
-	type_of_nodes(Else, Ctx),
-	e_util:void_type(Line);
-type_of_node(#e_while_stmt{condi = Condi, stmts = Stmts, line = Line}, Ctx) ->
-	type_of_node(Condi, Ctx),
-	type_of_nodes(Stmts, Ctx),
-	e_util:void_type(Line);
-type_of_node(#e_return_stmt{expr = Expr, line = Line}, {_, _, _, FnRetType} = Ctx) ->
-	RealRet = type_of_node(Expr, Ctx),
-	case compare_type(RealRet, FnRetType) of
-		true ->
-			RealRet;
-		false ->
-			e_util:ethrow(Line, "ret type should be (~s), not (~s)", [type_to_str(FnRetType), type_to_str(RealRet)])
-	end;
 type_of_node(#e_varref{name = Name, line = Line}, {#e_vars{type_map = TypeMap}, FnTypeMap, StructMap, _}) ->
-	Type =
-		case maps:find(Name, TypeMap) of
-			{ok, T} ->
-				T;
-			error ->
-				case maps:find(Name, FnTypeMap) of
-					{ok, T} ->
-						T;
-					error ->
-						e_util:ethrow(Line, "variable ~s is undefined", [Name])
-				end
-		end,
-	check_type(Type, StructMap),
-	Type;
+	case e_util:map_find_multi(Name, [TypeMap, FnTypeMap]) of
+		{ok, Type} ->
+			check_type(Type, StructMap),
+			Type;
+		notfound ->
+			e_util:ethrow(Line, "variable ~s is undefined", [Name])
+	end;
 type_of_node(#e_array_init_expr{elements = Elements, line = Line}, Ctx) ->
 	ElementTypes = type_of_nodes(Elements, Ctx),
 	case are_same_type(ElementTypes) of
@@ -195,12 +167,6 @@ type_of_node(#e_struct_init_expr{} = S, {_, _, StructMap, _} = Ctx) ->
 		_ ->
 			e_util:ethrow(Line, "type ~s is not found", [Name])
 	end;
-type_of_node(#e_op{tag = {sizeof, _}, line = Line}, _) ->
-	#e_basic_type{class = integer, tag = usize, line = Line};
-type_of_node(#e_goto_stmt{line = Line}, _) ->
-	e_util:void_type(Line);
-type_of_node(#e_goto_label{line = Line}, _) ->
-	e_util:void_type(Line);
 type_of_node(#e_type_convert{expr = Expr, type = Type, line = Line}, Ctx) ->
 	case {type_of_node(Expr, Ctx), Type} of
 		{#e_basic_type{p_depth = D1}, #e_basic_type{p_depth = D2}} when D1 > 0, D2 > 0 ->
@@ -217,7 +183,37 @@ type_of_node(#e_float{line = Line}, _) ->
 type_of_node(#e_integer{line = Line}, _) ->
 	#e_basic_type{class = integer, tag = i64, line = Line};
 type_of_node(#e_string{line = Line}, _) ->
-	#e_basic_type{class = integer, p_depth = 1, tag = byte, line = Line}.
+	#e_basic_type{class = integer, p_depth = 1, tag = byte, line = Line};
+type_of_node(#e_if_stmt{condi = Condi, then = Then, else = Else, line = Line}, Ctx) ->
+	type_of_node(Condi, Ctx),
+	type_of_nodes(Then, Ctx),
+	type_of_nodes(Else, Ctx),
+	e_util:void_type(Line);
+type_of_node(#e_while_stmt{condi = Condi, stmts = Stmts, line = Line}, Ctx) ->
+	type_of_node(Condi, Ctx),
+	type_of_nodes(Stmts, Ctx),
+	e_util:void_type(Line);
+type_of_node(#e_return_stmt{expr = Expr, line = Line}, {_, _, _, FnRetType} = Ctx) ->
+	RealRet = type_of_node(Expr, Ctx),
+	case compare_type(RealRet, FnRetType) of
+		true ->
+			RealRet;
+		false ->
+			e_util:ethrow(Line, "ret type should be (~s), not (~s)", [type_to_str(FnRetType), type_to_str(RealRet)])
+	end;
+type_of_node(#e_goto_stmt{line = Line}, _) ->
+	e_util:void_type(Line);
+type_of_node(#e_goto_label{line = Line}, _) ->
+	e_util:void_type(Line).
+
+-spec compare_expect_left(e_type(), e_type(), non_neg_integer()) -> e_type().
+compare_expect_left(Type1, Type2, Line) ->
+	case compare_type(Type1, Type2) of
+		true ->
+			Type1;
+		false ->
+			e_util:ethrow(Line, "type mismatch in \"~s = ~s\"", [type_to_str(Type1), type_to_str(Type2)])
+	end.
 
 -spec arguments_error_info([e_type()], [e_type()]) -> string().
 arguments_error_info(FnParamTypes, ArgsTypes) ->
@@ -267,7 +263,7 @@ type_of_struct_field(#e_basic_type{class = struct, tag = Name, p_depth = 0} = S,
 	#e_struct{fields = #e_vars{type_map = FieldTypeMap}} = e_util:get_struct_from_type(S, StructMap),
 	get_field_type(FieldName, FieldTypeMap, Name, Line);
 type_of_struct_field(T, _, _, Line) ->
-	e_util:ethrow(Line, "operand1 for \".\" is not struct ~s", [type_to_str(T)]).
+	e_util:ethrow(Line, "the left operand for \".\" is not struct ~s", [type_to_str(T)]).
 
 -spec get_field_type(atom(), #{atom() => e_type()}, atom(), integer()) -> e_type().
 get_field_type(FieldName, FieldTypeMap, StructName, Line) ->

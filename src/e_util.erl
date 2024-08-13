@@ -1,8 +1,8 @@
 -module(e_util).
--export([make_function_and_struct_map_from_ast/1, expr_map/2, merge_plus/1, assert/2]).
--export([fmt/2, ethrow/3, ethrow/2, stmt_to_str/1, get_values_by_keys/2, merge_vars/2]).
+-export([make_function_and_struct_map_from_ast/1, expr_map/2, merge_plus/1, stmt_to_str/1, merge_vars/2]).
 -export([names_of_var_defs/1, names_of_var_refs/1, value_in_list/2, get_struct_from_type/2, get_struct_from_name/3]).
 -export([primitive_size_of/2, void_type/1, cut_extra/2, fill_unit_opti/2, fill_unit_pessi/2]).
+-export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, map_find_multi/2]).
 
 -include("e_record_definition.hrl").
 
@@ -47,9 +47,16 @@ stmt_to_str(#e_op{tag = Operator, data = [Op1, Op2]}) ->
 	io_lib:format("~s ~s ~s", [stmt_to_str(Op1), Operator, stmt_to_str(Op2)]);
 stmt_to_str(#e_op{tag = Operator, data = [Operand]}) ->
 	io_lib:format("~s ~s", [stmt_to_str(Operand), Operator]);
-stmt_to_str({TypeTag, _, Val}) when TypeTag =:= integer; TypeTag =:= float ->
+stmt_to_str(#e_array_init_expr{elements = Elements}) ->
+	ElementStr = string:join(lists:map(fun(#e_integer{value = V}) -> integer_to_list(V) end, Elements), ","),
+	io_lib:format("{~s}", [ElementStr]);
+stmt_to_str(#e_struct_init_expr{name = Name}) ->
+	io_lib:format("{...} (struct ~s init expr)", [Name]);
+stmt_to_str(#e_integer{value = Val}) ->
 	io_lib:format("~w", [Val]);
-stmt_to_str({string, _, Val}) ->
+stmt_to_str(#e_float{value = Val}) ->
+	io_lib:format("~w", [Val]);
+stmt_to_str(#e_string{value = Val}) ->
 	Val;
 stmt_to_str(Any) ->
 	Any.
@@ -160,4 +167,15 @@ get_struct_from_name(Name, StructMap, Line) ->
 -spec merge_vars(#e_vars{}, #e_vars{}) -> #e_vars{}.
 merge_vars(#e_vars{names = N1, type_map = M1, offset_map = O1}, #e_vars{names = N2, type_map = M2, offset_map = O2}) ->
 	#e_vars{names = lists:append(N1, N2), type_map = maps:merge(M1, M2), offset_map = maps:merge(O1, O2)}.
+
+-spec map_find_multi(K, [#{K => any()}]) -> {ok, _} | notfound when K :: any().
+map_find_multi(Key, [Map| RestMaps]) ->
+	case maps:find(Key, Map) of
+		{ok, _} = R ->
+			R;
+		error ->
+			map_find_multi(Key, RestMaps)
+	end;
+map_find_multi(_, []) ->
+	notfound.
 

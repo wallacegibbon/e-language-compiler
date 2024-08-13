@@ -2,7 +2,7 @@ Nonterminals
 
 e_root_stmts e_root_stmt e_struct_def e_function_def e_vardefs e_vardef e_params
 e_function_stmts e_function_stmt e_if_stmt e_else_stmt e_while_stmt e_goto_label
-e_expr e_call_expr e_pre_minus_plus_expr e_sizeof_expr e_assign_expr
+e_expr e_call_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr e_assign_expr
 e_type_annos e_type_anno e_op19 e_op30 e_op29 e_op28 e_op27 e_op26 e_op25 e_op2_with_assignment
 e_pointer_depth e_atomic_literal_values e_reserved_keyword
 e_array_init_expr e_array_init_elements e_struct_init_expr e_struct_init_fields e_struct_init_assignment
@@ -16,7 +16,7 @@ Terminals
 
 %% keywords
 struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
-while do 'if' then elif else return sizeof goto as new
+while do 'if' then elif else return sizeof alignof goto as new
 
 %% reserved keywords
 'cond' 'case' for break continue
@@ -140,6 +140,10 @@ e_struct_init_assignment -> identifier '=' e_expr :
 e_sizeof_expr -> sizeof '(' e_type_anno ')' :
 	#e_op{tag = {sizeof, '$3'}, line = token_line('$2')}.
 
+%% alignof
+e_alignof_expr -> alignof '(' e_type_anno ')' :
+	#e_op{tag = {alignof, '$3'}, line = token_line('$2')}.
+
 %% function invocation
 e_call_expr -> e_expr '(' e_params ')' :
 	#e_op{tag = {call, '$1'}, data = '$3', line = token_line('$2')}.
@@ -202,6 +206,7 @@ e_expr -> e_struct_init_expr : '$1'.
 e_expr -> e_atomic_literal_values : '$1'.
 e_expr -> e_call_expr : '$1'.
 e_expr -> e_sizeof_expr : '$1'.
+e_expr -> e_alignof_expr : '$1'.
 e_expr -> '(' e_expr ')' : '$2'.
 e_expr -> '(' e_expr as e_type_anno ')' :
 	#e_type_convert{expr = '$2', type = '$4', line = token_line('$3')}.
