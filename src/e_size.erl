@@ -47,9 +47,9 @@ fill_offsets_stmt(Any, _) ->
 	Any.
 
 -spec fill_var_offsets(#e_vars{}, context()) -> #e_vars{}.
-fill_var_offsets(#e_vars{} = Var, Ctx) ->
-	{Size, Align, OffsetMap} = size_and_offsets_of_vars(Var, Ctx),
-	Var#e_vars{offset_map = OffsetMap, size = Size, align = Align}.
+fill_var_offsets(#e_vars{} = Vars, Ctx) ->
+	{Size, Align, OffsetMap} = size_and_offsets_of_vars(Vars, Ctx),
+	Vars#e_vars{offset_map = OffsetMap, size = Size, align = Align}.
 
 -spec size_of_struct(#e_struct{}, context()) -> non_neg_integer().
 size_of_struct(#e_struct{fields = #e_vars{size = Size}}, _) when Size > 0 ->

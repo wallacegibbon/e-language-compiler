@@ -72,6 +72,7 @@ fetch_variables([#e_function_raw{} = Hd | Rest], AST, {GlobalVars, _, _, _, _} =
 	check_variable_conflict(GlobalVars, LocalVars),
 	FnType = #e_fn_type{params = get_values_by_defs(Params, ParamVars), ret = Ret, line = Line},
 	ParamNames = e_util:names_of_var_defs(Params),
+	check_label_conflict(NewStmts),
 	Fn = #e_function{name = Name, vars = LocalVars, param_names = ParamNames, type = FnType, stmts = NewStmts, line = Line},
 	fetch_variables(Rest, [Fn | AST], Ctx);
 fetch_variables([#e_struct_raw{name = Name, fields = RawFields, line = Line} | Rest], AST, Ctx) ->
@@ -100,6 +101,21 @@ check_variable_conflict(#e_vars{type_map = GlobalVarMap}, #e_vars{type_map = Loc
 		[] ->
 			ok
 	end.
+
+-spec check_label_conflict([e_stmt()]) -> ok.
+check_label_conflict(Stmts) ->
+	lists:foldl(fun check_label_fold_fn/2, #{}, Stmts).
+
+-spec check_label_fold_fn(any(), Map) -> Map when Map :: #{atom() => integer()}.
+check_label_fold_fn(#e_label{name = Name, line = Line}, Map) ->
+	case maps:find(Name, Map) of
+		{ok, Line0} ->
+			e_util:ethrow(Line, "label \"~s\" conflict with line ~w", [Name, Line0]);
+		error ->
+			Map#{Name => Line}
+	end;
+check_label_fold_fn(_, Map) ->
+	Map.
 
 -spec ensure_no_name_conflict(atom(), #e_vars{}, integer()) -> ok.
 ensure_no_name_conflict(Name, #e_vars{type_map = VarMap}, Line) ->
