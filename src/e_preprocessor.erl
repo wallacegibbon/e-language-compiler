@@ -250,7 +250,7 @@ process_undef_2_test() ->
 convert_elif_to_else_and_if(Tokens) ->
 	lists:flatten(convert_elif_to_else_and_if(Tokens, 0)).
 
--spec convert_elif_to_else_and_if([token()], integer()) -> maybe_improper_list(token(), token()).
+-spec convert_elif_to_else_and_if([token()], integer()) -> e_util:tree_list(token()).
 convert_elif_to_else_and_if([{'#', _} = PreTag, {'if', _} = Token | Rest], _) ->
 	[PreTag, Token | convert_elif_to_else_and_if(Rest, 0)];
 convert_elif_to_else_and_if([{'#', _}, {elif, LineNumber} | Rest], ElifDepth) ->
