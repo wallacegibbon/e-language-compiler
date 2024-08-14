@@ -1,6 +1,56 @@
 -module(e_struct).
--export([eliminate_dot_in_ast/3, eliminate_dot_in_stmts/3]).
+-export([ensure_no_recursive_struct/1, eliminate_dot_in_ast/3, eliminate_dot_in_stmts/3]).
 -include("e_record_definition.hrl").
+
+-spec ensure_no_recursive_struct(#{atom() => #e_struct{}}) -> ok.
+ensure_no_recursive_struct(StructTypeMap) ->
+	maps:foreach(fun(_, S) -> check_struct_recursive(S, StructTypeMap) end, StructTypeMap).
+
+-spec check_struct_recursive(#e_struct{}, #{atom() => #e_struct{}}) -> ok.
+check_struct_recursive(#e_struct{name = Name, line = Line} = Struct, StructTypeMap) ->
+	try
+		check_struct_object(Struct, StructTypeMap, [])
+	catch
+		{recur, Chain} ->
+			e_util:ethrow(Line, "recursive struct ~s -> ~w", [Name, Chain])
+	end.
+
+-spec check_struct_object(#e_struct{}, #{atom() => #e_struct{}}, [atom()]) -> ok | {recur, [any()]}.
+check_struct_object(#e_struct{name = Name, fields = #e_vars{type_map = FieldTypeMap}}, StructMap, UsedStructs) ->
+	check_struct_field(maps:to_list(FieldTypeMap), StructMap, [Name | UsedStructs]).
+
+-spec check_struct_field([{atom(), e_type()}], #{atom() => #e_struct{}}, [atom()]) -> ok.
+check_struct_field([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
+	case contain_struct(FieldType, StructMap) of
+		{yes, StructName} ->
+			check_struct_field_sub(StructName, StructMap, UsedStructs);
+		no ->
+			check_struct_field(RestFields, StructMap, UsedStructs)
+	end;
+check_struct_field([], _, _) ->
+	ok.
+
+check_struct_field_sub(StructName, StructMap, UsedStructs) ->
+	case e_util:value_in_list(StructName, UsedStructs) of
+		true ->
+			throw({recur, lists:reverse([StructName | UsedStructs])});
+		false ->
+			check_struct_object(maps:get(StructName, StructMap), StructMap, UsedStructs)
+	end.
+
+-spec contain_struct(e_type(), #{atom() => #e_struct{}}) -> {yes, atom()} | no.
+contain_struct(#e_basic_type{class = struct, p_depth = 0, tag = Name, line = Line}, StructMap) ->
+	case maps:find(Name, StructMap) of
+		{ok, _} ->
+			{yes, Name};
+		_ ->
+			e_util:ethrow(Line, "undefined struct \"~s\"", [Name])
+	end;
+contain_struct(#e_array_type{elem_type = BaseType}, StructMap) ->
+	contain_struct(BaseType, StructMap);
+contain_struct(_, _) ->
+	no.
+
 
 -type interface_context() :: {#{atom() => #e_fn_type{}}, #{atom() => #e_struct{}}}.
 

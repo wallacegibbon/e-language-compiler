@@ -8,13 +8,14 @@
 compile_from_raw_ast(AST, CustomCompileOptions) ->
 	CompileOptions = maps:merge(default_compiler_options(), CustomCompileOptions),
 	{GlobalVars0, AST00, InitCode0} = e_variable:fetch_variables(AST),
+
 	{FnTypeMap, StructMap0} = e_util:make_function_and_struct_map_from_ast(AST00),
 
-	%% Struct recursion is not allowed.
-	ensure_no_recursive_struct(StructMap0),
+	%% Once the StructMap is constructed, we check the recursion problem.
+	e_struct:ensure_no_recursive_struct(StructMap0),
+
 	#{pointer_width := PointerWidth} = CompileOptions,
 
-	%% Calculate struct size, filed offsets
 	%% Fill offset of variables and struct fields.
 	AST10 = e_size:fill_offsets_in_stmts(AST00, {StructMap0, PointerWidth}),
 	%% Struct info is updated, so StructMap needs to be updated, too.
@@ -22,26 +23,25 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	GlobalVars = e_size:fill_offsets_in_vars(GlobalVars0, {StructMap1, PointerWidth}),
 
 	%% Expand expressions like `sizeof` and `alignof`.
-	Ctx1 = {StructMap1, PointerWidth},
-	AST20 = e_size:expand_kw_in_ast(AST10, Ctx1),
+	AST20 = e_size:expand_kw_in_ast(AST10, {StructMap1, PointerWidth}),
 	%% Initializing code for global variables are not in main ast, do not forget them.
-	InitCode1 = e_size:expand_kw_in_stmts(InitCode0, Ctx1),
+	InitCode1 = e_size:expand_kw_in_stmts(InitCode0, {StructMap1, PointerWidth}),
 	%% sizeof expressions are expanded, so StructMap needs to be updated
 	{_, StructMap2} = e_util:make_function_and_struct_map_from_ast(AST20),
 
 	%% type checking & converting
-	Maps = {FnTypeMap, StructMap2},
+	MapCtx = {FnTypeMap, StructMap2},
 
-	e_type:check_types_in_ast(AST20, GlobalVars, Maps),
-	e_type:check_type_in_stmts(InitCode1, GlobalVars, Maps),
+	e_type:check_types_in_ast(AST20, GlobalVars, MapCtx),
+	e_type:check_type_in_stmts(InitCode1, GlobalVars, MapCtx),
 
 	%% expand init exprs like A{a = 1} and {1, 2, 3}
 	AST30 = e_init_expr:expand_in_ast(AST20, StructMap2),
 	InitCode2 = e_init_expr:expand_in_stmts(InitCode1, StructMap2),
 
 	%% convert `.` into `@`, `+` and `^`
-	AST40 = e_struct:eliminate_dot_in_ast(AST30, GlobalVars, Maps),
-	InitCode3 = e_struct:eliminate_dot_in_stmts(InitCode2, GlobalVars, Maps),
+	AST40 = e_struct:eliminate_dot_in_ast(AST30, GlobalVars, MapCtx),
+	InitCode3 = e_struct:eliminate_dot_in_stmts(InitCode2, GlobalVars, MapCtx),
 
 	AST50 = e_ref_trans:varref_to_offset_in_ast(AST40, {GlobalVars, FnTypeMap}),
 	InitCode4 = e_ref_trans:varref_to_offset_in_stmts(InitCode3, {GlobalVars, FnTypeMap}),
@@ -51,53 +51,4 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 -spec default_compiler_options() -> e_compile_options().
 default_compiler_options() ->
 	#{pointer_width => 8}.
-
--spec ensure_no_recursive_struct(#{atom() => #e_struct{}}) -> ok.
-ensure_no_recursive_struct(StructTypeMap) ->
-	maps:foreach(fun(_, S) -> check_struct_recursive(S, StructTypeMap) end, StructTypeMap).
-
--spec check_struct_recursive(#e_struct{}, #{atom() => #e_struct{}}) -> ok.
-check_struct_recursive(#e_struct{name = Name, line = Line} = Struct, StructTypeMap) ->
-	try
-		check_struct_object(Struct, StructTypeMap, [])
-	catch
-		{recur, Chain} ->
-			e_util:ethrow(Line, "recursive struct ~s -> ~w", [Name, Chain])
-	end.
-
--spec check_struct_object(#e_struct{}, #{atom() => #e_struct{}}, [atom()]) -> ok | {recur, [any()]}.
-check_struct_object(#e_struct{name = Name, fields = #e_vars{type_map = FieldTypeMap}}, StructMap, UsedStructs) ->
-	check_struct_field(maps:to_list(FieldTypeMap), StructMap, [Name | UsedStructs]).
-
--spec check_struct_field([{atom(), e_type()}], #{atom() => #e_struct{}}, [atom()]) -> ok.
-check_struct_field([{_, FieldType} | RestFields], StructMap, UsedStructs) ->
-	case contain_struct(FieldType, StructMap) of
-		{yes, StructName} ->
-			check_struct_field_sub(StructName, StructMap, UsedStructs);
-		no ->
-			check_struct_field(RestFields, StructMap, UsedStructs)
-	end;
-check_struct_field([], _, _) ->
-	ok.
-
-check_struct_field_sub(StructName, StructMap, UsedStructs) ->
-	case e_util:value_in_list(StructName, UsedStructs) of
-		true ->
-			throw({recur, lists:reverse([StructName | UsedStructs])});
-		false ->
-			check_struct_object(maps:get(StructName, StructMap), StructMap, UsedStructs)
-	end.
-
--spec contain_struct(e_type(), #{atom() => #e_struct{}}) -> {yes, atom()} | no.
-contain_struct(#e_basic_type{class = struct, p_depth = 0, tag = Name, line = Line}, StructMap) ->
-	case maps:find(Name, StructMap) of
-		{ok, _} ->
-			{yes, Name};
-		_ ->
-			e_util:ethrow(Line, "undefined struct \"~s\"", [Name])
-	end;
-contain_struct(#e_array_type{elem_type = BaseType}, StructMap) ->
-	contain_struct(BaseType, StructMap);
-contain_struct(_, _) ->
-	no.
 

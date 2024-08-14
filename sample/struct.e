@@ -64,6 +64,7 @@ fun main(): isize
 	l1.pos.x = alignof(Pos);
 	l1.pos.x = alignof(u32);
 
+%@@alignof_anchor
 	return 0;
 end
 
