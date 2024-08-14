@@ -100,8 +100,17 @@ append_to_ast(AST, _, _, _) ->
 check_variable_conflict(#e_vars{type_map = GlobalVarMap}, #e_vars{type_map = LocalVarMap}) ->
 	case maps:to_list(maps:with(maps:keys(GlobalVarMap), LocalVarMap)) of
 		[{Name, T} | _] ->
-			e_util:ethrow(element(2, T), "name ~s has already been used", [Name]);
+			e_util:ethrow(element(2, T), "name \"~s\" has already been used", [Name]);
 		[] ->
+			ok
+	end.
+
+-spec check_name_conflict(atom(), #e_vars{}, integer()) -> ok.
+check_name_conflict(Name, #e_vars{type_map = VarMap}, Line) ->
+	case maps:find(Name, VarMap) of
+		{ok, _} ->
+			e_util:ethrow(Line, "name \"~s\" has already been used", [Name]);
+		_ ->
 			ok
 	end.
 
@@ -117,15 +126,6 @@ check_label_conflict([_ | Rest], Map) ->
 	check_label_conflict(Rest, Map);
 check_label_conflict([], _) ->
 	ok.
-
--spec check_name_conflict(atom(), #e_vars{}, integer()) -> ok.
-check_name_conflict(Name, #e_vars{type_map = VarMap}, Line) ->
-	case maps:find(Name, VarMap) of
-		{ok, _} ->
-			e_util:ethrow(Line, "name ~s has already been used", [Name]);
-		_ ->
-			ok
-	end.
 
 -spec get_values_by_defs([#e_vardef{}], #e_vars{}) -> [any()].
 get_values_by_defs(DefList, #e_vars{type_map = Map}) ->
