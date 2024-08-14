@@ -53,7 +53,7 @@ struct_init_to_map([], ExprMap) ->
 %% Caution: fetch_variables/3 generate IN-COMPLETE `#e_vars{}` values here. (For functions, structs and global variables)
 %% (Only `names`, `type_map` and `tag` fields are updated. `size`, `align` and `offset_map` fields are to be updated by functions in `e_size.erl`)
 
--spec fetch_variables(e_ast_raw(), e_ast_raw(), fetch_variables_state()) -> {#e_vars{}, e_ast_raw(), e_ast_raw()}.
+-spec fetch_variables(e_ast_raw(), e_ast_raw(), fetch_variables_state()) -> {#e_vars{}, e_ast(), e_ast()}.
 fetch_variables([#e_vardef{} = Hd | Rest], AST, {#e_vars{type_map = TypeMap} = Vars, Names, InitCode, true, Tag}) ->
 	#e_vardef{name = Name, type = Type, line = Line, init_value = InitialValue} = Hd,
 	ensure_no_name_conflict(Name, Vars, Line),
