@@ -1,5 +1,5 @@
 -module(e_size).
--export([expand_kw_in_ast/2, expand_kw_in_stmts/2, fill_offsets/2, fill_var_offsets/2]).
+-export([expand_kw_in_ast/2, expand_kw_in_stmts/2, fill_offsets_in_stmts/2, fill_offsets_in_vars/2]).
 -export([size_of/2, align_of/2]).
 -include("e_record_definition.hrl").
 
@@ -34,27 +34,27 @@ expand_kw_in_expr(Any, _) ->
 expand_kw_in_map(Map, Ctx) ->
 	maps:map(fun(_, V1) -> expand_kw_in_expr(V1, Ctx) end, Map).
 
--spec fill_offsets(e_ast(), context()) -> e_ast().
-fill_offsets(AST, Ctx) ->
-	lists:map(fun(E) -> fill_offsets_stmt(E, Ctx) end, AST).
+-spec fill_offsets_in_stmts(e_ast(), context()) -> e_ast().
+fill_offsets_in_stmts([#e_function{vars = Old} = Fn | Rest], Ctx) ->
+	[Fn#e_function{vars = fill_offsets_in_vars(Old, Ctx)} | fill_offsets_in_stmts(Rest, Ctx)];
+fill_offsets_in_stmts([#e_struct{name = Name, fields = Old} = S | Rest], {StructMap, PointerWidth} = Ctx) ->
+	FilledS = S#e_struct{fields = fill_offsets_in_vars(Old, Ctx)},
+	%% StructMap in Ctx got updated to avoid some duplicated calculations.
+	[FilledS | fill_offsets_in_stmts(Rest, {StructMap#{Name := FilledS}, PointerWidth})];
+fill_offsets_in_stmts([Any | Rest], Ctx) ->
+	[Any | fill_offsets_in_stmts(Rest, Ctx)];
+fill_offsets_in_stmts([], _) ->
+	[].
 
--spec fill_offsets_stmt(e_ast_elem(), context()) -> e_ast_elem().
-fill_offsets_stmt(#e_function{vars = Old} = S, Ctx) ->
-	S#e_function{vars = fill_var_offsets(Old, Ctx)};
-fill_offsets_stmt(#e_struct{fields = Old} = S, Ctx) ->
-	S#e_struct{fields = fill_var_offsets(Old, Ctx)};
-fill_offsets_stmt(Any, _) ->
-	Any.
-
--spec fill_var_offsets(#e_vars{}, context()) -> #e_vars{}.
-fill_var_offsets(#e_vars{} = Vars, Ctx) ->
+-spec fill_offsets_in_vars(#e_vars{}, context()) -> #e_vars{}.
+fill_offsets_in_vars(#e_vars{} = Vars, Ctx) ->
 	{Size, Align, OffsetMap} = size_and_offsets_of_vars(Vars, Ctx),
 	Vars#e_vars{offset_map = OffsetMap, size = Size, align = Align}.
 
 -spec size_of_struct(#e_struct{}, context()) -> non_neg_integer().
 size_of_struct(#e_struct{fields = #e_vars{size = Size}}, _) when Size > 0 ->
 	Size;
-size_of_struct(#e_struct{fields = Fields}, Ctx) ->
+size_of_struct(#e_struct{name = Name, fields = Fields}, Ctx) ->
 	{Size, _, _} = size_and_offsets_of_vars(Fields, Ctx),
 	Size.
 

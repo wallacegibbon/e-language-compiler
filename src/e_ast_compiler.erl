@@ -15,12 +15,11 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	#{pointer_width := PointerWidth} = CompileOptions,
 
 	%% Calculate struct size, filed offsets
-	SizeContext = {StructMap0, PointerWidth},
 	%% Fill offset of variables and struct fields.
-	AST10 = e_size:fill_offsets(AST00, SizeContext),
-	GlobalVars = e_size:fill_var_offsets(GlobalVars0, SizeContext),
-	%% Struct size is updated, so StructMap needs to be updated, too
+	AST10 = e_size:fill_offsets_in_stmts(AST00, {StructMap0, PointerWidth}),
+	%% Struct info is updated, so StructMap needs to be updated, too.
 	{_, StructMap1} = e_util:make_function_and_struct_map_from_ast(AST10),
+	GlobalVars = e_size:fill_offsets_in_vars(GlobalVars0, {StructMap1, PointerWidth}),
 
 	%% Expand expressions like `sizeof` and `alignof`.
 	Ctx1 = {StructMap1, PointerWidth},
