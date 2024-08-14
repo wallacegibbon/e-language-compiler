@@ -1,18 +1,19 @@
 -module(e_struct).
--export([ensure_no_recursive_struct/1, eliminate_dot_in_ast/3, eliminate_dot_in_stmts/3]).
+-export([check_struct_recursion/1, eliminate_dot_in_ast/3, eliminate_dot_in_stmts/3]).
 -include("e_record_definition.hrl").
 
--spec ensure_no_recursive_struct(#{atom() => #e_struct{}}) -> ok.
-ensure_no_recursive_struct(StructTypeMap) ->
-	maps:foreach(fun(_, S) -> check_struct_recursive(S, StructTypeMap) end, StructTypeMap).
+-spec check_struct_recursion(#{atom() => #e_struct{}}) -> ok.
+check_struct_recursion(StructTypeMap) ->
+	maps:foreach(fun(_, S) -> check_struct_recursion_one(S, StructTypeMap) end, StructTypeMap).
 
--spec check_struct_recursive(#e_struct{}, #{atom() => #e_struct{}}) -> ok.
-check_struct_recursive(#e_struct{name = Name, line = Line} = Struct, StructTypeMap) ->
+-spec check_struct_recursion_one(#e_struct{}, #{atom() => #e_struct{}}) -> ok.
+check_struct_recursion_one(#e_struct{name = Name, line = Line} = Struct, StructTypeMap) ->
 	try
 		check_struct_object(Struct, StructTypeMap, [])
 	catch
 		{recur, Chain} ->
-			e_util:ethrow(Line, "recursive struct ~s -> ~w", [Name, Chain])
+			Str = string:join(lists:map(fun atom_to_list/1, Chain), "/"),
+			e_util:ethrow(Line, "recursion in struct ~s: ~s", [Name, Str])
 	end.
 
 -spec check_struct_object(#e_struct{}, #{atom() => #e_struct{}}, [atom()]) -> ok | {recur, [any()]}.

@@ -56,14 +56,14 @@ struct_init_to_map([], ExprMap) ->
 -spec fetch_variables(e_ast_raw(), e_ast_raw(), fetch_variables_state()) -> {#e_vars{}, e_ast(), e_ast()}.
 fetch_variables([#e_vardef{} = Hd | Rest], AST, {#e_vars{type_map = TypeMap} = Vars, Names, InitCode, true, Tag}) ->
 	#e_vardef{name = Name, type = Type, line = Line, init_value = InitialValue} = Hd,
-	ensure_no_name_conflict(Name, Vars, Line),
+	check_name_conflict(Name, Vars, Line),
 	NewInitCode = append_to_ast(InitCode, Name, InitialValue, Line),
 	NewVars = Vars#e_vars{type_map = TypeMap#{Name => Type}},
 	NewCtx = {NewVars, [Name | Names], NewInitCode, true, Tag},
 	fetch_variables(Rest, AST, NewCtx);
 fetch_variables([#e_vardef{} = Hd | Rest], AST, {#e_vars{type_map = TypeMap} = Vars, Names, InitCode, false, Tag}) ->
 	#e_vardef{name = Name, type = Type, line = Line, init_value = InitialValue} = Hd,
-	ensure_no_name_conflict(Name, Vars, Line),
+	check_name_conflict(Name, Vars, Line),
 	NewCtx = {Vars#e_vars{type_map = TypeMap#{Name => Type}}, [Name | Names], InitCode, false, Tag},
 	fetch_variables(Rest, append_to_ast(AST, Name, InitialValue, Line), NewCtx);
 fetch_variables([#e_function_raw{} = Hd | Rest], AST, {GlobalVars, _, _, _, _} = Ctx) ->
@@ -100,7 +100,7 @@ append_to_ast(AST, _, _, _) ->
 check_variable_conflict(#e_vars{type_map = GlobalVarMap}, #e_vars{type_map = LocalVarMap}) ->
 	case maps:to_list(maps:with(maps:keys(GlobalVarMap), LocalVarMap)) of
 		[{Name, T} | _] ->
-			throw_name_conflict(Name, element(2, T));
+			e_util:ethrow(element(2, T), "name ~s has already been used", [Name]);
 		[] ->
 			ok
 	end.
@@ -118,18 +118,14 @@ check_label_conflict([_ | Rest], Map) ->
 check_label_conflict([], _) ->
 	ok.
 
--spec ensure_no_name_conflict(atom(), #e_vars{}, integer()) -> ok.
-ensure_no_name_conflict(Name, #e_vars{type_map = VarMap}, Line) ->
+-spec check_name_conflict(atom(), #e_vars{}, integer()) -> ok.
+check_name_conflict(Name, #e_vars{type_map = VarMap}, Line) ->
 	case maps:find(Name, VarMap) of
 		{ok, _} ->
-			throw_name_conflict(Name, Line);
+			e_util:ethrow(Line, "name ~s has already been used", [Name]);
 		_ ->
 			ok
 	end.
-
--spec throw_name_conflict(atom(), integer()) -> no_return().
-throw_name_conflict(Name, Line) ->
-	throw({Line, e_util:fmt("name ~s has already been used", [Name])}).
 
 -spec get_values_by_defs([#e_vardef{}], #e_vars{}) -> [any()].
 get_values_by_defs(DefList, #e_vars{type_map = Map}) ->

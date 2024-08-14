@@ -12,7 +12,7 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	{FnTypeMap, StructMap0} = e_util:make_function_and_struct_map_from_ast(AST00),
 
 	%% Once the StructMap is constructed, we check the recursion problem.
-	e_struct:ensure_no_recursive_struct(StructMap0),
+	e_struct:check_struct_recursion(StructMap0),
 
 	#{pointer_width := PointerWidth} = CompileOptions,
 

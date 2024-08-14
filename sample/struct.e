@@ -20,6 +20,7 @@ struct S5
 	a: byte,
 	b: u8,
 	c: u32,
+	%s: Sprite,
 end
 
 struct Sprite
@@ -33,6 +34,7 @@ struct Pos
 	x: u32 = 100,
 	y: u32 = 101,
 	h: u64 = 1000,
+	s: S5,
 end
 
 g1: Sprite = Sprite{id = 1, pos = Pos{x = 2, y = 3}};
