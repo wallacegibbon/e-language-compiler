@@ -43,8 +43,8 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	AST40 = e_struct:eliminate_dot_in_ast(AST30, GlobalVars, Maps),
 	InitCode3 = e_struct:eliminate_dot_in_stmts(InitCode2, GlobalVars, Maps),
 
-	AST50 = e_ref_trans:varref_to_offset_in_ast(AST40, GlobalVars),
-	InitCode4 = e_ref_trans:varref_to_offset_in_stmts(InitCode3, GlobalVars),
+	AST50 = e_ref_trans:varref_to_offset_in_ast(AST40, {GlobalVars, FnTypeMap}),
+	InitCode4 = e_ref_trans:varref_to_offset_in_stmts(InitCode3, {GlobalVars, FnTypeMap}),
 
 	{AST50, GlobalVars, InitCode4}.
 

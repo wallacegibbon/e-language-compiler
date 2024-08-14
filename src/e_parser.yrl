@@ -62,7 +62,7 @@ e_type_anno -> identifier e_pointer_depth :
 e_type_anno -> identifier :
 	#e_basic_type{class = struct, p_depth = 0, tag = token_value('$1'), line = token_line('$1')}.
 e_type_anno -> any_type e_pointer_depth :
-	#e_basic_type{class = any, p_depth = '$2', tag = void, line = token_line('$1')}.
+	#e_basic_type{class = any, p_depth = '$2', tag = any, line = token_line('$1')}.
 e_type_anno -> any_type :
 	return_error(token_line('$1'), "type any is not allowed here").
 e_type_anno -> void_type :

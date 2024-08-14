@@ -154,7 +154,7 @@ primitive_size_of(u8, _) -> 1;
 primitive_size_of(i8, _) -> 1;
 primitive_size_of(f64, _) -> 8;
 primitive_size_of(f32, _) -> 4;
-primitive_size_of(T, _) -> throw(fmt("size of ~p is not defined", [T])).
+primitive_size_of(T, _) -> throw(fmt("size of ~p is unknown", [T])).
 
 void_type(Line) ->
 	#e_basic_type{class = void, tag = void, p_depth = 0, line = Line}.

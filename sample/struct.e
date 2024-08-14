@@ -72,3 +72,8 @@ fun blah(tag: byte, s: Sprite^): byte
 	return tag + 1;
 end
 
+fun ptest(s: any^)
+	%s^.pos.y = 1;
+	(s as Sprite^)^.pos.y = 1;
+end
+

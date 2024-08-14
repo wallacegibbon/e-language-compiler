@@ -54,7 +54,7 @@ fill_offsets_in_vars(#e_vars{} = Vars, Ctx) ->
 -spec size_of_struct(#e_struct{}, context()) -> non_neg_integer().
 size_of_struct(#e_struct{fields = #e_vars{size = Size}}, _) when Size > 0 ->
 	Size;
-size_of_struct(#e_struct{name = Name, fields = Fields}, Ctx) ->
+size_of_struct(#e_struct{fields = Fields}, Ctx) ->
 	{Size, _, _} = size_and_offsets_of_vars(Fields, Ctx),
 	Size.
 

@@ -263,7 +263,7 @@ type_of_struct_field(#e_basic_type{class = struct, tag = Name, p_depth = 0} = S,
 	#e_struct{fields = #e_vars{type_map = FieldTypeMap}} = e_util:get_struct_from_type(S, StructMap),
 	get_field_type(FieldName, FieldTypeMap, Name, Line);
 type_of_struct_field(T, _, _, Line) ->
-	e_util:ethrow(Line, "the left operand for \".\" is not struct ~s", [type_to_str(T)]).
+	e_util:ethrow(Line, "the left operand for \".\" is the wrong type: ~s", [type_to_str(T)]).
 
 -spec get_field_type(atom(), #{atom() => e_type()}, atom(), integer()) -> e_type().
 get_field_type(FieldName, FieldTypeMap, StructName, Line) ->
