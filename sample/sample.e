@@ -62,7 +62,7 @@ fn main(argc: isize, argv: byte^^): i64
 	v1: i64 = 1;
 	v1 = v1 + 10;
 
-	(v1 as Blah^)^.a;
+	v1 as (Blah^)^.a;
 
 	cnt = v1 + 2;
 	cnt = 22;

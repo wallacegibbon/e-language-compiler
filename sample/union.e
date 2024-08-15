@@ -7,5 +7,5 @@ end
 
 fn main(argc: isize, argv: i64^^): i64
 	a: A = A{tag = 1, value = 0x12345678};
-	printf("%x\n", ((a.value@ as i8^) + 2)^);
+	printf("%x\n", (a.value@ as (i8^) + 2)^);
 end

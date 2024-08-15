@@ -208,8 +208,11 @@ e_expr -> e_call_expr : '$1'.
 e_expr -> e_sizeof_expr : '$1'.
 e_expr -> e_alignof_expr : '$1'.
 e_expr -> '(' e_expr ')' : '$2'.
-e_expr -> '(' e_expr as e_type_anno ')' :
-	#e_type_convert{expr = '$2', type = '$4', loc = token_loc('$3')}.
+e_expr -> e_expr as '(' e_type_anno ')' :
+	#e_type_convert{expr = '$1', type = '$4', loc = token_loc('$2')}.
+
+%% `as` should have high precedence. (Only lower than `.`)
+Left 990 as.
 
 e_reserved_keyword -> new : '$1'.
 e_reserved_keyword -> 'cond' : '$1'.
@@ -218,8 +221,7 @@ e_reserved_keyword -> for : '$1'.
 e_reserved_keyword -> break : '$1'.
 e_reserved_keyword -> continue : '$1'.
 
-%% the precedence of 'e_pre_minus_plus_expr' needs to be
-%% higher than "operator +/-"
+%% the precedence of 'e_pre_minus_plus_expr' needs to be higher than "operator +/-"
 Unary 300 e_pre_minus_plus_expr.
 e_pre_minus_plus_expr -> '-' e_expr :
 	#e_op{tag = token_symbol('$1'), data = ['$2'], loc = token_loc('$1')}.

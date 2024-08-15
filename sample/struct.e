@@ -88,6 +88,19 @@ end
 
 fn ptest(s: any^)
 	%s^.pos.y = 1;
-	(s as Sprite^)^.pos.y = 'a';
+	s as (Sprite^)^.pos.y = 'a';
+	b(s as (byte^));
+	a(b(s@ as (byte^)));
+end
+
+fn a(arg: byte^): byte^
+	return arg + 1;
+end
+
+fn b(arg: byte^): byte^
+	v1: u8;
+	v2: u8;
+	v2 = v1 * arg as (u8^)^;
+	return arg + 2;
 end
 
