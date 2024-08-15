@@ -22,7 +22,7 @@ expand_kw_in_expr(#e_op{tag = {sizeof, T}, loc = Loc}, Ctx) ->
 	#e_integer{value = size_of(T, Ctx), loc = Loc};
 expand_kw_in_expr(#e_op{tag = {alignof, T}, loc = Loc}, Ctx) ->
 	#e_integer{value = align_of(T, Ctx), loc = Loc};
-expand_kw_in_expr(#e_op{tag = {call, Callee}, data = Args, loc = Loc} = E, Ctx) ->
+expand_kw_in_expr(#e_op{tag = {call, Callee}, data = Args} = E, Ctx) ->
 	E#e_op{tag = {call, expand_kw_in_expr(Callee, Ctx)}, data = lists:map(fun(O) -> expand_kw_in_expr(O, Ctx) end, Args)};
 expand_kw_in_expr(#e_op{data = Data} = E, Ctx) ->
 	E#e_op{data = lists:map(fun(O) -> expand_kw_in_expr(O, Ctx) end, Data)};

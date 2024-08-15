@@ -108,7 +108,7 @@ type_of_node(#e_op{tag = {call, FunExpr}, data = Args, loc = Loc}, Ctx) ->
 					e_util:ethrow(Loc, arguments_error_info(FnParamTypes, ArgTypes))
 			end;
 		T ->
-			e_util:ethrow(Loc, "invalid function expr: ~s", [type_to_str(T)])
+			e_util:ethrow(Loc, "invalid function type: ~s", [type_to_str(T)])
 	end;
 %% the left operators are: and, or, band, bor, bxor, bsl, bsr, >, <, ...
 type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) ->
@@ -127,15 +127,8 @@ type_of_node(#e_op{tag = '^', data = [Operand], loc = Loc}, Ctx) ->
 		_ ->
 			e_util:ethrow(Loc, "invalid \"^\" on operand ~s", [e_util:stmt_to_str(Operand)])
 	end;
-type_of_node(#e_op{tag = '@', data = [#e_op{tag = '.', data = [Op1, Op2]}], loc = Loc}, {_, _, StructMap, _} = Ctx) ->
-	T = type_of_struct_field(type_of_node(Op1, Ctx), Op2, StructMap, Loc),
-	inc_pointer_depth(T, Loc);
-type_of_node(#e_op{tag = '@', data = [#e_varref{} = Op], loc = Loc}, Ctx) ->
-	inc_pointer_depth(type_of_node(Op, Ctx), Loc);
-type_of_node(#e_op{tag = '@', data = [#e_struct_init_expr{} = Op], loc = Loc}, Ctx) ->
-	inc_pointer_depth(type_of_node(Op, Ctx), Loc);
-type_of_node(#e_op{tag = '@', data = [Op], loc = Loc}, _) ->
-	e_util:ethrow(Loc, "invalid \"@\" on operand ~s", [e_util:stmt_to_str(Op)]);
+type_of_node(#e_op{tag = '@', data = [Operand], loc = Loc}, Ctx) ->
+	inc_pointer_depth(type_of_node(Operand, Ctx), Loc);
 type_of_node(#e_op{tag = {sizeof, _}, loc = Loc}, _) ->
 	#e_basic_type{class = integer, tag = usize, loc = Loc};
 type_of_node(#e_op{tag = {alignof, _}, loc = Loc}, _) ->
@@ -168,16 +161,7 @@ type_of_node(#e_struct_init_expr{} = S, {_, _, StructMap, _} = Ctx) ->
 			e_util:ethrow(Loc, "type ~s is not found", [Name])
 	end;
 type_of_node(#e_type_convert{expr = Expr, type = Type, loc = Loc}, Ctx) ->
-	case {type_of_node(Expr, Ctx), Type} of
-		{#e_basic_type{p_depth = D1}, #e_basic_type{p_depth = D2}} when D1 > 0, D2 > 0 ->
-			Type;
-		{#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{p_depth = D2}} when D2 > 0 ->
-			Type;
-		{#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{class = integer, p_depth = 0}} ->
-			Type;
-		{ExprType, _} ->
-			e_util:ethrow(Loc, "incompatible type: ~w <-> ~w", [ExprType, Type])
-	end;
+	convert_type(type_of_node(Expr, Ctx), Type, Loc);
 type_of_node(#e_float{loc = Loc}, _) ->
 	#e_basic_type{class = float, tag = f64, loc = Loc};
 type_of_node(#e_integer{loc = Loc}, _) ->
@@ -205,6 +189,21 @@ type_of_node(#e_goto_stmt{loc = Loc}, _) ->
 	e_util:void_type(Loc);
 type_of_node(#e_label{loc = Loc}, _) ->
 	e_util:void_type(Loc).
+
+%% Functions can be converted to any kind of pointers in current design.
+-spec convert_type(e_type(), e_type(), location()) -> e_type().
+convert_type(#e_fn_type{}, #e_basic_type{p_depth = D} = Type, _) when D > 0 ->
+	Type;
+convert_type(#e_basic_type{p_depth = D}, #e_fn_type{} = Type, _) when D > 0 ->
+	Type;
+convert_type(#e_basic_type{p_depth = D1}, #e_basic_type{p_depth = D2} = Type, _) when D1 > 0, D2 > 0 ->
+	Type;
+convert_type(#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{p_depth = D2} = Type, _) when D2 > 0 ->
+	Type;
+convert_type(#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{class = integer, p_depth = 0} = Type, _) ->
+	Type;
+convert_type(ExprType, Type, Loc) ->
+	e_util:ethrow(Loc, "incompatible type: <~s> .vs. <~s>", [type_to_str(ExprType), type_to_str(Type)]).
 
 -spec compare_expect_left(e_type(), e_type(), location()) -> e_type().
 compare_expect_left(Type1, Type2, Loc) ->
@@ -365,11 +364,11 @@ join_types_to_str(Types) ->
 
 -spec type_to_str(e_type()) -> string().
 type_to_str(#e_fn_type{params = Params, ret = RetType}) ->
-	io_lib:format("fun (~s): ~s", [join_types_to_str(Params), type_to_str(RetType)]);
+	e_util:fmt("fun (~s): ~s", [join_types_to_str(Params), type_to_str(RetType)]);
 type_to_str(#e_array_type{elem_type = Type, length = N}) ->
-	io_lib:format("{~s, ~w}", [type_to_str(Type), N]);
+	e_util:fmt("{~s, ~w}", [type_to_str(Type), N]);
 type_to_str(#e_basic_type{tag = Tag, p_depth = PDepth}) when PDepth > 0 ->
-	io_lib:format("(~s~s)", [Tag, lists:duplicate(PDepth, "^")]);
+	e_util:fmt("(~s~s)", [Tag, lists:duplicate(PDepth, "^")]);
 type_to_str(#e_basic_type{tag = Tag, p_depth = 0}) ->
 	atom_to_list(Tag).
 

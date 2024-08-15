@@ -91,6 +91,7 @@ fn ptest(s: any^, cnt: i32)
 	s as (Sprite^)^.pos.y = 'a';
 	fn2(s as (byte^) + cnt);
 	fn1(fn2(s@ as (byte^) + cnt));
+	((fn1 as (byte^)^@^@ + 2 + 3) as (fn(byte^): byte^))(s as (byte^));
 end
 
 fn fn1(arg: byte^): byte^
