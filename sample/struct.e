@@ -1,5 +1,7 @@
 #include "blah.h"
-#define RELEASE 0
+
+#define PRINT_STRING "hello, world !\n"
+#define RELEASE 1
 
 struct S1
 	a: byte,
@@ -79,7 +81,7 @@ fn main(): isize
 end
 
 fn blah(tag: byte, s: Sprite^): byte
-	str: byte^ = "hello, world!";
+	str: byte^ = ?PRINT_STRING;
 	s^.pos.y = tag;
 	return tag + 1;
 end
