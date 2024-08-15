@@ -14,8 +14,6 @@ expr_map(Fn, [#e_while_stmt{condi = Cond, stmts = Stmts} = While | Rest]) ->
 	[While#e_while_stmt{condi = Fn(Cond), stmts = expr_map(Fn, Stmts)} | expr_map(Fn, Rest)];
 expr_map(Fn, [#e_return_stmt{expr = Expr} = Ret | Rest]) ->
 	[Ret#e_return_stmt{expr = Fn(Expr)} | expr_map(Fn, Rest)];
-expr_map(Fn, [#e_op{tag = {call, Callee}, data = Args} = FnCall | Rest]) ->
-	[FnCall#e_op{tag = {call, Fn(Callee)}, data = lists:map(Fn, Args)} | expr_map(Fn, Rest)];
 expr_map(Fn, [Any | Rest]) ->
 	[Fn(Any) | expr_map(Fn, Rest)];
 expr_map(_, []) ->

@@ -27,6 +27,8 @@ fix_struct_init(#e_array_init_expr{elements = Elements} = A) ->
 	A#e_array_init_expr{elements = lists:map(fun fix_struct_init/1, Elements)};
 fix_struct_init(#e_vardef{init_value = InitialValue} = V) ->
 	V#e_vardef{init_value = fix_struct_init(InitialValue)};
+fix_struct_init(#e_op{tag = {call, Callee}, data = Operands} = O) ->
+	O#e_op{tag = {call, fix_struct_init(Callee)}, data = lists:map(fun fix_struct_init/1, Operands)};
 fix_struct_init(#e_op{data = Operands} = O) ->
 	O#e_op{data = lists:map(fun fix_struct_init/1, Operands)};
 fix_struct_init(Any) ->

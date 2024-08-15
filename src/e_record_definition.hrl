@@ -182,7 +182,7 @@
 -type e_op_tag() :: '*' | '/' | '+' | '-' | '@' | '^' | 'rem' | 'and' | 'or' | 'band' | 'bor' | 'bxor' | 'bsl' | 'bsr' | '~' | '!' | '.' | '=' | '>' | '<' | '>=' | '<=' | '!=' | '==' | {call, e_expr()} | {sizeof, e_type()} | {alignof, e_type()}.
 
 -type e_expr() :: #e_op{} | #e_integer{} | #e_float{} | #e_string{} | #e_varref{} | #e_struct_init_expr{} | #e_array_init_expr{}.
--type e_stmt() :: #e_if_stmt{} | #e_while_stmt{} | #e_goto_stmt{} | #e_label{} | #e_return_stmt{} | e_expr().
+-type e_stmt() :: #e_if_stmt{} | #e_while_stmt{} | #e_return_stmt{} | #e_goto_stmt{} | #e_label{} | e_expr().
 
 -type e_ast_raw_elem() :: #e_function_raw{} | #e_struct_raw{} | #e_vardef{} | e_stmt().
 -type e_ast_raw() :: [e_ast_raw_elem()].

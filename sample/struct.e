@@ -86,18 +86,18 @@ fn blah(tag: byte, s: Sprite^): byte
 	return tag + 1;
 end
 
-fn ptest(s: any^)
+fn ptest(s: any^, cnt: i32)
 	%s^.pos.y = 1;
 	s as (Sprite^)^.pos.y = 'a';
-	b(s as (byte^));
-	a(b(s@ as (byte^)));
+	fn2(s as (byte^) + cnt);
+	fn1(fn2(s@ as (byte^) + cnt));
 end
 
-fn a(arg: byte^): byte^
+fn fn1(arg: byte^): byte^
 	return arg + 1;
 end
 
-fn b(arg: byte^): byte^
+fn fn2(arg: byte^): byte^
 	v1: u8;
 	v2: u8;
 	v2 = v1 * arg as (u8^)^;

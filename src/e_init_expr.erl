@@ -2,20 +2,6 @@
 -export([expand_in_ast/2, expand_in_stmts/2]).
 -include("e_record_definition.hrl").
 
-%% for now, array and struct init expression is only allowed in assignment
-check_position(#e_op{tag = '=', data = [_, #e_struct_init_expr{}]}) ->
-	ok;
-check_position(#e_op{tag = '=', data = [_, #e_array_init_expr{}]}) ->
-	ok;
-check_position(#e_op{data = Data}) ->
-	lists:foreach(fun check_position/1, Data);
-check_position(#e_struct_init_expr{loc = Loc}) ->
-	e_util:ethrow(Loc, "struct init expression is only allowed in assignments");
-check_position(#e_array_init_expr{loc = Loc}) ->
-	e_util:ethrow(Loc, "array init expression is only allowed in assignments");
-check_position(_) ->
-	ok.
-
 -spec expand_in_ast(e_ast(), #{atom() => #e_struct{}}) -> e_ast().
 expand_in_ast([#e_function{stmts = Stmts} = Fn | Rest], StructMap) ->
 	e_util:expr_map(fun check_position/1, Stmts),
@@ -38,6 +24,23 @@ expand([Any | Rest], NewAST, StructMap) ->
 	expand(Rest, [Any | NewAST], StructMap);
 expand([], NewAST, _) ->
 	lists:reverse(NewAST).
+
+%% for now, array and struct init expression is only allowed in assignment
+check_position(#e_op{tag = '=', data = [_, #e_struct_init_expr{}]}) ->
+	ok;
+check_position(#e_op{tag = '=', data = [_, #e_array_init_expr{}]}) ->
+	ok;
+check_position(#e_op{tag = {call, Callee}, data = Data}) ->
+	check_position(Callee),
+	lists:foreach(fun check_position/1, Data);
+check_position(#e_op{data = Data}) ->
+	lists:foreach(fun check_position/1, Data);
+check_position(#e_struct_init_expr{loc = Loc}) ->
+	e_util:ethrow(Loc, "struct init expression is only allowed in assignments");
+check_position(#e_array_init_expr{loc = Loc}) ->
+	e_util:ethrow(Loc, "array init expression is only allowed in assignments");
+check_position(_) ->
+	ok.
 
 replace_init_ops(#e_op{tag = '=', data = [Op1, #e_struct_init_expr{} = D]}, StructMap) ->
 	#e_struct_init_expr{name = Name, loc = Loc, field_value_map = FieldValues} = D,

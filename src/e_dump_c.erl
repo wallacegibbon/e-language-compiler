@@ -40,6 +40,8 @@ fix_expr_for_c(#e_op{tag = '@', data = [Operand], loc = Loc} = E, {FnTypeMap, St
 		_ ->
 			E
 	end;
+fix_expr_for_c(#e_op{tag = {call, Callee}, data = Operands} = E, Ctx) ->
+	E#e_op{tag = {call, fix_expr_for_c(Callee, Ctx)}, data = lists:map(fun(D) -> fix_expr_for_c(D, Ctx) end, Operands)};
 fix_expr_for_c(#e_op{data = Operands} = E, Ctx) ->
 	E#e_op{data = lists:map(fun(D) -> fix_expr_for_c(D, Ctx) end, Operands)};
 fix_expr_for_c(Any, _) ->

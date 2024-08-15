@@ -28,6 +28,8 @@ varref_to_offset_in_expr(#e_varref{loc = Loc} = Varref, Ctx) ->
 	{ok, {Tag, Offset}} = find_name_in_vars_and_fn_map(Varref, Ctx),
 	A = #e_op{tag = '+', data = [Varref#e_varref{name = Tag}, #e_integer{value = Offset, loc = Loc}], loc = Loc},
 	#e_op{tag = '^', data = [A], loc = Loc};
+varref_to_offset_in_expr(#e_op{tag = {call, Callee}, data = Args} = Op, Ctx) ->
+	Op#e_op{tag = {call, varref_to_offset_in_expr(Callee, Ctx)}, data = lists:map(fun(E) -> varref_to_offset_in_expr(E, Ctx) end, Args)};
 varref_to_offset_in_expr(#e_op{data = Args} = Op, Ctx) ->
 	Op#e_op{data = lists:map(fun(E) -> varref_to_offset_in_expr(E, Ctx) end, Args)};
 varref_to_offset_in_expr(#e_type_convert{expr = Expr}, Ctx) ->
