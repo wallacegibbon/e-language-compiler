@@ -21,8 +21,8 @@ fix_struct_init_expr_in_stmts(List) ->
 	e_util:expr_map(fun fix_struct_init/1, List).
 
 -spec fix_struct_init(e_stmt()) -> e_stmt().
-fix_struct_init(#e_struct_init_raw_expr{name = Name, fields = Fields, line = Line}) ->
-	#e_struct_init_expr{name = Name, field_value_map = struct_init_to_map(Fields, #{}), line = Line};
+fix_struct_init(#e_struct_init_raw_expr{name = Name, fields = Fields, loc = Loc}) ->
+	#e_struct_init_expr{name = Name, field_value_map = struct_init_to_map(Fields, #{}), loc = Loc};
 fix_struct_init(#e_array_init_expr{elements = Elements} = A) ->
 	A#e_array_init_expr{elements = lists:map(fun fix_struct_init/1, Elements)};
 fix_struct_init(#e_vardef{init_value = InitialValue} = V) ->
@@ -55,34 +55,34 @@ struct_init_to_map([], ExprMap) ->
 
 -spec fetch_variables(e_ast_raw(), e_ast_raw(), fetch_variables_state()) -> {#e_vars{}, e_ast(), e_ast()}.
 fetch_variables([#e_vardef{} = Hd | Rest], AST, {#e_vars{type_map = TypeMap} = Vars, Names, InitCode, true, Tag}) ->
-	#e_vardef{name = Name, type = Type, line = Line, init_value = InitialValue} = Hd,
-	check_name_conflict(Name, Vars, Line),
-	NewInitCode = append_to_ast(InitCode, Name, InitialValue, Line),
+	#e_vardef{name = Name, type = Type, loc = Loc, init_value = InitialValue} = Hd,
+	check_name_conflict(Name, Vars, Loc),
+	NewInitCode = append_to_ast(InitCode, Name, InitialValue, Loc),
 	NewVars = Vars#e_vars{type_map = TypeMap#{Name => Type}},
 	NewCtx = {NewVars, [Name | Names], NewInitCode, true, Tag},
 	fetch_variables(Rest, AST, NewCtx);
 fetch_variables([#e_vardef{} = Hd | Rest], AST, {#e_vars{type_map = TypeMap} = Vars, Names, InitCode, false, Tag}) ->
-	#e_vardef{name = Name, type = Type, line = Line, init_value = InitialValue} = Hd,
-	check_name_conflict(Name, Vars, Line),
+	#e_vardef{name = Name, type = Type, loc = Loc, init_value = InitialValue} = Hd,
+	check_name_conflict(Name, Vars, Loc),
 	NewCtx = {Vars#e_vars{type_map = TypeMap#{Name => Type}}, [Name | Names], InitCode, false, Tag},
-	fetch_variables(Rest, append_to_ast(AST, Name, InitialValue, Line), NewCtx);
+	fetch_variables(Rest, append_to_ast(AST, Name, InitialValue, Loc), NewCtx);
 fetch_variables([#e_function_raw{} = Hd | Rest], AST, {GlobalVars, _, _, _, _} = Ctx) ->
-	#e_function_raw{name = Name, ret_type = Ret, params = Params, stmts = Stmts, line = Line} = Hd,
+	#e_function_raw{name = Name, ret_type = Ret, params = Params, stmts = Stmts, loc = Loc} = Hd,
 	{ParamVars, [], ParamInitCode} = fetch_variables(Params, [], {#e_vars{}, [], [], true, local}),
-	e_util:assert(ParamInitCode =:= [], {Line, "function params can not have default value"}),
+	e_util:assert(ParamInitCode =:= [], {Loc, "function params can not have default value"}),
 	check_variable_conflict(GlobalVars, ParamVars),
 	{LocalVars, NewStmts, []} = fetch_variables(Stmts, [], {ParamVars, [], [], false, local}),
 	check_variable_conflict(GlobalVars, LocalVars),
-	FnType = #e_fn_type{params = get_values_by_defs(Params, ParamVars), ret = Ret, line = Line},
+	FnType = #e_fn_type{params = get_values_by_defs(Params, ParamVars), ret = Ret, loc = Loc},
 	ParamNames = e_util:names_of_var_defs(Params),
 	check_label_conflict(NewStmts, #{}),
-	Fn = #e_function{name = Name, vars = LocalVars, param_names = ParamNames, type = FnType, stmts = NewStmts, line = Line},
+	Fn = #e_function{name = Name, vars = LocalVars, param_names = ParamNames, type = FnType, stmts = NewStmts, loc = Loc},
 	fetch_variables(Rest, [Fn | AST], Ctx);
-fetch_variables([#e_struct_raw{name = Name, fields = RawFields, line = Line} | Rest], AST, Ctx) ->
+fetch_variables([#e_struct_raw{name = Name, fields = RawFields, loc = Loc} | Rest], AST, Ctx) ->
 	%% struct can have default value
 	{Fields, [], StructInitCode} = fetch_variables(RawFields, [], {#e_vars{}, [], [], true, none}),
 	FieldInitMap = struct_init_to_map(StructInitCode, #{}),
-	S = #e_struct{name = Name, fields = Fields, default_value_map = FieldInitMap, line = Line},
+	S = #e_struct{name = Name, fields = Fields, default_value_map = FieldInitMap, loc = Loc},
 	fetch_variables(Rest, [S | AST], Ctx);
 fetch_variables([Any | Rest], AST, Ctx) ->
 	fetch_variables(Rest, [Any | AST], Ctx);
@@ -90,9 +90,9 @@ fetch_variables([], AST, {#e_vars{names = OldNames} = Vars, Names, InitCode, _, 
 	NewVars = Vars#e_vars{names = OldNames ++ lists:reverse(Names), tag = Tag},
 	{NewVars, lists:reverse(AST), lists:reverse(InitCode)}.
 
--spec append_to_ast([e_stmt()], atom(), e_expr(), integer()) -> e_ast().
-append_to_ast(AST, VarName, InitialValue, Line) when InitialValue =/= none ->
-	[#e_op{tag = '=', data = [#e_varref{name = VarName, line = Line}, InitialValue], line = Line} | AST];
+-spec append_to_ast([e_stmt()], atom(), e_expr(), location()) -> e_ast().
+append_to_ast(AST, VarName, InitialValue, Loc) when InitialValue =/= none ->
+	[#e_op{tag = '=', data = [#e_varref{name = VarName, loc = Loc}, InitialValue], loc = Loc} | AST];
 append_to_ast(AST, _, _, _) ->
 	AST.
 
@@ -105,22 +105,22 @@ check_variable_conflict(#e_vars{type_map = GlobalVarMap}, #e_vars{type_map = Loc
 			ok
 	end.
 
--spec check_name_conflict(atom(), #e_vars{}, integer()) -> ok.
-check_name_conflict(Name, #e_vars{type_map = VarMap}, Line) ->
+-spec check_name_conflict(atom(), #e_vars{}, location()) -> ok.
+check_name_conflict(Name, #e_vars{type_map = VarMap}, Loc) ->
 	case maps:find(Name, VarMap) of
 		{ok, _} ->
-			e_util:ethrow(Line, "name \"~s\" has already been used", [Name]);
+			e_util:ethrow(Loc, "name \"~s\" has already been used", [Name]);
 		_ ->
 			ok
 	end.
 
--spec check_label_conflict([e_stmt()], #{atom() => integer()}) -> ok.
-check_label_conflict([#e_label{name = Name, line = Line} | Rest], Map) ->
+-spec check_label_conflict([e_stmt()], #{atom() => location()}) -> ok.
+check_label_conflict([#e_label{name = Name, loc = Loc} | Rest], Map) ->
 	case maps:find(Name, Map) of
-		{ok, Line0} ->
-			e_util:ethrow(Line, "label \"~s\" conflict with line ~w", [Name, Line0]);
+		{ok, {Line, Col}} ->
+			e_util:ethrow(Loc, "label \"~s\" conflict with line ~w:~w", [Name, {Line, Col}]);
 		error ->
-			check_label_conflict(Rest, Map#{Name => Line})
+			check_label_conflict(Rest, Map#{Name => Loc})
 	end;
 check_label_conflict([_ | Rest], Map) ->
 	check_label_conflict(Rest, Map);

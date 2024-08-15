@@ -33,10 +33,10 @@ fix_exprs_for_c(Stmts, Ctx) ->
 	e_util:expr_map(fun(E) -> fix_expr_for_c(E, Ctx) end, Stmts).
 
 -spec fix_expr_for_c(e_expr(), context()) -> e_expr().
-fix_expr_for_c(#e_op{tag = '@', data = [Operand], line = L} = E, {FnTypeMap, StructMap, Vars} = Ctx) ->
+fix_expr_for_c(#e_op{tag = '@', data = [Operand], loc = Loc} = E, {FnTypeMap, StructMap, Vars} = Ctx) ->
 	case e_type:type_of_node(Operand, {Vars, FnTypeMap, StructMap, #e_basic_type{}}) of
 		#e_array_type{} ->
-			#e_op{tag = '.', data = [fix_expr_for_c(Operand, Ctx), #e_varref{name = value, line = L}]};
+			#e_op{tag = '.', data = [fix_expr_for_c(Operand, Ctx), #e_varref{name = value, loc = Loc}]};
 		_ ->
 			E
 	end;

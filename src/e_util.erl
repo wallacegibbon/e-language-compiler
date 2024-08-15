@@ -88,13 +88,13 @@ fix_special_chars(String) ->
 fmt(FmtStr, Args) ->
 	lists:flatten(io_lib:format(FmtStr, Args)).
 
--spec ethrow(non_neg_integer(), string()) -> no_return().
-ethrow(Line, FmtStr) ->
-	ethrow(Line, FmtStr, []).
+-spec ethrow(location(), string()) -> no_return().
+ethrow(Loc, FmtStr) ->
+	ethrow(Loc, FmtStr, []).
 
--spec ethrow(non_neg_integer(), string(), [any()]) -> no_return().
-ethrow(Line, FmtStr, Args) ->
-	throw({Line, fmt(FmtStr, Args)}).
+-spec ethrow(location(), string(), [any()]) -> no_return().
+ethrow(Loc, FmtStr, Args) ->
+	throw({Loc, fmt(FmtStr, Args)}).
 
 -spec get_values_by_keys([atom()], #{atom() => any()}) -> [any()].
 get_values_by_keys(Fields, Map) ->
@@ -152,8 +152,8 @@ primitive_size_of(f64, _) -> 8;
 primitive_size_of(f32, _) -> 4;
 primitive_size_of(T, _) -> throw(fmt("size of ~p is unknown", [T])).
 
-void_type(Line) ->
-	#e_basic_type{class = void, tag = void, p_depth = 0, line = Line}.
+void_type(Loc) ->
+	#e_basic_type{class = void, tag = void, p_depth = 0, loc = Loc}.
 
 -spec names_of_var_refs([#e_varref{}]) -> [atom()].
 names_of_var_refs(VarRefList) ->
@@ -174,21 +174,21 @@ value_in_list(Value, List) ->
 	lists:any(fun(V) -> V =:= Value end, List).
 
 -spec get_struct_from_type(#e_basic_type{}, #{atom() => #e_struct{}}) -> #e_struct{}.
-get_struct_from_type(#e_basic_type{class = struct, tag = Name, line = Line}, StructMap) ->
+get_struct_from_type(#e_basic_type{class = struct, tag = Name, loc = Loc}, StructMap) ->
 	case maps:find(Name, StructMap) of
 		{ok, S} ->
 			S;
 		error ->
-			ethrow(Line, "type \"~s\" is not found", [Name])
+			ethrow(Loc, "type \"~s\" is not found", [Name])
 	end.
 
--spec get_struct_from_name(atom(), #{atom() => #e_struct{}}, integer()) -> #e_struct{}.
-get_struct_from_name(Name, StructMap, Line) ->
+-spec get_struct_from_name(atom(), #{atom() => #e_struct{}}, location()) -> #e_struct{}.
+get_struct_from_name(Name, StructMap, Loc) ->
 	case maps:find(Name, StructMap) of
 		{ok, S} ->
 			S;
 		error ->
-			ethrow(Line, "type \"~s\" is not found", [Name])
+			ethrow(Loc, "type \"~s\" is not found", [Name])
 	end.
 
 

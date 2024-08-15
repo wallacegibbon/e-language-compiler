@@ -24,10 +24,10 @@ varref_to_offset(Stmts, Ctx) ->
 	e_util:eliminate_pointer(Stmts1).
 
 -spec varref_to_offset_in_expr(e_expr(), context()) -> e_expr().
-varref_to_offset_in_expr(#e_varref{line = Line} = Varref, Ctx) ->
+varref_to_offset_in_expr(#e_varref{loc = Loc} = Varref, Ctx) ->
 	{ok, {Tag, Offset}} = find_name_in_vars_and_fn_map(Varref, Ctx),
-	A = #e_op{tag = '+', data = [Varref#e_varref{name = Tag}, #e_integer{value = Offset, line = Line}], line = Line},
-	#e_op{tag = '^', data = [A], line = Line};
+	A = #e_op{tag = '+', data = [Varref#e_varref{name = Tag}, #e_integer{value = Offset, loc = Loc}], loc = Loc},
+	#e_op{tag = '^', data = [A], loc = Loc};
 varref_to_offset_in_expr(#e_op{data = Args} = Op, Ctx) ->
 	Op#e_op{data = lists:map(fun(E) -> varref_to_offset_in_expr(E, Ctx) end, Args)};
 varref_to_offset_in_expr(#e_type_convert{expr = Expr}, Ctx) ->
@@ -54,12 +54,12 @@ find_name_in_vars(#e_varref{name = Name} = Varref, [#e_vars{offset_map = Map, ta
 find_name_in_vars(_, []) ->
 	notfound.
 
-find_name_in_fn_map(#e_varref{name = Name, line = Line}, FnTypeMap) ->
+find_name_in_fn_map(#e_varref{name = Name, loc = Loc}, FnTypeMap) ->
 	case maps:find(Name, FnTypeMap) of
 		{ok, _} ->
 			{ok, {Name, 0}};
 		error ->
-			e_util:ethrow(Line, "\"~s\" is not defined", [Name])
+			e_util:ethrow(Loc, "\"~s\" is not defined", [Name])
 	end.
 
 tag_trans(local) -> '<fp>';

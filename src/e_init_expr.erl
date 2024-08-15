@@ -9,10 +9,10 @@ check_position(#e_op{tag = '=', data = [_, #e_array_init_expr{}]}) ->
 	ok;
 check_position(#e_op{data = Data}) ->
 	lists:foreach(fun check_position/1, Data);
-check_position(#e_struct_init_expr{line = Line}) ->
-	e_util:ethrow(Line, "struct init expression is only allowed in assignments");
-check_position(#e_array_init_expr{line = Line}) ->
-	e_util:ethrow(Line, "array init expression is only allowed in assignments");
+check_position(#e_struct_init_expr{loc = Loc}) ->
+	e_util:ethrow(Loc, "struct init expression is only allowed in assignments");
+check_position(#e_array_init_expr{loc = Loc}) ->
+	e_util:ethrow(Loc, "array init expression is only allowed in assignments");
 check_position(_) ->
 	ok.
 
@@ -40,46 +40,46 @@ expand([], NewAST, _) ->
 	lists:reverse(NewAST).
 
 replace_init_ops(#e_op{tag = '=', data = [Op1, #e_struct_init_expr{} = D]}, StructMap) ->
-	#e_struct_init_expr{name = Name, line = Line, field_value_map = FieldValues} = D,
-	Struct = e_util:get_struct_from_name(Name, StructMap, Line),
+	#e_struct_init_expr{name = Name, loc = Loc, field_value_map = FieldValues} = D,
+	Struct = e_util:get_struct_from_name(Name, StructMap, Loc),
 	#e_struct{fields = Fields, default_value_map = FieldDefaultMap} = Struct,
 	#e_vars{names = FieldNames, type_map = FieldTypeMap} = Fields,
-	VarRefs = lists:map(fun(N) -> #e_varref{line = Line, name = N} end, FieldNames),
+	VarRefs = lists:map(fun(N) -> #e_varref{name = N, loc = Loc} end, FieldNames),
 	FieldInitMap = maps:merge(FieldDefaultMap, FieldValues),
 	struct_init_to_ops(Op1, VarRefs, FieldInitMap, FieldTypeMap, [], StructMap);
 replace_init_ops(#e_op{tag = '=', data = [Op1, #e_array_init_expr{} = D]}, StructMap) ->
-	#e_array_init_expr{elements = Elements, line = Line} = D,
-	array_init_to_ops(Op1, Elements, 0, Line, [], StructMap);
+	#e_array_init_expr{elements = Elements, loc = Loc} = D,
+	array_init_to_ops(Op1, Elements, 0, Loc, [], StructMap);
 replace_init_ops(Any, _) ->
 	[Any].
 
 struct_init_to_ops(Target, [#e_varref{} | _] = VarRefs, FieldInitMap, FieldTypeMap, NewCode, StructMap) ->
-	[#e_varref{line = Line, name = Name} = Field | Rest] = VarRefs,
-	RValue = maps:get(Name, FieldInitMap, default_value_of(maps:get(Name, FieldTypeMap), Line)),
-	NewData = [#e_op{tag = '.', data = [Target, Field], line = Line}, RValue],
-	NewOp = #e_op{tag = '=', data = NewData, line = Line},
+	[#e_varref{name = Name, loc = Loc} = Field | Rest] = VarRefs,
+	RValue = maps:get(Name, FieldInitMap, default_value_of(maps:get(Name, FieldTypeMap), Loc)),
+	NewData = [#e_op{tag = '.', data = [Target, Field], loc = Loc}, RValue],
+	NewOp = #e_op{tag = '=', data = NewData, loc = Loc},
 	Ops = replace_init_ops(NewOp, StructMap),
 	struct_init_to_ops(Target, Rest, FieldInitMap, FieldTypeMap, Ops ++ NewCode, StructMap);
 struct_init_to_ops(_, [], _, _, NewCode, _) ->
 	NewCode.
 
-default_value_of(#e_array_type{elem_type = Type, length = Len}, Line) ->
-	#e_array_init_expr{elements = lists:duplicate(Len, default_value_of(Type, Line)), line = Line};
-default_value_of(#e_basic_type{class = struct, tag = Tag, p_depth = 0}, Line) ->
-	#e_struct_init_expr{name = Tag, line = Line, field_value_map = #{}};
-default_value_of(#e_basic_type{class = integer, p_depth = 0}, Line) ->
-	#e_integer{line = Line, value = 0};
-default_value_of(#e_basic_type{class = float, p_depth = 0}, Line) ->
-	#e_float{line = Line, value = 0.0};
-default_value_of(#e_basic_type{p_depth = PDepth}, Line) when PDepth > 0 ->
-	#e_integer{line = Line, value = 0}.
+default_value_of(#e_array_type{elem_type = Type, length = Len}, Loc) ->
+	#e_array_init_expr{elements = lists:duplicate(Len, default_value_of(Type, Loc)), loc = Loc};
+default_value_of(#e_basic_type{class = struct, tag = Tag, p_depth = 0}, Loc) ->
+	#e_struct_init_expr{name = Tag, loc = Loc, field_value_map = #{}};
+default_value_of(#e_basic_type{class = integer, p_depth = 0}, Loc) ->
+	#e_integer{value = 0, loc = Loc};
+default_value_of(#e_basic_type{class = float, p_depth = 0}, Loc) ->
+	#e_float{value = 0.0, loc = Loc};
+default_value_of(#e_basic_type{p_depth = PDepth}, Loc) when PDepth > 0 ->
+	#e_integer{value = 0, loc = Loc}.
 
-array_init_to_ops(Target, [E | Rest], Cnt, Line, NewCode, StructMap) ->
-	A = [#e_op{tag = '@', data = [Target], line = Line}, #e_integer{value = Cnt, line = Line}],
-	B = [#e_op{tag = '+', data = A, line = Line}], C = #e_op{tag = '^', data = B, line = Line},
-	NewAssign = #e_op{tag = '=', data = [C, E], line = Line},
+array_init_to_ops(Target, [E | Rest], Cnt, Loc, NewCode, StructMap) ->
+	A = [#e_op{tag = '@', data = [Target], loc = Loc}, #e_integer{value = Cnt, loc = Loc}],
+	B = [#e_op{tag = '+', data = A, loc = Loc}], C = #e_op{tag = '^', data = B, loc = Loc},
+	NewAssign = #e_op{tag = '=', data = [C, E], loc = Loc},
 	Ops = replace_init_ops(NewAssign, StructMap),
-	array_init_to_ops(Target, Rest, Cnt + 1, Line, Ops ++ NewCode, StructMap);
+	array_init_to_ops(Target, Rest, Cnt + 1, Loc, Ops ++ NewCode, StructMap);
 array_init_to_ops(_, [], _, _, NewCode, _) ->
 	NewCode.
 

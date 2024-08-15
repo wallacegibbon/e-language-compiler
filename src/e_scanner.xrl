@@ -17,27 +17,27 @@ CommentStart = %
 
 Rules.
 
-{StringQuote}{StringQuote} : {token, {string, TokenLine, ""}}.
-{StringQuote}({StringUnescapedChar}|{StringEscapedChar})+{StringQuote} : {token, {string, TokenLine, fix_str(drop_quotes(TokenChars))}}.
+{StringQuote}{StringQuote} : {token, {string, TokenLoc, ""}}.
+{StringQuote}({StringUnescapedChar}|{StringEscapedChar})+{StringQuote} : {token, {string, TokenLoc, fix_str(drop_quotes(TokenChars))}}.
 {CharQuote}{CharQuote} : {error, "empty char"}.
-{CharQuote}({CharUnescapedChar}|{CharEscapedChar}){CharQuote} : {token, {integer, TokenLine, fix_char(drop_quotes(TokenChars))}}.
-0x{HexDigit}+ : {token, {integer, TokenLine, str_to_int(TokenChars, 16)}}.
-0o{OctalDigit}+ : {token, {integer, TokenLine, str_to_int(TokenChars, 8)}}.
-0b{BinaryDigit}+ : {token, {integer, TokenLine, str_to_int(TokenChars, 2)}}.
-{DecimalDigit}+ : {token, {integer, TokenLine, list_to_integer(TokenChars)}}.
-{DecimalDigit}+\.{DecimalDigit}+ : {token, {float, TokenLine, list_to_float(TokenChars)}}.
-{DecimalDigit}\.{DecimalDigit}+e{DecimalDigit}+ : {token, {float, TokenLine, list_to_float(TokenChars)}}.
-{Delimiter} : {token, {list_to_atom(TokenChars), TokenLine}}.
-struct|end|fn|return|if|then|elif|else|while|do|goto|sizeof|alignof|as|new : {token, {list_to_atom(TokenChars), TokenLine}}.
-rem|and|or|band|bor|bxor|bsl|bsr : {token, {list_to_atom(TokenChars), TokenLine}}.
-cond|case|for|break|continue : {token, {list_to_atom(TokenChars), TokenLine}}.
-byte|u8|i8|u16|i16|u32|i32|u64|i64|usize|isize|uptr|iptr : {token, {int_type, TokenLine, list_to_atom(TokenChars)}}.
-f64|f32 : {token, {float_type, TokenLine, list_to_atom(TokenChars)}}.
-void : {token, {void_type, TokenLine, void}}.
-any : {token, {any_type, TokenLine, any}}.
-{Identifier} : {token, {identifier, TokenLine, list_to_atom(TokenChars)}}.
+{CharQuote}({CharUnescapedChar}|{CharEscapedChar}){CharQuote} : {token, {integer, TokenLoc, fix_char(drop_quotes(TokenChars))}}.
+0x{HexDigit}+ : {token, {integer, TokenLoc, str_to_int(TokenChars, 16)}}.
+0o{OctalDigit}+ : {token, {integer, TokenLoc, str_to_int(TokenChars, 8)}}.
+0b{BinaryDigit}+ : {token, {integer, TokenLoc, str_to_int(TokenChars, 2)}}.
+{DecimalDigit}+ : {token, {integer, TokenLoc, list_to_integer(TokenChars)}}.
+{DecimalDigit}+\.{DecimalDigit}+ : {token, {float, TokenLoc, list_to_float(TokenChars)}}.
+{DecimalDigit}\.{DecimalDigit}+e{DecimalDigit}+ : {token, {float, TokenLoc, list_to_float(TokenChars)}}.
+{Delimiter} : {token, {list_to_atom(TokenChars), TokenLoc}}.
+struct|end|fn|return|if|then|elif|else|while|do|goto|sizeof|alignof|as|new : {token, {list_to_atom(TokenChars), TokenLoc}}.
+rem|and|or|band|bor|bxor|bsl|bsr : {token, {list_to_atom(TokenChars), TokenLoc}}.
+cond|case|for|break|continue : {token, {list_to_atom(TokenChars), TokenLoc}}.
+byte|u8|i8|u16|i16|u32|i32|u64|i64|usize|isize|uptr|iptr : {token, {int_type, TokenLoc, list_to_atom(TokenChars)}}.
+f64|f32 : {token, {float_type, TokenLoc, list_to_atom(TokenChars)}}.
+void : {token, {void_type, TokenLoc, void}}.
+any : {token, {any_type, TokenLoc, any}}.
+{Identifier} : {token, {identifier, TokenLoc, list_to_atom(TokenChars)}}.
 [\s\r\t\v\f]* : skip_token.
-\n : {token, {newline, TokenLine}}.
+\n : {token, {newline, TokenLoc}}.
 {CommentStart}[^\n]* : skip_token.
 
 Erlang code.

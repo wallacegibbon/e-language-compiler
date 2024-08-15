@@ -7,13 +7,13 @@ check_struct_recursion(StructTypeMap) ->
 	maps:foreach(fun(_, S) -> check_struct_recursion_one(S, StructTypeMap) end, StructTypeMap).
 
 -spec check_struct_recursion_one(#e_struct{}, #{atom() => #e_struct{}}) -> ok.
-check_struct_recursion_one(#e_struct{name = Name, line = Line} = Struct, StructTypeMap) ->
+check_struct_recursion_one(#e_struct{name = Name, loc = Loc} = Struct, StructTypeMap) ->
 	try
 		check_struct_object(Struct, StructTypeMap, [])
 	catch
 		{recur, Chain} ->
 			Str = string:join(lists:map(fun atom_to_list/1, Chain), "/"),
-			e_util:ethrow(Line, "recursion in struct ~s: ~s", [Name, Str])
+			e_util:ethrow(Loc, "recursion in struct ~s: ~s", [Name, Str])
 	end.
 
 -spec check_struct_object(#e_struct{}, #{atom() => #e_struct{}}, [atom()]) -> ok | {recur, [any()]}.
@@ -40,12 +40,12 @@ check_struct_field_sub(StructName, StructMap, UsedStructs) ->
 	end.
 
 -spec contain_struct(e_type(), #{atom() => #e_struct{}}) -> {yes, atom()} | no.
-contain_struct(#e_basic_type{class = struct, p_depth = 0, tag = Name, line = Line}, StructMap) ->
+contain_struct(#e_basic_type{class = struct, p_depth = 0, tag = Name, loc = Loc}, StructMap) ->
 	case maps:find(Name, StructMap) of
 		{ok, _} ->
 			{yes, Name};
 		_ ->
-			e_util:ethrow(Line, "undefined struct \"~s\"", [Name])
+			e_util:ethrow(Loc, "undefined struct \"~s\"", [Name])
 	end;
 contain_struct(#e_array_type{elem_type = BaseType}, StructMap) ->
 	contain_struct(BaseType, StructMap);
@@ -85,13 +85,13 @@ eliminate_dot(Stmts0, Ctx) ->
 
 %% `a.b` will be converted to `(a@ + OFFSET_OF_b)^`.
 -spec eliminate_dot_in_expr(e_expr(), context()) -> e_expr().
-eliminate_dot_in_expr(#e_op{tag = '.', line = L} = Op, {_, _, StructMap, _} = Ctx) ->
+eliminate_dot_in_expr(#e_op{tag = '.', loc = Loc} = Op, {_, _, StructMap, _} = Ctx) ->
 	#e_op{data = [O, #e_varref{name = FieldName}]} = Op,
 	#e_basic_type{class = struct, tag = Name, p_depth = 0} = e_type:type_of_node(O, Ctx),
 	{ok, #e_struct{fields = #e_vars{offset_map = FieldOffsetMap}}} = maps:find(Name, StructMap),
 	{ok, Offset} = maps:find(FieldName, FieldOffsetMap),
-	A = #e_op{tag = '@', data = [eliminate_dot_in_expr(O, Ctx)], line = L},
-	B = #e_op{tag = '+', data = [A, #e_integer{value = Offset, line = L}], line = L},
+	A = #e_op{tag = '@', data = [eliminate_dot_in_expr(O, Ctx)], loc = Loc},
+	B = #e_op{tag = '+', data = [A, #e_integer{value = Offset, loc = Loc}], loc = Loc},
 	#e_op{tag = '^', data = [B]};
 eliminate_dot_in_expr(#e_op{data = Args} = Op, Ctx) ->
 	Op#e_op{data = lists:map(fun(E) -> eliminate_dot_in_expr(E, Ctx) end, Args)};

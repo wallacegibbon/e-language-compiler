@@ -1,7 +1,9 @@
+-type location() :: {non_neg_integer(), non_neg_integer()}.
+
 %% There are 3 kinds of data types in E language: `basic type`, `array type` and `function type`.
 -record(e_basic_type,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	p_depth = 0 :: integer(),
 	class = void :: struct | integer | float | void | any,
 	%% tag can be primitive tag like `u8`, `f32` for `integer` and `float`, or struct name for `struct`
@@ -11,14 +13,14 @@
 
 -record(e_array_type,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	elem_type :: e_type(),
 	length :: integer()
 	}).
 
 -record(e_fn_type,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	params = [] :: [e_type()],
 	ret :: e_type()
 	}).
@@ -27,14 +29,14 @@
 
 -record(e_label,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	name :: atom()
 	}).
 
 %% Variable definition. Will be used on both variable definition and struct field definition.
 -record(e_vardef,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	name :: atom(),
 	type :: e_type(),
 	init_value = none :: e_expr() | none
@@ -42,7 +44,7 @@
 
 -record(e_varref,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	name :: atom()
 	}).
 
@@ -65,7 +67,7 @@
 
 -record(e_function,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	name :: atom(),
 	%% `vars` contains both parameters and variables.
 	vars = #e_vars{} :: #e_vars{},
@@ -76,7 +78,7 @@
 
 -record(e_struct,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	name :: atom(),
 	fields = #e_vars{} :: #e_vars{},
 	default_value_map = #{} :: #{atom() => e_expr()}
@@ -84,78 +86,78 @@
 
 -record(e_struct_init_raw_expr,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	name :: atom(),
 	fields = [] :: [e_expr()]
 	}).
 
 -record(e_struct_init_expr,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	name :: atom(),
 	field_value_map = #{} :: #{atom() => e_expr()}
 	}).
 
 -record(e_array_init_expr,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	elements = [] :: [e_expr()]
 	}).
 
 -record(e_type_convert,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	expr :: e_expr(),
 	type :: e_type()
 	}).
 
 -record(e_op,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	tag :: e_op_tag(),
 	data = [] :: [e_expr()]
 	}).
 
 -record(e_integer,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	value :: integer()
 	}).
 
 -record(e_float,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	value :: float()
 	}).
 
 -record(e_string,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	value :: string()
 	}).
 
 -record(e_goto_stmt,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	label :: atom()
 	}).
 
 -record(e_return_stmt,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	expr :: e_expr()
 	}).
 
 -record(e_while_stmt,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	condi :: e_expr(),
 	stmts = [] :: [e_stmt()]
 	}).
 
 -record(e_if_stmt,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	condi :: e_expr(),
 	then = [] :: [e_stmt()],
 	'else' = [] :: [e_stmt()]
@@ -163,14 +165,14 @@
 
 -record(e_struct_raw,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	name :: atom(),
 	fields = [] :: [e_stmt()]
 	}).
 
 -record(e_function_raw,
 	{
-	line = 0 :: integer(),
+	loc = {0, 0} :: location(),
 	name :: atom(),
 	params = [] :: [e_stmt()],
 	ret_type :: e_type(),

@@ -18,10 +18,10 @@ expand_kw_in_stmts(Stmts, Ctx) ->
 	e_util:expr_map(fun(E) -> expand_kw_in_expr(E, Ctx) end, Stmts).
 
 -spec expand_kw_in_expr(e_expr(), context()) -> e_expr().
-expand_kw_in_expr(#e_op{tag = {sizeof, T}, line = Line}, Ctx) ->
-	{e_integer, Line, size_of(T, Ctx)};
-expand_kw_in_expr(#e_op{tag = {alignof, T}, line = Line}, Ctx) ->
-	{e_integer, Line, align_of(T, Ctx)};
+expand_kw_in_expr(#e_op{tag = {sizeof, T}, loc = Loc}, Ctx) ->
+	#e_integer{value = size_of(T, Ctx), loc = Loc};
+expand_kw_in_expr(#e_op{tag = {alignof, T}, loc = Loc}, Ctx) ->
+	#e_integer{value = align_of(T, Ctx), loc = Loc};
 expand_kw_in_expr(#e_op{data = Data} = E, Ctx) ->
 	E#e_op{data = lists:map(fun(O) -> expand_kw_in_expr(O, Ctx) end, Data)};
 expand_kw_in_expr(#e_struct_init_expr{field_value_map = ExprMap} = S, Ctx) ->

@@ -8,8 +8,8 @@ compile_to_e(InputFilename, OutputFilename) ->
 		{AST, _, InitCode} = parse_and_compile(InputFilename),
 		e_dump_e:generate_e_code(AST, InitCode, OutputFilename)
 	catch
-		{Filename, {Line, ErrorInfo}} ->
-			throw(e_util:fmt("~s:~w: ~s~n", [Filename, Line, ErrorInfo]))
+		{Filename, {{Line, Col}, ErrorInfo}} ->
+			throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
 	end.
 
 -spec compile_to_c(string(), string()) -> ok.
@@ -18,8 +18,8 @@ compile_to_c(InputFilename, OutputFilename) ->
 		{AST, Vars, InitCode} = parse_and_compile(InputFilename),
 		e_dump_c:generate_c_code(AST, Vars, InitCode, OutputFilename)
 	catch
-		{Filename, {Line, ErrorInfo}} ->
-			throw(e_util:fmt("~s:~w: ~s~n", [Filename, Line, ErrorInfo]))
+		{Filename, {{Line, Col}, ErrorInfo}} ->
+			throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
 	end.
 
 -spec compile_to_ast(string()) -> {e_ast(), #e_vars{}, e_ast()}.
@@ -27,8 +27,8 @@ compile_to_ast(Filename) ->
 	try
 		parse_and_compile(Filename)
 	catch
-		{Filename, {Line, ErrorInfo}} ->
-			throw(e_util:fmt("~s:~w: ~s~n", [Filename, Line, ErrorInfo]))
+		{Filename, {{Line, Col}, ErrorInfo}} ->
+			throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
 	end.
 
 -spec parse_and_compile(string()) -> {e_ast_raw(), #e_vars{}, e_ast()}.
@@ -58,10 +58,10 @@ parse_content(RawContent) ->
 			case e_parser:parse(e_preprocessor:process(Tokens)) of
 				{ok, AST} ->
 					AST;
-				{error, {Line, _, ErrorInfo}} ->
-					throw({Line, ErrorInfo})
+				{error, {Loc, _, ErrorInfo}} ->
+					throw({Loc, ErrorInfo})
 			end;
-		{error, ErrorInfo, Line} ->
-			throw({Line, ErrorInfo})
+		{error, ErrorInfo, Loc} ->
+			throw({Loc, ErrorInfo})
 	end.
 

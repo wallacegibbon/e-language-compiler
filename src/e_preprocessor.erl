@@ -1,5 +1,6 @@
 -module(e_preprocessor).
 -export([process/1]).
+-include("e_record_definition.hrl").
 
 %% Caution: Erlang do NOT support parametric polymorphism (generics), the following type is not correct:
 %% -type tree_list(T) :: list(T |  tree_list(T)).
@@ -13,22 +14,22 @@
 -type token() :: any().
 
 -spec handle_special([token()], context()) -> handle_ret().
-handle_special([{identifier, _, define}, {identifier, LineNumber, Name} | Rest], Ctx) ->
+handle_special([{identifier, _, define}, {identifier, Loc, Name} | Rest], Ctx) ->
 	{MacroMap, RetTokens, EndTag} = Ctx,
 	case MacroMap of
 		#{Name := _} ->
-			e_util:ethrow(LineNumber, "macro name conflict: \"~s\"", [Name]);
+			e_util:ethrow(Loc, "macro name conflict: \"~s\"", [Name]);
 		_ ->
 			{Tokens, RestTokens} = get_expr_till_eol(Rest, Ctx),
 			handle_normal(RestTokens, {MacroMap#{Name => Tokens}, RetTokens, EndTag})
 	end;
-handle_special([{identifier, _, undef}, {identifier, LineNumber, Name} | Rest], Ctx) ->
+handle_special([{identifier, _, undef}, {identifier, Loc, Name} | Rest], Ctx) ->
 	{MacroMap, RetTokens, EndTag} = Ctx,
 		case MacroMap of
 			#{Name := _} ->
 				handle_normal(Rest, {maps:remove(Name, MacroMap), RetTokens, EndTag});
 			_ ->
-				e_util:ethrow(LineNumber, "macro \"~s\" is not defined", [Name])
+				e_util:ethrow(Loc, "macro \"~s\" is not defined", [Name])
 		end;
 handle_special([{identifier, _, ifdef}, {identifier, _, Name} | Rest], Ctx) ->
 	{MacroMap, _, EndTag} = Ctx,
@@ -40,8 +41,8 @@ handle_special([{identifier, _, ifdef}, {identifier, _, Name} | Rest], Ctx) ->
 				ignore_to_else_and_collect_to_endif(Rest, Ctx)
 		end,
 	handle_normal(RestTokensNew, {MacroMapNew, CollectedTokens, EndTag});
-handle_special([{identifier, LineNumber, ifdef} | _], _) ->
-	e_util:ethrow(LineNumber, "invalid #ifdef command");
+handle_special([{identifier, Loc, ifdef} | _], _) ->
+	e_util:ethrow(Loc, "invalid #ifdef command");
 handle_special([{identifier, _, ifndef}, {identifier, _, Name} | Rest], Ctx) ->
 	{MacroMap, _, EndTag} = Ctx,
 	{MacroMapNew, CollectedTokens, RestTokensNew} =
@@ -52,8 +53,8 @@ handle_special([{identifier, _, ifndef}, {identifier, _, Name} | Rest], Ctx) ->
 				collect_to_else_and_ignore_to_endif(Rest, Ctx)
 		end,
 	handle_normal(RestTokensNew, {MacroMapNew, CollectedTokens, EndTag});
-handle_special([{identifier, LineNumber, ifndef} | _], _) ->
-	e_util:ethrow(LineNumber, "invalid #ifndef command");
+handle_special([{identifier, Loc, ifndef} | _], _) ->
+	e_util:ethrow(Loc, "invalid #ifndef command");
 handle_special([{'if', _} | Rest], {MacroMap, _, EndTag} = Ctx) ->
 	{Tokens, RestTokens} = get_expr_till_eol(Rest, Ctx),
 	{MacroMapNew, CollectedTokens, RestTokensNew} =
@@ -66,23 +67,23 @@ handle_special([{'if', _} | Rest], {MacroMap, _, EndTag} = Ctx) ->
 	handle_normal(RestTokensNew, {MacroMapNew, CollectedTokens, EndTag});
 handle_special([{'else', _} | RestContent], {MacroMap, RetTokens, 'else'}) ->
 	{MacroMap, RetTokens, RestContent};
-handle_special([{'else', LineNumber} | _], {_, _, normal}) ->
-	e_util:ethrow(LineNumber, "\"#else\" is not expected here");
+handle_special([{'else', Loc} | _], {_, _, normal}) ->
+	e_util:ethrow(Loc, "\"#else\" is not expected here");
 handle_special([{identifier, _, endif} | RestContent], {MacroMap, RetTokens, endif}) ->
 	{MacroMap, RetTokens, RestContent};
 %% When the "#else" part is missing ("#if" followed by "#endif"),
 %% pretend that one "#else\n" exists and has been swallowed, and put the "#endif" back to unhandled tokens.
-handle_special([{identifier, LineNumber, endif} | _] = Content, {MacroMap, RetTokens, 'else'}) ->
-	{MacroMap, RetTokens, [{'#', LineNumber} | Content]};
-handle_special([{identifier, LineNumber, error} | _], _) ->
-	e_util:ethrow(LineNumber, "compile error... (todo)");
-handle_special([{identifier, LineNumber, warning} | _], _) ->
-	e_util:ethrow(LineNumber, "compile warning... (todo)");
+handle_special([{identifier, Loc, endif} | _] = Content, {MacroMap, RetTokens, 'else'}) ->
+	{MacroMap, RetTokens, [{'#', Loc} | Content]};
+handle_special([{identifier, Loc, error} | _], _) ->
+	e_util:ethrow(Loc, "compile error... (todo)");
+handle_special([{identifier, Loc, warning} | _], _) ->
+	e_util:ethrow(Loc, "compile warning... (todo)");
 handle_special([{identifier, _, include} | Rest], Ctx) ->
 	{_, RestTokens} = get_expr_till_eol(Rest, Ctx),
 	handle_normal(RestTokens, Ctx);
-handle_special([{identifier, LineNumber, Name} | _], _) ->
-	e_util:ethrow(LineNumber, "unexpected operator \"~s\" here", [Name]);
+handle_special([{identifier, Loc, Name} | _], _) ->
+	e_util:ethrow(Loc, "unexpected operator \"~s\" here", [Name]);
 handle_special([], {MacroMap, RetTokens, normal}) ->
 	{MacroMap, RetTokens, []};
 handle_special([], {_, _, EndTag}) ->
@@ -107,8 +108,8 @@ ignore_to_else_and_collect_to_endif(Tokens, {MacroMap, RetTokens, _}) ->
 -spec handle_normal([token()], context()) -> handle_ret().
 handle_normal([{'?', _}, {identifier, _, _} = Identifier | Rest], {MacroMap, _, _} = Ctx) ->
 	replace_macro(Identifier, MacroMap, fun(Tokens) -> handle_normal(Tokens ++ Rest, Ctx) end);
-handle_normal([{'?', LineNumber} | _], _) ->
-	e_util:ethrow(LineNumber, "syntax error near \"?\"");
+handle_normal([{'?', Loc} | _], _) ->
+	e_util:ethrow(Loc, "syntax error near \"?\"");
 handle_normal([{'#', _} | Rest], Ctx) ->
 	handle_special(Rest, Ctx);
 handle_normal([{newline, _} | Rest], Ctx) ->
@@ -133,8 +134,8 @@ get_expr_till_eol(Tokens, Ctx) ->
 get_expr_till_eol([{'?', _}, {identifier, _, _} = Identifier | Rest], CollectedTokens, {MacroMap, _, _} = Ctx) ->
 	Fn = fun(Tokens) -> get_expr_till_eol(Rest, lists:reverse(Tokens) ++ CollectedTokens, Ctx) end,
 	replace_macro(Identifier, MacroMap, Fn);
-get_expr_till_eol([{'?', LineNumber} | _], _, _) ->
-	e_util:ethrow(LineNumber, "syntax error near \"?\"");
+get_expr_till_eol([{'?', Loc} | _], _, _) ->
+	e_util:ethrow(Loc, "syntax error near \"?\"");
 get_expr_till_eol([{newline, _} | Rest], CollectedTokens, _) ->
 	{lists:reverse(CollectedTokens), Rest};
 get_expr_till_eol([Token | Rest], CollectedTokens, Ctx) ->
@@ -143,13 +144,13 @@ get_expr_till_eol([Token | Rest], CollectedTokens, Ctx) ->
 get_expr_till_eol([], CollectedTokens, _) ->
 	{lists:reverse(CollectedTokens), []}.
 
--spec replace_macro({identifier, non_neg_integer(), atom()}, macro_map(), fun(([token()]) -> any())) -> any().
-replace_macro({identifier, LineNumber, Name}, MacroMap, ContinueHandler) ->
+-spec replace_macro({identifier, location(), atom()}, macro_map(), fun(([token()]) -> any())) -> any().
+replace_macro({identifier, Loc, Name}, MacroMap, ContinueHandler) ->
 	case MacroMap of
 		#{Name := Value} ->
-			ContinueHandler(replace_line_number(Value, LineNumber));
+			ContinueHandler(replace_line_number(Value, Loc));
 		_ ->
-			e_util:ethrow(LineNumber, "undefined macro ~s", [Name])
+			e_util:ethrow(Loc, "undefined macro ~s", [Name])
 	end.
 
 %% tokens should be parsed to ast before evaluating them, this function will be updated when the parser is finished.
@@ -158,9 +159,9 @@ eval_token_exprs([{integer, _, 0}], _MacroMap) ->
 eval_token_exprs([{integer, _, 1}], _MacroMap) ->
 	true.
 
--spec replace_line_number([token()], non_neg_integer()) -> [token()].
-replace_line_number(Tokens, LineNumber) ->
-	lists:map(fun(Token) -> setelement(2, Token, LineNumber) end, Tokens).
+-spec replace_line_number([token()], location()) -> [token()].
+replace_line_number(Tokens, Loc) ->
+	lists:map(fun(Token) -> setelement(2, Token, Loc) end, Tokens).
 
 -ifdef(EUNIT).
 
@@ -168,67 +169,67 @@ replace_line_number(Tokens, LineNumber) ->
 
 process_no_operator_test() ->
 	{ok, Tokens, _} = e_scanner:string("u32 a = 1;"),
-	?assertEqual([{int_type, 1, u32}, {identifier, 1, a}, {'=', 1}, {integer, 1, 1}, {';', 1}], process(Tokens)).
+	?assertEqual([{int_type, {1, 1}, u32}, {identifier, {1, 5}, a}, {'=', {1, 7}}, {integer, {1, 9}, 1}, {';', {1, 10}}], process(Tokens)).
 
 process_if_true_test() ->
 	{ok, Tokens, _} = e_scanner:string("#if 1\n a\n #else\n b\n #endif"),
-	?assertEqual([{identifier, 2, a}], process(Tokens)).
+	?assertEqual([{identifier, {2, 2}, a}], process(Tokens)).
 
 process_if_false_test() ->
 	{ok, Tokens, _} = e_scanner:string("#if 0\n a\n #else\n b\n #endif"),
-	?assertEqual([{identifier, 4, b}], process(Tokens)).
+	?assertEqual([{identifier, {4, 2}, b}], process(Tokens)).
 
 process_ifdef_false_test() ->
 	{ok, Tokens, _} = e_scanner:string("#ifdef BLAH\n a\n #else\n b\n #endif"),
-	?assertEqual([{identifier, 4, b}], process(Tokens)).
+	?assertEqual([{identifier, {4, 2}, b}], process(Tokens)).
 
 process_ifdef_true_test() ->
 	{ok, Tokens, _} = e_scanner:string("#define BLAH\n #ifdef BLAH\n a\n #else\n b\n #endif"),
-	?assertEqual([{identifier, 3, a}], process(Tokens)).
+	?assertEqual([{identifier, {3, 2}, a}], process(Tokens)).
 
 process_ifndef_false_test() ->
 	{ok, Tokens, _} = e_scanner:string("#ifndef BLAH\n a\n #else\n b\n #endif"),
-	?assertEqual([{identifier, 2, a}], process(Tokens)).
+	?assertEqual([{identifier, {2, 2}, a}], process(Tokens)).
 
 process_ifndef_true_test() ->
 	{ok, Tokens, _} = e_scanner:string("#define BLAH\n #ifndef BLAH\n a\n #else\n b\n #endif"),
-	?assertEqual([{identifier, 5, b}], process(Tokens)).
+	?assertEqual([{identifier, {5, 2}, b}], process(Tokens)).
 
 process_recursive_1_test() ->
 	{ok, Tokens, _} = e_scanner:string("#if 1\n #if 1\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
-	?assertEqual([{identifier, 3, a}], process(Tokens)).
+	?assertEqual([{identifier, {3, 2}, a}], process(Tokens)).
 
 process_recursive_2_test() ->
 	{ok, Tokens, _} = e_scanner:string("#if 1\n #if 0\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
-	?assertEqual([{identifier, 5, b}], process(Tokens)).
+	?assertEqual([{identifier, {5, 2}, b}], process(Tokens)).
 
 process_recursive_3_test() ->
 	{ok, Tokens, _} = e_scanner:string("#if 0\n #if 1\n a\n #else\n b\n #endif\n #else\n c\n #endif"),
-	?assertEqual([{identifier, 8, c}], process(Tokens)).
+	?assertEqual([{identifier, {8, 2}, c}], process(Tokens)).
 
 process_elif_1_test() ->
 	{ok, Tokens, _} = e_scanner:string("#if 1\n a\n #elif 1\n b\n #endif"),
-	?assertEqual([{identifier, 2, a}], process(Tokens)).
+	?assertEqual([{identifier, {2, 2}, a}], process(Tokens)).
 
 process_elif_2_test() ->
 	{ok, Tokens, _} = e_scanner:string("#if 0\n a\n #elif 0\n b\n #elif 0\n c\n #else\n d\n #endif"),
-	?assertEqual([{identifier, 8, d}], process(Tokens)).
+	?assertEqual([{identifier, {8, 2}, d}], process(Tokens)).
 
 process_elif_3_test() ->
 	{ok, Tokens, _} = e_scanner:string("#if 0\n a\n #elif 0\n b\n #elif 1\n c\n #else\n d\n #endif"),
-	?assertEqual([{identifier, 6, c}], process(Tokens)).
+	?assertEqual([{identifier, {6, 2}, c}], process(Tokens)).
 
 process_elif_4_test() ->
 	{ok, Tokens, _} = e_scanner:string("#if 0\n a\n #elif 1\n b\n #elif 1\n c\n #else\n d\n #endif"),
-	?assertEqual([{identifier, 4, b}], process(Tokens)).
+	?assertEqual([{identifier, {4, 2}, b}], process(Tokens)).
 
 process_define_line_number_test() ->
 	{ok, Tokens, _} = e_scanner:string("#define A 1\n?A"),
-	?assertEqual([{integer, 2, 1}], process(Tokens)).
+	?assertEqual([{integer, {2, 2}, 1}], process(Tokens)).
 
 process_define_line_number_2_test() ->
 	{ok, Tokens, _} = e_scanner:string("#define A 1\n#define B ?A\n?B"),
-	?assertEqual([{integer, 3, 1}], process(Tokens)).
+	?assertEqual([{integer, {3, 2}, 1}], process(Tokens)).
 
 process_define_1_test() ->
 	{ok, Tokens, _} = e_scanner:string("#define A 1 + 2 + 3\n?A + 1"),
@@ -244,11 +245,11 @@ process_define_3_test() ->
 
 process_undef_1_test() ->
 	{ok, Tokens, _} = e_scanner:string("#define A 1 + 2 + 3\n#undef A\n?A + 1"),
-	?assertThrow({3, "undefined macro A"}, tokens_to_str(process(Tokens))).
+	?assertThrow({{3, 2}, "undefined macro A"}, tokens_to_str(process(Tokens))).
 
 process_undef_2_test() ->
 	{ok, Tokens, _} = e_scanner:string("#define A 1 + 2 + 3\n#undef B\n?A + 1"),
-	?assertThrow({2, "macro \"B\" is not defined"}, tokens_to_str(process(Tokens))).
+	?assertThrow({{2, 8}, "macro \"B\" is not defined"}, tokens_to_str(process(Tokens))).
 
 -endif.
 
@@ -256,11 +257,11 @@ process_undef_2_test() ->
 convert_elif_to_else_and_if(Tokens) ->
 	lists:flatten(convert_elif_to_else_and_if(Tokens, 0)).
 
--spec convert_elif_to_else_and_if([token()], integer()) -> tree_list().
+-spec convert_elif_to_else_and_if([token()], non_neg_integer()) -> tree_list().
 convert_elif_to_else_and_if([{'#', _} = PreTag, {'if', _} = Token | Rest], _) ->
 	[PreTag, Token | convert_elif_to_else_and_if(Rest, 0)];
-convert_elif_to_else_and_if([{'#', _}, {elif, LineNumber} | Rest], ElifDepth) ->
-	[mk_elif_replacement(LineNumber) | convert_elif_to_else_and_if(Rest, ElifDepth + 1)];
+convert_elif_to_else_and_if([{'#', _}, {elif, Loc} | Rest], ElifDepth) ->
+	[mk_elif_replacement(Loc) | convert_elif_to_else_and_if(Rest, ElifDepth + 1)];
 convert_elif_to_else_and_if([{'#', _} = PreTag, {identifier, _, endif} = Token | Rest], ElifDepth) ->
 	[lists:duplicate(ElifDepth + 1, [PreTag, Token]) | convert_elif_to_else_and_if(Rest, 0)];
 convert_elif_to_else_and_if([Token | Rest], ElifDepth) ->
@@ -270,9 +271,9 @@ convert_elif_to_else_and_if([], N) when N =/= 0 ->
 convert_elif_to_else_and_if([], 0) ->
 	[].
 
--spec mk_elif_replacement(integer()) -> [any()].
-mk_elif_replacement(LineNumber) ->
-	[{'#', LineNumber}, {'else', LineNumber}, {'#', LineNumber}, {'if', LineNumber}].
+-spec mk_elif_replacement(location()) -> [any()].
+mk_elif_replacement(Loc) ->
+	[{'#', Loc}, {'else', Loc}, {'#', Loc}, {'if', Loc}].
 
 -ifdef(EUNIT).
 
@@ -311,7 +312,7 @@ token_to_str({AnyAtom, _}) ->
 	atom_to_list(AnyAtom).
 
 tokens_to_str_test() ->
-	?assertEqual("* + \n \n", tokens_to_str([{'*', 1}, {'+', 1}, {newline, 1}, {newline, 2}])).
+	?assertEqual("* + \n \n", tokens_to_str([{'*', {0, 0}}, {'+', {0, 0}}, {newline, {0, 0}}, {newline, {0, 0}}])).
 
 -endif.
 
