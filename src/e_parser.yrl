@@ -15,7 +15,7 @@ Terminals
 ',' ':' ';' '=' '{' '}' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '~' '!' '!=' '==' '>=' '<='
 
 %% keywords
-struct 'end' 'fun' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
+struct 'end' 'fn' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
 while do 'if' then elif 'else' return sizeof alignof goto as new
 
 %% reserved keywords
@@ -39,13 +39,13 @@ e_root_stmt -> e_vardef ';' : '$1'.
 e_type_annos -> e_type_anno ',' e_type_annos : ['$1' | '$3'].
 e_type_annos -> e_type_anno : ['$1'].
 
-e_type_anno -> 'fun' '(' e_type_annos ')' ':' e_type_anno :
+e_type_anno -> 'fn' '(' e_type_annos ')' ':' e_type_anno :
 	#e_fn_type{params = '$3', ret = '$6', line = token_line('$1')}.
-e_type_anno -> 'fun' '(' e_type_annos ')' :
+e_type_anno -> 'fn' '(' e_type_annos ')' :
 	#e_fn_type{params = '$3', ret = e_util:void_type(token_line('$4')), line = token_line('$1')}.
-e_type_anno -> 'fun' '(' ')' ':' e_type_anno :
+e_type_anno -> 'fn' '(' ')' ':' e_type_anno :
 	#e_fn_type{params = [], ret = '$5', line = token_line('$1')}.
-e_type_anno -> 'fun' '(' ')' :
+e_type_anno -> 'fn' '(' ')' :
 	#e_fn_type{params = [], ret = e_util:void_type(token_line('$3')), line = token_line('$1')}.
 e_type_anno -> '{' e_type_anno ',' e_expr '}' :
 	#e_array_type{elem_type = '$2', length = token_value('$4'), line = token_line('$1')}.
@@ -87,13 +87,13 @@ e_struct_def -> struct identifier e_vardefs 'end' :
 	#e_struct_raw{name = token_value('$2'), fields = '$3', line = token_line('$2')}.
 
 %% function definition
-e_function_def -> 'fun' identifier '(' e_vardefs ')' ':' e_type_anno e_function_stmts 'end' :
+e_function_def -> 'fn' identifier '(' e_vardefs ')' ':' e_type_anno e_function_stmts 'end' :
 	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = '$7', stmts = '$8', line = token_line('$2')}.
-e_function_def -> 'fun' identifier '(' ')' ':' e_type_anno e_function_stmts 'end' :
+e_function_def -> 'fn' identifier '(' ')' ':' e_type_anno e_function_stmts 'end' :
 	#e_function_raw{name = token_value('$2'), params = [], ret_type = '$6', stmts = '$7', line = token_line('$2')}.
-e_function_def -> 'fun' identifier '(' e_vardefs ')' e_function_stmts 'end' :
+e_function_def -> 'fn' identifier '(' e_vardefs ')' e_function_stmts 'end' :
 	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = e_util:void_type(token_line('$5')), stmts = '$6', line = token_line('$2')}.
-e_function_def -> 'fun' identifier '(' ')' e_function_stmts 'end' :
+e_function_def -> 'fn' identifier '(' ')' e_function_stmts 'end' :
 	#e_function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_line('$4')), stmts = '$5', line = token_line('$2')}.
 
 %% while

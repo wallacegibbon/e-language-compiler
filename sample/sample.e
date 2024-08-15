@@ -45,7 +45,7 @@ blah1: usize = sizeof(Blah1);
 
 u1: User = User{id = 8};
 
-fun main(argc: isize, argv: byte^^): i64
+fn main(argc: isize, argv: byte^^): i64
 	%invalid_u: User^ = User{id = 3}@;
 	%users: {User, 22} = {User{nameref = 1}, User{id = 1}};
 	%users: {User, 2} = {User{non = 1}, User{id = 1}};
@@ -72,7 +72,7 @@ fun main(argc: isize, argv: byte^^): i64
 
 	v3: i64^ = v1@;
 
-	f: fun (i64^) = myfn;
+	f: fn (i64^) = myfn;
 	f(v1@);
 
 	goto finish;
@@ -93,14 +93,14 @@ fun main(argc: isize, argv: byte^^): i64
 	return 0;
 end
 
-fun init_users(users: User^, size: usize)
+fn init_users(users: User^, size: usize)
 	cnt: i64 = 30 + 52 * size / 2 + 100 / 10;
 	while cnt < size do
 		init_user(users + cnt, cnt, "test");
 	end
 end
 
-fun init_user(user: User^, id: i64, desc: byte^)
+fn init_user(user: User^, id: i64, desc: byte^)
 	if id < 1 then
 		user^.id = 1;
 		user^.id = user^.id + 1;
@@ -115,10 +115,11 @@ fun init_user(user: User^, id: i64, desc: byte^)
 	end
 end
 
-fun myfn(val: i64^)
+fn myfn(val: i64^)
 	val^ += 1;
 end
 
-fun add(val: i8): u8
+fn add(val: i8): u8
 	return val * 3 + 1;
 end
+

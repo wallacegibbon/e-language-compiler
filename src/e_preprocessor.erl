@@ -1,6 +1,12 @@
 -module(e_preprocessor).
 -export([process/1]).
 
+%% Caution: Erlang do NOT support parametric polymorphism (generics), the following type is not correct:
+%% -type tree_list(T) :: list(T |  tree_list(T)).
+%% But Erlang may change its type semantics in the future. See this EEP:
+%% https://github.com/erlang/eep/blob/45712972843de05be3c442e376b7b754fe2e1e51/eeps/eep-0071.md
+-type tree_list() :: list(tree_list() | any()).
+
 -type macro_map() :: #{atom() => [token()]}.
 -type context() :: {MacroMap :: macro_map(), RetTokens :: [token()], EndTag :: 'else' | endif | normal}.
 -type handle_ret() :: {MacroMap :: macro_map(), RetTokens :: [token()], RestTokens :: [token()]}.
@@ -64,8 +70,8 @@ handle_special([{'else', LineNumber} | _], {_, _, normal}) ->
 	e_util:ethrow(LineNumber, "\"#else\" is not expected here");
 handle_special([{identifier, _, endif} | RestContent], {MacroMap, RetTokens, endif}) ->
 	{MacroMap, RetTokens, RestContent};
-%% when the "#else" part is missing ("#if" following "#endif"),
-%% pretend that the "#else\n" exists and has been swallowed, and put the "#endif" back to unhandled tokens.
+%% When the "#else" part is missing ("#if" followed by "#endif"),
+%% pretend that one "#else\n" exists and has been swallowed, and put the "#endif" back to unhandled tokens.
 handle_special([{identifier, LineNumber, endif} | _] = Content, {MacroMap, RetTokens, 'else'}) ->
 	{MacroMap, RetTokens, [{'#', LineNumber} | Content]};
 handle_special([{identifier, LineNumber, error} | _], _) ->
@@ -250,7 +256,7 @@ process_undef_2_test() ->
 convert_elif_to_else_and_if(Tokens) ->
 	lists:flatten(convert_elif_to_else_and_if(Tokens, 0)).
 
--spec convert_elif_to_else_and_if([token()], integer()) -> e_util:tree_list(token()).
+-spec convert_elif_to_else_and_if([token()], integer()) -> tree_list().
 convert_elif_to_else_and_if([{'#', _} = PreTag, {'if', _} = Token | Rest], _) ->
 	[PreTag, Token | convert_elif_to_else_and_if(Rest, 0)];
 convert_elif_to_else_and_if([{'#', _}, {elif, LineNumber} | Rest], ElifDepth) ->

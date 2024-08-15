@@ -1,16 +1,16 @@
 testglobal: u32 = 10;
 
-fun main(argc: uptr, argv: i64^^): i64
+fn main(argc: uptr, argv: i64^^): i64
 	blah: {u8, 10};
 	tmp: u8^ = blah@;
 	tmp^ = 10;
 
 	print(tmp);
 
-	%myfn: fun (u8^) = inc;
+	%myfn: fn (u8^) = inc;
 	%myfn(tmp);
 
-	myfn1: fun (): fun (): fun (u8^) = get_incfn1;
+	myfn1: fn (): fn (): fn (u8^) = get_incfn1;
 	myfn1()()(tmp);
 
 	print(tmp);
@@ -26,15 +26,15 @@ fun main(argc: uptr, argv: i64^^): i64
 	return (tmp + 11)^;
 end
 
-fun get_incfn1(): fun (): fun (u8^)
+fn get_incfn1(): fn (): fn (u8^)
 	return get_incfn2;
 end
 
-fun get_incfn2(): fun (u8^)
+fn get_incfn2(): fn (u8^)
 	return inc;
 end
 
-fun inc(val: u8^)
+fn inc(val: u8^)
 	cnt: u8 = 0;
 	while cnt < 10 do
 		(val + cnt)^ = cnt * 2;
@@ -42,10 +42,10 @@ fun inc(val: u8^)
 	end
 end
 
-puts: fun (i8^): i8;
-printf: fun (i8^, usize);
+puts: fn (i8^): i8;
+printf: fn (i8^, usize);
 
-fun print(val: u8^)
+fn print(val: u8^)
 	cnt: u8 = 0;
 
 	puts(">>>\t");

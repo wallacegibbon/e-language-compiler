@@ -3,8 +3,8 @@
 -include_lib("eunit/include/eunit.hrl").
 
 function_normal_test() ->
-	{ok, Tokens, _} = e_scanner:string("fun a(v: i8^) v^ = 10; end"),
-	?assertEqual([{'fun', 1}, {identifier, 1, a}, {'(', 1}, {identifier, 1, v}, {':', 1}, {int_type, 1, i8},
+	{ok, Tokens, _} = e_scanner:string("fn a(v: i8^) v^ = 10; end"),
+	?assertEqual([{'fn', 1}, {identifier, 1, a}, {'(', 1}, {identifier, 1, v}, {':', 1}, {int_type, 1, i8},
 			{'^', 1}, {')', 1}, {identifier, 1, v}, {'^', 1}, {'=', 1}, {integer, 1, 10},
 			{';', 1}, {'end', 1}], Tokens),
 	{ok, AST} = e_parser:parse(Tokens),
@@ -14,8 +14,8 @@ function_normal_test() ->
 	ok.
 
 function_pointer_test() ->
-	{ok, Tokens, _} = e_scanner:string("a: fun (u8, u8^): u16^ = b;"),
-	?assertEqual([{identifier, 1, a}, {':', 1}, {'fun', 1}, {'(', 1}, {int_type, 1, u8}, {',', 1},
+	{ok, Tokens, _} = e_scanner:string("a: fn (u8, u8^): u16^ = b;"),
+	?assertEqual([{identifier, 1, a}, {':', 1}, {'fn', 1}, {'(', 1}, {int_type, 1, u8}, {',', 1},
 			{int_type, 1, u8}, {'^', 1}, {')', 1}, {':', 1}, {int_type, 1, u16}, {'^', 1},
 			{'=', 1}, {identifier, 1, b}, {';', 1}], Tokens),
 	{ok, AST} = e_parser:parse(Tokens),
@@ -63,8 +63,8 @@ struct_init_test() ->
 	ok.
 
 assign_test() ->
-	{ok, Tokens, _} = e_scanner:string("fun b() a * = 3; c bsr = 5; end"),
-	?assertEqual([{'fun', 1}, {identifier, 1, b}, {'(', 1}, {')', 1}, {identifier, 1, a}, {'*', 1},
+	{ok, Tokens, _} = e_scanner:string("fn b() a * = 3; c bsr = 5; end"),
+	?assertEqual([{'fn', 1}, {identifier, 1, b}, {'(', 1}, {')', 1}, {identifier, 1, a}, {'*', 1},
 			{'=', 1}, {integer, 1, 3}, {';', 1}, {identifier, 1, c}, {'bsr', 1}, {'=', 1},
 			{integer, 1, 5}, {';', 1}, {'end', 1}], Tokens),
 	{ok, AST} = e_parser:parse(Tokens),

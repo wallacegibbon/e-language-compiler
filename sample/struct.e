@@ -43,7 +43,7 @@ g3: byte = 34;
 g4: u32 = 56;
 g9: Sprite = Sprite{id = 10, pos = Pos{x = 20, y = 30}};
 
-fun main(): isize
+fn main(): isize
 	l1: Sprite = Sprite{id = 11, pos = Pos{x = 12, y = 13}};
 	g1.pos.y = 111;
 	l1.pos.y = 222;
@@ -70,12 +70,12 @@ fun main(): isize
 	return 0;
 end
 
-fun blah(tag: byte, s: Sprite^): byte
+fn blah(tag: byte, s: Sprite^): byte
 	s^.pos.y = tag;
 	return tag + 1;
 end
 
-fun ptest(s: any^)
+fn ptest(s: any^)
 	%s^.pos.y = 1;
 	(s as Sprite^)^.pos.y = 1;
 end

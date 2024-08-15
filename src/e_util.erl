@@ -4,13 +4,9 @@
 -export([primitive_size_of/2, void_type/1, cut_extra/2, fill_unit_opti/2, fill_unit_pessi/2]).
 -export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2, map_find_multi/2]).
 -export([fix_special_chars/1]).
--export_type([tree_list/1]).
 -include("e_record_definition.hrl").
 
--type tree_list(T) :: list(T |  tree_list(T)).
-
-%% This function can be used to avoid boilerplate code for if, while, return, call...
-%% So you can concentrate on operators.
+%% This function is to avoid boilerplate code for statements. So you can concentrate on operators.
 -spec expr_map(fun((e_expr()) -> e_expr()), [e_stmt()]) -> [e_stmt()].
 expr_map(Fn, [#e_if_stmt{} = If | Rest]) ->
 	[If#e_if_stmt{condi = Fn(If#e_if_stmt.condi), then = expr_map(Fn, If#e_if_stmt.then), 'else' = expr_map(Fn, If#e_if_stmt.'else')} | expr_map(Fn, Rest)];

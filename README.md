@@ -102,7 +102,7 @@ To keep things minimum, E language do not support `enum`, either.
 ## Function Definition
 
 ```
-fun main(argc: isize, argv: i8^^): isize
+fn main(argc: isize, argv: i8^^): isize
 	return 0;
 end
 ```
@@ -141,9 +141,9 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 ## Function Pointer
 
 ```
-my_fn1: fun (): fun (): fun () = another_fn1;
+my_fn1: fn (): fn (): fn () = another_fn1;
 
-my_fn2: fun (i8^, usize): fun (i8^, i8^): fun (isize, usize): u8^ = another_fn2;
+my_fn2: fn (i8^, usize): fn (i8^, i8^): fn (isize, usize): u8^ = another_fn2;
 
 ```
 
