@@ -1,3 +1,6 @@
+#include "blah.h"
+#define RELEASE 0
+
 struct S1
 	a: byte,
 end
@@ -64,19 +67,25 @@ fn main(): isize
 
 	l1.pos.x = alignof(Sprite);
 	l1.pos.x = alignof(Pos);
+
+#if ?RELEASE
 	l1.pos.x = alignof(u32);
+#else
+	l1.pos.x = alignof(u16);
+#endif
 
 %@@alignof_anchor
 	return 0;
 end
 
 fn blah(tag: byte, s: Sprite^): byte
+	str: byte^ = "hello, world!";
 	s^.pos.y = tag;
 	return tag + 1;
 end
 
 fn ptest(s: any^)
 	%s^.pos.y = 1;
-	(s as Sprite^)^.pos.y = 1;
+	(s as Sprite^)^.pos.y = 'a';
 end
 

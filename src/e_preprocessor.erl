@@ -157,7 +157,11 @@ replace_macro({identifier, Loc, Name}, MacroMap, ContinueHandler) ->
 eval_token_exprs([{integer, _, 0}], _MacroMap) ->
 	false;
 eval_token_exprs([{integer, _, 1}], _MacroMap) ->
-	true.
+	true;
+eval_token_exprs([{integer, Loc, N}], _MacroMap) ->
+	e_util:ethrow(Loc, "invalid preprocessor condition value: ~w", [N]);
+eval_token_exprs([Token | _], _) ->
+	e_util:ethrow(element(2, Token), "invalid preprocessor expression").
 
 -spec replace_line_number([token()], location()) -> [token()].
 replace_line_number(Tokens, Loc) ->
