@@ -19,7 +19,7 @@ Rules.
 
 {StringQuote}{StringQuote} : {token, {string, TokenLoc, ""}}.
 {StringQuote}({StringUnescapedChar}|{StringEscapedChar})+{StringQuote} : {token, {string, TokenLoc, fix_str(drop_quotes(TokenChars))}}.
-{CharQuote}{CharQuote} : {error, "empty char"}.
+{CharQuote}{CharQuote} : {error, {TokenLoc, "empty char"}}.
 {CharQuote}({CharUnescapedChar}|{CharEscapedChar}){CharQuote} : {token, {integer, TokenLoc, fix_char(drop_quotes(TokenChars))}}.
 0x{HexDigit}+ : {token, {integer, TokenLoc, str_to_int(TokenChars, 16)}}.
 0o{OctalDigit}+ : {token, {integer, TokenLoc, str_to_int(TokenChars, 8)}}.
@@ -39,6 +39,7 @@ any : {token, {any_type, TokenLoc, any}}.
 [\s\r\t\v\f]* : skip_token.
 \n : {token, {newline, TokenLoc}}.
 {CommentStart}[^\n]* : skip_token.
+. : {error, {TokenLoc, e_util:fmt("invalid char. (code list: ~w)", [TokenChars])}}.
 
 Erlang code.
 

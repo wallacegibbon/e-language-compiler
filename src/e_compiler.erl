@@ -2,6 +2,8 @@
 -export([compile_to_ast/1, compile_to_c/2, compile_to_e/2]).
 -include("e_record_definition.hrl").
 
+-type token() :: {atom(), location(), _} | {atom(), location()}.
+
 -spec compile_to_e(string(), string()) -> ok.
 compile_to_e(InputFilename, OutputFilename) ->
 	try
@@ -44,24 +46,30 @@ parse_and_compile(Filename) ->
 parse_file(Filename) ->
 	case file:read_file(Filename) of
 		{ok, RawContent} ->
-			parse_content(RawContent);
+			parse_tokens(scan_raw_content(RawContent));
 		{error, enoent} ->
 			throw(io_lib:format("file \"~s\"not found", [Filename]));
 		{error, Reason} ->
 			throw(Reason)
 	end.
 
--spec parse_content(binary()) -> e_ast_raw().
-parse_content(RawContent) ->
-	case e_scanner:string(binary_to_list(RawContent)) of
-		{ok, Tokens, _} ->
-			case e_parser:parse(e_preprocessor:process(Tokens)) of
-				{ok, AST} ->
-					AST;
-				{error, {Loc, _, ErrorInfo}} ->
-					throw({Loc, ErrorInfo})
-			end;
-		{error, ErrorInfo, Loc} ->
+-spec scan_raw_content(binary()) -> [token()].
+scan_raw_content(RawContent) ->
+	case e_scanner:string(unicode:characters_to_list(RawContent, utf8)) of
+		{ok, Tokens, _EndLoc} ->
+			Tokens;
+		{error, {_, _, {user, {Loc, Info}}}, _} ->
+			throw({Loc, Info});
+		Error->
+			throw(Error)
+	end.
+
+-spec parse_tokens([token()]) -> e_ast_raw().
+parse_tokens(Tokens) ->
+	case e_parser:parse(e_preprocessor:process(Tokens)) of
+		{ok, AST} ->
+			AST;
+		{error, {Loc, _, ErrorInfo}} ->
 			throw({Loc, ErrorInfo})
 	end.
 

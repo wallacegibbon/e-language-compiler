@@ -8,10 +8,10 @@
 %% https://github.com/erlang/eep/blob/45712972843de05be3c442e376b7b754fe2e1e51/eeps/eep-0071.md
 -type tree_list() :: list(tree_list() | any()).
 
+-type token() :: {atom(), location(), _} | {atom(), location()}.
 -type macro_map() :: #{atom() => [token()]}.
 -type context() :: {MacroMap :: macro_map(), RetTokens :: [token()], EndTag :: 'else' | endif | normal}.
 -type handle_ret() :: {MacroMap :: macro_map(), RetTokens :: [token()], RestTokens :: [token()]}.
--type token() :: any().
 
 -spec handle_special([token()], context()) -> handle_ret().
 handle_special([{identifier, _, define}, {identifier, Loc, Name} | Rest], Ctx) ->
