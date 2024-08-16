@@ -70,7 +70,7 @@ type_of_node(#e_op{tag = '+', data = [Op1, Op2], loc = Loc}, Ctx) ->
 				{true, PointerType} ->
 					PointerType;
 				false ->
-					e_util:ethrow(Loc, type_error_of_op2('+', Op1Type, Op2Type))
+					e_util:ethrow(Loc, type_error_of('+', Op1Type, Op2Type))
 			end
 	end;
 %% integer + pointer is valid, but integer - pointer is invalid
@@ -85,7 +85,7 @@ type_of_node(#e_op{tag = '-', data = [Op1, Op2], loc = Loc}, Ctx) ->
 				{true, PointerType} ->
 					PointerType;
 				false ->
-					e_util:ethrow(Loc, type_error_of_op2('-', Op1Type, Op2Type))
+					e_util:ethrow(Loc, type_error_of('-', Op1Type, Op2Type))
 			end
 	end;
 type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) when Tag =:= '*'; Tag =:= '/' ->
@@ -95,7 +95,7 @@ type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) when Tag =:= '
 		{true, T} ->
 			T;
 		false ->
-			e_util:ethrow(Loc, type_error_of_op2(Tag, Op1Type, Op2Type))
+			e_util:ethrow(Loc, type_error_of(Tag, Op1Type, Op2Type))
 	end;
 type_of_node(#e_op{tag = {call, FunExpr}, data = Args, loc = Loc}, Ctx) ->
 	ArgTypes = type_of_nodes(Args, Ctx),
@@ -118,7 +118,7 @@ type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) ->
 		true ->
 			Op1Type;
 		false ->
-			e_util:ethrow(Loc, type_error_of_op2(Tag, Op1Type, Op2Type))
+			e_util:ethrow(Loc, type_error_of(Tag, Op1Type, Op2Type))
 	end;
 type_of_node(#e_op{tag = '^', data = [Operand], loc = Loc}, Ctx) ->
 	case type_of_node(Operand, Ctx) of
@@ -183,7 +183,7 @@ type_of_node(#e_return_stmt{expr = Expr, loc = Loc}, {_, _, _, FnRetType} = Ctx)
 		true ->
 			RealRet;
 		false ->
-			e_util:ethrow(Loc, "ret type should be (~s), not (~s)", [type_to_str(FnRetType), type_to_str(RealRet)])
+			e_util:ethrow(Loc, type_error_of('.vs.', FnRetType, RealRet))
 	end;
 type_of_node(#e_goto_stmt{loc = Loc}, _) ->
 	e_util:void_type(Loc);
@@ -203,7 +203,7 @@ convert_type(#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{p_depth 
 convert_type(#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{class = integer, p_depth = 0} = Type, _) ->
 	Type;
 convert_type(ExprType, Type, Loc) ->
-	e_util:ethrow(Loc, "incompatible type: <~s> .vs. <~s>", [type_to_str(ExprType), type_to_str(Type)]).
+	e_util:ethrow(Loc, type_error_of(to, ExprType, Type)).
 
 -spec compare_expect_left(e_type(), e_type(), location()) -> e_type().
 compare_expect_left(Type1, Type2, Loc) ->
@@ -211,7 +211,7 @@ compare_expect_left(Type1, Type2, Loc) ->
 		true ->
 			Type1;
 		false ->
-			e_util:ethrow(Loc, "type mismatch in \"~s = ~s\"", [type_to_str(Type1), type_to_str(Type2)])
+			e_util:ethrow(Loc, type_error_of('=', Type1, Type2))
 	end.
 
 -spec arguments_error_info([e_type()], [e_type()]) -> string().
@@ -219,16 +219,16 @@ arguments_error_info(FnParamTypes, ArgsTypes) ->
 	e_util:fmt("args should be (~s), not (~s)", [join_types_to_str(FnParamTypes), join_types_to_str(ArgsTypes)]).
 
 -spec inc_pointer_depth(e_type(), location()) -> e_type().
-inc_pointer_depth(#e_basic_type{p_depth = PDepth} = T, _) ->
-	T#e_basic_type{p_depth = PDepth + 1};
+inc_pointer_depth(#e_basic_type{p_depth = N} = T, _) ->
+	T#e_basic_type{p_depth = N + 1};
 inc_pointer_depth(#e_array_type{elem_type = #e_basic_type{} = T}, Loc) ->
 	inc_pointer_depth(T, Loc);
 inc_pointer_depth(T, Loc) ->
 	e_util:ethrow(Loc, "'@' on type ~s is invalid", [type_to_str(T)]).
 
 -spec dec_pointer_depth(e_type(), location()) -> e_type().
-dec_pointer_depth(#e_basic_type{p_depth = PDepth} = T, _) when PDepth > 0 ->
-	T#e_basic_type{p_depth = PDepth - 1};
+dec_pointer_depth(#e_basic_type{p_depth = N} = T, _) when N > 0 ->
+	T#e_basic_type{p_depth = N - 1};
 dec_pointer_depth(T, Loc) ->
 	e_util:ethrow(Loc, "'^' on type ~s is invalid", [type_to_str(T)]).
 
@@ -246,7 +246,7 @@ check_struct_field(FieldTypeMap, FieldName, Val, StructName, {_, _, StructMap, _
 		true ->
 			ok;
 		false ->
-			e_util:ethrow(Loc, "~s.~s type error: ~s = ~s", [StructName, FieldName, type_to_str(ExpectedType), type_to_str(GivenType)])
+			e_util:ethrow(Loc, type_error_of('=', ExpectedType, GivenType))
 	end.
 
 -spec are_same_type([e_type()]) -> boolean().
@@ -299,15 +299,15 @@ compare_type(_, _) ->
 	false.
 
 -spec is_pointer_and_integer_ordered(e_type(), e_type()) -> {true, e_type()} | false.
-is_pointer_and_integer_ordered(#e_basic_type{p_depth = PDepth} = Type, #e_basic_type{class = integer, p_depth = 0}) when PDepth > 0 ->
+is_pointer_and_integer_ordered(#e_basic_type{p_depth = N} = Type, #e_basic_type{class = integer, p_depth = 0}) when N > 0 ->
 	{true, Type};
 is_pointer_and_integer_ordered(_, _) ->
 	false.
 
 -spec is_pointer_and_integer(e_type(), e_type()) -> {true, e_type()} | false.
-is_pointer_and_integer(#e_basic_type{p_depth = PDepth} = Type, #e_basic_type{class = integer, p_depth = 0}) when PDepth > 0 ->
+is_pointer_and_integer(#e_basic_type{p_depth = N} = Type, #e_basic_type{class = integer, p_depth = 0}) when N > 0 ->
 	{true, Type};
-is_pointer_and_integer(#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{p_depth = PDepth} = Type) when PDepth > 0 ->
+is_pointer_and_integer(#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{p_depth = N} = Type) when N > 0 ->
 	{true, Type};
 is_pointer_and_integer(_, _) ->
 	false.
@@ -333,9 +333,9 @@ are_both_floats(#e_basic_type{p_depth = 0, class = float}, #e_basic_type{p_depth
 are_both_floats(_, _) ->
 	false.
 
--spec type_error_of_op2(atom(), e_type(), e_type()) -> string().
-type_error_of_op2(Operator, TypeofOp1, TypeofOp2) ->
-	e_util:fmt("type error in \"~s ~s ~s\"", [type_to_str(TypeofOp1), Operator, type_to_str(TypeofOp2)]).
+-spec type_error_of(atom(), e_type(), e_type()) -> string().
+type_error_of(Tag, TypeofOp1, TypeofOp2) ->
+	e_util:fmt("type error: <~s> ~s <~s>", [type_to_str(TypeofOp1), Tag, type_to_str(TypeofOp2)]).
 
 -spec check_types([e_type()], #{atom() => #e_struct{}}) -> ok.
 check_types(TypeList, StructMap) ->
@@ -347,13 +347,10 @@ check_type(#e_basic_type{class = struct} = S, StructMap) ->
 	e_util:get_struct_from_type(S, StructMap);
 check_type(#e_basic_type{}, _) ->
 	ok;
+check_type(#e_array_type{elem_type = #e_array_type{loc = Loc}}, _) ->
+	e_util:ethrow(Loc, "nested array is not supported");
 check_type(#e_array_type{elem_type = Type}, StructMap) ->
-	case Type of
-		#e_array_type{loc = Loc} ->
-			e_util:ethrow(Loc, "nested array is not supported");
-		_ ->
-			check_type(Type, StructMap)
-	end;
+	check_type(Type, StructMap);
 check_type(#e_fn_type{params = Params, ret = RetType}, StructMap) ->
 	check_types(Params, StructMap),
 	check_type(RetType, StructMap).
@@ -367,8 +364,8 @@ type_to_str(#e_fn_type{params = Params, ret = RetType}) ->
 	e_util:fmt("fun (~s): ~s", [join_types_to_str(Params), type_to_str(RetType)]);
 type_to_str(#e_array_type{elem_type = Type, length = N}) ->
 	e_util:fmt("{~s, ~w}", [type_to_str(Type), N]);
-type_to_str(#e_basic_type{tag = Tag, p_depth = PDepth}) when PDepth > 0 ->
-	e_util:fmt("(~s~s)", [Tag, lists:duplicate(PDepth, "^")]);
+type_to_str(#e_basic_type{tag = Tag, p_depth = N}) when N > 0 ->
+	e_util:fmt("(~s~s)", [Tag, lists:duplicate(N, "^")]);
 type_to_str(#e_basic_type{tag = Tag, p_depth = 0}) ->
 	atom_to_list(Tag).
 

@@ -36,6 +36,7 @@ struct Sprite
 end
 
 struct Pos
+	%x: u32 = "hello",
 	x: u32 = 100,
 	y: u32 = 101,
 	h: u64 = 1000,
@@ -51,6 +52,7 @@ g9: Sprite = Sprite{id = 10, pos = Pos{x = 20, y = 30}};
 fn main(): isize
 	l1: Sprite = Sprite{id = 11, pos = Pos{x = 12, y = 13}};
 	g1.pos.y = 111;
+	%l1.pos.y = "hello";
 	l1.pos.y = 222;
 
 	if

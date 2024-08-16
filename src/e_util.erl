@@ -8,8 +8,8 @@
 
 %% This function is to avoid boilerplate code for statements. So you can concentrate on operators.
 -spec expr_map(fun((e_expr()) -> e_expr()), [e_stmt()]) -> [e_stmt()].
-expr_map(Fn, [#e_if_stmt{} = If | Rest]) ->
-	[If#e_if_stmt{condi = Fn(If#e_if_stmt.condi), then = expr_map(Fn, If#e_if_stmt.then), 'else' = expr_map(Fn, If#e_if_stmt.'else')} | expr_map(Fn, Rest)];
+expr_map(Fn, [#e_if_stmt{condi = Condi, then = Then, 'else' = Else} = If | Rest]) ->
+	[If#e_if_stmt{condi = Fn(Condi), then = expr_map(Fn, Then), 'else' = expr_map(Fn, Else)} | expr_map(Fn, Rest)];
 expr_map(Fn, [#e_while_stmt{condi = Cond, stmts = Stmts} = While | Rest]) ->
 	[While#e_while_stmt{condi = Fn(Cond), stmts = expr_map(Fn, Stmts)} | expr_map(Fn, Rest)];
 expr_map(Fn, [#e_return_stmt{expr = Expr} = Ret | Rest]) ->
