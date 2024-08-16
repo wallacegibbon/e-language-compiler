@@ -4,8 +4,7 @@
 
 -spec generate_e_code(e_ast(), e_ast(), string()) -> ok.
 generate_e_code(AST, InitCode, OutputFile) ->
-	Code = statements_to_str(AST, InitCode),
-	ok = file:write_file(OutputFile, Code).
+	ok = file:write_file(OutputFile, statements_to_str(AST, InitCode)).
 
 -spec statements_to_str(e_ast(), [e_stmt()]) -> iolist().
 statements_to_str([#e_function{name = main, stmts = Stmts} | Rest], InitCode) ->

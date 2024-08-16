@@ -81,10 +81,11 @@ stmt_to_str(#e_type_convert{expr = Expr, type = _Type}) ->
 stmt_to_str(Any) ->
 	Any.
 
--define(SPECIAL_CHARACTER_MAP, #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}).
+special_char_map() ->
+	#{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}.
 
 fix_special_chars(String) ->
-	lists:map(fun(C) -> maps:get(C, ?SPECIAL_CHARACTER_MAP, C) end, String).
+	lists:map(fun(C) -> maps:get(C, special_char_map(), C) end, String).
 
 -spec fmt(string(), [any()]) -> string().
 fmt(FmtStr, Args) ->
@@ -197,7 +198,6 @@ get_struct_from_name(Name, StructMap, Loc) ->
 %% `merge_vars` will NOT merge all fields of e_vars. Only name, type_map and offset_map are merged.
 
 -define(E_VARS(Names, TypeMap, OffsetMap), #e_vars{names = Names, type_map = TypeMap, offset_map = OffsetMap}).
-
 -spec merge_vars(#e_vars{}, #e_vars{}, check_tag | ignore_tag) -> #e_vars{}.
 merge_vars(#e_vars{tag = Tag1}, #e_vars{tag = Tag2}, check_tag) when Tag1 =/= Tag2 ->
 	ethrow(0, "only vars with the same tag can be merged. (~s, ~s)", [Tag1, Tag2]);
