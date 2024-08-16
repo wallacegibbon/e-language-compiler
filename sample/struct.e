@@ -97,6 +97,12 @@ fn ptest(s: any^, cnt: i32)
 end
 
 fn fn1(arg: byte^): byte^
+	tmp: byte^;
+	1 + arg;
+	arg - 1;
+	%1 - arg;
+	a: usize;
+	a = arg - tmp;
 	return arg + 1;
 end
 

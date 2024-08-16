@@ -62,28 +62,26 @@ type_of_node(#e_op{tag = '.', data = [Op1, Op2], loc = Loc}, {_, _, StructMap, _
 type_of_node(#e_op{tag = '+', data = [Op1, Op2], loc = Loc}, Ctx) ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
-	case are_both_number_of_same_type(Op1Type, Op2Type) of
+	Checkers = [fun are_numbers_of_same_type/2, fun are_pointer_and_integer_ignore_order/2],
+	case number_check_chain(Op1Type, Op2Type, Checkers) of
 		{true, T} ->
 			T;
 		false ->
-			case is_pointer_and_integer(Op1Type, Op2Type) of
-				{true, PointerType} ->
-					PointerType;
-				false ->
-					e_util:ethrow(Loc, type_error_of('+', Op1Type, Op2Type))
-			end
+			e_util:ethrow(Loc, type_error_of('+', Op1Type, Op2Type))
 	end;
-%% integer + pointer is valid, but integer - pointer is invalid
+%% `integer + pointer` is valid, but `integer - pointer` is invalid
 type_of_node(#e_op{tag = '-', data = [Op1, Op2], loc = Loc}, Ctx) ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
-	case are_both_number_of_same_type(Op1Type, Op2Type) of
-		{true, T} ->
-			T;
-		false ->
-			case is_pointer_and_integer_ordered(Op1Type, Op2Type) of
-				{true, PointerType} ->
-					PointerType;
+	case are_pointers_of_same_type(Op1Type, Op2Type) of
+		true ->
+			%% pointer - pointer --> integer.
+			#e_basic_type{class = integer, tag = usize, loc = Loc};
+		false->
+			Checkers = [fun are_numbers_of_same_type/2, fun are_pointer_and_integer/2],
+			case number_check_chain(Op1Type, Op2Type, Checkers) of
+				{true, T} ->
+					T;
 				false ->
 					e_util:ethrow(Loc, type_error_of('-', Op1Type, Op2Type))
 			end
@@ -91,7 +89,7 @@ type_of_node(#e_op{tag = '-', data = [Op1, Op2], loc = Loc}, Ctx) ->
 type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) when Tag =:= '*'; Tag =:= '/' ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
-	case are_both_number_of_same_type(Op1Type, Op2Type) of
+	case are_numbers_of_same_type(Op1Type, Op2Type) of
 		{true, T} ->
 			T;
 		false ->
@@ -114,9 +112,9 @@ type_of_node(#e_op{tag = {call, FunExpr}, data = Args, loc = Loc}, Ctx) ->
 type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
-	case are_both_integers(Op1Type, Op2Type) of
-		true ->
-			Op1Type;
+	case are_integers(Op1Type, Op2Type) of
+		{true, Type} ->
+			Type;
 		false ->
 			e_util:ethrow(Loc, type_error_of(Tag, Op1Type, Op2Type))
 	end;
@@ -138,8 +136,7 @@ type_of_node(#e_op{data = [Operand]}, Ctx) ->
 type_of_node(#e_varref{name = Name, loc = Loc}, {#e_vars{type_map = TypeMap}, FnTypeMap, StructMap, _}) ->
 	case e_util:map_find_multi(Name, [TypeMap, FnTypeMap]) of
 		{ok, Type} ->
-			check_type(Type, StructMap),
-			Type;
+			check_type(Type, StructMap);
 		notfound ->
 			e_util:ethrow(Loc, "variable ~s is undefined", [Name])
 	end;
@@ -258,7 +255,8 @@ are_same_type(_) ->
 	false.
 
 -spec type_of_struct_field(e_type(), #e_varref{}, #{atom() => #e_struct{}}, location()) -> e_type().
-type_of_struct_field(#e_basic_type{class = struct, tag = Name, p_depth = 0} = S, #e_varref{name = FieldName}, StructMap, Loc) ->
+type_of_struct_field(#e_basic_type{class = struct, p_depth = 0} = S, #e_varref{name = FieldName}, StructMap, Loc) ->
+	#e_basic_type{tag = Name} = S,
 	#e_struct{fields = #e_vars{type_map = FieldTypeMap}} = e_util:get_struct_from_type(S, StructMap),
 	get_field_type(FieldName, FieldTypeMap, Name, Loc);
 type_of_struct_field(T, _, _, Loc) ->
@@ -298,62 +296,150 @@ compare_type(#e_basic_type{class = C, tag = T, p_depth = P}, #e_basic_type{class
 compare_type(_, _) ->
 	false.
 
--spec is_pointer_and_integer_ordered(e_type(), e_type()) -> {true, e_type()} | false.
-is_pointer_and_integer_ordered(#e_basic_type{p_depth = N} = Type, #e_basic_type{class = integer, p_depth = 0}) when N > 0 ->
-	{true, Type};
-is_pointer_and_integer_ordered(_, _) ->
-	false.
+-type number_check_result() :: {true, e_type()} | false.
+-type number_check_fn() :: fun((e_type(), e_type()) -> number_check_result()).
 
--spec is_pointer_and_integer(e_type(), e_type()) -> {true, e_type()} | false.
-is_pointer_and_integer(#e_basic_type{p_depth = N} = Type, #e_basic_type{class = integer, p_depth = 0}) when N > 0 ->
-	{true, Type};
-is_pointer_and_integer(#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{p_depth = N} = Type) when N > 0 ->
-	{true, Type};
-is_pointer_and_integer(_, _) ->
-	false.
-
--spec are_both_number_of_same_type(e_type(), e_type()) -> {true, e_type()} | false.
-are_both_number_of_same_type(T1, T2) ->
-	case are_both_integers(T1, T2) or are_both_floats(T1, T2) of
-		true ->
-			{true, T1};
+-spec number_check_chain(e_type(), e_type(), [number_check_fn()]) -> number_check_result().
+number_check_chain(T1, T2, [Fn | RestFns]) ->
+	case Fn(T1, T2) of
+		{true, _} = R ->
+			R;
 		false ->
-			false
+			number_check_chain(T1, T2, RestFns)
+	end;
+number_check_chain(_, _, []) ->
+	false.
+
+-spec are_pointer_and_integer_ignore_order(e_type(), e_type()) -> number_check_result().
+are_pointer_and_integer_ignore_order(T1, T2) ->
+	case are_pointer_and_integer(T1, T2) of
+		{true, _} = R ->
+			R;
+		false ->
+			are_pointer_and_integer(T2, T1)
 	end.
 
--spec are_both_integers(e_type(), e_type()) -> boolean().
-are_both_integers(#e_basic_type{p_depth = 0, class = integer}, #e_basic_type{p_depth = 0, class = integer}) ->
-	true;
-are_both_integers(_, _) ->
+-spec are_pointer_and_integer(e_type(), e_type()) -> number_check_result().
+are_pointer_and_integer(#e_basic_type{p_depth = N} = Type, #e_basic_type{class = integer, p_depth = 0}) when N > 0 ->
+	{true, Type};
+are_pointer_and_integer(#e_fn_type{} = Type, #e_basic_type{class = integer, p_depth = 0}) ->
+	{true, Type};
+are_pointer_and_integer(_, _) ->
 	false.
 
--spec are_both_floats(e_type(), e_type()) -> boolean().
-are_both_floats(#e_basic_type{p_depth = 0, class = float}, #e_basic_type{p_depth = 0, class = float}) ->
+-spec are_pointers_of_same_type(e_type(), e_type()) -> boolean().
+are_pointers_of_same_type(#e_basic_type{class = C, tag = T, p_depth = N}, #e_basic_type{class = C, tag = T, p_depth = N}) ->
 	true;
-are_both_floats(_, _) ->
+are_pointers_of_same_type(#e_fn_type{}, #e_fn_type{}) ->
+	true;
+are_pointers_of_same_type(_, _) ->
 	false.
+
+-spec are_numbers_of_same_type(e_type(), e_type()) -> number_check_result().
+are_numbers_of_same_type(T1, T2) ->
+	number_check_chain(T1, T2, [fun are_integers/2, fun are_floats/2]).
+
+-spec are_integers(e_type(), e_type()) -> number_check_result().
+are_integers(#e_basic_type{class = integer, p_depth = 0} = T1, #e_basic_type{class = integer, p_depth = 0} = T2) ->
+	{true, bigger_type(T1, T2)};
+are_integers(_, _) ->
+	false.
+
+-spec are_floats(e_type(), e_type()) -> number_check_result().
+are_floats(#e_basic_type{class = float, p_depth = 0} = T1, #e_basic_type{class = float, p_depth = 0} = T2) ->
+	{true, bigger_type(T1, T2)};
+are_floats(_, _) ->
+	false.
+
+-spec bigger_type(e_type(), e_type()) -> e_type().
+bigger_type(#e_basic_type{class = integer, tag = Tag1} = T1, #e_basic_type{class = integer, tag = Tag2} = T2) ->
+	N1 = e_util:primitive_size_of(Tag1, 128),
+	N2 = e_util:primitive_size_of(Tag2, 128),
+	case bigger_type_calc(Tag1, Tag2, N1, N2) of
+		true -> T1;
+		false -> T2
+	end;
+bigger_type(#e_basic_type{class = float, tag = f64} = T, #e_basic_type{class = float}) ->
+	T;
+bigger_type(#e_basic_type{class = float}, #e_basic_type{class = float} = T) ->
+	T.
+
+bigger_type_calc(_, _, N1, N2) when N1 > N2 ->
+	true;
+bigger_type_calc(_, _, N1, N2) when N1 < N2 ->
+	false;
+%% `byte` have higher precedence on the same length.
+bigger_type_calc(byte, _, _, _) ->
+	true;
+bigger_type_calc(_, byte, _, _) ->
+	false;
+%% Using `>` to compare `uxx` and `ixx`.
+bigger_type_calc(Tag1, Tag2, _, _) when Tag1 > Tag2 ->
+	true;
+bigger_type_calc(_, _, _, _) ->
+	false.
+
+-ifdef(EUNIT).
+
+-include_lib("eunit/include/eunit.hrl").
+
+-define(IOBJ(Tag, PDepth), #e_basic_type{class = integer, tag = Tag, p_depth = PDepth}).
+-define(FOBJ(Tag, PDepth), #e_basic_type{class = float, tag = Tag, p_depth = PDepth}).
+
+bigger_type_test() ->
+	?assertMatch(?IOBJ(u8, 0), bigger_type(?IOBJ(i8, 0), ?IOBJ(u8, 0))),
+	?assertMatch(?IOBJ(u8, 0), bigger_type(?IOBJ(u8, 0), ?IOBJ(i8, 0))),
+	?assertMatch(?IOBJ(byte, 0), bigger_type(?IOBJ(byte, 0), ?IOBJ(u8, 0))),
+	?assertMatch(?IOBJ(byte, 0), bigger_type(?IOBJ(u8, 0), ?IOBJ(byte, 0))),
+	?assertMatch(?IOBJ(i16, 0), bigger_type(?IOBJ(i16, 0), ?IOBJ(byte, 0))),
+	?assertMatch(?IOBJ(i16, 0), bigger_type(?IOBJ(i16, 0), ?IOBJ(u8, 0))),
+	?assertMatch(?IOBJ(i16, 0), bigger_type(?IOBJ(u8, 0), ?IOBJ(i16, 0))),
+	?assertMatch(?FOBJ(f64, 0), bigger_type(?FOBJ(f32, 0), ?FOBJ(f64, 0))),
+	?assertMatch(?FOBJ(f64, 0), bigger_type(?FOBJ(f64, 0), ?FOBJ(f32, 0))),
+	ok.
+
+are_numbers_of_same_type_test() ->
+	?assertMatch({true, ?IOBJ(i16, 0)}, are_numbers_of_same_type(?IOBJ(i16, 0), ?IOBJ(u8, 0))),
+	?assertMatch({true, ?IOBJ(u16, 0)}, are_numbers_of_same_type(?IOBJ(i16, 0), ?IOBJ(u16, 0))),
+	?assertMatch({true, ?FOBJ(f64, 0)}, are_numbers_of_same_type(?FOBJ(f64, 0), ?FOBJ(f32, 0))),
+	?assertMatch({true, ?FOBJ(f64, 0)}, are_numbers_of_same_type(?FOBJ(f32, 0), ?FOBJ(f64, 0))),
+	?assertMatch(false, are_numbers_of_same_type(?IOBJ(i16, 0), ?FOBJ(f32, 0))),
+	ok.
+
+number_check_chain_test() ->
+	L1 = [fun are_numbers_of_same_type/2, fun are_pointers_of_same_type/2, fun are_pointer_and_integer/2],
+	?assertMatch({true, ?IOBJ(i16, 0)}, number_check_chain(?IOBJ(i16, 0), ?IOBJ(u8, 0), L1)),
+	L2 = [fun are_numbers_of_same_type/2, fun are_pointers_of_same_type/2, fun are_pointer_and_integer/2],
+	?assertMatch(false, number_check_chain(?IOBJ(i16, 0), ?IOBJ(u8, 1), L2)),
+	L3 = [fun are_numbers_of_same_type/2, fun are_pointers_of_same_type/2, fun are_pointer_and_integer_ignore_order/2],
+	?assertMatch({true, ?IOBJ(u8, 1)}, number_check_chain(?IOBJ(i16, 0), ?IOBJ(u8, 1), L3)),
+	ok.
+
+-endif.
 
 -spec type_error_of(atom(), e_type(), e_type()) -> string().
 type_error_of(Tag, TypeofOp1, TypeofOp2) ->
 	e_util:fmt("type error: <~s> ~s <~s>", [type_to_str(TypeofOp1), Tag, type_to_str(TypeofOp2)]).
 
--spec check_types([e_type()], #{atom() => #e_struct{}}) -> ok.
+-spec check_types([e_type()], #{atom() => #e_struct{}}) -> [e_type()].
 check_types(TypeList, StructMap) ->
-	lists:foreach(fun(T) -> check_type(T, StructMap) end, TypeList).
+	lists:map(fun(T) -> check_type(T, StructMap) end, TypeList).
 
 %% check type, ensure that all struct used by type exists.
--spec check_type(e_type(), #{atom() => #e_struct{}}) -> any().
-check_type(#e_basic_type{class = struct} = S, StructMap) ->
-	e_util:get_struct_from_type(S, StructMap);
-check_type(#e_basic_type{}, _) ->
-	ok;
+-spec check_type(e_type(), #{atom() => #e_struct{}}) -> e_type().
+check_type(#e_basic_type{class = struct} = Type, StructMap) ->
+	#e_struct{} = e_util:get_struct_from_type(Type, StructMap),
+	Type;
+check_type(#e_basic_type{} = Type, _) ->
+	Type;
 check_type(#e_array_type{elem_type = #e_array_type{loc = Loc}}, _) ->
 	e_util:ethrow(Loc, "nested array is not supported");
 check_type(#e_array_type{elem_type = Type}, StructMap) ->
 	check_type(Type, StructMap);
-check_type(#e_fn_type{params = Params, ret = RetType}, StructMap) ->
+check_type(#e_fn_type{params = Params, ret = RetType} = Type, StructMap) ->
 	check_types(Params, StructMap),
-	check_type(RetType, StructMap).
+	check_type(RetType, StructMap),
+	Type.
 
 -spec join_types_to_str([e_type()]) -> string().
 join_types_to_str(Types) ->

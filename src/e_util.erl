@@ -137,7 +137,8 @@ fill_unit_opti(Num, Unit) ->
 cut_extra(Num, Unit) ->
 	Num div Unit * Unit.
 
--spec primitive_size_of(atom(), PointerSize) -> 1 | 2 | 4 | 8 when PointerSize :: 2 | 4 | 8.
+%% The 128 is for situations where PointerSize is unknown, and you need to number bigger than the pointer size.
+-spec primitive_size_of(atom(), PointerSize) -> 1 | 2 | 4 | 8 when PointerSize :: 2 | 4 | 8 | 128.
 primitive_size_of(usize, PointerSize) -> PointerSize;
 primitive_size_of(isize, PointerSize) -> PointerSize;
 primitive_size_of(uptr, PointerSize) -> PointerSize;
