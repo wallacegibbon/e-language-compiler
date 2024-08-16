@@ -197,7 +197,12 @@ e_expr -> e_expr e_op26 e_expr :
 e_expr -> e_expr e_op25 e_expr :
 	#e_op{tag = token_symbol('$2'), data = ['$1', '$3'], loc = token_loc('$2')}.
 e_expr -> e_expr e_op19 :
-	#e_op{tag = token_symbol('$2'), data = ['$1'], loc = token_loc('$2')}.
+	Data =
+		case token_symbol('$2') =:= '^' of
+			true -> ['$1', #e_integer{value = 0, loc = token_loc('$2')}];
+			_ -> ['$1']
+		end,
+	#e_op{tag = token_symbol('$2'), data = Data, loc = token_loc('$2')}.
 e_expr -> identifier :
 	#e_varref{name = token_value('$1'), loc = token_loc('$1')}.
 e_expr -> e_pre_minus_plus_expr : '$1'.

@@ -79,7 +79,8 @@ default_value_of(#e_basic_type{p_depth = PDepth}, Loc) when PDepth > 0 ->
 
 array_init_to_ops(Target, [E | Rest], Cnt, Loc, NewCode, StructMap) ->
 	A = [#e_op{tag = '@', data = [Target], loc = Loc}, #e_integer{value = Cnt, loc = Loc}],
-	B = [#e_op{tag = '+', data = A, loc = Loc}], C = #e_op{tag = '^', data = B, loc = Loc},
+	B = [#e_op{tag = '+', data = A, loc = Loc}, #e_integer{value = 0, loc = Loc}],
+	C = #e_op{tag = '^', data = B, loc = Loc},
 	NewAssign = #e_op{tag = '=', data = [C, E], loc = Loc},
 	Ops = replace_init_ops(NewAssign, StructMap),
 	array_init_to_ops(Target, Rest, Cnt + 1, Loc, Ops ++ NewCode, StructMap);

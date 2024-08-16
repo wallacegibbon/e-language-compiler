@@ -71,6 +71,7 @@ fn main(): isize
 
 	l1.pos.x = alignof(Sprite);
 	l1.pos.x = alignof(Pos);
+	l1.pos.h = alignof(Pos) + 1;
 
 #if ?RELEASE
 	l1.pos.x = alignof(u32);

@@ -89,10 +89,10 @@ eliminate_dot_in_expr(#e_op{tag = '.', loc = Loc} = Op, {_, _, StructMap, _} = C
 	#e_op{data = [O, #e_varref{name = FieldName}]} = Op,
 	#e_basic_type{class = struct, tag = Name, p_depth = 0} = e_type:type_of_node(O, Ctx),
 	{ok, #e_struct{fields = #e_vars{offset_map = FieldOffsetMap}}} = maps:find(Name, StructMap),
-	{ok, Offset} = maps:find(FieldName, FieldOffsetMap),
+	{ok, {Offset, Size}} = maps:find(FieldName, FieldOffsetMap),
 	A = #e_op{tag = '@', data = [eliminate_dot_in_expr(O, Ctx)], loc = Loc},
 	B = #e_op{tag = '+', data = [A, #e_integer{value = Offset, loc = Loc}], loc = Loc},
-	#e_op{tag = '^', data = [B]};
+	#e_op{tag = '^', data = [B, #e_integer{value = Size, loc = Loc}], loc = Loc};
 eliminate_dot_in_expr(#e_op{tag = {call, Callee}, data = Args} = Op, Ctx) ->
 	Op#e_op{tag = {call, eliminate_dot_in_expr(Callee, Ctx)}, data = lists:map(fun(E) -> eliminate_dot_in_expr(E, Ctx) end, Args)};
 eliminate_dot_in_expr(#e_op{data = Args} = Op, Ctx) ->

@@ -68,7 +68,7 @@ align_of_struct(#e_struct{fields = #e_vars{type_map = TypeMap}}, Ctx) ->
 
 
 -type size_and_offsets_result() ::
-	{Size :: integer(), Align :: integer(), OffsetMap :: #{atom() => integer()}}.
+	{Size :: integer(), Align :: integer(), OffsetMap :: #{atom() => var_offset()}}.
 
 -spec size_and_offsets_of_vars(#e_vars{}, context()) -> size_and_offsets_result().
 size_and_offsets_of_vars(#e_vars{names = Names, type_map = TypeMap}, Ctx) ->
@@ -86,9 +86,11 @@ size_and_offsets([{Name, Type} | Rest], {CurrentOffset, MaxAlign, OffsetMap}, Ct
 	case CurrentOffset rem CurrentAlign =/= 0 of
 		true ->
 			Offset = fix_offset(CurrentOffset, NextOffset, CurrentAlign),
-			size_and_offsets(Rest, {Offset + FieldSize, Align, OffsetMap#{Name => Offset}}, Ctx);
+			NewOffsetMap = OffsetMap#{Name => {Offset, FieldSize}},
+			size_and_offsets(Rest, {Offset + FieldSize, Align, NewOffsetMap}, Ctx);
 		false ->
-			size_and_offsets(Rest, {NextOffset, Align, OffsetMap#{Name => CurrentOffset}}, Ctx)
+			NewOffsetMap = OffsetMap#{Name => {CurrentOffset, FieldSize}},
+			size_and_offsets(Rest, {NextOffset, Align, NewOffsetMap}, Ctx)
 	end;
 size_and_offsets([], {CurrentOffset, Align, OffsetMap}, _) ->
 	{e_util:fill_unit_pessi(CurrentOffset, Align), Align, OffsetMap}.

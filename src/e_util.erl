@@ -35,9 +35,9 @@ merge_plus(Any) ->
 	Any.
 
 -spec merge_pointer(e_expr()) -> e_expr().
-merge_pointer(#e_op{tag = '^', data = [#e_op{tag = '@', data = [E]}]}) ->
+merge_pointer(#e_op{tag = '^', data = [#e_op{tag = '@', data = [E]}, _]}) ->
 	merge_pointer(E);
-merge_pointer(#e_op{tag = '@', data = [#e_op{tag = '^', data = [E]}]}) ->
+merge_pointer(#e_op{tag = '@', data = [#e_op{tag = '^', data = [E, _]}]}) ->
 	merge_pointer(E);
 merge_pointer(#e_op{tag = {call, Callee}, data = Args} = Op) ->
 	Op#e_op{tag = {call, merge_pointer(Callee)}, data = lists:map(fun merge_pointer/1, Args)};
@@ -61,6 +61,9 @@ stmt_to_str(#e_varref{name = Name}) ->
 	atom_to_list(Name);
 stmt_to_str(#e_op{tag = {call, Callee}, data = Args}) ->
 	io_lib:format("(~s)(~s)", [stmt_to_str(Callee), lists:map(fun stmt_to_str/1, Args)]);
+stmt_to_str(#e_op{tag = '^', data = [Op1, _Size]}) ->
+	%io_lib:format("(~s^ <size:~s>)", [stmt_to_str(Op1), stmt_to_str(_Size)]);
+	io_lib:format("((~s)^)", [stmt_to_str(Op1)]);
 stmt_to_str(#e_op{tag = Operator, data = [Op1, Op2]}) ->
 	io_lib:format("(~s ~s ~s)", [stmt_to_str(Op1), Operator, stmt_to_str(Op2)]);
 stmt_to_str(#e_op{tag = Operator, data = [Operand]}) ->
@@ -77,7 +80,7 @@ stmt_to_str(#e_float{value = Val}) ->
 stmt_to_str(#e_string{value = Val}) ->
 	io_lib:format("\"~s\"", [fix_special_chars(Val)]);
 stmt_to_str(#e_type_convert{expr = Expr, type = _Type}) ->
-	io_lib:format("(~s as ~s)", [stmt_to_str(Expr), type_to_str_unimplemented]);
+	io_lib:format("(~s as (~s))", [stmt_to_str(Expr), type_to_str_unimplemented]);
 stmt_to_str(Any) ->
 	Any.
 

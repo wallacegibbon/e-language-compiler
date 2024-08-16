@@ -47,7 +47,7 @@ type_of_node(#e_op{tag = '=', data = [#e_op{tag = '.', data = [Op11, Op12], loc 
 	Op1Type = type_of_struct_field(type_of_node(Op11, Ctx), Op12, StructMap, DotLoc),
 	Op2Type = type_of_node(Op2, Ctx),
 	compare_expect_left(Op1Type, Op2Type, Loc);
-type_of_node(#e_op{tag = '=', data = [#e_op{tag = '^', data = [SubOp]}, Op2], loc = Loc}, Ctx) ->
+type_of_node(#e_op{tag = '=', data = [#e_op{tag = '^', data = [SubOp, _]}, Op2], loc = Loc}, Ctx) ->
 	Op1Type = dec_pointer_depth(type_of_node(SubOp, Ctx), Loc),
 	Op2Type = type_of_node(Op2, Ctx),
 	compare_expect_left(Op1Type, Op2Type, Loc);
@@ -86,6 +86,13 @@ type_of_node(#e_op{tag = '-', data = [Op1, Op2], loc = Loc}, Ctx) ->
 					e_util:ethrow(Loc, type_error_of('-', Op1Type, Op2Type))
 			end
 	end;
+type_of_node(#e_op{tag = '^', data = [Operand, _], loc = Loc}, Ctx) ->
+	case type_of_node(Operand, Ctx) of
+		#e_basic_type{} = T ->
+			dec_pointer_depth(T, Loc);
+		_ ->
+			e_util:ethrow(Loc, "invalid \"^\" on operand ~s", [e_util:stmt_to_str(Operand)])
+	end;
 type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) when Tag =:= '*'; Tag =:= '/' ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
@@ -117,13 +124,6 @@ type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) ->
 			Type;
 		false ->
 			e_util:ethrow(Loc, type_error_of(Tag, Op1Type, Op2Type))
-	end;
-type_of_node(#e_op{tag = '^', data = [Operand], loc = Loc}, Ctx) ->
-	case type_of_node(Operand, Ctx) of
-		#e_basic_type{} = T ->
-			dec_pointer_depth(T, Loc);
-		_ ->
-			e_util:ethrow(Loc, "invalid \"^\" on operand ~s", [e_util:stmt_to_str(Operand)])
 	end;
 type_of_node(#e_op{tag = '@', data = [Operand], loc = Loc}, Ctx) ->
 	inc_pointer_depth(type_of_node(Operand, Ctx), Loc);
