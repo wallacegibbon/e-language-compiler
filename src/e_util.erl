@@ -59,8 +59,10 @@ stmt_to_str(#e_label{name = Name}) ->
 	io_lib:format("@@~s", [Name]);
 stmt_to_str(#e_varref{name = Name}) ->
 	atom_to_list(Name);
+stmt_to_str(#e_vardef{name = Name}) ->
+	io_lib:format("variable definition for ~s", [Name]);
 stmt_to_str(#e_op{tag = {call, Callee}, data = Args}) ->
-	io_lib:format("(~s)(~s)", [stmt_to_str(Callee), lists:map(fun stmt_to_str/1, Args)]);
+	io_lib:format("(~s)(~s)", [stmt_to_str(Callee), string:join(lists:map(fun stmt_to_str/1, Args), ",")]);
 stmt_to_str(#e_op{tag = '^', data = [Op1, _Size]}) ->
 	%io_lib:format("(~s^ <size:~s>)", [stmt_to_str(Op1), stmt_to_str(_Size)]);
 	io_lib:format("((~s)^)", [stmt_to_str(Op1)]);
@@ -99,7 +101,7 @@ ethrow(Loc, FmtStr) ->
 	ethrow(Loc, FmtStr, []).
 
 -spec ethrow(location(), string(), [any()]) -> no_return().
--define(NO_DEBUG, 1).
+%-define(NO_DEBUG, 1).
 -ifndef(NO_DEBUG).
 ethrow(Loc, FmtStr, Args) ->
 	try

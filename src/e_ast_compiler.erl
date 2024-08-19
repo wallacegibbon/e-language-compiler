@@ -17,15 +17,6 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	e_type:check_types_in_ast(AST00, GlobalVars00, {FnTypeMap00, StructMap00}),
 	e_type:check_type_in_stmts(InitCode00, GlobalVars00, {FnTypeMap00, StructMap00}),
 
-	%% The `typeof` keyword will make the compiler complex without many benifits. So we drop it.
-	%% Implementing `typeof` is easy. But avoiding the recursive definition problem will make the code complex.
-	%% (e.g. `fn a(): typeof(a)`, `b: {typeof(b), 10}`, etc.)
-
-	%AST01 = e_type:replace_typeof_in_ast(AST00, GlobalVars00, {FnTypeMap00, StructMap00}),
-	%InitCode01 = e_type:replace_typeof_in_stmts(InitCode00, GlobalVars00, {FnTypeMap00, StructMap00}),
-	%GlobalVars01 = e_type:replace_typeof_in_vars(GlobalVars00, GlobalVars00, {FnTypeMap00, StructMap00}),
-	%{_, StructMap01} = e_util:make_function_and_struct_map_from_ast(AST01),
-
 	#{pointer_width := PointerWidth} = CompileOptions,
 	%% Fill offset of variables and struct fields.
 	AST10 = e_size:fill_offsets_in_stmts(AST00, {StructMap00, PointerWidth}),

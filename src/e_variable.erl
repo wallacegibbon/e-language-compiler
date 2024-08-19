@@ -40,7 +40,7 @@ struct_init_to_map([#e_op{tag = '=', data = [#e_varref{name = Field}, Val]} | Re
 struct_init_to_map([], ExprMap) ->
 	ExprMap.
 
-%% In function expressions, the init code of defvar can not be simply fetched out from the code,
+%% In function expressions, the init code of vardef can not be simply fetched out from the code,
 %% it should be replaced as assignment in the same place.
 
 -type fetch_variables_state() ::

@@ -33,6 +33,9 @@ check_type_in_stmts(Stmts, GlobalVars, {FnTypeMap, StructMap}) ->
 	type_of_nodes(Stmts, {GlobalVars, FnTypeMap, StructMap, #e_basic_type{}}),
 	ok.
 
+%% The `typeof` keyword will make the compiler complex without many benifits. So we drop it.
+%% Implementing `typeof` is easy. But avoiding the recursive definition problem will make the code complex.
+%% (e.g. `fn a(): typeof(a)`, `b: {typeof(b), 10}`, etc.)
 -spec replace_typeof_in_ast(e_ast(), #e_vars{}, interface_context()) -> e_ast().
 replace_typeof_in_ast([#e_function{} = Fn | Rest], GlobalVars, {FnTypeMap, StructMap} = Maps) ->
 	#e_function{vars = LocalVars, stmts = Stmts, type = FnType} = Fn,
@@ -243,7 +246,9 @@ type_of_node(#e_return_stmt{expr = Expr, loc = Loc}, {_, _, _, FnRetType} = Ctx)
 type_of_node(#e_goto_stmt{loc = Loc}, _) ->
 	e_util:void_type(Loc);
 type_of_node(#e_label{loc = Loc}, _) ->
-	e_util:void_type(Loc).
+	e_util:void_type(Loc);
+type_of_node(Any, _) ->
+	e_util:ethrow(element(2, Any), "invalid statement: ~s~n", [e_util:stmt_to_str(Any)]).
 
 %% Functions can be converted to any kind of pointers in current design.
 -spec convert_type(e_type(), e_type(), location()) -> e_type().
@@ -489,8 +494,9 @@ check_type(#e_basic_type{} = Type, _) ->
 	Type;
 check_type(#e_array_type{elem_type = #e_array_type{loc = Loc}}, _) ->
 	e_util:ethrow(Loc, "nested array is not supported");
-check_type(#e_array_type{elem_type = Type}, Ctx) ->
-	check_type(Type, Ctx);
+check_type(#e_array_type{elem_type = ElemType} = Type, Ctx) ->
+	check_type(ElemType, Ctx),
+	Type;
 check_type(#e_fn_type{params = Params, ret = RetType} = Type, Ctx) ->
 	lists:foreach(fun(T) -> check_type(T, Ctx) end, Params),
 	check_type(RetType, Ctx),
@@ -510,6 +516,8 @@ type_to_str(#e_fn_type{params = Params, ret = RetType}) ->
 	e_util:fmt("fun (~s): ~s", [join_types_to_str(Params), type_to_str(RetType)]);
 type_to_str(#e_array_type{elem_type = Type, length = N}) ->
 	e_util:fmt("{~s, ~w}", [type_to_str(Type), N]);
+type_to_str(#e_struct_init_expr{name = Name}) ->
+	atom_to_list(Name);
 type_to_str(#e_basic_type{tag = Tag, p_depth = N}) when N > 0 ->
 	e_util:fmt("(~s~s)", [Tag, lists:duplicate(N, "^")]);
 type_to_str(#e_basic_type{tag = Tag, p_depth = 0}) ->
