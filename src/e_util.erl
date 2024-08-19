@@ -99,8 +99,20 @@ ethrow(Loc, FmtStr) ->
 	ethrow(Loc, FmtStr, []).
 
 -spec ethrow(location(), string(), [any()]) -> no_return().
+-define(NO_DEBUG, 1).
+-ifndef(NO_DEBUG).
+ethrow(Loc, FmtStr, Args) ->
+	try
+		throw({Loc, fmt(FmtStr, Args)})
+	catch
+		_:E:StackTrace ->
+			io:format("stack trace: ~p~n", [StackTrace]),
+			throw(E)
+	end.
+-else.
 ethrow(Loc, FmtStr, Args) ->
 	throw({Loc, fmt(FmtStr, Args)}).
+-endif.
 
 -spec get_values_by_keys([atom()], #{atom() => any()}) -> [any()].
 get_values_by_keys(Fields, Map) ->

@@ -28,7 +28,7 @@ Rules.
 {DecimalDigit}+\.{DecimalDigit}+ : {token, {float, TokenLoc, list_to_float(TokenChars)}}.
 {DecimalDigit}\.{DecimalDigit}+e{DecimalDigit}+ : {token, {float, TokenLoc, list_to_float(TokenChars)}}.
 {Delimiter} : {token, {list_to_atom(TokenChars), TokenLoc}}.
-struct|end|fn|return|if|then|elif|else|while|do|goto|sizeof|alignof|as|new : {token, {list_to_atom(TokenChars), TokenLoc}}.
+struct|end|fn|return|if|then|elif|else|while|do|goto|sizeof|alignof|typeof|as|new : {token, {list_to_atom(TokenChars), TokenLoc}}.
 rem|and|or|band|bor|bxor|bsl|bsr : {token, {list_to_atom(TokenChars), TokenLoc}}.
 cond|case|for|break|continue : {token, {list_to_atom(TokenChars), TokenLoc}}.
 byte|u8|i8|u16|i16|u32|i32|u64|i64|usize|isize|uptr|iptr : {token, {int_type, TokenLoc, list_to_atom(TokenChars)}}.

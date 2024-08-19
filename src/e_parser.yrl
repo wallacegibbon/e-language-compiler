@@ -2,7 +2,7 @@ Nonterminals
 
 e_root_stmts e_root_stmt e_struct_def e_function_def e_vardefs e_vardef e_params
 e_function_stmts e_function_stmt e_if_stmt e_else_stmt e_while_stmt e_label
-e_expr e_call_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr e_assign_expr
+e_expr e_call_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr e_typeof_type e_assign_expr
 e_type_annos e_type_anno e_op19 e_op30 e_op29 e_op28 e_op27 e_op26 e_op25 e_op2_with_assignment
 e_pointer_depth e_atomic_literal_values e_reserved_keyword
 e_array_init_expr e_array_init_elements e_struct_init_expr e_struct_init_fields e_struct_init_assignment
@@ -16,7 +16,7 @@ Terminals
 
 %% keywords
 struct 'end' 'fn' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
-while do 'if' then elif 'else' return sizeof alignof goto as new
+while do 'if' then elif 'else' return sizeof alignof typeof goto as new
 
 %% reserved keywords
 'cond' 'case' for break continue
@@ -63,14 +63,21 @@ e_type_anno -> identifier :
 	#e_basic_type{class = struct, p_depth = 0, tag = token_value('$1'), loc = token_loc('$1')}.
 e_type_anno -> any_type e_pointer_depth :
 	#e_basic_type{class = any, p_depth = '$2', tag = any, loc = token_loc('$1')}.
+e_type_anno -> e_typeof_type :
+	'$1'.
 e_type_anno -> any_type :
-	return_error(token_loc('$1'), "type any is not allowed here").
+	return_error(token_loc('$1'), "type \"any\" is not allowed here").
 e_type_anno -> void_type :
-	return_error(token_loc('$1'), "type void is not allowed here").
+	return_error(token_loc('$1'), "type \"void\" is not allowed here").
 
 %% pointer depth
 e_pointer_depth -> '^' e_pointer_depth : '$2' + 1.
 e_pointer_depth -> '^' : 1.
+
+%e_typeof_type -> typeof '(' e_expr ')' :
+%	#e_typeof{expr = '$3', loc = token_loc('$2')}.
+e_typeof_type -> typeof '(' e_expr ')' :
+	return_error(token_loc('$1'), "\"typeof\" is not supported by E languge.").
 
 e_vardefs -> e_vardef ',' e_vardefs : ['$1' | '$3'].
 e_vardefs -> e_vardef ',' : ['$1'].

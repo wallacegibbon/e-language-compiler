@@ -25,7 +25,13 @@
 	ret :: e_type()
 	}).
 
--type e_type() :: #e_basic_type{} | #e_array_type{} | #e_fn_type{}.
+-record(e_typeof,
+	{
+	loc = {0, 0} :: location(),
+	expr :: e_expr()
+	}).
+
+-type e_type() :: #e_basic_type{} | #e_array_type{} | #e_fn_type{} | #e_typeof{}.
 
 -record(e_label,
 	{

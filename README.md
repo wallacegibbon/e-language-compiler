@@ -1,30 +1,30 @@
 # The E Language And Its Compiler
 
 The E language is like a simplified C language with fewer concepts and more reasonable syntax. It is designed to be:
-- **E**xplicit on pointer operations.
-- **E**asy to learn and implement.
-- Suitable for **E**mbeded systems and friendly to **E**lectronic hobbyists.
+1. **E**xplicit on pointer operations.
+2. **E**asy to learn and implement.
+3. Suitable for **E**mbeded systems and friendly to **E**lectronic hobbyists.
 
 Here are some comparisons of C language and E language:
 
 ## Basic Operations
 
-|         C language         |        E language        |
-|----------------------------|--------------------------|
-| &p                         | p@                       |
-| \*p                        | p^                       |
-| \*\*\*p                    | p^^^                     |
-| &p[3]                      | p+3                      |
-| p[3]                       | (p+3)^                   |
-| p.m                        | p.m                      |
-| (\*p).m                    | p^.m                     |
-| p-\>m                      | p^.m                     |
-| uint8\_t \*p               | p: u8^                   |
-| void \*\*p                 | p: any^^                 |
-| ((struct Blah \*) p)-\>f1  | (p as Blah^)^.f1         |
-| sizeof(struct Blah \*)     | sizeof(Blah^)            |
-| malloc(sizeof(struct A))   | malloc(sizeof(A))        |
+|          C language         |         E language          |
+|-----------------------------|-----------------------------|
+| &p                          | p@                          |
+| \*p                         | p^                          |
+| \*\*\*p                     | p^^^                        |
+| &p[3]                       | p + 3 * N                   |
+| p[3]                        | (p + 3 * N)^                |
+| p.m                         | p.m                         |
+| (\*p).m                     | p^.m                        |
+| p-\>m                       | p^.m                        |
+| uint8\_t \*p                | p: u8^                      |
+| void \*\*p                  | p: any^^                    |
+| ((struct Blah \*) p)-\>f1   | p as (Blah^)^.f1            |
+| sizeof(struct Blah \*)      | sizeof(Blah^)               |
 
+> To achieve the 1st goal (explicit on pointer operations), `p + 1` does NOT mean `p + 1 * N` like C language. We need to write `p + 1 * N` explicitly.
 
 ## Array And Struct
 
@@ -32,8 +32,8 @@ Here are some comparisons of C language and E language:
 arr: {i32, 3} = {1, 2, 3};
 
 struct Blah
-	id: i32,
-	name: i8^,
+	id: u32,
+	name: byte^,
 end
 
 b: Blah = Blah{id = 1, name = "hello"};
@@ -45,14 +45,13 @@ c: {Blah, 2} = {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}};
 int32_t arr[3] = {1, 2, 3};
 
 struct Blah {
-	int32_t id;
+	uint32_t id;
 	char *name;
 }
 
-Blah b = {1, "hello"};
+struct Blah b = {1, "hello"};
 
-Blah c[2] = {{1, "a"}, {2, "b}};
-
+struct Blah c[2] = {{1, "a"}, {2, "b}};
 ```
 
 
@@ -72,21 +71,20 @@ struct A {
 
 struct A a = {.tag = 1, .value.num = 0x12345678 };
 printf("%x\n", a.value.buf[2]);
-// 34
-
+//> 34
 ```
 
 In E language (and also in C language), you can use pointer manipulation to achieve this:
 
 ```
 struct A
-	tag: u8,
+	tag: byte,
 	value: i64,
 end
 
 a: A = A{tag = 1, value = 0x12345678};
-printf("%x\n", ((a.value@ as i8^) + 2)^);
-% 34
+printf("%x\n", (a.value@ + 2)^);
+%> 34
 ```
 
 To keep things minimum, E language do not support `union`.
@@ -102,7 +100,7 @@ To keep things minimum, E language do not support `enum`, either.
 ## Function Definition
 
 ```
-fn main(argc: isize, argv: i8^^): isize
+fn main(argc: isize, argv: byte^^): isize
 	return 0;
 end
 ```
@@ -143,7 +141,7 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 ```
 my_fn1: fn (): fn (): fn () = another_fn1;
 
-my_fn2: fn (i8^, usize): fn (i8^, i8^): fn (isize, usize): u8^ = another_fn2;
+my_fn2: fn (byte^, usize): fn (byte^, byte^): fn (isize, usize): byte^ = another_fn2;
 
 ```
 
