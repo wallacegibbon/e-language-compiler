@@ -1,10 +1,10 @@
--module(e_variable).
--export([fetch_variables/1]).
+-module(e_var).
+-export([fetch_vars/1]).
 -include("e_record_definition.hrl").
 
--spec fetch_variables(e_ast_raw()) -> {#e_vars{}, e_ast_raw(), e_ast_raw()}.
-fetch_variables(AST) ->
-	fetch_variables(prepare_struct_init_expr(AST), [], {#e_vars{}, [], [], true, global}).
+-spec fetch_vars(e_ast_raw()) -> {#e_vars{}, e_ast_raw(), e_ast_raw()}.
+fetch_vars(AST) ->
+	fetch_vars(prepare_struct_init_expr(AST), [], {#e_vars{}, [], [], true, global}).
 
 -spec prepare_struct_init_expr(e_ast_raw()) -> e_ast_raw().
 prepare_struct_init_expr([#e_function_raw{stmts = Stmts} = Fn | Rest]) ->
@@ -43,7 +43,7 @@ struct_init_to_map([], ExprMap) ->
 %% In function expressions, the init code of vardef can not be simply fetched out from the code,
 %% it should be replaced as assignment in the same place.
 
--type fetch_variables_state() ::
+-type fetch_vars_state() ::
 	{
 	Vars ::#e_vars{},
 	Names :: [atom()],
@@ -52,43 +52,44 @@ struct_init_to_map([], ExprMap) ->
 	Tag :: e_var_type()
 	}.
 
-%% Caution: fetch_variables/3 generate IN-COMPLETE `#e_vars{}` values here. (For functions, structs and global variables)
-%% (Only `names`, `type_map` and `tag` fields are updated. `size`, `align` and `offset_map` fields are to be updated by functions in `e_size.erl`)
+%% Caution: fetch_vars/3 generate IN-COMPLETE `#e_vars{}` values here. (For functions, structs and global variables)
+%% Only `names`, `type_map` and `tag` fields are updated.
+%% `size`, `align` and `offset_map` fields are to be updated by functions in `e_size.erl`.
 
--spec fetch_variables(e_ast_raw(), e_ast_raw(), fetch_variables_state()) -> {#e_vars{}, e_ast(), e_ast()}.
-fetch_variables([#e_vardef{} = Hd | Rest], AST, {#e_vars{type_map = TypeMap} = Vars, Names, InitCode, true, Tag}) ->
+-spec fetch_vars(e_ast_raw(), e_ast_raw(), fetch_vars_state()) -> {#e_vars{}, e_ast(), e_ast()}.
+fetch_vars([#e_vardef{} = Hd | Rest], AST, {#e_vars{type_map = TypeMap} = Vars, Names, InitCode, true, Tag}) ->
 	#e_vardef{name = Name, type = Type, loc = Loc, init_value = InitialValue} = Hd,
 	check_name_conflict(Name, Vars, Loc),
 	NewInitCode = append_to_ast(InitCode, Name, InitialValue, Loc),
 	NewVars = Vars#e_vars{type_map = TypeMap#{Name => Type}},
 	NewCtx = {NewVars, [Name | Names], NewInitCode, true, Tag},
-	fetch_variables(Rest, AST, NewCtx);
-fetch_variables([#e_vardef{} = Hd | Rest], AST, {#e_vars{type_map = TypeMap} = Vars, Names, InitCode, false, Tag}) ->
+	fetch_vars(Rest, AST, NewCtx);
+fetch_vars([#e_vardef{} = Hd | Rest], AST, {#e_vars{type_map = TypeMap} = Vars, Names, InitCode, false, Tag}) ->
 	#e_vardef{name = Name, type = Type, loc = Loc, init_value = InitialValue} = Hd,
 	check_name_conflict(Name, Vars, Loc),
 	NewCtx = {Vars#e_vars{type_map = TypeMap#{Name => Type}}, [Name | Names], InitCode, false, Tag},
-	fetch_variables(Rest, append_to_ast(AST, Name, InitialValue, Loc), NewCtx);
-fetch_variables([#e_function_raw{} = Hd | Rest], AST, {GlobalVars, _, _, _, _} = Ctx) ->
+	fetch_vars(Rest, append_to_ast(AST, Name, InitialValue, Loc), NewCtx);
+fetch_vars([#e_function_raw{} = Hd | Rest], AST, {GlobalVars, _, _, _, _} = Ctx) ->
 	#e_function_raw{name = Name, ret_type = Ret, params = Params, stmts = Stmts, loc = Loc} = Hd,
-	{ParamVars, [], ParamInitCode} = fetch_variables(Params, [], {#e_vars{}, [], [], true, local}),
+	{ParamVars, [], ParamInitCode} = fetch_vars(Params, [], {#e_vars{}, [], [], true, local}),
 	e_util:assert(ParamInitCode =:= [], {Loc, "function params can not have default value"}),
 	check_variable_conflict(GlobalVars, ParamVars),
-	{LocalVars, NewStmts, []} = fetch_variables(Stmts, [], {ParamVars, [], [], false, local}),
+	{LocalVars, NewStmts, []} = fetch_vars(Stmts, [], {ParamVars, [], [], false, local}),
 	check_variable_conflict(GlobalVars, LocalVars),
 	FnType = #e_fn_type{params = get_values_by_defs(Params, ParamVars), ret = Ret, loc = Loc},
 	ParamNames = e_util:names_of_var_defs(Params),
 	check_label_conflict(NewStmts, #{}),
 	Fn = #e_function{name = Name, vars = LocalVars, param_names = ParamNames, type = FnType, stmts = NewStmts, loc = Loc},
-	fetch_variables(Rest, [Fn | AST], Ctx);
-fetch_variables([#e_struct_raw{name = Name, fields = RawFields, loc = Loc} | Rest], AST, Ctx) ->
+	fetch_vars(Rest, [Fn | AST], Ctx);
+fetch_vars([#e_struct_raw{name = Name, fields = RawFields, loc = Loc} | Rest], AST, Ctx) ->
 	%% struct can have default value
-	{Fields, [], StructInitCode} = fetch_variables(RawFields, [], {#e_vars{}, [], [], true, none}),
+	{Fields, [], StructInitCode} = fetch_vars(RawFields, [], {#e_vars{}, [], [], true, none}),
 	FieldInitMap = struct_init_to_map(StructInitCode, #{}),
 	S = #e_struct{name = Name, fields = Fields, default_value_map = FieldInitMap, loc = Loc},
-	fetch_variables(Rest, [S | AST], Ctx);
-fetch_variables([Any | Rest], AST, Ctx) ->
-	fetch_variables(Rest, [Any | AST], Ctx);
-fetch_variables([], AST, {#e_vars{names = OldNames} = Vars, Names, InitCode, _, Tag}) ->
+	fetch_vars(Rest, [S | AST], Ctx);
+fetch_vars([Any | Rest], AST, Ctx) ->
+	fetch_vars(Rest, [Any | AST], Ctx);
+fetch_vars([], AST, {#e_vars{names = OldNames} = Vars, Names, InitCode, _, Tag}) ->
 	NewVars = Vars#e_vars{names = OldNames ++ lists:reverse(Names), tag = Tag},
 	{NewVars, lists:reverse(AST), lists:reverse(InitCode)}.
 

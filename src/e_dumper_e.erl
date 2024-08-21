@@ -1,4 +1,4 @@
--module(e_dump_e).
+-module(e_dumper_e).
 -export([generate_e_code/3]).
 -include("e_record_definition.hrl").
 

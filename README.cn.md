@@ -1,15 +1,15 @@
-# The E Programming Language
+# “E编程语言”
 
-[中文](./README.cn.md)
+[English](./README.md)
 
-The E language is like a simplified C language with fewer concepts and more reasonable syntax. It is designed to be:
-1. **E**xplicit on pointer operations.
-2. **E**asy to learn and implement.
-3. Suitable for **E**mbeded systems and friendly to **E**lectronic hobbyists.
+“E语言”是一个简化版的“C语言”，它有着更少的概念，更合理的语法，它的设计理念是：
+1. 指针操作更“显式”（**E**xplicit）
+2. 容易使用和实现（**E**asy）
+3. 适合嵌入式系统（**E**mbeded systems），适合电子爱好者（**E**lectronic hobbyists）
 
-Here are some comparisons of C language and E language:
+以下是C语言和E语言的一些对比：
 
-## Basic Operations
+## 基本操作
 
 |          C language         |         E language          |
 |-----------------------------|-----------------------------|
@@ -26,9 +26,9 @@ Here are some comparisons of C language and E language:
 | ((struct Blah \*) p)-\>f1   | p as (Blah^)^.f1            |
 | sizeof(struct Blah \*)      | sizeof(Blah^)               |
 
-> To achieve the 1st goal (explicit on pointer operations), `p + 1` does NOT mean `p + 1 * N` like C language. We need to write `p + 1 * N` explicitly.
+> 为了“显式”操作，在E语言中，`p + 1` 不像C语言中表示 `p + 1 * N`，如果要达到C语言中的效果，需要写成 `p + 1 * N`。
 
-## Array And Struct
+## 数组和结构体
 
 ```
 arr: {i32, 3} = {1, 2, 3};
@@ -57,11 +57,9 @@ struct Blah c[2] = {{1, "a"}, {2, "b}};
 ```
 
 
-## Union
+## 联合体
 
-The most common usage of `union` is to reuse memory, which is convenient in specific situations. But union can also be simply replaced by pointer operations.
-
-Here is an example about `union` in C language: 
+C语言中“联合体”主要的用途，是复用内存，这个在特定使用场景下比较方便，但是同时，联合体操作可以简单被类型转换加指针操作替换，举个例子：
 
 ```c
 struct A {
@@ -77,7 +75,7 @@ printf("%x\n", a.value.buf[2]);
 //> 34
 ```
 
-In E language (and also in C language), you can use pointer manipulation to achieve this:
+在E语言中（C语言中也行），你可以通过下列指针操作取代联合体：
 
 ```
 struct A
@@ -90,17 +88,15 @@ printf("%x\n", (a.value@ + 2)^);
 %> 34
 ```
 
-To keep things minimum, E language do not support `union`.
+为了保证语言更加简单，E语言此处做了取舍，放弃了对联合体的支持。
 
 
-## Enum
+## 枚举
 
-Enum is good, it brings better type checking to some extent. But on the other hand, everything will still work without `enum`.
-
-To keep things minimum, E language do not support `enum`, either.
+枚举是很好的概念，它带来了更强的类型检测，但同时，没有枚举并不会带来实质性的功能缺失。为了保证语言更加简单，E语言也放弃了对联合体的支持。
 
 
-## Function Definition
+## 函数定义
 
 ```
 fn main(argc: isize, argv: byte^^): isize
@@ -116,7 +112,7 @@ int main(int argc, char **argv)
 ```
 
 
-## Condition
+## 条件
 
 ```
 if fn1(fn2(val1)) >= fn3(val2) then
@@ -139,7 +135,7 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 ```
 
 
-## Function Pointer
+## 函数指针
 
 ```
 my_fn1: fn (): fn (): fn () = another_fn1;
@@ -155,9 +151,9 @@ unsigned char * (*(*(*my_fn2)(char *, unsigned int))(char *, char *))(int, unsig
 ```
 
 
-# Editor Support
+# 编辑器支持
 
-A simple Vim plugin is inside this project. Install it by copying it to the certain directory:
+本项目带有一个简单的Vim插件，在项目目录运行下面的命令可以进行安装：
 
 ```sh
 mkdir -p ~/.vim/pack/my/start/

@@ -8,7 +8,7 @@
 compile_to_e(InputFilename, OutputFilename) ->
 	try
 		{AST, _, InitCode} = parse_and_compile(InputFilename),
-		e_dump_e:generate_e_code(AST, InitCode, OutputFilename)
+		e_dumper_e:generate_e_code(AST, InitCode, OutputFilename)
 	catch
 		{Filename, {{Line, Col}, ErrorInfo}} ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
@@ -18,7 +18,7 @@ compile_to_e(InputFilename, OutputFilename) ->
 compile_to_c(InputFilename, OutputFilename) ->
 	try
 		{AST, Vars, InitCode} = parse_and_compile(InputFilename),
-		e_dump_c:generate_c_code(AST, Vars, InitCode, OutputFilename)
+		e_dumper_c:generate_c_code(AST, Vars, InitCode, OutputFilename)
 	catch
 		{Filename, {{Line, Col}, ErrorInfo}} ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))

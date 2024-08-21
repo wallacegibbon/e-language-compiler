@@ -1,7 +1,7 @@
 %% This module is not being used anymore. (Expired since 2024-08-13 17:34:00)
 %% In the early stage of the E language compiler, code got compiled to C language.
 %% As the compiler grows, we will compile E language code to machine code directly.
--module(e_dump_c).
+-module(e_dumper_c).
 -export([generate_c_code/4]).
 -include("e_record_definition.hrl").
 

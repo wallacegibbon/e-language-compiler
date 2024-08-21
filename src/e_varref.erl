@@ -1,4 +1,4 @@
--module(e_ref_trans).
+-module(e_varref).
 -export([varref_to_offset_in_ast/2, varref_to_offset_in_stmts/2]).
 -include("./src/e_record_definition.hrl").
 

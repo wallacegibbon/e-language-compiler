@@ -7,7 +7,7 @@
 -spec compile_from_raw_ast(e_ast(), e_compile_options()) -> {e_ast(), #e_vars{}, e_ast()}.
 compile_from_raw_ast(AST, CustomCompileOptions) ->
 	CompileOptions = maps:merge(default_compiler_options(), CustomCompileOptions),
-	{GlobalVars00, AST00, InitCode00} = e_variable:fetch_variables(AST),
+	{GlobalVars00, AST00, InitCode00} = e_var:fetch_vars(AST),
 
 	{FnTypeMap00, StructMap00} = e_util:make_function_and_struct_map_from_ast(AST00),
 	%% Once the AST got constructed, we check the recursive definition problem of struct.
@@ -39,8 +39,8 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	AST40 = e_struct:eliminate_dot_in_ast(AST30, GlobalVars10, {FnTypeMap00, StructMap20}),
 	InitCode30 = e_struct:eliminate_dot_in_stmts(InitCode20, GlobalVars10, {FnTypeMap00, StructMap20}),
 
-	AST50 = e_ref_trans:varref_to_offset_in_ast(AST40, {GlobalVars10, FnTypeMap00}),
-	InitCode40 = e_ref_trans:varref_to_offset_in_stmts(InitCode30, {GlobalVars10, FnTypeMap00}),
+	AST50 = e_varref:varref_to_offset_in_ast(AST40, {GlobalVars10, FnTypeMap00}),
+	InitCode40 = e_varref:varref_to_offset_in_stmts(InitCode30, {GlobalVars10, FnTypeMap00}),
 
 	{AST50, GlobalVars10, InitCode40}.
 
