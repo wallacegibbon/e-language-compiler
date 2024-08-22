@@ -27,22 +27,26 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	%% Expand expressions like `sizeof` and `alignof`.
 	AST20 = e_size:expand_kw_in_ast(AST10, {StructMap10, PointerWidth}),
 	%% Initializing code for global variables are not in main ast, do not forget them.
-	InitCode10 = e_size:expand_kw_in_stmts(InitCode00, {StructMap10, PointerWidth}),
+	InitCode20 = e_size:expand_kw_in_stmts(InitCode00, {StructMap10, PointerWidth}),
 	%% sizeof expressions are expanded, so StructMap needs to be updated
 	{_, StructMap20} = e_util:make_function_and_struct_map_from_ast(AST20),
 
 	%% expand init exprs like A{a = 1} and {1, 2, 3}
 	AST30 = e_init_expr:expand_in_ast(AST20, StructMap20),
-	InitCode20 = e_init_expr:expand_in_stmts(InitCode10, StructMap20),
+	InitCode30 = e_init_expr:expand_in_stmts(InitCode20, StructMap20),
+
+	%% TODO: The expression decomposing is not finished yet.
+	AST40 = e_expr:decompose_expr_in_ast(AST30, {}),
+	InitCode40 = e_expr:decompose_expr_in_stmts(InitCode30, {}),
 
 	%% convert `.` into `@`, `+` and `^`
-	AST40 = e_struct:eliminate_dot_in_ast(AST30, GlobalVars10, {FnTypeMap00, StructMap20}),
-	InitCode30 = e_struct:eliminate_dot_in_stmts(InitCode20, GlobalVars10, {FnTypeMap00, StructMap20}),
+	AST70 = e_struct:eliminate_dot_in_ast(AST40, GlobalVars10, {FnTypeMap00, StructMap20}),
+	InitCode70 = e_struct:eliminate_dot_in_stmts(InitCode40, GlobalVars10, {FnTypeMap00, StructMap20}),
 
-	AST50 = e_varref:varref_to_offset_in_ast(AST40, {GlobalVars10, FnTypeMap00}),
-	InitCode40 = e_varref:varref_to_offset_in_stmts(InitCode30, {GlobalVars10, FnTypeMap00}),
+	AST80 = e_varref:varref_to_offset_in_ast(AST70, {GlobalVars10, FnTypeMap00}),
+	InitCode80 = e_varref:varref_to_offset_in_stmts(InitCode70, {GlobalVars10, FnTypeMap00}),
 
-	{AST50, GlobalVars10, InitCode40}.
+	{AST80, GlobalVars10, InitCode80}.
 
 -spec default_compiler_options() -> e_compile_options().
 default_compiler_options() ->

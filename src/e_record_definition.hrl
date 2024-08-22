@@ -119,6 +119,8 @@
 	type :: e_type()
 	}).
 
+-type e_op_tag() :: '*' | '/' | '+' | '-' | '@' | '^' | 'rem' | 'and' | 'or' | 'band' | 'bor' | 'bxor' | 'bsl' | 'bsr' | '~' | '!' | '.' | '=' | '>' | '<' | '>=' | '<=' | '!=' | '==' | {call, e_expr()} | {sizeof, e_type()} | {alignof, e_type()}.
+
 -record(e_op,
 	{
 	loc = {0, 0} :: location(),
@@ -186,8 +188,6 @@
 	ret_type :: e_type(),
 	stmts = [] :: [e_stmt()]
 	}).
-
--type e_op_tag() :: '*' | '/' | '+' | '-' | '@' | '^' | 'rem' | 'and' | 'or' | 'band' | 'bor' | 'bxor' | 'bsl' | 'bsr' | '~' | '!' | '.' | '=' | '>' | '<' | '>=' | '<=' | '!=' | '==' | {call, e_expr()} | {sizeof, e_type()} | {alignof, e_type()}.
 
 -type e_expr() :: #e_op{} | #e_integer{} | #e_float{} | #e_string{} | #e_varref{} | #e_struct_init_expr{} | #e_array_init_expr{}.
 -type e_stmt() :: #e_if_stmt{} | #e_while_stmt{} | #e_return_stmt{} | #e_goto_stmt{} | #e_label{} | e_expr().
