@@ -68,7 +68,7 @@ align_of_struct(#e_struct{fields = #e_vars{type_map = TypeMap}}, Ctx) ->
 
 
 -type size_and_offsets_result() ::
-	{Size :: integer(), Align :: integer(), OffsetMap :: #{atom() => var_offset()}}.
+	{Size :: non_neg_integer(), Align :: non_neg_integer(), OffsetMap :: #{atom() => var_offset()}}.
 
 -spec size_and_offsets_of_vars(#e_vars{}, context()) -> size_and_offsets_result().
 size_and_offsets_of_vars(#e_vars{names = Names, type_map = TypeMap}, Ctx) ->
@@ -79,30 +79,15 @@ size_and_offsets_of_vars(#e_vars{names = Names, type_map = TypeMap}, Ctx) ->
 	when In :: size_and_offsets_result(), Out :: size_and_offsets_result().
 
 size_and_offsets([{Name, Type} | Rest], {CurrentOffset, MaxAlign, OffsetMap}, Ctx) ->
-	FieldSize = size_of(Type, Ctx),
-	NextOffset = CurrentOffset + FieldSize,
 	CurrentAlign = align_of(Type, Ctx),
-	Align = erlang:max(MaxAlign, CurrentAlign),
-	case CurrentOffset rem CurrentAlign =/= 0 of
-		true ->
-			Offset = fix_offset(CurrentOffset, NextOffset, CurrentAlign),
-			NewOffsetMap = OffsetMap#{Name => {Offset, FieldSize}},
-			size_and_offsets(Rest, {Offset + FieldSize, Align, NewOffsetMap}, Ctx);
-		false ->
-			NewOffsetMap = OffsetMap#{Name => {CurrentOffset, FieldSize}},
-			size_and_offsets(Rest, {NextOffset, Align, NewOffsetMap}, Ctx)
-	end;
-size_and_offsets([], {CurrentOffset, Align, OffsetMap}, _) ->
-	{e_util:fill_unit_pessi(CurrentOffset, Align), Align, OffsetMap}.
-
--spec fix_offset(integer(), integer(), integer()) -> integer().
-fix_offset(CurrentOffset, NextOffset, TargetGap) ->
-	case e_util:cut_extra(NextOffset, TargetGap) > e_util:cut_extra(CurrentOffset, TargetGap) of
-		true ->
-			e_util:fill_unit_opti(CurrentOffset, TargetGap);
-		false ->
-			CurrentOffset
-	end.
+	FieldSize = size_of(Type, Ctx),
+	Offset = e_util:fill_unit_pessi(CurrentOffset, CurrentAlign),
+	OffsetMapNew = OffsetMap#{Name => {Offset, FieldSize}},
+	MaxAlignNew = erlang:max(MaxAlign, CurrentAlign),
+	size_and_offsets(Rest, {Offset + FieldSize, MaxAlignNew, OffsetMapNew}, Ctx);
+size_and_offsets([], {CurrentOffset, MaxAlign, OffsetMap}, _) ->
+	%% The size should be aligned to MaxAlign.
+	{e_util:fill_unit_pessi(CurrentOffset, MaxAlign), MaxAlign, OffsetMap}.
 
 -spec size_of(e_type(), context()) -> non_neg_integer().
 size_of(#e_array_type{elem_type = T, length = Len}, Ctx) ->
