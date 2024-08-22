@@ -5,7 +5,7 @@
 The E language is like a simplified C language with fewer concepts and more reasonable syntax. It is designed to be:
 1. **E**xplicit on pointer operations.
 2. **E**asy to learn and implement.
-3. Suitable for **E**mbeded systems and friendly to **E**lectronic hobbyists.
+3. Suitable for **E**mbedded systems and friendly to **E**lectronic hobbyists.
 
 Here are some comparisons of C language and E language:
 
@@ -53,7 +53,7 @@ struct Blah {
 
 struct Blah b = {1, "hello"};
 
-struct Blah c[2] = {{1, "a"}, {2, "b}};
+struct Blah c[2] = {{1, "a"}, {2, "b"}};
 ```
 
 The `struct` in E language support default value. You can write:
