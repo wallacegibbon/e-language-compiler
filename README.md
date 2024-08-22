@@ -31,16 +31,16 @@ Here are some comparisons of C language and E language:
 ## Array And Struct
 
 ```
-arr: {i32, 3} = {1, 2, 3};
+arr: {i32, 3} = {1, 2, 3},
 
 struct Blah
 	id: u32,
 	name: byte^,
 end
 
-b: Blah = Blah{id = 1, name = "hello"};
+b: Blah = Blah{id = 1, name = "hello"},
 
-c: {Blah, 2} = {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}};
+c: {Blah, 2} = {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}},
 ```
 
 ```c
@@ -55,6 +55,17 @@ struct Blah b = {1, "hello"};
 
 struct Blah c[2] = {{1, "a"}, {2, "b}};
 ```
+
+The `struct` in E language support default value. You can write:
+
+```
+struct Blah
+	id: u32 = 1,
+	name: byte^ = "default_name_string",
+end
+```
+
+> In `E` langauge, fields in struct have the same form as variables. (In C language, they only have similar forms, not the same)
 
 
 ## Union
@@ -85,8 +96,8 @@ struct A
 	value: i64,
 end
 
-a: A = A{tag = 1, value = 0x12345678};
-printf("%x\n", (a.value@ + 2)^);
+a: A = A{tag = 1, value = 0x12345678},
+printf("%x\n", (a.value@ + 2)^),
 %> 34
 ```
 
@@ -104,7 +115,7 @@ To keep things minimum, E language do not support `enum`, either.
 
 ```
 fn main(argc: isize, argv: byte^^): isize
-	return 0;
+	return 0,
 end
 ```
 
@@ -120,11 +131,11 @@ int main(int argc, char **argv)
 
 ```
 if fn1(fn2(val1)) >= fn3(val2) then
-	fn4();
+	fn4(),
 elif val3 > 100 then
-	fn5();
+	fn5(),
 else
-	fn6();
+	fn6(),
 end
 ```
 
@@ -139,12 +150,27 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 ```
 
 
+## Loop
+
+```
+while test() do
+	do_something(),
+end
+```
+
+```c
+while (test()) {
+	do_something();
+}
+```
+
+
 ## Function Pointer
 
 ```
-my_fn1: fn (): fn (): fn () = another_fn1;
+my_fn1: fn (): fn (): fn () = another_fn1,
 
-my_fn2: fn (byte^, usize): fn (byte^, byte^): fn (isize, usize): byte^ = another_fn2;
+my_fn2: fn (byte^, usize): fn (byte^, byte^): fn (isize, usize): byte^ = another_fn2,
 
 ```
 

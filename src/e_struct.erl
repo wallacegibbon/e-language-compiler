@@ -97,6 +97,8 @@ eliminate_dot_in_expr(#e_op{tag = {call, Callee}, data = Args} = Op, Ctx) ->
 	Op#e_op{tag = {call, eliminate_dot_in_expr(Callee, Ctx)}, data = lists:map(fun(E) -> eliminate_dot_in_expr(E, Ctx) end, Args)};
 eliminate_dot_in_expr(#e_op{data = Args} = Op, Ctx) ->
 	Op#e_op{data = lists:map(fun(E) -> eliminate_dot_in_expr(E, Ctx) end, Args)};
+eliminate_dot_in_expr(#e_type_convert{expr = Expr} = C, Ctx) ->
+	C#e_type_convert{expr = eliminate_dot_in_expr(Expr, Ctx)};
 eliminate_dot_in_expr(Any, _) ->
 	Any.
 

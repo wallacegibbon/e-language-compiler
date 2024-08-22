@@ -4,7 +4,7 @@ e_root_stmts e_root_stmt e_struct_def e_function_def e_vardefs e_vardef e_params
 e_function_stmts e_function_stmt e_if_stmt e_else_stmt e_while_stmt e_label
 e_expr e_call_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr e_typeof_type e_assign_expr
 e_type_annos e_type_anno e_op19 e_op30 e_op29 e_op28 e_op27 e_op26 e_op25 e_op2_with_assignment
-e_pointer_depth e_atomic_literal_values e_reserved_keyword
+e_pointer_depth e_atomic_literal_values e_reserved
 e_array_init_expr e_array_init_elements e_struct_init_expr e_struct_init_fields e_struct_init_assignment
 
 .
@@ -12,7 +12,7 @@ e_array_init_expr e_array_init_elements e_struct_init_expr e_struct_init_fields 
 Terminals
 
 %% operators
-',' ':' ';' '=' '{' '}' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '~' '!' '!=' '==' '>=' '<='
+';' ':' ',' '=' '{' '}' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '~' '!' '!=' '==' '>=' '<='
 
 %% keywords
 struct 'end' 'fn' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
@@ -33,7 +33,7 @@ e_root_stmts -> e_root_stmt : ['$1'].
 
 e_root_stmt -> e_struct_def : '$1'.
 e_root_stmt -> e_function_def : '$1'.
-e_root_stmt -> e_vardef ';' : '$1'.
+e_root_stmt -> e_vardef ',' : '$1'.
 
 %% type annotation inside array or function
 e_type_annos -> e_type_anno ',' e_type_annos : ['$1' | '$3'].
@@ -177,20 +177,20 @@ e_atomic_literal_values -> string : replace_tag('$1', e_string).
 e_function_stmts -> e_function_stmt e_function_stmts : ['$1' | '$2'].
 e_function_stmts -> e_function_stmt : ['$1'].
 
-e_function_stmt -> e_expr ';' : '$1'.
-e_function_stmt -> e_vardef ';' : '$1'.
-e_function_stmt -> e_assign_expr ';' : '$1'.
+e_function_stmt -> e_expr ',' : '$1'.
+e_function_stmt -> e_vardef ',' : '$1'.
+e_function_stmt -> e_assign_expr ',' : '$1'.
 e_function_stmt -> e_if_stmt : '$1'.
 e_function_stmt -> e_while_stmt : '$1'.
-e_function_stmt -> goto identifier ';' : #e_goto_stmt{label = token_value('$2'), loc = token_loc('$1')}.
-e_function_stmt -> return e_expr ';' : #e_return_stmt{expr = '$2', loc = token_loc('$1')}.
+e_function_stmt -> goto identifier ',' : #e_goto_stmt{label = token_value('$2'), loc = token_loc('$1')}.
+e_function_stmt -> return e_expr ',' : #e_return_stmt{expr = '$2', loc = token_loc('$1')}.
 e_function_stmt -> e_label : '$1'.
 
 e_label -> '@' '@' identifier :
 	#e_label{name = token_value('$3'), loc = token_loc('$3')}.
 
-e_expr -> e_reserved_keyword :
-	return_error(token_loc('$1'), e_util:fmt("~s is reserved keyword", [token_symbol('$1')])).
+e_expr -> e_reserved :
+	return_error(token_loc('$1'), e_util:fmt("~s is reserved", [token_symbol('$1')])).
 e_expr -> e_expr e_op30 e_expr :
 	#e_op{tag = token_symbol('$2'), data = ['$1', '$3'], loc = token_loc('$2')}.
 e_expr -> e_expr e_op29 e_expr :
@@ -226,12 +226,13 @@ e_expr -> e_expr as '(' e_type_anno ')' :
 %% `as` should have high precedence. (Only lower than `.`)
 Left 990 as.
 
-e_reserved_keyword -> new : '$1'.
-e_reserved_keyword -> 'cond' : '$1'.
-e_reserved_keyword -> 'case' : '$1'.
-e_reserved_keyword -> for : '$1'.
-e_reserved_keyword -> break : '$1'.
-e_reserved_keyword -> continue : '$1'.
+e_reserved -> ';' : '$1'.
+e_reserved -> new : '$1'.
+e_reserved -> 'cond' : '$1'.
+e_reserved -> 'case' : '$1'.
+e_reserved -> for : '$1'.
+e_reserved -> break : '$1'.
+e_reserved -> continue : '$1'.
 
 %% the precedence of 'e_pre_minus_plus_expr' needs to be higher than "operator +/-"
 Unary 300 e_pre_minus_plus_expr.

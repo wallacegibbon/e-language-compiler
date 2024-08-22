@@ -43,74 +43,74 @@ struct Pos
 	s: S5,
 end
 
-g1: Sprite = Sprite{id = 1, pos = Pos{x = 2, y = 3}};
-g2: u16 = 12;
-g3: byte = 34;
-g4: u32 = 56;
-g9: Sprite = Sprite{id = 10, pos = Pos{x = 20, y = 30}};
+g1: Sprite = Sprite{id = 1, pos = Pos{x = 2, y = 3}},
+g2: u16 = 12,
+g3: byte = 34,
+g4: u32 = 56,
+g9: Sprite = Sprite{id = 10, pos = Pos{x = 20, y = 30}},
 
 fn main(): isize
-	l1: Sprite = Sprite{id = 11, pos = Pos{x = 12, y = 13}};
-	g1.pos.y = 111;
-	%l1.pos.y = "hello";
-	l1.pos.y = 222;
+	l1: Sprite = Sprite{id = 11, pos = Pos{x = 12, y = 13}},
+	g1.pos.y = 111,
+	%l1.pos.y = "hello",
+	l1.pos.y = 222,
 
 	if
 		l1.pos.y / 2 != 0
 	then
-		goto alignof_anchor;
+		goto alignof_anchor,
 	end
 
 @@sizeof_anchor
 
-	l1.pos.x = sizeof(Sprite);
-	l1.pos.x = sizeof(Pos);
-	l1.pos.x = sizeof(u32);
+	l1.pos.x = sizeof(Sprite),
+	l1.pos.x = sizeof(Pos),
+	l1.pos.x = sizeof(u32),
 
 @@alignof_anchor
 
-	l1.pos.x = alignof(Sprite);
-	l1.pos.x = alignof(Pos);
-	l1.pos.h = alignof(Pos) + 1;
+	l1.pos.x = alignof(Sprite),
+	l1.pos.x = alignof(Pos),
+	l1.pos.h = alignof(Pos) + 1,
 
 #if ?RELEASE
-	l1.pos.x = alignof(u32);
+	l1.pos.x = alignof(u32),
 #else
-	l1.pos.x = alignof(u16);
+	l1.pos.x = alignof(u16),
 #endif
 
 %@@alignof_anchor
-	return 0;
+	return 0,
 end
 
 fn blah(tag: byte, s: Sprite^): byte
-	str: byte^ = ?PRINT_STRING;
-	s^.pos.y = tag;
-	return tag + 1;
+	str: byte^ = ?PRINT_STRING,
+	s^.pos.y = tag,
+	return tag + 1,
 end
 
 fn ptest(s: any^, cnt: i32)
-	%s^.pos.y = 1;
-	s as (Sprite^)^.pos.y = 'a';
-	fn2(s as (byte^) + cnt);
-	fn1(fn2(s@ as (byte^) + cnt));
-	((fn1 as (byte^)^@^@ + 2 + 3) as (fn(byte^): byte^))(s as (byte^));
+	%s^.pos.y = 1,
+	s as (Sprite^)^.pos.y = 'a',
+	fn2(s as (byte^) + cnt),
+	fn1(fn2(s@ as (byte^) + cnt)),
+	((fn1 as (byte^)^@^@ + 2 + 3) as (fn(byte^): byte^))(s as (byte^)),
 end
 
 fn fn1(arg: byte^): byte^
-	tmp: byte^;
-	1 + arg;
-	arg - 1;
-	%1 - arg;
-	a: usize;
-	a = arg - tmp;
-	return arg + 1;
+	tmp: byte^,
+	1 + arg,
+	arg - 1,
+	%1 - arg,
+	a: usize,
+	a = arg - tmp,
+	return arg + 1,
 end
 
 fn fn2(arg: byte^): byte^
-	v1: u8;
-	v2: u8;
-	v2 = v1 * arg as (u8^)^;
-	return arg + 2;
+	v1: u8,
+	v2: u8,
+	v2 = v1 * arg as (u8^)^,
+	return arg + 2,
 end
 

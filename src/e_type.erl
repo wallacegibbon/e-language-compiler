@@ -311,12 +311,25 @@ check_struct_field(FieldTypeMap, FieldName, Val, StructName, Ctx) ->
 	end.
 
 -spec are_same_type([e_type()]) -> boolean().
-are_same_type([Type, Type | Rest]) ->
-	are_same_type([Type | Rest]);
+are_same_type([#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{class = integer, p_depth = 0} = T | Rest]) ->
+	are_same_type([T | Rest]);
+are_same_type([#e_basic_type{class = float, p_depth = 0}, #e_basic_type{class = float, p_depth = 0} = T | Rest]) ->
+	are_same_type([T | Rest]);
+are_same_type([T1, T2 | Rest]) ->
+	case are_same_type_ignore_pos(T1, T2) of
+		true ->
+			are_same_type([T2 | Rest]);
+		false ->
+			false
+	end;
 are_same_type([_]) ->
 	true;
 are_same_type(_) ->
 	false.
+
+-spec are_same_type_ignore_pos(e_type(), e_type()) -> boolean().
+are_same_type_ignore_pos(T1, T2) ->
+	setelement(2, T1, {0, 0}) =:= setelement(2, T2, {0, 0}).
 
 -spec type_of_struct_field(e_type(), #e_varref{}, #{atom() => #e_struct{}}, location()) -> e_type().
 type_of_struct_field(#e_basic_type{class = struct, p_depth = 0} = S, #e_varref{name = FieldName}, StructMap, Loc) ->

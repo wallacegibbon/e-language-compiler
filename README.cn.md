@@ -11,7 +11,7 @@
 
 ## 基本操作
 
-|          C language         |         E language          |
+|           C语言             |           E语言             |
 |-----------------------------|-----------------------------|
 | &p                          | p@                          |
 | \*p                         | p^                          |
@@ -31,16 +31,16 @@
 ## 数组和结构体
 
 ```
-arr: {i32, 3} = {1, 2, 3};
+arr: {i32, 3} = {1, 2, 3},
 
 struct Blah
 	id: u32,
 	name: byte^,
 end
 
-b: Blah = Blah{id = 1, name = "hello"};
+b: Blah = Blah{id = 1, name = "hello"},
 
-c: {Blah, 2} = {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}};
+c: {Blah, 2} = {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}},
 ```
 
 ```c
@@ -55,6 +55,17 @@ struct Blah b = {1, "hello"};
 
 struct Blah c[2] = {{1, "a"}, {2, "b}};
 ```
+
+E语言的结构体字段的声明，可以包含默认值，你可以这样写：
+
+```
+struct Blah
+	id: u32 = 1,
+	name: byte^ = "default_name_string",
+end
+```
+
+> 在E语言种，结构体的字段，和变量定义有着完全相同的写法。（在C语言中，它们的写法只是相似并不相同）
 
 
 ## 联合体
@@ -83,8 +94,8 @@ struct A
 	value: i64,
 end
 
-a: A = A{tag = 1, value = 0x12345678};
-printf("%x\n", (a.value@ + 2)^);
+a: A = A{tag = 1, value = 0x12345678},
+printf("%x\n", (a.value@ + 2)^),
 %> 34
 ```
 
@@ -100,7 +111,7 @@ printf("%x\n", (a.value@ + 2)^);
 
 ```
 fn main(argc: isize, argv: byte^^): isize
-	return 0;
+	return 0,
 end
 ```
 
@@ -112,15 +123,15 @@ int main(int argc, char **argv)
 ```
 
 
-## 条件
+## 分支
 
 ```
 if fn1(fn2(val1)) >= fn3(val2) then
-	fn4();
+	fn4(),
 elif val3 > 100 then
-	fn5();
+	fn5(),
 else
-	fn6();
+	fn6(),
 end
 ```
 
@@ -135,12 +146,27 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 ```
 
 
+## 循环
+
+```
+while test() do
+	do_something(),
+end
+```
+
+```c
+while (test()) {
+	do_something();
+}
+```
+
+
 ## 函数指针
 
 ```
-my_fn1: fn (): fn (): fn () = another_fn1;
+my_fn1: fn (): fn (): fn () = another_fn1,
 
-my_fn2: fn (byte^, usize): fn (byte^, byte^): fn (isize, usize): byte^ = another_fn2;
+my_fn2: fn (byte^, usize): fn (byte^, byte^): fn (isize, usize): byte^ = another_fn2,
 
 ```
 
