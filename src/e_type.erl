@@ -82,6 +82,8 @@ replace_typeof_in_expr(#e_op{tag = {alignof, Type}} = E, Ctx) ->
 	E#e_op{tag = {alignof, replace_typeof_in_type(Type, Ctx)}};
 replace_typeof_in_expr(#e_op{data = Data} = E, Ctx) ->
 	E#e_op{data = lists:map(fun(V) -> replace_typeof_in_expr(V, Ctx) end, Data)};
+replace_typeof_in_expr(#e_type_convert{expr = Expr} = C, Ctx) ->
+	C#e_type_convert{expr = replace_typeof_in_expr(Expr, Ctx)};
 replace_typeof_in_expr(Any, _) ->
 	Any.
 

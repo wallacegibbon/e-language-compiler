@@ -31,6 +31,8 @@ fix_struct_init(#e_op{tag = {call, Callee}, data = Operands} = O) ->
 	O#e_op{tag = {call, fix_struct_init(Callee)}, data = lists:map(fun fix_struct_init/1, Operands)};
 fix_struct_init(#e_op{data = Operands} = O) ->
 	O#e_op{data = lists:map(fun fix_struct_init/1, Operands)};
+fix_struct_init(#e_type_convert{expr = Expr} = C) ->
+	C#e_type_convert{expr = fix_struct_init(Expr)};
 fix_struct_init(Any) ->
 	Any.
 

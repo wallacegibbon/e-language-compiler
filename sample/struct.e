@@ -55,9 +55,7 @@ fn main(): isize
 	%l1.pos.y = "hello",
 	l1.pos.y = 222,
 
-	if
-		l1.pos.y / 2 != 0
-	then
+	if l1.pos.y / 2 != 0 then
 		goto alignof_anchor,
 	end
 

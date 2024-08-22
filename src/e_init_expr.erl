@@ -35,6 +35,8 @@ check_position(#e_op{tag = {call, Callee}, data = Data}) ->
 	lists:foreach(fun check_position/1, Data);
 check_position(#e_op{data = Data}) ->
 	lists:foreach(fun check_position/1, Data);
+check_position(#e_type_convert{expr = Expr}) ->
+	check_position(Expr);
 check_position(#e_struct_init_expr{loc = Loc}) ->
 	e_util:ethrow(Loc, "struct init expression is only allowed in assignments");
 check_position(#e_array_init_expr{loc = Loc}) ->

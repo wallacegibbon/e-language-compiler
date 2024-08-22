@@ -26,6 +26,8 @@ expand_kw_in_expr(#e_op{tag = {call, Callee}, data = Args} = E, Ctx) ->
 	E#e_op{tag = {call, expand_kw_in_expr(Callee, Ctx)}, data = lists:map(fun(O) -> expand_kw_in_expr(O, Ctx) end, Args)};
 expand_kw_in_expr(#e_op{data = Data} = E, Ctx) ->
 	E#e_op{data = lists:map(fun(O) -> expand_kw_in_expr(O, Ctx) end, Data)};
+expand_kw_in_expr(#e_type_convert{expr = Expr} = C, Ctx) ->
+	C#e_type_convert{expr = expand_kw_in_expr(Expr, Ctx)};
 expand_kw_in_expr(#e_struct_init_expr{field_value_map = ExprMap} = S, Ctx) ->
 	S#e_struct_init_expr{field_value_map = expand_kw_in_map(ExprMap, Ctx)};
 expand_kw_in_expr(#e_array_init_expr{elements = Elements} = A, Ctx) ->
@@ -79,12 +81,11 @@ size_and_offsets_of_vars(#e_vars{names = Names, type_map = TypeMap}, Ctx) ->
 	when In :: size_and_offsets_result(), Out :: size_and_offsets_result().
 
 size_and_offsets([{Name, Type} | Rest], {CurrentOffset, MaxAlign, OffsetMap}, Ctx) ->
-	CurrentAlign = align_of(Type, Ctx),
+	FieldAlign = align_of(Type, Ctx),
+	Offset = e_util:fill_unit_pessi(CurrentOffset, FieldAlign),
 	FieldSize = size_of(Type, Ctx),
-	Offset = e_util:fill_unit_pessi(CurrentOffset, CurrentAlign),
 	OffsetMapNew = OffsetMap#{Name => {Offset, FieldSize}},
-	MaxAlignNew = erlang:max(MaxAlign, CurrentAlign),
-	size_and_offsets(Rest, {Offset + FieldSize, MaxAlignNew, OffsetMapNew}, Ctx);
+	size_and_offsets(Rest, {Offset + FieldSize, erlang:max(MaxAlign, FieldAlign), OffsetMapNew}, Ctx);
 size_and_offsets([], {CurrentOffset, MaxAlign, OffsetMap}, _) ->
 	%% The size should be aligned to MaxAlign.
 	{e_util:fill_unit_pessi(CurrentOffset, MaxAlign), MaxAlign, OffsetMap}.
