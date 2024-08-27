@@ -4,7 +4,7 @@
 -record(e_basic_type,
 	{
 	loc = {0, 0} :: location(),
-	p_depth = 0 :: integer(),
+	p_depth = 0 :: non_neg_integer(),
 	class = void :: struct | integer | float | void | any,
 	%% tag can be primitive tag like `u8`, `f32` for `integer` and `float`, or struct name for `struct`
 	%% full list of primitive tags: u8|i8|u16|i16|u32|i32|u64|i64|byte|uptr|iptr|usize|isize|f64|f32|void|any.
@@ -15,7 +15,7 @@
 	{
 	loc = {0, 0} :: location(),
 	elem_type :: e_type(),
-	length :: integer()
+	length :: non_neg_integer()
 	}).
 
 -record(e_fn_type,

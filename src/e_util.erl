@@ -142,11 +142,11 @@ make_function_and_struct_map_from_ast(AST) ->
 	{FnTypeMap, StructMap}.
 
 %% address calculations
--spec fill_unit_pessi(integer(), non_neg_integer()) -> integer().
+-spec fill_unit_pessi(non_neg_integer(), non_neg_integer()) -> non_neg_integer().
 fill_unit_pessi(Num, Unit) ->
 	(Num + Unit - 1) div Unit * Unit.
 
--spec fill_unit_opti(integer(), non_neg_integer()) -> integer().
+-spec fill_unit_opti(non_neg_integer(), non_neg_integer()) -> non_neg_integer().
 fill_unit_opti(Num, Unit) ->
 	(Num + Unit) div Unit * Unit.
 
