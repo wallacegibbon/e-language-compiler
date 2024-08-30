@@ -1,6 +1,6 @@
 -module(e_util).
 -export([make_function_and_struct_map_from_ast/1, expr_map/2, eliminate_pointer/1, stmt_to_str/1, merge_vars/3]).
--export([names_of_var_defs/1, names_of_var_refs/1, value_in_list/2, get_struct_from_type/2, get_struct_from_name/3]).
+-export([names_of_var_defs/1, names_of_var_refs/1, get_struct_from_type/2, get_struct_from_name/3]).
 -export([primitive_size_of/2, void_type/1, fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2]).
 -export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2, map_find_multi/2]).
 -export([fix_special_chars/1]).
@@ -189,10 +189,6 @@ assert(true, _) ->
 	ok;
 assert(false, Info) ->
 	throw(Info).
-
--spec value_in_list(any(), [any()]) -> boolean().
-value_in_list(Value, List) ->
-	lists:any(fun(V) -> V =:= Value end, List).
 
 -spec get_struct_from_type(#e_basic_type{}, #{atom() => #e_struct{}}) -> #e_struct{}.
 get_struct_from_type(#e_basic_type{class = struct, tag = Name, loc = Loc}, StructMap) ->
