@@ -3,39 +3,39 @@
 -include("e_record_definition.hrl").
 
 -spec check_struct_recursion_in_map(#{atom() => #e_struct{}}) -> ok.
-check_struct_recursion_in_map(StructTypeMap) ->
-	maps:foreach(fun(_, S) -> check_struct_recursion(S, StructTypeMap) end, StructTypeMap).
+check_struct_recursion_in_map(StructMap) ->
+	maps:foreach(fun(_, S) -> check_struct_recursion_top(S, StructMap) end, StructMap).
 
--spec check_struct_recursion(#e_struct{}, #{atom() => #e_struct{}}) -> ok.
-check_struct_recursion(#e_struct{name = Name, loc = Loc} = Struct, StructTypeMap) ->
+-spec check_struct_recursion_top(#e_struct{}, #{atom() => #e_struct{}}) -> ok.
+check_struct_recursion_top(#e_struct{name = Name, loc = Loc} = Struct, StructMap) ->
 	try
-		check_type_recursion1(Struct, StructTypeMap, [])
+		check_struct_recursion(Struct, StructMap, [])
 	catch
 		{recur, Chain} ->
 			Str = string:join(lists:map(fun atom_to_list/1, Chain), "/"),
 			e_util:ethrow(Loc, "recursion in struct ~s: ~s", [Name, Str])
 	end.
 
--spec check_type_recursion1(#e_struct{}, #{atom() => #e_struct{}}, [atom()]) -> ok.
-check_type_recursion1(#e_struct{name = Name, fields = #e_vars{type_map = FieldTypeMap}}, StructMap, UsedStructs) ->
-	maps:foreach(fun(_, Type) -> check_type_recursion2(Type, StructMap, [Name | UsedStructs]) end, FieldTypeMap).
+-spec check_struct_recursion(#e_struct{}, #{atom() => #e_struct{}}, [atom()]) -> ok.
+check_struct_recursion(#e_struct{name = Name, fields = #e_vars{type_map = FieldTypeMap}}, StructMap, UsedStructs) ->
+	maps:foreach(fun(_, Type) -> check_type_recursion(Type, StructMap, [Name | UsedStructs]) end, FieldTypeMap).
 
--spec check_type_recursion2(e_type(), #{atom() => #e_struct{}}, [atom()]) -> ok.
-check_type_recursion2(Type, StructMap, UsedStructs) ->
+-spec check_type_recursion(e_type(), #{atom() => #e_struct{}}, [atom()]) -> ok.
+check_type_recursion(Type, StructMap, UsedStructs) ->
 	case contain_unused_struct(Type, StructMap, UsedStructs) of
-		{yes, StructName} ->
-			check_type_recursion1(maps:get(StructName, StructMap), StructMap, UsedStructs);
+		{yes, Struct} ->
+			check_struct_recursion(Struct, StructMap, UsedStructs);
 		no ->
 			ok
 	end.
 
--spec contain_unused_struct(e_type(), #{atom() => #e_struct{}}, [atom()]) -> {yes, atom()} | no.
+-spec contain_unused_struct(e_type(), #{atom() => #e_struct{}}, [atom()]) -> {yes, #e_struct{}} | no.
 contain_unused_struct(FieldType, StructMap, UsedStructs) ->
 	case contain_struct(FieldType, StructMap) of
-		{yes, StructName} = R ->
-			case lists:member(StructName, UsedStructs) of
+		{yes, #e_struct{name = Name}} = R ->
+			case lists:member(Name, UsedStructs) of
 				true ->
-					throw({recur, lists:reverse([StructName | UsedStructs])});
+					throw({recur, lists:reverse([Name | UsedStructs])});
 				false ->
 					R
 			end;
@@ -43,11 +43,11 @@ contain_unused_struct(FieldType, StructMap, UsedStructs) ->
 			no
 	end.
 
--spec contain_struct(e_type(), #{atom() => #e_struct{}}) -> {yes, atom()} | no.
+-spec contain_struct(e_type(), #{atom() => #e_struct{}}) -> {yes, #e_struct{}} | no.
 contain_struct(#e_basic_type{class = struct, p_depth = 0, tag = Name, loc = Loc}, StructMap) ->
 	case maps:find(Name, StructMap) of
-		{ok, _} ->
-			{yes, Name};
+		{ok, Struct} ->
+			{yes, Struct};
 		_ ->
 			e_util:ethrow(Loc, "undefined struct \"~s\"", [Name])
 	end;
