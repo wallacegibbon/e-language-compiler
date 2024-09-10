@@ -93,7 +93,7 @@ In E language (and also in C language), you can use pointer manipulation to achi
 ```
 struct A
 	tag: byte,
-	value: i64,
+	value: word,
 end
 
 a: A = A{tag = 1, value = 0x12345678},

@@ -21,7 +21,7 @@
 | p.m                         | p.m                         |
 | (\*p).m                     | p^.m                        |
 | p-\>m                       | p^.m                        |
-| uint8\_t \*p                | p: u8^                      |
+| char \*p                    | p: byte^                    |
 | void \*\*p                  | p: any^^                    |
 | ((struct Blah \*) p)-\>f1   | p as (Blah^)^.f1            |
 | sizeof(struct Blah \*)      | sizeof(Blah^)               |
@@ -31,10 +31,10 @@
 ## 数组和结构体
 
 ```
-arr: {i32, 3} = {1, 2, 3},
+arr: {word, 3} = {1, 2, 3},
 
 struct Blah
-	id: u32,
+	id: word,
 	name: byte^,
 end
 
@@ -47,7 +47,7 @@ c: {Blah, 2} = {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}},
 int32_t arr[3] = {1, 2, 3};
 
 struct Blah {
-	uint32_t id;
+	int id;
 	char *name;
 }
 
@@ -60,7 +60,7 @@ E语言的结构体字段的声明，可以包含默认值，你可以这样写�
 
 ```
 struct Blah
-	id: u32 = 1,
+	id: word = 1,
 	name: byte^ = "default_name_string",
 end
 ```
@@ -74,7 +74,7 @@ C语言中“联合体”主要的用途，是复用内存，这个在特定使�
 
 ```c
 struct A {
-	unsigned char tag;
+	char tag;
 	union {
 		long long num;
 		char buf[8];
@@ -91,7 +91,7 @@ printf("%x\n", a.value.buf[2]);
 ```
 struct A
 	tag: byte,
-	value: i64,
+	value: word,
 end
 
 a: A = A{tag = 1, value = 0x12345678},
@@ -110,7 +110,7 @@ printf("%x\n", (a.value@ + 2)^),
 ## 函数定义
 
 ```
-fn main(argc: isize, argv: byte^^): isize
+fn main(argc: word, argv: byte^^): word
 	return 0,
 end
 ```
@@ -166,14 +166,14 @@ while (test()) {
 ```
 my_fn1: fn (): fn (): fn () = another_fn1,
 
-my_fn2: fn (byte^, usize): fn (byte^, byte^): fn (isize, usize): byte^ = another_fn2,
+my_fn2: fn (byte^, word): fn (byte^, byte^): fn (word, word): byte^ = another_fn2,
 
 ```
 
 ```c
 void (*(*(*my_fn1)())())() = another_fn1;
 
-unsigned char * (*(*(*my_fn2)(char *, unsigned int))(char *, char *))(int, unsigned int) = another_fn2;
+char * (*(*(*my_fn2)(char *, int))(char *, char *))(int, int) = another_fn2;
 ```
 
 

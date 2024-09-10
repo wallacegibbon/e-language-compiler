@@ -90,7 +90,7 @@ size_and_offsets([], {CurrentOffset, MaxAlign, OffsetMap}, _) ->
 	%% The size should be aligned to MaxAlign.
 	{e_util:fill_unit_pessi(CurrentOffset, MaxAlign), MaxAlign, OffsetMap}.
 
-%% Usually, for 32-bit MCU, only 32-bit is supported. For 64-bit CPU, 64-bit float is supported, too.
+%% Usually, for 32-bit MCU, only 32-bit float is supported. For 64-bit CPU, 64-bit float is supported, too.
 %% So we can assume that size of float is same as sizeof word.
 
 -spec size_of(e_type(), context()) -> non_neg_integer().
