@@ -1,5 +1,5 @@
 -module(e_size).
--export([expand_kw_in_ast/2, expand_kw_in_stmts/2, fill_offsets_in_stmts/2, fill_offsets_in_vars/2]).
+-export([expand_kw_in_ast/2, expand_kw_in_stmts/2, fill_offsets_in_ast/2, fill_offsets_in_vars/2]).
 -export([size_of/2, align_of/2]).
 -include("e_record_definition.hrl").
 
@@ -38,16 +38,16 @@ expand_kw_in_expr(Any, _) ->
 expand_kw_in_map(Map, Ctx) ->
 	maps:map(fun(_, V1) -> expand_kw_in_expr(V1, Ctx) end, Map).
 
--spec fill_offsets_in_stmts(e_ast(), context()) -> e_ast().
-fill_offsets_in_stmts([#e_function{vars = Old} = Fn | Rest], Ctx) ->
-	[Fn#e_function{vars = fill_offsets_in_vars(Old, Ctx)} | fill_offsets_in_stmts(Rest, Ctx)];
-fill_offsets_in_stmts([#e_struct{name = Name, fields = Old} = S | Rest], {StructMap, PointerWidth} = Ctx) ->
+-spec fill_offsets_in_ast(e_ast(), context()) -> e_ast().
+fill_offsets_in_ast([#e_function{vars = Old} = Fn | Rest], Ctx) ->
+	[Fn#e_function{vars = fill_offsets_in_vars(Old, Ctx)} | fill_offsets_in_ast(Rest, Ctx)];
+fill_offsets_in_ast([#e_struct{name = Name, fields = Old} = S | Rest], {StructMap, PointerWidth} = Ctx) ->
 	FilledS = S#e_struct{fields = fill_offsets_in_vars(Old, Ctx)},
 	%% StructMap in Ctx got updated to avoid some duplicated calculations.
-	[FilledS | fill_offsets_in_stmts(Rest, {StructMap#{Name := FilledS}, PointerWidth})];
-fill_offsets_in_stmts([Any | Rest], Ctx) ->
-	[Any | fill_offsets_in_stmts(Rest, Ctx)];
-fill_offsets_in_stmts([], _) ->
+	[FilledS | fill_offsets_in_ast(Rest, {StructMap#{Name := FilledS}, PointerWidth})];
+fill_offsets_in_ast([Any | Rest], Ctx) ->
+	[Any | fill_offsets_in_ast(Rest, Ctx)];
+fill_offsets_in_ast([], _) ->
 	[].
 
 -spec fill_offsets_in_vars(#e_vars{}, context()) -> #e_vars{}.
@@ -90,31 +90,34 @@ size_and_offsets([], {CurrentOffset, MaxAlign, OffsetMap}, _) ->
 	%% The size should be aligned to MaxAlign.
 	{e_util:fill_unit_pessi(CurrentOffset, MaxAlign), MaxAlign, OffsetMap}.
 
+%% Usually, for 32-bit MCU, only 32-bit is supported. For 64-bit CPU, 64-bit float is supported, too.
+%% So we can assume that size of float is same as sizeof word.
+
 -spec size_of(e_type(), context()) -> non_neg_integer().
 size_of(#e_array_type{elem_type = T, length = Len}, Ctx) ->
 	size_of(T, Ctx) * Len;
-size_of(#e_fn_type{}, {_, PointerWidth}) ->
-	PointerWidth;
 size_of(#e_basic_type{p_depth = N}, {_, PointerWidth}) when N > 0 ->
 	PointerWidth;
 size_of(#e_basic_type{class = struct} = S, {StructMap, _} = Ctx) ->
 	size_of_struct(e_util:get_struct_from_type(S, StructMap), Ctx);
-size_of(#e_basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
-	e_util:primitive_size_of(Tag, PointerWidth);
+size_of(#e_fn_type{}, {_, PointerWidth}) ->
+	PointerWidth;
+size_of(#e_basic_type{class = float}, {_, PointerWidth}) ->
+	PointerWidth;
+size_of(#e_basic_type{class = integer, tag = word}, {_, PointerWidth}) ->
+	PointerWidth;
+size_of(#e_basic_type{class = integer, tag = byte}, _) ->
+	1;
 size_of(Any, _) ->
-	e_util:ethrow(element(2, Any), "invalid type ~p on sizeof", [Any]).
+	e_util:ethrow(element(2, Any), "invalid type \"~w\"", [Any]).
 
 -spec align_of(e_type(), context()) -> non_neg_integer().
 align_of(#e_array_type{elem_type = T}, Ctx) ->
 	align_of(T, Ctx);
-align_of(#e_fn_type{}, {_, PointerWidth}) ->
-	PointerWidth;
 align_of(#e_basic_type{p_depth = N}, {_, PointerWidth}) when N > 0 ->
 	PointerWidth;
 align_of(#e_basic_type{class = struct} = S, {StructMap, _} = Ctx) ->
 	align_of_struct(e_util:get_struct_from_type(S, StructMap), Ctx);
-align_of(#e_basic_type{class = C, tag = Tag}, {_, PointerWidth}) when C =:= integer; C =:= float ->
-	e_util:primitive_size_of(Tag, PointerWidth);
-align_of(Any, _) ->
-	e_util:ethrow(element(2, Any), "invalid type ~p on alignof", [Any]).
+align_of(Type, Ctx) ->
+	size_of(Type, Ctx).
 

@@ -138,7 +138,7 @@ type_of_node(#e_op{tag = '-', data = [Op1, Op2], loc = Loc}, Ctx) ->
 	case are_pointers_of_same_type(Op1Type, Op2Type) of
 		true ->
 			%% pointer - pointer --> integer.
-			#e_basic_type{class = integer, tag = usize, loc = Loc};
+			#e_basic_type{class = integer, tag = word, loc = Loc};
 		false->
 			Checkers = [fun are_numbers_of_same_type/2, fun are_pointer_and_integer/2],
 			case number_check_chain(Op1Type, Op2Type, Checkers) of
@@ -190,9 +190,9 @@ type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) ->
 type_of_node(#e_op{tag = '@', data = [Operand], loc = Loc}, Ctx) ->
 	inc_pointer_depth(type_of_node(Operand, Ctx), Loc);
 type_of_node(#e_op{tag = {sizeof, _}, loc = Loc}, _) ->
-	#e_basic_type{class = integer, tag = usize, loc = Loc};
+	#e_basic_type{class = integer, tag = word, loc = Loc};
 type_of_node(#e_op{tag = {alignof, _}, loc = Loc}, _) ->
-	#e_basic_type{class = integer, tag = usize, loc = Loc};
+	#e_basic_type{class = integer, tag = word, loc = Loc};
 type_of_node(#e_op{data = [Operand]}, Ctx) ->
 	type_of_node(Operand, Ctx);
 type_of_node(#e_varref{name = Name, loc = Loc}, {#e_vars{type_map = TypeMap}, FnTypeMap, _, _} = Ctx) ->
@@ -223,9 +223,9 @@ type_of_node(#e_struct_init_expr{} = S, {_, _, StructMap, _} = Ctx) ->
 type_of_node(#e_type_convert{expr = Expr, type = Type, loc = Loc}, Ctx) ->
 	convert_type(type_of_node(Expr, Ctx), Type, Loc);
 type_of_node(#e_float{loc = Loc}, _) ->
-	#e_basic_type{class = float, tag = f64, loc = Loc};
+	#e_basic_type{class = float, tag = float, loc = Loc};
 type_of_node(#e_integer{loc = Loc}, _) ->
-	#e_basic_type{class = integer, tag = i64, loc = Loc};
+	#e_basic_type{class = integer, tag = word, loc = Loc};
 type_of_node(#e_string{loc = Loc}, _) ->
 	#e_basic_type{class = integer, p_depth = 1, tag = byte, loc = Loc};
 type_of_node(#e_if_stmt{condi = Condi, then = Then, 'else' = Else, loc = Loc}, Ctx) ->
@@ -431,67 +431,35 @@ are_floats(_, _) ->
 	false.
 
 -spec bigger_type(e_type(), e_type()) -> e_type().
-bigger_type(#e_basic_type{class = integer, tag = Tag1} = T1, #e_basic_type{class = integer, tag = Tag2} = T2) ->
-	N1 = e_util:primitive_size_of(Tag1, 128),
-	N2 = e_util:primitive_size_of(Tag2, 128),
-	case bigger_type_calc(Tag1, Tag2, N1, N2) of
-		true -> T1;
-		false -> T2
-	end;
-bigger_type(#e_basic_type{class = float, tag = f64} = T, #e_basic_type{class = float}) ->
-	T;
-bigger_type(#e_basic_type{class = float}, #e_basic_type{class = float} = T) ->
+bigger_type(#e_basic_type{class = integer, tag = word} = T1, #e_basic_type{class = integer}) ->
+	T1;
+bigger_type(#e_basic_type{class = integer}, #e_basic_type{class = integer} = T2) ->
+	T2;
+bigger_type(#e_basic_type{class = float} = T, #e_basic_type{class = float}) ->
 	T.
 
-bigger_type_calc(_, _, N1, N2) when N1 > N2 ->
-	true;
-bigger_type_calc(_, _, N1, N2) when N1 < N2 ->
-	false;
-%% `byte` have higher precedence on the same length.
-bigger_type_calc(byte, _, _, _) ->
-	true;
-bigger_type_calc(_, byte, _, _) ->
-	false;
-%% Using `>` to compare `uxx` and `ixx`.
-bigger_type_calc(Tag1, Tag2, _, _) when Tag1 > Tag2 ->
-	true;
-bigger_type_calc(_, _, _, _) ->
-	false.
-
 -ifdef(EUNIT).
-
 -include_lib("eunit/include/eunit.hrl").
 
 -define(IOBJ(Tag, PDepth), #e_basic_type{class = integer, tag = Tag, p_depth = PDepth}).
--define(FOBJ(Tag, PDepth), #e_basic_type{class = float, tag = Tag, p_depth = PDepth}).
+-define(FOBJ(PDepth), #e_basic_type{class = float, tag = float, p_depth = PDepth}).
 
 bigger_type_test() ->
-	?assertMatch(?IOBJ(u8, 0), bigger_type(?IOBJ(i8, 0), ?IOBJ(u8, 0))),
-	?assertMatch(?IOBJ(u8, 0), bigger_type(?IOBJ(u8, 0), ?IOBJ(i8, 0))),
-	?assertMatch(?IOBJ(byte, 0), bigger_type(?IOBJ(byte, 0), ?IOBJ(u8, 0))),
-	?assertMatch(?IOBJ(byte, 0), bigger_type(?IOBJ(u8, 0), ?IOBJ(byte, 0))),
-	?assertMatch(?IOBJ(i16, 0), bigger_type(?IOBJ(i16, 0), ?IOBJ(byte, 0))),
-	?assertMatch(?IOBJ(i16, 0), bigger_type(?IOBJ(i16, 0), ?IOBJ(u8, 0))),
-	?assertMatch(?IOBJ(i16, 0), bigger_type(?IOBJ(u8, 0), ?IOBJ(i16, 0))),
-	?assertMatch(?FOBJ(f64, 0), bigger_type(?FOBJ(f32, 0), ?FOBJ(f64, 0))),
-	?assertMatch(?FOBJ(f64, 0), bigger_type(?FOBJ(f64, 0), ?FOBJ(f32, 0))),
+	?assertMatch(?IOBJ(word, 0), bigger_type(?IOBJ(byte, 0), ?IOBJ(word, 0))),
 	ok.
 
 are_numbers_of_same_type_test() ->
-	?assertMatch({true, ?IOBJ(i16, 0)}, are_numbers_of_same_type(?IOBJ(i16, 0), ?IOBJ(u8, 0))),
-	?assertMatch({true, ?IOBJ(u16, 0)}, are_numbers_of_same_type(?IOBJ(i16, 0), ?IOBJ(u16, 0))),
-	?assertMatch({true, ?FOBJ(f64, 0)}, are_numbers_of_same_type(?FOBJ(f64, 0), ?FOBJ(f32, 0))),
-	?assertMatch({true, ?FOBJ(f64, 0)}, are_numbers_of_same_type(?FOBJ(f32, 0), ?FOBJ(f64, 0))),
-	?assertMatch(false, are_numbers_of_same_type(?IOBJ(i16, 0), ?FOBJ(f32, 0))),
+	?assertMatch({true, ?IOBJ(word, 0)}, are_numbers_of_same_type(?IOBJ(word, 0), ?IOBJ(byte, 0))),
+	?assertMatch(false, are_numbers_of_same_type(?IOBJ(i16, 0), ?FOBJ(0))),
 	ok.
 
 number_check_chain_test() ->
 	L1 = [fun are_numbers_of_same_type/2, fun are_pointers_of_same_type/2, fun are_pointer_and_integer/2],
-	?assertMatch({true, ?IOBJ(i16, 0)}, number_check_chain(?IOBJ(i16, 0), ?IOBJ(u8, 0), L1)),
+	?assertMatch({true, ?IOBJ(word, 0)}, number_check_chain(?IOBJ(word, 0), ?IOBJ(byte, 0), L1)),
 	L2 = [fun are_numbers_of_same_type/2, fun are_pointers_of_same_type/2, fun are_pointer_and_integer/2],
-	?assertMatch(false, number_check_chain(?IOBJ(i16, 0), ?IOBJ(u8, 1), L2)),
+	?assertMatch(false, number_check_chain(?IOBJ(word, 0), ?IOBJ(byte, 1), L2)),
 	L3 = [fun are_numbers_of_same_type/2, fun are_pointers_of_same_type/2, fun are_pointer_and_integer_ignore_order/2],
-	?assertMatch({true, ?IOBJ(u8, 1)}, number_check_chain(?IOBJ(i16, 0), ?IOBJ(u8, 1), L3)),
+	?assertMatch({true, ?IOBJ(byte, 1)}, number_check_chain(?IOBJ(word, 0), ?IOBJ(byte, 1), L3)),
 	ok.
 
 -endif.

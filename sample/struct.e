@@ -8,48 +8,48 @@ struct S1
 end
 
 struct S2
-	a: u16,
+	a: byte,
 end
 
 struct S3
-	a: u64,
+	a: word,
 end
 
 struct S4
 	a: byte,
-	b: u8,
-	c: u16,
+	b: byte,
+	c: byte,
 end
 
 struct S5
 	a: byte,
-	b: u8,
-	c: u32,
+	b: byte,
+	c: word,
 	%s: Sprite,
 end
 
 struct Sprite
 	id: byte = 0,
-	tag: u16 = 3,
+	tag: byte = 3,
 	pos: Pos,
-	tail: u8,
+	tail: byte,
 end
 
 struct Pos
-	%x: u32 = "hello",
-	x: u32 = 100,
-	y: u32 = 101,
-	h: u64 = 1000,
+	%x: word = "hello",
+	x: word = 100,
+	y: word = 101,
+	h: word = 1000,
 	s: S5,
 end
 
 g1: Sprite = Sprite{id = 1, pos = Pos{x = 2, y = 3}},
-g2: u16 = 12,
+g2: byte = 12,
 g3: byte = 34,
-g4: u32 = 56,
+g4: word = 56,
 g9: Sprite = Sprite{id = 10, pos = Pos{x = 20, y = 30}},
 
-fn main(): isize
+fn main(): word
 	l1: Sprite = Sprite{id = 11, pos = Pos{x = 12, y = 13}},
 	g1.pos.y = 111,
 	%l1.pos.y = "hello",
@@ -63,7 +63,7 @@ fn main(): isize
 
 	l1.pos.x = sizeof(Sprite),
 	l1.pos.x = sizeof(Pos),
-	l1.pos.x = sizeof(u32),
+	l1.pos.x = sizeof(word),
 
 @@alignof_anchor
 
@@ -72,9 +72,9 @@ fn main(): isize
 	l1.pos.h = alignof(Pos) + 1,
 
 #if ?RELEASE
-	l1.pos.x = alignof(u32),
+	l1.pos.x = alignof(word),
 #else
-	l1.pos.x = alignof(u16),
+	l1.pos.x = alignof(byte),
 #endif
 
 %@@alignof_anchor
@@ -87,7 +87,7 @@ fn blah(tag: byte, s: Sprite^): byte
 	return tag + 1,
 end
 
-fn ptest(s: any^, cnt: i32)
+fn ptest(s: any^, cnt: word)
 	%s^.pos.y = 1,
 	s as (Sprite^)^.pos.y = 'a',
 	fn2(s as (byte^) + cnt),
@@ -100,15 +100,15 @@ fn fn1(arg: byte^): byte^
 	1 + arg,
 	arg - 1,
 	%1 - arg,
-	a: usize,
+	a: word,
 	a = arg - tmp,
 	return arg + 1,
 end
 
 fn fn2(arg: byte^): byte^
-	v1: u8,
-	v2: u8,
-	v2 = v1 * arg as (u8^)^,
+	v1: byte,
+	v2: byte,
+	v2 = v1 * arg as (byte^)^,
 	return arg + 2,
 end
 

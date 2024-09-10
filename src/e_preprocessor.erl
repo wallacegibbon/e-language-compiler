@@ -168,8 +168,8 @@ replace_line_number(Tokens, Loc) ->
 -include_lib("eunit/include/eunit.hrl").
 
 process_no_operator_test() ->
-	{ok, Tokens, _} = e_scanner:string("u32 a = 1;"),
-	?assertEqual([{int_type, {1, 1}, u32}, {identifier, {1, 5}, a}, {'=', {1, 7}}, {integer, {1, 9}, 1}, {';', {1, 10}}], process(Tokens)).
+	{ok, Tokens, _} = e_scanner:string("word a = 1;"),
+	?assertEqual([{int_type, {1, 1}, word}, {identifier, {1, 6}, a}, {'=', {1, 8}}, {integer, {1, 10}, 1}, {';', {1, 11}}], process(Tokens)).
 
 process_if_true_test() ->
 	{ok, Tokens, _} = e_scanner:string("#if 1\n a\n #else\n b\n #endif"),

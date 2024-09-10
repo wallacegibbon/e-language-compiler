@@ -31,8 +31,8 @@ Rules.
 struct|end|fn|return|if|then|elif|else|while|do|goto|sizeof|alignof|typeof|as|new : {token, {list_to_atom(TokenChars), TokenLoc}}.
 rem|and|or|band|bor|bxor|bsl|bsr : {token, {list_to_atom(TokenChars), TokenLoc}}.
 cond|case|for|break|continue : {token, {list_to_atom(TokenChars), TokenLoc}}.
-byte|u8|i8|u16|i16|u32|i32|u64|i64|usize|isize|uptr|iptr : {token, {int_type, TokenLoc, list_to_atom(TokenChars)}}.
-f64|f32 : {token, {float_type, TokenLoc, list_to_atom(TokenChars)}}.
+byte|word : {token, {int_type, TokenLoc, list_to_atom(TokenChars)}}.
+float : {token, {float_type, TokenLoc, list_to_atom(TokenChars)}}.
 void : {token, {void_type, TokenLoc, void}}.
 any : {token, {any_type, TokenLoc, any}}.
 {Identifier} : {token, {identifier, TokenLoc, list_to_atom(TokenChars)}}.

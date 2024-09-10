@@ -1,12 +1,12 @@
 struct MyObj
 	name: byte^,
-	id: usize,
+	id: word,
 end
 
-fn cond_test1(): usize
+fn cond_test1(): word
 	val1: byte = 10,
-	val2: usize = 1000,
-	result: usize,
+	val2: word = 1000,
+	result: word,
 
 	if val1 / 2 != 0 and val2 / 2 != 0 or val1 + val2 == 0 then
 		result = val1 + val2,
@@ -17,7 +17,7 @@ fn cond_test1(): usize
 	return result,
 end
 
-fn str_compare(dest: byte^, src: byte^): u8
+fn str_compare(dest: byte^, src: byte^): byte
 	while src^ != 0 do
 		dest^ = src^,
 		dest += 1,
@@ -31,11 +31,11 @@ fn str_compare(dest: byte^, src: byte^): u8
 	end
 end
 
-fn print_str(fmt: byte^, n: isize, data: byte^^): isize
+fn print_str(fmt: byte^, n: word, data: byte^^): word
 	return 0,
 end
 
-fn cond_test2(self: MyObj^, prefix: byte^, postfix: byte^): isize
+fn cond_test2(self: MyObj^, prefix: byte^, postfix: byte^): word
 	args: {byte^, 1} = {self^.name},
 	if str_compare(self^.name, "wallace") == 0 then
 		print_str("hello, %s\n", 1, args@),

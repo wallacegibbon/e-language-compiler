@@ -1,9 +1,8 @@
 -module(e_util).
 -export([make_function_and_struct_map_from_ast/1, expr_map/2, eliminate_pointer/1, stmt_to_str/1, merge_vars/3]).
 -export([names_of_var_defs/1, names_of_var_refs/1, get_struct_from_type/2, get_struct_from_name/3]).
--export([primitive_size_of/2, void_type/1, fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2]).
+-export([void_type/1, fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, fix_special_chars/1]).
 -export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2, map_find_multi/2]).
--export([fix_special_chars/1]).
 -include("e_record_definition.hrl").
 
 %% This function is to avoid boilerplate code for statements. So you can concentrate on operators.
@@ -153,25 +152,6 @@ fill_unit_opti(Num, Unit) ->
 -spec fall_unit(non_neg_integer(), non_neg_integer()) -> non_neg_integer().
 fall_unit(Num, Unit) ->
 	Num div Unit * Unit.
-
-%% The 128 is for situations where PointerSize is unknown, and you need to number bigger than the pointer size.
--spec primitive_size_of(atom(), PointerSize) -> 1 | 2 | 4 | 8 when PointerSize :: 2 | 4 | 8 | 128.
-primitive_size_of(usize, PointerSize) -> PointerSize;
-primitive_size_of(isize, PointerSize) -> PointerSize;
-primitive_size_of(uptr, PointerSize) -> PointerSize;
-primitive_size_of(iptr, PointerSize) -> PointerSize;
-primitive_size_of(byte, _) -> 1;
-primitive_size_of(u64, _) -> 8;
-primitive_size_of(i64, _) -> 8;
-primitive_size_of(u32, _) -> 4;
-primitive_size_of(i32, _) -> 4;
-primitive_size_of(u16, _) -> 2;
-primitive_size_of(i16, _) -> 2;
-primitive_size_of(u8, _) -> 1;
-primitive_size_of(i8, _) -> 1;
-primitive_size_of(f64, _) -> 8;
-primitive_size_of(f32, _) -> 4;
-primitive_size_of(T, _) -> throw(fmt("size of ~p is unknown", [T])).
 
 void_type(Loc) ->
 	#e_basic_type{class = void, tag = void, p_depth = 0, loc = Loc}.

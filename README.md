@@ -21,7 +21,7 @@ Here are some comparisons of C language and E language:
 | p.m                         | p.m                         |
 | (\*p).m                     | p^.m                        |
 | p-\>m                       | p^.m                        |
-| uint8\_t \*p                | p: u8^                      |
+| char \*p                    | p: byte^                    |
 | void \*\*p                  | p: any^^                    |
 | ((struct Blah \*) p)-\>f1   | p as (Blah^)^.f1            |
 | sizeof(struct Blah \*)      | sizeof(Blah^)               |
@@ -31,10 +31,10 @@ Here are some comparisons of C language and E language:
 ## Array And Struct
 
 ```
-arr: {i32, 3} = {1, 2, 3},
+arr: {word, 3} = {1, 2, 3},
 
 struct Blah
-	id: u32,
+	id: word,
 	name: byte^,
 end
 
@@ -44,10 +44,10 @@ c: {Blah, 2} = {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}},
 ```
 
 ```c
-int32_t arr[3] = {1, 2, 3};
+int arr[3] = {1, 2, 3};
 
 struct Blah {
-	uint32_t id;
+	int id;
 	char *name;
 }
 
@@ -60,7 +60,7 @@ The `struct` in E language support default value. You can write:
 
 ```
 struct Blah
-	id: u32 = 1,
+	id: word = 1,
 	name: byte^ = "default_name_string",
 end
 ```
@@ -76,7 +76,7 @@ Here is an example about `union` in C language:
 
 ```c
 struct A {
-	unsigned char tag;
+	char tag;
 	union {
 		long long num;
 		char buf[8];
@@ -114,7 +114,7 @@ To keep things minimum, E language do not support `enum`, either.
 ## Function Definition
 
 ```
-fn main(argc: isize, argv: byte^^): isize
+fn main(argc: word, argv: byte^^): word
 	return 0,
 end
 ```
@@ -152,6 +152,7 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 
 ## Loop
 
+
 ```
 while test() do
 	do_something(),
@@ -170,14 +171,14 @@ while (test()) {
 ```
 my_fn1: fn (): fn (): fn () = another_fn1,
 
-my_fn2: fn (byte^, usize): fn (byte^, byte^): fn (isize, usize): byte^ = another_fn2,
+my_fn2: fn (byte^, word): fn (byte^, byte^): fn (word, word): byte^ = another_fn2,
 
 ```
 
 ```c
 void (*(*(*my_fn1)())())() = another_fn1;
 
-unsigned char * (*(*(*my_fn2)(char *, unsigned int))(char *, char *))(int, unsigned int) = another_fn2;
+char * (*(*(*my_fn2)(char *, int))(char *, char *))(int, int) = another_fn2;
 ```
 
 

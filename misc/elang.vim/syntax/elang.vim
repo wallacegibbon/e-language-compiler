@@ -13,7 +13,7 @@ syn region e_pre		start="^\s*\zs\%(%:\|#\)\s*\%(if\|ifdef\|ifndef\|else\|elif\|e
 syn match e_macro_ref		"?[A-Za-z_]\+\>"
 
 syn keyword e_keyword		struct fn end if then else elif while do goto sizeof alignof typeof return as
-syn keyword e_type		uptr iptr usize isize byte u8 i8 u16 i16 u32 i32 u64 i64 f64 f32 any void
+syn keyword e_type		byte word float any void
 syn keyword e_operator		band bor bxor bnot and or not rem
 syn match e_operator		"==\|!=\|>=\|<=\|>\|<\|@\|\^\|+\|-\|*\|/\|="
 

@@ -1,13 +1,13 @@
-testglobal: u32 = 10,
+testglobal: word = 10,
 
-fn main(argc: uptr, argv: i64^^): i64
+fn main(argc: word, argv: byte^^): word
 	blah: {byte, 10},
 	tmp: byte^ = blah@,
 	tmp^ = 10,
 
 	print(tmp),
 
-	%myfn: fn (u8^) = inc,
+	%myfn: fn (byte^) = inc,
 	%myfn(tmp),
 
 	myfn1: fn (): fn (): fn (byte^) = get_incfn1,
@@ -35,18 +35,18 @@ fn get_incfn2(): fn (byte^)
 end
 
 fn inc(val: byte^)
-	cnt: u8 = 0,
+	cnt: byte = 0,
 	while cnt < 10 do
 		(val + cnt)^ = cnt * 2,
 		cnt += 1,
 	end
 end
 
-puts: fn (byte^): i8,
-printf: fn (byte^, usize),
+puts: fn (byte^): byte,
+printf: fn (byte^, word),
 
 fn print(val: byte^)
-	cnt: u8 = 0,
+	cnt: byte = 0,
 
 	puts(">>>\t"),
 	while cnt < 10 do

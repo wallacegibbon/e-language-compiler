@@ -14,25 +14,33 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	e_struct:check_struct_recursion_in_map(StructMap00),
 
 	%% type checking
+	io:format("PHASE: type checking (AST)...~n"),
 	e_type:check_types_in_ast(AST00, GlobalVars00, {FnTypeMap00, StructMap00}),
+	io:format("PHASE: type checking (INIT CODE)...~n"),
 	e_type:check_type_in_stmts(InitCode00, GlobalVars00, {FnTypeMap00, StructMap00}),
 
 	#{pointer_width := PointerWidth} = CompileOptions,
 	%% Fill offset of variables and struct fields.
-	AST10 = e_size:fill_offsets_in_stmts(AST00, {StructMap00, PointerWidth}),
+	io:format("PHASE: size filling (AST)...~n"),
+	AST10 = e_size:fill_offsets_in_ast(AST00, {StructMap00, PointerWidth}),
 	%% Struct info is updated, so StructMap needs to be updated, too.
 	{_, StructMap10} = e_util:make_function_and_struct_map_from_ast(AST10),
+	io:format("PHASE: size filling (GLOBAL VARS)...~n"),
 	GlobalVars10 = e_size:fill_offsets_in_vars(GlobalVars00, {StructMap10, PointerWidth}),
 
 	%% Expand expressions like `sizeof` and `alignof`.
+	io:format("PHASE: keyword expanding (AST)...~n"),
 	AST20 = e_size:expand_kw_in_ast(AST10, {StructMap10, PointerWidth}),
 	%% Initializing code for global variables are not in main ast, do not forget them.
+	io:format("PHASE: keyword expanding (INIT CODE)...~n"),
 	InitCode20 = e_size:expand_kw_in_stmts(InitCode00, {StructMap10, PointerWidth}),
 	%% sizeof expressions are expanded, so StructMap needs to be updated
 	{_, StructMap20} = e_util:make_function_and_struct_map_from_ast(AST20),
 
 	%% expand init exprs like A{a = 1} and {1, 2, 3}
+	io:format("PHASE: init expanding (AST)...~n"),
 	AST30 = e_init_expr:expand_in_ast(AST20, StructMap20),
+	io:format("PHASE: init expanding (INIT CODE)...~n"),
 	InitCode30 = e_init_expr:expand_in_stmts(InitCode20, StructMap20),
 
 	%% TODO: The expression decomposing is not finished yet.
@@ -40,10 +48,14 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	InitCode40 = e_expr:decompose_expr_in_stmts(InitCode30, {}),
 
 	%% convert `.` into `@`, `+` and `^`
+	io:format("PHASE: struct and pointer expanding (AST)...~n"),
 	AST70 = e_struct:eliminate_dot_in_ast(AST40, GlobalVars10, {FnTypeMap00, StructMap20}),
+	io:format("PHASE: struct and pointer expanding (INIT CODE)...~n"),
 	InitCode70 = e_struct:eliminate_dot_in_stmts(InitCode40, GlobalVars10, {FnTypeMap00, StructMap20}),
 
+	io:format("PHASE: varref to offset (AST)...~n"),
 	AST80 = e_varref:varref_to_offset_in_ast(AST70, {GlobalVars10, FnTypeMap00}),
+	io:format("PHASE: varref to offset (INIT CODE)...~n"),
 	InitCode80 = e_varref:varref_to_offset_in_stmts(InitCode70, {GlobalVars10, FnTypeMap00}),
 
 	{AST80, GlobalVars10, InitCode80}.
