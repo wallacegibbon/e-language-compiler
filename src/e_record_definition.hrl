@@ -62,7 +62,7 @@
 -record(e_vars,
 	{
 	%% `names` keeps the order that variables/fields got declared.
-	names = [] :: [#e_varref{}],
+	names = [] :: [atom()],
 	type_map = #{} :: #{atom() => e_type()},
 	offset_map = #{} :: #{atom() => var_offset()},
 	%% The alignment of e_vars is the alignment of the biggest element in this `e_vars`.
