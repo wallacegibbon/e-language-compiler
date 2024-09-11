@@ -43,15 +43,11 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	io:format("PHASE: init expanding (INIT CODE)...~n"),
 	InitCode30 = e_init_expr:expand_in_stmts(InitCode20, StructMap20),
 
-	%% TODO: The expression decomposing is not finished yet.
-	AST40 = e_expr:decompose_expr_in_ast(AST30, {}),
-	InitCode40 = e_expr:decompose_expr_in_stmts(InitCode30, {}),
-
 	%% convert `.` into `@`, `+` and `^`
 	io:format("PHASE: struct and pointer expanding (AST)...~n"),
-	AST70 = e_struct:eliminate_dot_in_ast(AST40, GlobalVars10, {FnTypeMap00, StructMap20}),
+	AST70 = e_struct:eliminate_dot_in_ast(AST30, GlobalVars10, {FnTypeMap00, StructMap20}),
 	io:format("PHASE: struct and pointer expanding (INIT CODE)...~n"),
-	InitCode70 = e_struct:eliminate_dot_in_stmts(InitCode40, GlobalVars10, {FnTypeMap00, StructMap20}),
+	InitCode70 = e_struct:eliminate_dot_in_stmts(InitCode30, GlobalVars10, {FnTypeMap00, StructMap20}),
 
 	io:format("PHASE: varref to offset (AST)...~n"),
 	AST80 = e_varref:varref_to_offset_in_ast(AST70, {GlobalVars10, FnTypeMap00}),

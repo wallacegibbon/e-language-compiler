@@ -26,6 +26,8 @@ eliminate_pointer(Stmts1) ->
 -spec merge_plus(e_expr()) -> e_expr().
 merge_plus(?PLUS_OP(?PLUS_OP(O1, #e_integer{value = N1} = I), #e_integer{value = N2})) ->
 	merge_plus(?PLUS_OP(O1, I#e_integer{value = N1 + N2}));
+merge_plus(?PLUS_OP(#e_integer{value = N1} = I, #e_integer{value = N2})) ->
+	I#e_integer{value = N1 + N2};
 merge_plus(#e_op{tag = {call, Callee}, data = Args} = Op) ->
 	Op#e_op{tag = {call, merge_plus(Callee)}, data = lists:map(fun merge_plus/1, Args)};
 merge_plus(#e_op{data = Args} = Op) ->
