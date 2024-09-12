@@ -59,6 +59,8 @@ fn main(): word
 		goto alignof_anchor,
 	end
 
+	l1.pos.y = g1.pos.y,
+
 @@sizeof_anchor
 
 	l1.pos.x = sizeof(Sprite),

@@ -197,3 +197,7 @@
 -type e_ast_elem() :: #e_function{} | #e_struct{} | #e_vardef{} | e_stmt().
 -type e_ast() :: [e_ast_elem()].
 
+-define(OP2(Tag, O1, O2), #e_op{tag = Tag, data = [O1, O2]}).
+-define(OP1(Tag, O), #e_op{tag = Tag, data = [O1]}).
+-define(I(V), #e_integer{value = V}).
+

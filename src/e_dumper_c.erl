@@ -15,8 +15,8 @@ generate_code(AST, #e_vars{type_map = GlobalVarMap} = GlobalVars, InitCode, Outp
 	InitCode2 = fix_exprs_for_c(InitCode, Ctx),
 	%% struct definition have to be before function declarations
 	{StructAST, FnAST} = lists:partition(fun(A) -> element(1, A) =:= e_struct end, AST2),
-	{StructStmts, []} = statements_to_str(StructAST, []),
-	{FnStmts, FnDeclars} = statements_to_str(FnAST, InitCode2),
+	{StructStmts, []} = ast_to_str(StructAST, []),
+	{FnStmts, FnDeclars} = ast_to_str(FnAST, InitCode2),
 	VarStmts = var_map_to_str(GlobalVarMap),
 	Code = lists:join("\n\n", [common_c_code(), StructStmts, VarStmts, FnDeclars, FnStmts]),
 	ok = file:write_file(OutputFile, Code).
@@ -61,11 +61,11 @@ common_c_code() ->
 	"typedef uint64_t u64;\ntypedef int64_t i64;\n"
 	"typedef double f64;\ntypedef float f32;\n\n".
 
--spec statements_to_str(e_ast(), [e_stmt()]) -> {iolist(), iolist()}.
-statements_to_str(Statements, InitCode) ->
-	statements_to_str(Statements, InitCode, [], []).
+-spec ast_to_str(e_ast(), [e_stmt()]) -> {iolist(), iolist()}.
+ast_to_str(Statements, InitCode) ->
+	ast_to_str(Statements, InitCode, [], []).
 
-statements_to_str([#e_function{name = Name} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
+ast_to_str([#e_function{name = Name} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
 	#e_function{param_names = ParamNames, type = FnType, vars = #e_vars{type_map = VarTypes}, stmts = Stmts} = Hd,
 	PureParams = map_to_kv_list(ParamNames, maps:with(ParamNames, VarTypes)),
 	PureVars = maps:without(ParamNames, VarTypes),
@@ -76,13 +76,13 @@ statements_to_str([#e_function{name = Name} = Hd | Rest], InitCode, StmtStrs, Fn
 			false -> Stmts
 		end,
 	S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declars, var_map_to_str(PureVars), stmts_to_str(Stmts2)]),
-	statements_to_str(Rest, InitCode, [S | StmtStrs], [Declars ++ ";\n" | FnDeclars]);
-statements_to_str([#e_struct{} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
+	ast_to_str(Rest, InitCode, [S | StmtStrs], [Declars ++ ";\n" | FnDeclars]);
+ast_to_str([#e_struct{} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
 	#e_struct{name = Name, fields = #e_vars{names = FieldNames, type_map = FieldTypes}} = Hd,
 	FieldList = map_to_kv_list(FieldNames, FieldTypes),
 	S = io_lib:format("struct ~s {~n~s~n};~n~n", [Name, var_list_to_str(FieldList)]),
-	statements_to_str(Rest, InitCode, [S | StmtStrs], FnDeclars);
-statements_to_str([], _, StmtStrs, FnDeclars) ->
+	ast_to_str(Rest, InitCode, [S | StmtStrs], FnDeclars);
+ast_to_str([], _, StmtStrs, FnDeclars) ->
 	{lists:reverse(StmtStrs), lists:reverse(FnDeclars)}.
 
 function_to_str(Name, ParamStr, #e_basic_type{p_depth = N} = RetType) when N > 0 ->

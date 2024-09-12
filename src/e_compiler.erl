@@ -29,7 +29,7 @@ compile_to_e(InputFilename, OutputFilename) ->
 -spec compile_to_ir1(string(), string()) -> ok.
 compile_to_ir1(InputFilename, OutputFilename) ->
 	try
-		{AST, Vars, InitCode} = parse_and_compile(InputFilename),
+		{AST, _, InitCode} = parse_and_compile(InputFilename),
 		e_dumper_ir1:generate_code(AST, InitCode, OutputFilename)
 	catch
 		{Filename, {{Line, Col}, ErrorInfo}} ->
