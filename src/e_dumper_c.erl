@@ -2,13 +2,13 @@
 %% In the early stage of the E language compiler, code got compiled to C language.
 %% As the compiler grows, we will compile E language code to machine code directly.
 -module(e_dumper_c).
--export([generate_c_code/4]).
+-export([generate_code/4]).
 -include("e_record_definition.hrl").
 
 -type context() :: {#{atom() := #e_fn_type{}}, #{atom() => #e_struct{}}, #e_vars{}}.
 
--spec generate_c_code(e_ast(), #e_vars{}, [e_stmt()], string()) -> ok.
-generate_c_code(AST, #e_vars{type_map = GlobalVarMap} = GlobalVars, InitCode, OutputFile) ->
+-spec generate_code(e_ast(), #e_vars{}, [e_stmt()], string()) -> ok.
+generate_code(AST, #e_vars{type_map = GlobalVarMap} = GlobalVars, InitCode, OutputFile) ->
 	{FnTypeMap, StructMap} = e_util:make_function_and_struct_map_from_ast(AST),
 	Ctx = {FnTypeMap, StructMap, GlobalVars},
 	AST2 = lists:map(fun(A) -> fix_function_for_c(A, Ctx) end, AST),

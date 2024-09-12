@@ -1,9 +1,9 @@
 -module(e_dumper_e).
--export([generate_e_code/3]).
+-export([generate_code/3]).
 -include("e_record_definition.hrl").
 
--spec generate_e_code(e_ast(), e_ast(), string()) -> ok.
-generate_e_code(AST, InitCode, OutputFile) ->
+-spec generate_code(e_ast(), e_ast(), string()) -> ok.
+generate_code(AST, InitCode, OutputFile) ->
 	ok = file:write_file(OutputFile, statements_to_str(AST, InitCode)).
 
 -spec statements_to_str(e_ast(), [e_stmt()]) -> iolist().

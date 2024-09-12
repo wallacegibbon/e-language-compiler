@@ -1,24 +1,36 @@
 -module(e_compiler).
--export([compile_to_ast/1, compile_to_c/2, compile_to_e/2]).
+-export([compile_to_ast/1, compile_to_ir1/2, compile_to_c/2, compile_to_e/2]).
 -include("e_record_definition.hrl").
 
 -type token() :: {atom(), location(), _} | {atom(), location()}.
 
--spec compile_to_e(string(), string()) -> ok.
-compile_to_e(InputFilename, OutputFilename) ->
+%% Compiling to C is supported in the early stage of this compiler. This function is archived and not used anymore.
+-spec compile_to_c(string(), string()) -> ok.
+compile_to_c(InputFilename, OutputFilename) ->
 	try
-		{AST, _, InitCode} = parse_and_compile(InputFilename),
-		e_dumper_e:generate_e_code(AST, InitCode, OutputFilename)
+		{AST, Vars, InitCode} = parse_and_compile(InputFilename),
+		e_dumper_c:generate_code(AST, Vars, InitCode, OutputFilename)
 	catch
 		{Filename, {{Line, Col}, ErrorInfo}} ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
 	end.
 
--spec compile_to_c(string(), string()) -> ok.
-compile_to_c(InputFilename, OutputFilename) ->
+%% Compiling to E (with invalid syntax). This function is for debug, just like `compile_to_c/2`.
+-spec compile_to_e(string(), string()) -> ok.
+compile_to_e(InputFilename, OutputFilename) ->
+	try
+		{AST, _, InitCode} = parse_and_compile(InputFilename),
+		e_dumper_e:generate_code(AST, InitCode, OutputFilename)
+	catch
+		{Filename, {{Line, Col}, ErrorInfo}} ->
+			throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
+	end.
+
+-spec compile_to_ir1(string(), string()) -> ok.
+compile_to_ir1(InputFilename, OutputFilename) ->
 	try
 		{AST, Vars, InitCode} = parse_and_compile(InputFilename),
-		e_dumper_c:generate_c_code(AST, Vars, InitCode, OutputFilename)
+		e_dumper_ir1:generate_code(AST, InitCode, OutputFilename)
 	catch
 		{Filename, {{Line, Col}, ErrorInfo}} ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
