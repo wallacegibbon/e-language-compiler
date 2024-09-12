@@ -70,6 +70,7 @@ fn main(): word
 	l1.pos.x = alignof(Sprite),
 	l1.pos.x = alignof(Pos),
 	l1.pos.h = alignof(Pos) + 1,
+	l1.pos.h = 1 + (1 + (1 + (alignof(Pos) + 1))),
 
 #if ?RELEASE
 	l1.pos.x = alignof(word),
