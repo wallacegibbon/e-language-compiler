@@ -6,7 +6,7 @@
 
 -spec generate_code(e_ast(), e_ast(), string()) -> ok.
 generate_code(AST, InitCode, OutputFile) ->
-	IRs = [{function, '<init>'}, lists:map(fun stmt_to_ir/1, InitCode) | ast_to_ir(AST)],
+	IRs = [{function, '<global_var_init>'}, lists:map(fun stmt_to_ir/1, InitCode) | ast_to_ir(AST)],
 	Fn = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"} | IRs], IO_Dev) end,
 	file_transaction(OutputFile, Fn).
 
@@ -19,32 +19,35 @@ ast_to_ir([]) ->
 	[].
 
 -spec stmt_to_ir(e_stmt()) -> irs().
-stmt_to_ir(#e_if_stmt{condi = Condi, then = Then, 'else' = Else, loc = Loc}) ->
+stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}) ->
 	{CondiIRs, R_Cond} = expr_to_ir(Condi),
-	StartComment = {comment, io_lib:format("[if@~w] cond: ~s", [Loc, e_util:stmt_to_str(Condi)])},
-	EndComment = {comment, io_lib:format("[if@~w] end", [Loc])},
-	ThenBody = lists:map(fun(S) -> stmt_to_ir(S) end, Then),
-	ElseBody = lists:map(fun(S) -> stmt_to_ir(S) end, Else),
-	ThenPart = [{comment, io_lib:format("[if@~w] then part", [Loc])}, ThenBody, {goto, end_if}],
-	ElsePart = [{comment, io_lib:format("[if@~w] else part", [Loc])}, {label, else_label}, ElseBody, {label, end_if}],
-	[StartComment, CondiIRs, {br, R_Cond, else_label}, ThenPart, ElsePart, EndComment];
-stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts, loc = Loc}) ->
+	StartComment = comment('if', e_util:stmt_to_str(Condi), Loc),
+	EndComment = comment('if', "end", Loc),
+	Then1 = lists:map(fun(S) -> stmt_to_ir(S) end, Then0),
+	Else1 = lists:map(fun(S) -> stmt_to_ir(S) end, Else0),
+	Then2 = [comment('if', "then part", Loc), Then1, {goto, end_if}],
+	Else2 = [comment('if', "else part", Loc), {label, else_label}, Else1, {goto, end_if}, {label, end_if}],
+	[StartComment, CondiIRs, {br, R_Cond, else_label}, Then2, Else2, EndComment];
+stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}) ->
 	{CondiIRs, R_Cond} = expr_to_ir(Condi),
-	StartComment = {comment, io_lib:format("[while@~w] cond: ~s", [Loc, e_util:stmt_to_str(Condi)])},
-	EndComment = {comment, io_lib:format("[while@~w] end", [Loc])},
-	Body = lists:map(fun(S) -> stmt_to_ir(S) end, Stmts),
-	BodyPart = [{comment, io_lib:format("[while@~w] body part", [Loc])}, {label, body_start}, Body, {goto, body_start}, {label, end_while}],
-	[StartComment, CondiIRs, {br, R_Cond, end_while}, BodyPart, EndComment];
+	StartComment = comment(while, e_util:stmt_to_str(Condi), Loc),
+	EndComment = comment(while, "end", Loc),
+	Stmts1 = lists:map(fun(S) -> stmt_to_ir(S) end, Stmts0),
+	Stmts2 = [comment(while, "body part", Loc), {label, body_start}, Stmts1, {goto, body_start}, {label, end_while}],
+	[StartComment, CondiIRs, {br, R_Cond, end_while}, Stmts2, EndComment];
 stmt_to_ir(#e_return_stmt{expr = Expr}) ->
 	{ExprIRs, R} = expr_to_ir(Expr),
 	[ExprIRs, {return, R}];
 stmt_to_ir(#e_goto_stmt{label = Label}) ->
-	{goto, Label};
+	[{goto, Label}];
 stmt_to_ir(#e_label{name = Label}) ->
-	{label, Label};
+	[{label, Label}];
 stmt_to_ir(Stmt) ->
 	{Exprs, _} = expr_to_ir(Stmt),
 	Exprs.
+
+comment(Tag, Info, {Line, Col}) ->
+	{comment, io_lib:format("[~s@~w:~w] ~s", [Tag, Line, Col, Info])}.
 
 -define(IS_ARITH(Tag),
 	(
@@ -53,20 +56,21 @@ stmt_to_ir(Stmt) ->
 	Tag =:= 'bsl' orelse Tag =:= 'bsr'
 	)).
 
--spec expr_to_ir(e_expr()) -> irs().
+-spec expr_to_ir(e_expr()) -> {irs(), atom()}.
 expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V)), Right)) ->
 	{RightExprs, RTmp} = expr_to_ir(Right),
 	{[RightExprs, {st_instr_from_v(V), {Name, N}, RTmp}], RTmp};
 expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V))) ->
-	{{ld_instr_from_v(V), r_tmp, {Name, N}}, r_tmp};
+	{[{ld_instr_from_v(V), r_tmp, {Name, N}}], r_tmp};
 expr_to_ir(?OP2(Tag, Left, Right)) when ?IS_ARITH(Tag) ->
 	{IRs, {R1, R2}} = op2_to_ir_merge(Left, Right),
 	{[IRs, {Tag, r_tmp, R1, R2}], r_tmp};
 expr_to_ir(?I(N)) ->
-	{{la, r_tmp, N}, r_tmp};
+	{[{la, r_tmp, N}], r_tmp};
 expr_to_ir(_Expr) ->
-	{{}, zero}.
+	{[], zero}.
 
+-spec op2_to_ir_merge(e_expr(), e_expr()) -> {irs(), {atom(), atom()}}.
 op2_to_ir_merge(OP1, OP2) ->
 	{IRs1, R1} = expr_to_ir(OP1),
 	{IRs2, R2} = expr_to_ir(OP2),

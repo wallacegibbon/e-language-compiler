@@ -25,12 +25,12 @@ eliminate_pointer(Stmts1) ->
 -spec merge_plus(e_expr()) -> e_expr().
 %% Handling expressions like `1 + 2 + 3 + ...`
 merge_plus(?OP2('+', ?OP2('+', O1, ?I(N1) = I), ?I(N2)) = Orig) ->
-	merge_plus(Orig#e_op{data = [O1, I#e_integer{value = N1 + N2}]});
+	merge_plus(Orig#e_op{data = [O1, I?I(N1 + N2)]});
 %% Handling expressions like `... + (1 + (2 + 3))`
 merge_plus(?OP2('+', ?I(N1) = I, ?OP2('+', ?I(N2), O2)) = Orig) ->
-	merge_plus(Orig#e_op{data = [I#e_integer{value = N1 + N2}, O2]});
+	merge_plus(Orig#e_op{data = [I?I(N1 + N2), O2]});
 merge_plus(?OP2('+', ?I(N1) = I, ?I(N2))) ->
-	I#e_integer{value = N1 + N2};
+	I?I(N1 + N2);
 merge_plus(#e_op{tag = {call, Callee}, data = Args} = Op) ->
 	Op#e_op{tag = {call, merge_plus(Callee)}, data = lists:map(fun merge_plus/1, Args)};
 merge_plus(#e_op{data = Args} = Op) ->
