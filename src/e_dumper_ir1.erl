@@ -56,19 +56,35 @@ comment(Tag, Info, {Line, Col}) ->
 	Tag =:= 'bsl' orelse Tag =:= 'bsr'
 	)).
 
+-define(IS_COMPARE(Tag),
+	(
+	Tag =:= '>' orelse Tag =:= '<' orelse Tag =:= '==' orelse Tag =:= '!=' orelse
+	Tag =:= '>=' orelse Tag =:= '<='
+	)).
+
 -spec expr_to_ir(e_expr()) -> {irs(), atom()}.
 expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V)), Right)) ->
-	{RightExprs, RTmp} = expr_to_ir(Right),
-	{[RightExprs, {st_instr_from_v(V), {Name, N}, RTmp}], RTmp};
-expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V))) ->
+	{RightIRs, RTmp} = expr_to_ir(Right),
+	{[RightIRs, {st_instr_from_v(V), {Name, N}, RTmp}], RTmp};
+expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V))) when Name =:= '<gp>'; Name =:= '<fp>' ->
 	{[{ld_instr_from_v(V), r_tmp, {Name, N}}], r_tmp};
+expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), _)) ->
+	{[{la, r_tmp, Name}, {lw, r_tmp, {r_tmp, N}}], r_tmp};
+expr_to_ir(#e_op{tag = {call, Fn}, data = Args}) ->
+	{FnLoadIRs, R_Fn} = expr_to_ir(Fn),
+	%% TODO: prepare Args
+	{[FnLoadIRs, {call, R_Fn}], r_tmp};
 expr_to_ir(?OP2(Tag, Left, Right)) when ?IS_ARITH(Tag) ->
 	{IRs, {R1, R2}} = op2_to_ir_merge(Left, Right),
 	{[IRs, {Tag, r_tmp, R1, R2}], r_tmp};
+expr_to_ir(?OP2(Tag, Left, Right)) when ?IS_COMPARE(Tag) ->
+	{IRs, {R1, R2}} = op2_to_ir_merge(Left, Right),
+	%% TODO: comparing differs in different arch
+	{[IRs, {Tag, r_tmp, R1, R2}], r_tmp};
 expr_to_ir(?I(N)) ->
 	{[{la, r_tmp, N}], r_tmp};
-expr_to_ir(_Expr) ->
-	{[], zero}.
+expr_to_ir(Expr) ->
+	{[Expr], zero}.
 
 -spec op2_to_ir_merge(e_expr(), e_expr()) -> {irs(), {atom(), atom()}}.
 op2_to_ir_merge(OP1, OP2) ->

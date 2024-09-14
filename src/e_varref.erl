@@ -64,7 +64,7 @@ find_name_in_fn_map(#e_varref{name = Name, loc = Loc}, FnTypeMap) ->
 			e_util:ethrow(Loc, "\"~s\" is not defined", [Name])
 	end.
 
-tag_trans(global) -> gp;
-tag_trans(local) -> fp;
-tag_trans(_) -> none.
+tag_trans(global) -> '<gp>';
+tag_trans(local) -> '<fp>';
+tag_trans(_) -> '<none>'.
 
