@@ -81,6 +81,9 @@ expr_to_ir(?OP2(Tag, Left, Right)) when ?IS_COMPARE(Tag) ->
 	{IRs, {R1, R2}} = op2_to_ir_merge(Left, Right),
 	%% TODO: comparing differs in different arch
 	{[IRs, {Tag, r_tmp, R1, R2}], r_tmp};
+expr_to_ir(?OP1(Tag, Expr)) ->
+	{IRs, R} = expr_to_ir(Expr),
+	{[IRs, {Tag, r_tmp, R}], r_tmp};
 expr_to_ir(?I(N)) ->
 	{[{la, r_tmp, N}], r_tmp};
 expr_to_ir(Expr) ->
