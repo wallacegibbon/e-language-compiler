@@ -15,9 +15,9 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 
 	%% type checking
 	io:format("PHASE: type checking (AST)...~n"),
-	e_type:check_types_in_ast(AST00, GlobalVars00, {FnTypeMap00, StructMap00}),
+	e_type:check_types_in_ast(AST00, {GlobalVars00, FnTypeMap00, StructMap00}),
 	io:format("PHASE: type checking (INIT CODE)...~n"),
-	e_type:check_type_in_stmts(InitCode00, GlobalVars00, {FnTypeMap00, StructMap00}),
+	e_type:check_type_in_stmts(InitCode00, {GlobalVars00, FnTypeMap00, StructMap00}),
 
 	#{pointer_width := PointerWidth} = CompileOptions,
 	%% Fill offset of variables and struct fields.
@@ -43,11 +43,19 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	io:format("PHASE: init expanding (INIT CODE)...~n"),
 	InitCode30 = e_init_expr:expand_in_stmts(InitCode20, StructMap20),
 
+	%% fix the pointer size. (Which was filled with `0`)
+	TypeCtx40 = {GlobalVars10, FnTypeMap00, StructMap20, #e_basic_type{}},
+	SizeCtx40 = {StructMap20, PointerWidth},
+	io:format("PHASE: pointer fixing (AST)...~n"),
+	AST40 = e_pointer:fix_pointer_size_in_ast(AST30, TypeCtx40, SizeCtx40),
+	io:format("PHASE: pointer fixing (INIT CODE)...~n"),
+	InitCode40 = e_pointer:fix_pointer_size_in_stmts(InitCode30, TypeCtx40, SizeCtx40),
+
 	%% convert `.` into `@`, `+` and `^`
 	io:format("PHASE: struct and pointer expanding (AST)...~n"),
-	AST70 = e_struct:eliminate_dot_in_ast(AST30, GlobalVars10, {FnTypeMap00, StructMap20}),
+	AST70 = e_struct:eliminate_dot_in_ast(AST40, GlobalVars10, {FnTypeMap00, StructMap20}),
 	io:format("PHASE: struct and pointer expanding (INIT CODE)...~n"),
-	InitCode70 = e_struct:eliminate_dot_in_stmts(InitCode30, GlobalVars10, {FnTypeMap00, StructMap20}),
+	InitCode70 = e_struct:eliminate_dot_in_stmts(InitCode40, GlobalVars10, {FnTypeMap00, StructMap20}),
 
 	io:format("PHASE: varref to offset (AST)...~n"),
 	AST80 = e_varref:varref_to_offset_in_ast(AST70, {GlobalVars10, FnTypeMap00}),

@@ -64,12 +64,19 @@ comment(Tag, Info, {Line, Col}) ->
 
 -spec expr_to_ir(e_expr()) -> {irs(), atom()}.
 expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V)), Right)) ->
-	{RightIRs, RTmp} = expr_to_ir(Right),
-	{[RightIRs, {st_instr_from_v(V), {Name, N}, RTmp}], RTmp};
+	{RightIRs, R} = expr_to_ir(Right),
+	{[RightIRs, {st_instr_from_v(V), {Name, N}, R}], R};
+expr_to_ir(?OP2('=', ?OP2('^', Expr, ?I(V)), Right)) ->
+	{RightIRs, R_R} = expr_to_ir(Right),
+	{LeftIRs, R_L} = expr_to_ir(Expr),
+	{[RightIRs, LeftIRs, {st_instr_from_v(V), {R_L, 0}, R_R}], r_tmp};
 expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V))) when Name =:= '<gp>'; Name =:= '<fp>' ->
 	{[{ld_instr_from_v(V), r_tmp, {Name, N}}], r_tmp};
 expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), _)) ->
 	{[{la, r_tmp, Name}, {lw, r_tmp, {r_tmp, N}}], r_tmp};
+expr_to_ir(?OP2('^', Expr, ?I(V))) ->
+	{IRs, R} = expr_to_ir(Expr),
+	{[IRs, {ld_instr_from_v(V), r_tmp, {R, 0}}], r_tmp};
 expr_to_ir(#e_op{tag = {call, Fn}, data = Args}) ->
 	{FnLoadIRs, R_Fn} = expr_to_ir(Fn),
 	%% TODO: prepare Args

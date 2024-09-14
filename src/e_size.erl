@@ -1,6 +1,7 @@
 -module(e_size).
 -export([expand_kw_in_ast/2, expand_kw_in_stmts/2, fill_offsets_in_ast/2, fill_offsets_in_vars/2]).
 -export([size_of/2, align_of/2]).
+-export_type([context/0]).
 -include("e_record_definition.hrl").
 
 -type context() :: {StructMap :: #{atom() => #e_struct{}}, PointerWidth :: non_neg_integer()}.
@@ -15,28 +16,28 @@ expand_kw_in_ast([], _) ->
 
 -spec expand_kw_in_stmts([e_stmt()], context()) -> [e_stmt()].
 expand_kw_in_stmts(Stmts, Ctx) ->
-	e_util:expr_map(fun(E) -> expand_kw_in_expr(E, Ctx) end, Stmts).
+	e_util:expr_map(fun(E) -> expand_kw(E, Ctx) end, Stmts).
 
--spec expand_kw_in_expr(e_expr(), context()) -> e_expr().
-expand_kw_in_expr(#e_op{tag = {sizeof, T}, loc = Loc}, Ctx) ->
+-spec expand_kw(e_expr(), context()) -> e_expr().
+expand_kw(#e_op{tag = {sizeof, T}, loc = Loc}, Ctx) ->
 	#e_integer{value = size_of(T, Ctx), loc = Loc};
-expand_kw_in_expr(#e_op{tag = {alignof, T}, loc = Loc}, Ctx) ->
+expand_kw(#e_op{tag = {alignof, T}, loc = Loc}, Ctx) ->
 	#e_integer{value = align_of(T, Ctx), loc = Loc};
-expand_kw_in_expr(#e_op{tag = {call, Callee}, data = Args} = E, Ctx) ->
-	E#e_op{tag = {call, expand_kw_in_expr(Callee, Ctx)}, data = lists:map(fun(O) -> expand_kw_in_expr(O, Ctx) end, Args)};
-expand_kw_in_expr(#e_op{data = Data} = E, Ctx) ->
-	E#e_op{data = lists:map(fun(O) -> expand_kw_in_expr(O, Ctx) end, Data)};
-expand_kw_in_expr(#e_type_convert{expr = Expr} = C, Ctx) ->
-	C#e_type_convert{expr = expand_kw_in_expr(Expr, Ctx)};
-expand_kw_in_expr(#e_struct_init_expr{field_value_map = ExprMap} = S, Ctx) ->
+expand_kw(#e_op{tag = {call, Callee}, data = Args} = E, Ctx) ->
+	E#e_op{tag = {call, expand_kw(Callee, Ctx)}, data = lists:map(fun(O) -> expand_kw(O, Ctx) end, Args)};
+expand_kw(#e_op{data = Data} = E, Ctx) ->
+	E#e_op{data = lists:map(fun(O) -> expand_kw(O, Ctx) end, Data)};
+expand_kw(#e_type_convert{expr = Expr} = C, Ctx) ->
+	C#e_type_convert{expr = expand_kw(Expr, Ctx)};
+expand_kw(#e_struct_init_expr{field_value_map = ExprMap} = S, Ctx) ->
 	S#e_struct_init_expr{field_value_map = expand_kw_in_map(ExprMap, Ctx)};
-expand_kw_in_expr(#e_array_init_expr{elements = Elements} = A, Ctx) ->
-	A#e_array_init_expr{elements = lists:map(fun(E) -> expand_kw_in_expr(E, Ctx) end, Elements)};
-expand_kw_in_expr(Any, _) ->
+expand_kw(#e_array_init_expr{elements = Elements} = A, Ctx) ->
+	A#e_array_init_expr{elements = lists:map(fun(E) -> expand_kw(E, Ctx) end, Elements)};
+expand_kw(Any, _) ->
 	Any.
 
 expand_kw_in_map(Map, Ctx) ->
-	maps:map(fun(_, V1) -> expand_kw_in_expr(V1, Ctx) end, Map).
+	maps:map(fun(_, V1) -> expand_kw(V1, Ctx) end, Map).
 
 -spec fill_offsets_in_ast(e_ast(), context()) -> e_ast().
 fill_offsets_in_ast([#e_function{vars = Old} = Fn | Rest], Ctx) ->

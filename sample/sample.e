@@ -72,8 +72,8 @@ fn main(argc: word, argv: byte^^): word
 
 	v3: word^ = v1@,
 
-	f: fn (word^) = myfn,
-	f(v1@),
+	f: fn (word^, byte^) = myfn,
+	f(v1@, v2@),
 
 	goto finish,
 
@@ -115,8 +115,9 @@ fn init_user(user: User^, id: word, desc: byte^)
 	end
 end
 
-fn myfn(val: word^)
-	val^ += 1,
+fn myfn(v1: word^, v2: byte^)
+	v1^ += 1,
+	v2^ += 2,
 end
 
 fn add(val: byte): byte

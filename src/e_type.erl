@@ -1,65 +1,71 @@
 -module(e_type).
--export([check_types_in_ast/3, check_type_in_stmts/3, type_of_node/2]).
--export([replace_typeof_in_ast/3, replace_typeof_in_stmts/3, replace_typeof_in_vars/3]).
+-export([check_types_in_ast/2, check_type_in_stmts/2, type_of_node/2, inc_pointer_depth/2, dec_pointer_depth/2]).
+-export([replace_typeof_in_ast/2, replace_typeof_in_stmts/2, replace_typeof_in_vars/2]).
+-export_type([interface_context/0, context/0]).
 -include("e_record_definition.hrl").
 
--type interface_context() :: {#{atom() => #e_fn_type{}}, #{atom() => #e_struct{}}}.
+-type interface_context() ::
+	{
+	GlobalVars :: #e_vars{},
+	FnTypeMap :: #{atom() := #e_fn_type{}},
+	StructMap :: #{atom() => #e_struct{}}
+	}.
 
--spec check_types_in_ast(e_ast(), #e_vars{}, interface_context()) -> ok.
-check_types_in_ast([#e_function{} = Fn | Rest], GlobalVars, {FnTypeMap, StructMap} = Maps) ->
+-spec check_types_in_ast(e_ast(), interface_context()) -> ok.
+check_types_in_ast([#e_function{} = Fn | Rest], {GlobalVars, FnTypeMap, StructMap} = Ctx) ->
 	#e_function{vars = #e_vars{type_map = TypeMap} = LocalVars, stmts = Stmts, type = FnType} = Fn,
 	Vars = e_util:merge_vars(GlobalVars, LocalVars, ignore_tag),
-	Ctx = {Vars, FnTypeMap, StructMap, FnType#e_fn_type.ret},
-	maps:foreach(fun(_, T) -> check_type(T, Ctx) end, TypeMap),
+	Ctx1 = {Vars, FnTypeMap, StructMap, FnType#e_fn_type.ret},
+	maps:foreach(fun(_, T) -> check_type(T, Ctx1) end, TypeMap),
 	%% The `#e_fn_type.ret` is used to check the operand of `return` statement.
 	%% TODO: when user did not write `return` statement, checks are missed.
-	check_type(FnType#e_fn_type.ret, Ctx),
-	type_of_nodes(Stmts, Ctx),
-	check_types_in_ast(Rest, GlobalVars, Maps);
-check_types_in_ast([#e_struct{name = Name} = S | Rest], GlobalVars, {FnTypeMap, StructMap} = Maps) ->
+	check_type(FnType#e_fn_type.ret, Ctx1),
+	type_of_nodes(Stmts, Ctx1),
+	check_types_in_ast(Rest, Ctx);
+check_types_in_ast([#e_struct{name = Name} = S | Rest], {GlobalVars, FnTypeMap, StructMap} = Ctx) ->
 	#e_struct{fields = #e_vars{type_map = FieldTypeMap}, default_value_map = ValMap} = S,
-	Ctx = {GlobalVars, FnTypeMap, StructMap, #e_basic_type{}},
-	maps:foreach(fun(_, T) -> check_type(T, Ctx) end, FieldTypeMap),
+	Ctx1 = {GlobalVars, FnTypeMap, StructMap, #e_basic_type{}},
+	maps:foreach(fun(_, T) -> check_type(T, Ctx1) end, FieldTypeMap),
 	%% check the default values for fields
-	check_types_in_struct_fields(FieldTypeMap, ValMap, Name, Ctx),
-	check_types_in_ast(Rest, GlobalVars, Maps);
-check_types_in_ast([_ | Rest], GlobalVars, Maps) ->
-	check_types_in_ast(Rest, GlobalVars, Maps);
-check_types_in_ast([], _, _) ->
+	check_types_in_struct_fields(FieldTypeMap, ValMap, Name, Ctx1),
+	check_types_in_ast(Rest, Ctx);
+check_types_in_ast([_ | Rest], Ctx) ->
+	check_types_in_ast(Rest, Ctx);
+check_types_in_ast([], _) ->
 	ok.
 
--spec check_type_in_stmts([e_stmt()], #e_vars{}, interface_context()) -> ok.
-check_type_in_stmts(Stmts, GlobalVars, {FnTypeMap, StructMap}) ->
+-spec check_type_in_stmts([e_stmt()], interface_context()) -> ok.
+check_type_in_stmts(Stmts, {GlobalVars, FnTypeMap, StructMap}) ->
 	type_of_nodes(Stmts, {GlobalVars, FnTypeMap, StructMap, #e_basic_type{}}),
 	ok.
 
 %% The `typeof` keyword will make the compiler complex without many benifits. So we drop it.
 %% Implementing `typeof` is easy. But avoiding the recursive definition problem will make the code complex.
 %% (e.g. `fn a(): typeof(a)`, `b: {typeof(b), 10}`, etc.)
--spec replace_typeof_in_ast(e_ast(), #e_vars{}, interface_context()) -> e_ast().
-replace_typeof_in_ast([#e_function{} = Fn | Rest], GlobalVars, {FnTypeMap, StructMap} = Maps) ->
+-spec replace_typeof_in_ast(e_ast(), interface_context()) -> e_ast().
+replace_typeof_in_ast([#e_function{} = Fn | Rest], {GlobalVars, FnTypeMap, StructMap} = Ctx) ->
 	#e_function{vars = LocalVars, stmts = Stmts, type = FnType} = Fn,
 	Vars = e_util:merge_vars(GlobalVars, LocalVars, ignore_tag),
-	Ctx = {Vars, FnTypeMap, StructMap, FnType#e_fn_type.ret},
-	Fn1 = Fn#e_function{vars = replace_typeof_in_vars(LocalVars, Vars, Maps), type = replace_typeof_in_type(FnType, Ctx), stmts = replace_typeof_in_stmts(Stmts, GlobalVars, Maps)},
-	[Fn1 | replace_typeof_in_ast(Rest, GlobalVars, Maps)];
-replace_typeof_in_ast([#e_struct{} = S | Rest], GlobalVars, {FnTypeMap, StructMap} = Maps) ->
+	Ctx1 = {Vars, FnTypeMap, StructMap, FnType#e_fn_type.ret},
+	Fn1 = Fn#e_function{vars = replace_typeof_in_vars(LocalVars, Ctx), type = replace_typeof_in_type(FnType, Ctx1), stmts = replace_typeof_in_stmts(Stmts, Ctx)},
+	[Fn1 | replace_typeof_in_ast(Rest, Ctx)];
+replace_typeof_in_ast([#e_struct{} = S | Rest], {GlobalVars, FnTypeMap, StructMap} = Ctx) ->
 	#e_struct{fields = Fields, default_value_map = DefaultValueMap} = S,
-	Ctx = {GlobalVars, FnTypeMap, StructMap, #e_basic_type{}},
-	S1 = S#e_struct{fields = replace_typeof_in_vars(Fields, GlobalVars, Maps), default_value_map = maps:map(fun(_, V) -> replace_typeof_in_expr(V, Ctx) end, DefaultValueMap)},
-	[S1 | replace_typeof_in_ast(Rest, GlobalVars, Maps)];
-replace_typeof_in_ast([Any | Rest], GlobalVars, Maps) ->
-	[Any | replace_typeof_in_ast(Rest, GlobalVars, Maps)];
-replace_typeof_in_ast([], _, _) ->
+	Ctx1 = {GlobalVars, FnTypeMap, StructMap, #e_basic_type{}},
+	S1 = S#e_struct{fields = replace_typeof_in_vars(Fields, Ctx), default_value_map = maps:map(fun(_, V) -> replace_typeof(V, Ctx1) end, DefaultValueMap)},
+	[S1 | replace_typeof_in_ast(Rest, Ctx)];
+replace_typeof_in_ast([Any | Rest], Ctx) ->
+	[Any | replace_typeof_in_ast(Rest, Ctx)];
+replace_typeof_in_ast([], _) ->
 	[].
 
--spec replace_typeof_in_stmts([e_stmt()], #e_vars{}, interface_context()) -> [e_stmt()].
-replace_typeof_in_stmts(Stmts, GlobalVars, {FnTypeMap, StructMap}) ->
+-spec replace_typeof_in_stmts([e_stmt()], interface_context()) -> [e_stmt()].
+replace_typeof_in_stmts(Stmts, {GlobalVars, FnTypeMap, StructMap}) ->
 	Ctx = {GlobalVars, FnTypeMap, StructMap, #e_basic_type{}},
-	e_util:expr_map(fun(E) -> replace_typeof_in_expr(E, Ctx) end, Stmts).
+	e_util:expr_map(fun(E) -> replace_typeof(E, Ctx) end, Stmts).
 
--spec replace_typeof_in_vars(#e_vars{}, #e_vars{}, interface_context()) -> #e_vars{}.
-replace_typeof_in_vars(#e_vars{type_map = TypeMap} = Vars, GlobalVars, {FnTypeMap, StructMap}) ->
+-spec replace_typeof_in_vars(#e_vars{}, interface_context()) -> #e_vars{}.
+replace_typeof_in_vars(#e_vars{type_map = TypeMap} = Vars, {GlobalVars, FnTypeMap, StructMap}) ->
 	Ctx = {GlobalVars, FnTypeMap, StructMap, #e_basic_type{}},
 	Vars#e_vars{type_map = maps:map(fun(_, T) -> replace_typeof_in_type(T, Ctx) end, TypeMap)}.
 
@@ -71,20 +77,20 @@ replace_typeof_in_vars(#e_vars{type_map = TypeMap} = Vars, GlobalVars, {FnTypeMa
 	ReturnType :: e_type()
 	}.
 
--spec replace_typeof_in_expr(e_expr(), context()) -> e_expr().
-replace_typeof_in_expr(#e_type_convert{type = #e_typeof{expr = Expr}} = E, Ctx) ->
+-spec replace_typeof(e_expr(), context()) -> e_expr().
+replace_typeof(#e_type_convert{type = #e_typeof{expr = Expr}} = E, Ctx) ->
 	E#e_type_convert{type = type_of_node(Expr, Ctx)};
-replace_typeof_in_expr(#e_op{tag = {call, Callee}, data = Data} = E, Ctx) ->
-	E#e_op{tag = {call, replace_typeof_in_expr(Callee, Ctx)}, data = lists:map(fun(V) -> replace_typeof_in_expr(V, Ctx) end, Data)};
-replace_typeof_in_expr(#e_op{tag = {sizeof, Type}} = E, Ctx) ->
+replace_typeof(#e_op{tag = {call, Callee}, data = Data} = E, Ctx) ->
+	E#e_op{tag = {call, replace_typeof(Callee, Ctx)}, data = lists:map(fun(V) -> replace_typeof(V, Ctx) end, Data)};
+replace_typeof(#e_op{tag = {sizeof, Type}} = E, Ctx) ->
 	E#e_op{tag = {sizeof, replace_typeof_in_type(Type, Ctx)}};
-replace_typeof_in_expr(#e_op{tag = {alignof, Type}} = E, Ctx) ->
+replace_typeof(#e_op{tag = {alignof, Type}} = E, Ctx) ->
 	E#e_op{tag = {alignof, replace_typeof_in_type(Type, Ctx)}};
-replace_typeof_in_expr(#e_op{data = Data} = E, Ctx) ->
-	E#e_op{data = lists:map(fun(V) -> replace_typeof_in_expr(V, Ctx) end, Data)};
-replace_typeof_in_expr(#e_type_convert{expr = Expr} = C, Ctx) ->
-	C#e_type_convert{expr = replace_typeof_in_expr(Expr, Ctx)};
-replace_typeof_in_expr(Any, _) ->
+replace_typeof(#e_op{data = Data} = E, Ctx) ->
+	E#e_op{data = lists:map(fun(V) -> replace_typeof(V, Ctx) end, Data)};
+replace_typeof(#e_type_convert{expr = Expr} = C, Ctx) ->
+	C#e_type_convert{expr = replace_typeof(Expr, Ctx)};
+replace_typeof(Any, _) ->
 	Any.
 
 %% `typeof` can appear in another type like array `{typeof(a), 10}` or convert expressions like `a as typeof(b)`.

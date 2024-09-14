@@ -206,6 +206,7 @@ e_expr -> e_expr e_op25 e_expr :
 e_expr -> e_expr e_op19 :
 	Data =
 		case token_symbol('$2') =:= '^' of
+			%% The memory size `0` is an invalid value, replace it later.
 			true -> ['$1', #e_integer{value = 0, loc = token_loc('$2')}];
 			_ -> ['$1']
 		end,
