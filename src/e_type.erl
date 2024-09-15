@@ -238,11 +238,13 @@ type_of_node(#e_integer{loc = Loc}, _) ->
 type_of_node(#e_string{loc = Loc}, _) ->
 	#e_basic_type{class = integer, p_depth = 1, tag = byte, loc = Loc};
 type_of_node(#e_if_stmt{condi = Condi, then = Then, 'else' = Else, loc = Loc}, Ctx) ->
+	check_compare_op(Condi),
 	type_of_node(Condi, Ctx),
 	type_of_nodes(Then, Ctx),
 	type_of_nodes(Else, Ctx),
 	e_util:void_type(Loc);
 type_of_node(#e_while_stmt{condi = Condi, stmts = Stmts, loc = Loc}, Ctx) ->
+	check_compare_op(Condi),
 	type_of_node(Condi, Ctx),
 	type_of_nodes(Stmts, Ctx),
 	e_util:void_type(Loc);
@@ -260,6 +262,16 @@ type_of_node(#e_label{loc = Loc}, _) ->
 	e_util:void_type(Loc);
 type_of_node(Any, _) ->
 	e_util:ethrow(element(2, Any), "invalid statement: ~s~n", [e_util:stmt_to_str(Any)]).
+
+check_compare_op(#e_op{tag = Tag, loc = Loc}) ->
+	case e_util:is_compare_tag(Tag) of
+		true ->
+			ok;
+		false ->
+			e_util:ethrow(Loc, "Only comparing expression is allowed here")
+	end;
+check_compare_op(Node) ->
+	e_util:ethrow(element(2, Node), "invalid comparing expression").
 
 %% Functions can be converted to any kind of pointers in current design.
 -spec convert_type(e_type(), e_type(), location()) -> e_type().

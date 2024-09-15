@@ -3,6 +3,7 @@
 -export([names_of_var_defs/1, names_of_var_refs/1, get_struct_from_type/2, get_struct_from_name/3]).
 -export([void_type/1, fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, fix_special_chars/1]).
 -export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2, map_find_multi/2]).
+-export([reverse_compare_tag/1, is_compare_tag/1]).
 -include("e_record_definition.hrl").
 
 %% This function is to avoid boilerplate code for statements. So you can concentrate on operators.
@@ -214,4 +215,19 @@ map_find_multi(Key, [Map| RestMaps]) ->
 	end;
 map_find_multi(_, []) ->
 	notfound.
+
+reverse_compare_tag('==') -> '!=';
+reverse_compare_tag('!=') -> '==';
+reverse_compare_tag('>=') -> '<';
+reverse_compare_tag('<=') -> '>';
+reverse_compare_tag('>')  -> '<=';
+reverse_compare_tag('<')  -> '>='.
+
+is_compare_tag('==') -> true;
+is_compare_tag('!=') -> true;
+is_compare_tag('>=') -> true;
+is_compare_tag('<=') -> true;
+is_compare_tag('>')  -> true;
+is_compare_tag('<')  -> true;
+is_compare_tag(_)    -> false.
 

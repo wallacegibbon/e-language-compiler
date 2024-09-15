@@ -86,7 +86,7 @@ expr_to_ir(?OP2(Tag, Left, Right)) when ?IS_ARITH(Tag) ->
 	{[IRs, {Tag, r_tmp, R1, R2}], r_tmp};
 expr_to_ir(?OP2(Tag, Left, Right)) when ?IS_COMPARE(Tag) ->
 	{IRs, {R1, R2}} = op2_to_ir_merge(Left, Right),
-	{[IRs, {compare_reverse(Tag), r_tmp, R1, R2}], r_tmp};
+	{[IRs, {e_util:reverse_compare_tag(Tag), r_tmp, R1, R2}], r_tmp};
 expr_to_ir(?OP1(Tag, Expr)) ->
 	{IRs, R} = expr_to_ir(Expr),
 	{[IRs, {Tag, r_tmp, R}], r_tmp};
@@ -126,16 +126,8 @@ file_transaction(Filename, Handle) ->
 		ok = file:close(IO_Dev)
 	end.
 
-compare_reverse('==') -> '!=';
-compare_reverse('!=') -> '==';
-compare_reverse('>=') -> '<';
-compare_reverse('<=') -> '>';
-compare_reverse('>')  -> '<=';
-compare_reverse('<')  -> '>='.
-
 st_instr_from_v(1) -> sb;
 st_instr_from_v(_) -> sw.
-
 ld_instr_from_v(1) -> lb;
 ld_instr_from_v(_) -> lw.
 

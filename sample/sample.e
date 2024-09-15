@@ -129,6 +129,19 @@ end
 %	return u,
 %end
 
+%fn invalid_if(a: word, b: byte): word
+%	if a then
+%		return 1,
+%	end
+%end
+
+%fn invalid_while(a: word, b: byte): word
+%	while a do
+%		a -= 1,
+%	end
+%	return 0,
+%end
+
 fn add(val: byte): byte
 	return val * 3 + 1,
 end
