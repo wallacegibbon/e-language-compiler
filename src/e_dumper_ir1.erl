@@ -62,13 +62,6 @@ comment(Tag, Info, {Line, Col}) ->
 	Tag =:= '>=' orelse Tag =:= '<='
 	)).
 
-compare_reverse('==') -> '!=';
-compare_reverse('!=') -> '==';
-compare_reverse('>=') -> '<';
-compare_reverse('<=') -> '>';
-compare_reverse('>')  -> '<=';
-compare_reverse('<')  -> '>='.
-
 -spec expr_to_ir(e_expr()) -> {irs(), atom()}.
 expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V)), Right)) ->
 	{RightIRs, R} = expr_to_ir(Right),
@@ -132,6 +125,13 @@ file_transaction(Filename, Handle) ->
 	after
 		ok = file:close(IO_Dev)
 	end.
+
+compare_reverse('==') -> '!=';
+compare_reverse('!=') -> '==';
+compare_reverse('>=') -> '<';
+compare_reverse('<=') -> '>';
+compare_reverse('>')  -> '<=';
+compare_reverse('<')  -> '>='.
 
 st_instr_from_v(1) -> sb;
 st_instr_from_v(_) -> sw.
