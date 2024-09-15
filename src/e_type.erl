@@ -12,11 +12,14 @@
 	}.
 
 -spec check_types_in_ast(e_ast(), interface_context()) -> ok.
-check_types_in_ast([#e_function{} = Fn | Rest], {GlobalVars, FnTypeMap, StructMap} = Ctx) ->
-	#e_function{vars = #e_vars{type_map = TypeMap} = LocalVars, stmts = Stmts, type = FnType} = Fn,
+check_types_in_ast([#e_function{type = FnType} = Fn | Rest], {GlobalVars, FnTypeMap, StructMap} = Ctx) ->
+	#e_function{vars = LocalVars, param_names = ParamNames, stmts = Stmts} = Fn,
+	#e_vars{type_map = TypeMap} = LocalVars,
 	Vars = e_util:merge_vars(GlobalVars, LocalVars, ignore_tag),
 	Ctx1 = {Vars, FnTypeMap, StructMap, FnType#e_fn_type.ret},
 	maps:foreach(fun(_, T) -> check_type(T, Ctx1) end, TypeMap),
+	maps:foreach(fun(_, T) -> check_parameter_type(T, Ctx1) end, maps:with(ParamNames, TypeMap)),
+	check_ret_type(FnType#e_fn_type.ret, Ctx1),
 	%% The `#e_fn_type.ret` is used to check the operand of `return` statement.
 	%% TODO: when user did not write `return` statement, checks are missed.
 	check_type(FnType#e_fn_type.ret, Ctx1),
@@ -493,6 +496,20 @@ check_type(#e_fn_type{params = Params, ret = RetType} = Type, Ctx) ->
 check_type(#e_typeof{expr = Expr}, Ctx) ->
 	check_type(type_of_node(Expr, Ctx), Ctx).
 
+-spec check_parameter_type(e_type(), context()) -> boolean.
+check_parameter_type(#e_basic_type{p_depth = N}, _) when N > 0 ->
+	true;
+check_parameter_type(#e_basic_type{class = C}, _) when C =:= integer; C =:= float ->
+	true;
+check_parameter_type(T, _) ->
+	e_util:ethrow(element(2, T), "invalid parameter type here").
+
+check_ret_type(#e_basic_type{p_depth = N}, _) when N > 0 ->
+	true;
+check_ret_type(#e_basic_type{class = C}, _) when C =:= integer; C =:= float; C =:= void ->
+	true;
+check_ret_type(T, _) ->
+	e_util:ethrow(element(2, T), "invalid returning type here").
 
 -spec join_types_to_str([e_type()]) -> string().
 join_types_to_str(Types) ->

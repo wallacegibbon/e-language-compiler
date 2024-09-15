@@ -41,7 +41,7 @@ blah1: word = sizeof(Blah1),
 % struct {word val[3],} t = {{0, 1, 2}}, // *(t.val)
 
 % t: {User, 2} = {User{id = 1, desc = {"a"}}, User{id = 2, desc = {"b"}}},
-% struct {User val[2],} t = {{1, 0, {"a"}}, {2, 0, {"b"}}},
+% struct {struct User val[2],} t = {{1, 0, {"a"}}, {2, 0, {"b"}}},
 
 u1: User = User{id = 8},
 
@@ -119,6 +119,15 @@ fn myfn(v1: word^, v2: byte^)
 	v1^ += 1,
 	v2^ += 2,
 end
+
+%fn invalid1(user: User, id: word)
+%	user.id = 1,
+%end
+
+%fn invalid2(): User
+%	u: User = User{id = 1},
+%	return u,
+%end
 
 fn add(val: byte): byte
 	return val * 3 + 1,
