@@ -92,7 +92,7 @@ expr_to_ir(?OP1(Tag, Expr)) ->
 	{IRs, R} = expr_to_ir(Expr),
 	{[IRs, {Tag, r_tmp, R}], r_tmp};
 expr_to_ir(?I(N)) ->
-	{[{la, r_tmp, N}], r_tmp};
+	{[{li, r_tmp, N}], r_tmp};
 expr_to_ir(Expr) ->
 	{[Expr], zero}.
 
