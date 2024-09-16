@@ -28,21 +28,21 @@ stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, C
 	EndComment = comment('if', "end", Loc),
 	Then1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Then0),
 	Else1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Else0),
-	Then2 = [comment('if', "then part", Loc), Then1, {jump, end_if}],
-	Else2 = [comment('if', "else part", Loc), {label, else_label}, Else1, {jump, end_if}, {label, end_if}],
+	Then2 = [comment('if', "then part", Loc), Then1, {j, end_if}],
+	Else2 = [comment('if', "else part", Loc), {label, else_label}, Else1, {j, end_if}, {label, end_if}],
 	[StartComment, CondiIRs, {jcond, R_Cond, else_label}, Then2, Else2, EndComment];
 stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, Ctx) ->
 	{CondiIRs, R_Cond} = expr_to_ir(Condi, Ctx),
 	StartComment = comment(while, e_util:stmt_to_str(Condi), Loc),
 	EndComment = comment(while, "end", Loc),
 	Stmts1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
-	Stmts2 = [comment(while, "body part", Loc), {label, body_start}, Stmts1, {jump, body_start}, {label, end_while}],
+	Stmts2 = [comment(while, "body part", Loc), {label, body_start}, Stmts1, {j, body_start}, {label, end_while}],
 	[StartComment, CondiIRs, {jcond, R_Cond, end_while}, Stmts2, EndComment];
 stmt_to_ir(#e_return_stmt{expr = Expr}, Ctx) ->
 	{ExprIRs, R} = expr_to_ir(Expr, Ctx),
 	[ExprIRs, {return, R}];
 stmt_to_ir(#e_goto_stmt{label = Label}, _) ->
-	[{jump, Label}];
+	[{j, Label}];
 stmt_to_ir(#e_label{name = Label}, _) ->
 	[{label, Label}];
 stmt_to_ir(Stmt, Ctx) ->
@@ -72,36 +72,36 @@ expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V)),
 expr_to_ir(?OP2('=', ?OP2('^', Expr, ?I(V)), Right), Ctx) ->
 	{RightIRs, R_R} = expr_to_ir(Right, Ctx),
 	{LeftIRs, R_L} = expr_to_ir(Expr, Ctx),
-	{[RightIRs, LeftIRs, {st_instr_from_v(V), {R_L, 0}, R_R}], r_tmp};
+	{[RightIRs, LeftIRs, {st_instr_from_v(V), {R_L, 0}, R_R}], tn};
 expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V)), _) when Name =:= gp; Name =:= fp ->
-	{[{ld_instr_from_v(V), r_tmp, {Name, N}}], r_tmp};
+	{[{ld_instr_from_v(V), tn, {Name, N}}], tn};
 expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), _), _) ->
-	{[{la, r_tmp, Name}, {lw, r_tmp, {r_tmp, N}}], r_tmp};
+	{[{la, tn, Name}, {lw, tn, {tn, N}}], tn};
 expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
 	{IRs, R} = expr_to_ir(Expr, Ctx),
-	{[IRs, {ld_instr_from_v(V), r_tmp, {R, 0}}], r_tmp};
+	{[IRs, {ld_instr_from_v(V), tn, {R, 0}}], tn};
 expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, {PointerWidth} = Ctx) ->
 	ArgPreparingIRs = args_to_stack(Args, PointerWidth, Ctx),
 	{FnLoadIRs, R_Fn} = expr_to_ir(Fn, Ctx),
-	{[ArgPreparingIRs, FnLoadIRs, {call, R_Fn}], r_tmp};
+	{[ArgPreparingIRs, FnLoadIRs, {call, R_Fn}], tn};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
 	{IRs, {R1, R2}} = op2_to_ir_merge(Left, Right, Ctx),
-	{[IRs, {Tag, r_tmp, R1, R2}], r_tmp};
+	{[IRs, {Tag, tn, R1, R2}], tn};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
 	{IRs, {R1, R2}} = op2_to_ir_merge(Left, Right, Ctx),
-	{[IRs, {e_util:reverse_compare_tag(Tag), r_tmp, R1, R2}], r_tmp};
+	{[IRs, {e_util:reverse_compare_tag(Tag), tn, R1, R2}], tn};
 expr_to_ir(?OP1(Tag, Expr), Ctx) ->
 	{IRs, R} = expr_to_ir(Expr, Ctx),
-	{[IRs, {Tag, r_tmp, R}], r_tmp};
+	{[IRs, {Tag, tn, R}], tn};
 expr_to_ir(#e_varref{name = Name}, _) ->
 	{[], Name};
 expr_to_ir(#e_string{value = Value}, _) ->
-	{[{la, r_tmp, Value}], r_tmp};
+	{[{la, tn, Value}], tn};
 expr_to_ir(?I(N), _) ->
-	{[{li, r_tmp, N}], r_tmp};
+	{[{li, tn, N}], tn};
 expr_to_ir(?F(N), _) ->
 	%% TODO: float is special
-	{[{li, r_tmp, N}], r_tmp}.
+	{[{li, tn, N}], tn}.
 
 args_to_stack([Arg | Rest], N, {PointerWidth} = Ctx) ->
 	{IRs, R} = expr_to_ir(Arg, Ctx),
