@@ -146,3 +146,9 @@ fn add(val: byte): byte
 	return val * 3 + 1,
 end
 
+fn add_call(): word
+	if add(3) > 4 then
+		return 1,
+	end
+	return 2,
+end
