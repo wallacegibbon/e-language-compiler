@@ -15,9 +15,14 @@ generate_code(AST, InitCode, OutputFile, Ctx) ->
 ast_to_ir([#e_function{name = Name, stmts = Stmts} = Fn | Rest], {PointerWidth, _} = Ctx) ->
 	#e_function{vars = #e_vars{size = Size0}} = Fn,
 	Size1 = e_util:fill_unit_pessi(Size0, PointerWidth),
-	Prologue = [{comment, prologue_start}, {li, t1, Size1}, {'+', t2, sp, t1}, {mv, fp, sp}, {mv, sp, t2}, {comment, prologue_end}],
-	EpilogueLabel = {label, concat_atoms([Name, epilogue])},
-	Epilogue = [{comment, epilogue_start}, EpilogueLabel, {mv, sp, fp}, {ret}, {comment, epilogue_end}],
+	%% The extra `2` is for `fp` and `returning address`.
+	FrameSize = Size1 + PointerWidth * 2,
+	SaveRegs = [{sw, {sp, Size1}, fp}, {sw, {sp, Size1 + PointerWidth}, ra}, {mv, fp, sp}],
+	PrepareFrame = [{li, t1, FrameSize}, {'+', sp, sp, t1}],
+	Prologue = [{comment, prologue_start}, SaveRegs, PrepareFrame, {comment, prologue_end}],
+	RestoreRegs = [{mv, sp, fp}, {lw, fp, {sp, Size1}}, {lw, ra, {sp, Size1 + PointerWidth}}],
+	EndLabel = {label, concat_atoms([Name, epilogue])},
+	Epilogue = [{comment, epilogue_start}, EndLabel, RestoreRegs, {ret, ra}, {comment, epilogue_end}],
 	Ctx1 = {PointerWidth, Name},
 	[{fn, Name}, Prologue, lists:map(fun(S) -> stmt_to_ir(S, Ctx1) end, Stmts), Epilogue | ast_to_ir(Rest, Ctx)];
 ast_to_ir([_ | Rest], Ctx) ->
