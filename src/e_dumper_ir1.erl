@@ -45,7 +45,7 @@ stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, Ctx) ->
 stmt_to_ir(#e_return_stmt{expr = Expr}, {_, Tag} = Ctx) ->
 	{ExprIRs, R} = expr_to_ir(Expr, Ctx),
 	%% We use stack to pass result
-	[ExprIRs, {comment, "prepare return value"}, {mv, {fp, 0}, R}, {j, concat_atoms([Tag, epilogue])}];
+	[ExprIRs, {comment, "prepare return value"}, {sw, {fp, 0}, R}, {j, concat_atoms([Tag, epilogue])}];
 stmt_to_ir(#e_goto_stmt{label = Label}, _) ->
 	[{j, Label}];
 stmt_to_ir(#e_label{name = Label}, _) ->
@@ -91,7 +91,7 @@ expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
 expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, Ctx) ->
 	ArgPreparingIRs = args_to_stack(Args, 0, Ctx),
 	{FnLoadIRs, R_Fn} = expr_to_ir(Fn, Ctx),
-	{[ArgPreparingIRs, FnLoadIRs, {call, R_Fn}], tn};
+	{[ArgPreparingIRs, FnLoadIRs, {call, R_Fn}, {comment, "load value returned"}, {lw, tn, {sp, 0}}], tn};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
 	{IRs, {R1, R2}} = op2_to_ir_merge(Left, Right, Ctx),
 	{[IRs, {Tag, tn, R1, R2}], tn};
@@ -128,7 +128,7 @@ write_irs([IRs | Rest], IO_Dev) when is_list(IRs) ->
 	write_irs(IRs, IO_Dev),
 	write_irs(Rest, IO_Dev);
 write_irs([{comment, Content} | Rest], IO_Dev) ->
-	io:format(IO_Dev, "%% ~s~n", [Content]),
+	io:format(IO_Dev, "\t%% ~s~n", [Content]),
 	write_irs(Rest, IO_Dev);
 write_irs([{fn, _} = IR | Rest], IO_Dev) ->
 	io:format(IO_Dev, "~w.~n", [IR]),
