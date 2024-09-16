@@ -34,7 +34,7 @@ compile_to_ir1(InputFilename, OutputFilename) ->
 	#{pointer_width := PointerWidth} = Options,
 	try
 		{AST, _, InitCode} = parse_and_compile(InputFilename, Options),
-		e_dumper_ir1:generate_code(AST, InitCode, OutputFilename, {PointerWidth})
+		e_dumper_ir1:generate_code(AST, InitCode, OutputFilename, {PointerWidth, top})
 	catch
 		{Filename, {{Line, Col}, ErrorInfo}} ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
@@ -95,5 +95,5 @@ compiler_options() ->
 
 -spec default_compiler_options() -> e_compile_options().
 default_compiler_options() ->
-	#{pointer_width => 8}.
+	#{pointer_width => 4}.
 

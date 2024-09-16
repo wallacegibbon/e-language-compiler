@@ -3,7 +3,7 @@
 -include("e_record_definition.hrl").
 
 -type irs() :: [tuple() | irs()].
--type context() :: {PointerWidth :: pos_integer()}.
+-type context() :: {PointerWidth :: pos_integer(), ScopeTag :: atom()}.
 
 -spec generate_code(e_ast(), e_ast(), string(), context()) -> ok.
 generate_code(AST, InitCode, OutputFile, Ctx) ->
@@ -12,10 +12,14 @@ generate_code(AST, InitCode, OutputFile, Ctx) ->
 	file_transaction(OutputFile, Fn).
 
 -spec ast_to_ir(e_ast(), context()) -> irs().
-ast_to_ir([#e_function{name = Name, vars = #e_vars{size = Size0}, stmts = Stmts} | Rest], {PointerWidth} = Ctx) ->
+ast_to_ir([#e_function{name = Name, stmts = Stmts} = Fn | Rest], {PointerWidth, _} = Ctx) ->
+	#e_function{vars = #e_vars{size = Size0}} = Fn,
 	Size1 = e_util:fill_unit_pessi(Size0, PointerWidth),
-	StackOpIRs = [{li, t1, Size1}, {'-', t2, sp, t1}, {mv, fp, sp}, {mv, sp, t2}],
-	[{fn, Name}, StackOpIRs, lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts) | ast_to_ir(Rest, Ctx)];
+	Prologue = [{comment, prologue_start}, {li, t1, Size1}, {'+', t2, sp, t1}, {mv, fp, sp}, {mv, sp, t2}, {comment, prologue_end}],
+	EpilogueLabel = {label, concat_atoms([Name, epilogue])},
+	Epilogue = [{comment, epilogue_start}, EpilogueLabel, {mv, sp, fp}, {ret}, {comment, epilogue_end}],
+	Ctx1 = {PointerWidth, Name},
+	[{fn, Name}, Prologue, lists:map(fun(S) -> stmt_to_ir(S, Ctx1) end, Stmts), Epilogue | ast_to_ir(Rest, Ctx)];
 ast_to_ir([_ | Rest], Ctx) ->
 	ast_to_ir(Rest, Ctx);
 ast_to_ir([], _) ->
@@ -38,9 +42,10 @@ stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, Ctx) ->
 	Stmts1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
 	Stmts2 = [comment(while, "body part", Loc), {label, body_start}, Stmts1, {j, body_start}, {label, end_while}],
 	[StartComment, CondiIRs, {jcond, R_Cond, end_while}, Stmts2, EndComment];
-stmt_to_ir(#e_return_stmt{expr = Expr}, Ctx) ->
+stmt_to_ir(#e_return_stmt{expr = Expr}, {_, Tag} = Ctx) ->
 	{ExprIRs, R} = expr_to_ir(Expr, Ctx),
-	[ExprIRs, {return, R}];
+	%% We use stack to pass result
+	[ExprIRs, {comment, "prepare return value"}, {mv, {fp, 0}, R}, {j, concat_atoms([Tag, epilogue])}];
 stmt_to_ir(#e_goto_stmt{label = Label}, _) ->
 	[{j, Label}];
 stmt_to_ir(#e_label{name = Label}, _) ->
@@ -48,6 +53,9 @@ stmt_to_ir(#e_label{name = Label}, _) ->
 stmt_to_ir(Stmt, Ctx) ->
 	{Exprs, _} = expr_to_ir(Stmt, Ctx),
 	Exprs.
+
+concat_atoms(AtomList) ->
+	list_to_atom(string:join(lists:map(fun(A) -> atom_to_list(A) end, AtomList), "_")).
 
 comment(Tag, Info, {Line, Col}) ->
 	{comment, io_lib:format("[~s@~w:~w] ~s", [Tag, Line, Col, Info])}.
@@ -80,8 +88,8 @@ expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), _), _) ->
 expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
 	{IRs, R} = expr_to_ir(Expr, Ctx),
 	{[IRs, {ld_instr_from_v(V), tn, {R, 0}}], tn};
-expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, {PointerWidth} = Ctx) ->
-	ArgPreparingIRs = args_to_stack(Args, PointerWidth, Ctx),
+expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, Ctx) ->
+	ArgPreparingIRs = args_to_stack(Args, 0, Ctx),
 	{FnLoadIRs, R_Fn} = expr_to_ir(Fn, Ctx),
 	{[ArgPreparingIRs, FnLoadIRs, {call, R_Fn}], tn};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
@@ -103,9 +111,9 @@ expr_to_ir(?F(N), _) ->
 	%% TODO: float is special
 	{[{li, tn, N}], tn}.
 
-args_to_stack([Arg | Rest], N, {PointerWidth} = Ctx) ->
+args_to_stack([Arg | Rest], N, {PointerWidth, _} = Ctx) ->
 	{IRs, R} = expr_to_ir(Arg, Ctx),
-	[IRs, {sw, {sp, -N}, R} | args_to_stack(Rest, N + PointerWidth, Ctx)];
+	[IRs, {sw, {sp, N}, R} | args_to_stack(Rest, N + PointerWidth, Ctx)];
 args_to_stack([], _, _) ->
 	[].
 
