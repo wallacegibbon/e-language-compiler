@@ -7,14 +7,15 @@
 
 -spec generate_code(e_ast(), e_ast(), string(), context()) -> ok.
 generate_code(AST, InitCode, OutputFile, Ctx) ->
-	IRs = [{function, '<global_var_init>'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, InitCode) | ast_to_ir(AST, Ctx)],
+	IRs = [{fn, '<init1>'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, InitCode) | ast_to_ir(AST, Ctx)],
 	Fn = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"} | IRs], IO_Dev) end,
 	file_transaction(OutputFile, Fn).
 
 -spec ast_to_ir(e_ast(), context()) -> irs().
-ast_to_ir([#e_function{name = Name, vars = #e_vars{size = Size}, stmts = Stmts} | Rest], Ctx) ->
-	StackOpIRs = [{li, r_tmp1, Size}, {'-', r_tmp2, '<sp>', r_tmp1}, {mv, '<fp>', '<sp>'}, {mv, '<sp>', r_tmp2}],
-	[{function, Name}, StackOpIRs, lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts) | ast_to_ir(Rest, Ctx)];
+ast_to_ir([#e_function{name = Name, vars = #e_vars{size = Size0}, stmts = Stmts} | Rest], {PointerWidth} = Ctx) ->
+	Size1 = e_util:fill_unit_pessi(Size0, PointerWidth),
+	StackOpIRs = [{li, t1, Size1}, {'-', t2, sp, t1}, {mv, fp, sp}, {mv, sp, t2}],
+	[{fn, Name}, StackOpIRs, lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts) | ast_to_ir(Rest, Ctx)];
 ast_to_ir([_ | Rest], Ctx) ->
 	ast_to_ir(Rest, Ctx);
 ast_to_ir([], _) ->
@@ -72,7 +73,7 @@ expr_to_ir(?OP2('=', ?OP2('^', Expr, ?I(V)), Right), Ctx) ->
 	{RightIRs, R_R} = expr_to_ir(Right, Ctx),
 	{LeftIRs, R_L} = expr_to_ir(Expr, Ctx),
 	{[RightIRs, LeftIRs, {st_instr_from_v(V), {R_L, 0}, R_R}], r_tmp};
-expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V)), _) when Name =:= '<gp>'; Name =:= '<fp>' ->
+expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V)), _) when Name =:= gp; Name =:= fp ->
 	{[{ld_instr_from_v(V), r_tmp, {Name, N}}], r_tmp};
 expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), _), _) ->
 	{[{la, r_tmp, Name}, {lw, r_tmp, {r_tmp, N}}], r_tmp};
@@ -104,7 +105,7 @@ expr_to_ir(?F(N), _) ->
 
 args_to_stack([Arg | Rest], N, {PointerWidth} = Ctx) ->
 	{IRs, R} = expr_to_ir(Arg, Ctx),
-	[IRs, {sw, {'<sp>', -N}, R} | args_to_stack(Rest, N + PointerWidth, Ctx)];
+	[IRs, {sw, {sp, -N}, R} | args_to_stack(Rest, N + PointerWidth, Ctx)];
 args_to_stack([], _, _) ->
 	[].
 
@@ -121,7 +122,7 @@ write_irs([IRs | Rest], IO_Dev) when is_list(IRs) ->
 write_irs([{comment, Content} | Rest], IO_Dev) ->
 	io:format(IO_Dev, "%% ~s~n", [Content]),
 	write_irs(Rest, IO_Dev);
-write_irs([{function, _} = IR | Rest], IO_Dev) ->
+write_irs([{fn, _} = IR | Rest], IO_Dev) ->
 	io:format(IO_Dev, "~w.~n", [IR]),
 	write_irs(Rest, IO_Dev);
 write_irs([IR | Rest], IO_Dev) ->

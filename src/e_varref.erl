@@ -59,12 +59,11 @@ find_name_in_vars(_, []) ->
 find_name_in_fn_map(#e_varref{name = Name, loc = Loc}, FnTypeMap) ->
 	case maps:find(Name, FnTypeMap) of
 		{ok, _} ->
-			{ok, {Name, {0, 0}}};
+			{ok, {{fn, Name}, {0, 0}}};
 		error ->
 			e_util:ethrow(Loc, "\"~s\" is not defined", [Name])
 	end.
 
-tag_trans(global) -> '<gp>';
-tag_trans(local) -> '<fp>';
-tag_trans(_) -> '<none>'.
+tag_trans(global) -> 'gp';
+tag_trans(local) -> 'fp'.
 
