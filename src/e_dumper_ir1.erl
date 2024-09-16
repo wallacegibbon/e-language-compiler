@@ -1,49 +1,51 @@
 -module(e_dumper_ir1).
--export([generate_code/3]).
+-export([generate_code/4]).
 -include("e_record_definition.hrl").
 
 -type irs() :: [tuple() | irs()].
+-type context() :: {PointerWidth :: pos_integer()}.
 
--spec generate_code(e_ast(), e_ast(), string()) -> ok.
-generate_code(AST, InitCode, OutputFile) ->
-	IRs = [{function, '<global_var_init>'}, lists:map(fun stmt_to_ir/1, InitCode) | ast_to_ir(AST)],
+-spec generate_code(e_ast(), e_ast(), string(), context()) -> ok.
+generate_code(AST, InitCode, OutputFile, Ctx) ->
+	IRs = [{function, '<global_var_init>'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, InitCode) | ast_to_ir(AST, Ctx)],
 	Fn = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"} | IRs], IO_Dev) end,
 	file_transaction(OutputFile, Fn).
 
--spec ast_to_ir(e_ast()) -> irs().
-ast_to_ir([#e_function{name = Name, stmts = Stmts} | Rest]) ->
-	[{function, Name}, lists:map(fun stmt_to_ir/1, Stmts) | ast_to_ir(Rest)];
-ast_to_ir([_ | Rest]) ->
-	ast_to_ir(Rest);
-ast_to_ir([]) ->
+-spec ast_to_ir(e_ast(), context()) -> irs().
+ast_to_ir([#e_function{name = Name, vars = #e_vars{size = Size}, stmts = Stmts} | Rest], Ctx) ->
+	StackOpIRs = [{li, r_tmp1, Size}, {'-', r_tmp2, '<sp>', r_tmp1}, {mv, '<fp>', '<sp>'}, {mv, '<sp>', r_tmp2}],
+	[{function, Name}, StackOpIRs, lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts) | ast_to_ir(Rest, Ctx)];
+ast_to_ir([_ | Rest], Ctx) ->
+	ast_to_ir(Rest, Ctx);
+ast_to_ir([], _) ->
 	[].
 
--spec stmt_to_ir(e_stmt()) -> irs().
-stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}) ->
-	{CondiIRs, R_Cond} = expr_to_ir(Condi),
+-spec stmt_to_ir(e_stmt(), context()) -> irs().
+stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, Ctx) ->
+	{CondiIRs, R_Cond} = expr_to_ir(Condi, Ctx),
 	StartComment = comment('if', e_util:stmt_to_str(Condi), Loc),
 	EndComment = comment('if', "end", Loc),
-	Then1 = lists:map(fun(S) -> stmt_to_ir(S) end, Then0),
-	Else1 = lists:map(fun(S) -> stmt_to_ir(S) end, Else0),
-	Then2 = [comment('if', "then part", Loc), Then1, {goto, end_if}],
-	Else2 = [comment('if', "else part", Loc), {label, else_label}, Else1, {goto, end_if}, {label, end_if}],
-	[StartComment, CondiIRs, {br, R_Cond, else_label}, Then2, Else2, EndComment];
-stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}) ->
-	{CondiIRs, R_Cond} = expr_to_ir(Condi),
+	Then1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Then0),
+	Else1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Else0),
+	Then2 = [comment('if', "then part", Loc), Then1, {jump, end_if}],
+	Else2 = [comment('if', "else part", Loc), {label, else_label}, Else1, {jump, end_if}, {label, end_if}],
+	[StartComment, CondiIRs, {jcond, R_Cond, else_label}, Then2, Else2, EndComment];
+stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, Ctx) ->
+	{CondiIRs, R_Cond} = expr_to_ir(Condi, Ctx),
 	StartComment = comment(while, e_util:stmt_to_str(Condi), Loc),
 	EndComment = comment(while, "end", Loc),
-	Stmts1 = lists:map(fun(S) -> stmt_to_ir(S) end, Stmts0),
-	Stmts2 = [comment(while, "body part", Loc), {label, body_start}, Stmts1, {goto, body_start}, {label, end_while}],
-	[StartComment, CondiIRs, {br, R_Cond, end_while}, Stmts2, EndComment];
-stmt_to_ir(#e_return_stmt{expr = Expr}) ->
-	{ExprIRs, R} = expr_to_ir(Expr),
+	Stmts1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
+	Stmts2 = [comment(while, "body part", Loc), {label, body_start}, Stmts1, {jump, body_start}, {label, end_while}],
+	[StartComment, CondiIRs, {jcond, R_Cond, end_while}, Stmts2, EndComment];
+stmt_to_ir(#e_return_stmt{expr = Expr}, Ctx) ->
+	{ExprIRs, R} = expr_to_ir(Expr, Ctx),
 	[ExprIRs, {return, R}];
-stmt_to_ir(#e_goto_stmt{label = Label}) ->
-	[{goto, Label}];
-stmt_to_ir(#e_label{name = Label}) ->
+stmt_to_ir(#e_goto_stmt{label = Label}, _) ->
+	[{jump, Label}];
+stmt_to_ir(#e_label{name = Label}, _) ->
 	[{label, Label}];
-stmt_to_ir(Stmt) ->
-	{Exprs, _} = expr_to_ir(Stmt),
+stmt_to_ir(Stmt, Ctx) ->
+	{Exprs, _} = expr_to_ir(Stmt, Ctx),
 	Exprs.
 
 comment(Tag, Info, {Line, Col}) ->
@@ -62,43 +64,54 @@ comment(Tag, Info, {Line, Col}) ->
 	Tag =:= '>=' orelse Tag =:= '<='
 	)).
 
--spec expr_to_ir(e_expr()) -> {irs(), atom()}.
-expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V)), Right)) ->
-	{RightIRs, R} = expr_to_ir(Right),
+-spec expr_to_ir(e_expr(), context()) -> {irs(), atom()}.
+expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V)), Right), Ctx) ->
+	{RightIRs, R} = expr_to_ir(Right, Ctx),
 	{[RightIRs, {st_instr_from_v(V), {Name, N}, R}], R};
-expr_to_ir(?OP2('=', ?OP2('^', Expr, ?I(V)), Right)) ->
-	{RightIRs, R_R} = expr_to_ir(Right),
-	{LeftIRs, R_L} = expr_to_ir(Expr),
+expr_to_ir(?OP2('=', ?OP2('^', Expr, ?I(V)), Right), Ctx) ->
+	{RightIRs, R_R} = expr_to_ir(Right, Ctx),
+	{LeftIRs, R_L} = expr_to_ir(Expr, Ctx),
 	{[RightIRs, LeftIRs, {st_instr_from_v(V), {R_L, 0}, R_R}], r_tmp};
-expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V))) when Name =:= '<gp>'; Name =:= '<fp>' ->
+expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V)), _) when Name =:= '<gp>'; Name =:= '<fp>' ->
 	{[{ld_instr_from_v(V), r_tmp, {Name, N}}], r_tmp};
-expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), _)) ->
+expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), _), _) ->
 	{[{la, r_tmp, Name}, {lw, r_tmp, {r_tmp, N}}], r_tmp};
-expr_to_ir(?OP2('^', Expr, ?I(V))) ->
-	{IRs, R} = expr_to_ir(Expr),
+expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
+	{IRs, R} = expr_to_ir(Expr, Ctx),
 	{[IRs, {ld_instr_from_v(V), r_tmp, {R, 0}}], r_tmp};
-expr_to_ir(#e_op{tag = {call, Fn}, data = Args}) ->
-	{FnLoadIRs, R_Fn} = expr_to_ir(Fn),
-	%% TODO: prepare Args
-	{[FnLoadIRs, {call, R_Fn}], r_tmp};
-expr_to_ir(?OP2(Tag, Left, Right)) when ?IS_ARITH(Tag) ->
-	{IRs, {R1, R2}} = op2_to_ir_merge(Left, Right),
+expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, {PointerWidth} = Ctx) ->
+	ArgPreparingIRs = args_to_stack(Args, PointerWidth, Ctx),
+	{FnLoadIRs, R_Fn} = expr_to_ir(Fn, Ctx),
+	{[ArgPreparingIRs, FnLoadIRs, {call, R_Fn}], r_tmp};
+expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
+	{IRs, {R1, R2}} = op2_to_ir_merge(Left, Right, Ctx),
 	{[IRs, {Tag, r_tmp, R1, R2}], r_tmp};
-expr_to_ir(?OP2(Tag, Left, Right)) when ?IS_COMPARE(Tag) ->
-	{IRs, {R1, R2}} = op2_to_ir_merge(Left, Right),
+expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
+	{IRs, {R1, R2}} = op2_to_ir_merge(Left, Right, Ctx),
 	{[IRs, {e_util:reverse_compare_tag(Tag), r_tmp, R1, R2}], r_tmp};
-expr_to_ir(?OP1(Tag, Expr)) ->
-	{IRs, R} = expr_to_ir(Expr),
+expr_to_ir(?OP1(Tag, Expr), Ctx) ->
+	{IRs, R} = expr_to_ir(Expr, Ctx),
 	{[IRs, {Tag, r_tmp, R}], r_tmp};
-expr_to_ir(?I(N)) ->
+expr_to_ir(#e_varref{name = Name}, _) ->
+	{[], Name};
+expr_to_ir(#e_string{value = Value}, _) ->
+	{[{la, r_tmp, Value}], r_tmp};
+expr_to_ir(?I(N), _) ->
 	{[{li, r_tmp, N}], r_tmp};
-expr_to_ir(Expr) ->
-	{[Expr], zero}.
+expr_to_ir(?F(N), _) ->
+	%% TODO: float is special
+	{[{li, r_tmp, N}], r_tmp}.
 
--spec op2_to_ir_merge(e_expr(), e_expr()) -> {irs(), {atom(), atom()}}.
-op2_to_ir_merge(OP1, OP2) ->
-	{IRs1, R1} = expr_to_ir(OP1),
-	{IRs2, R2} = expr_to_ir(OP2),
+args_to_stack([Arg | Rest], N, {PointerWidth} = Ctx) ->
+	{IRs, R} = expr_to_ir(Arg, Ctx),
+	[IRs, {sw, {'<sp>', -N}, R} | args_to_stack(Rest, N + PointerWidth, Ctx)];
+args_to_stack([], _, _) ->
+	[].
+
+-spec op2_to_ir_merge(e_expr(), e_expr(), context()) -> {irs(), {atom(), atom()}}.
+op2_to_ir_merge(OP1, OP2, Ctx) ->
+	{IRs1, R1} = expr_to_ir(OP1, Ctx),
+	{IRs2, R2} = expr_to_ir(OP2, Ctx),
 	{[IRs1, IRs2], {R1, R2}}.
 
 -spec write_irs(irs(), file:io_device()) -> ok.

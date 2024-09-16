@@ -2,11 +2,8 @@
 -export([compile_from_raw_ast/2]).
 -include("e_record_definition.hrl").
 
--type e_compile_options() :: map().
-
--spec compile_from_raw_ast(e_ast(), e_compile_options()) -> {e_ast(), #e_vars{}, e_ast()}.
-compile_from_raw_ast(AST, CustomCompileOptions) ->
-	CompileOptions = maps:merge(default_compiler_options(), CustomCompileOptions),
+-spec compile_from_raw_ast(e_ast(), e_compiler:e_compile_options()) -> {e_ast(), #e_vars{}, e_ast()}.
+compile_from_raw_ast(AST, CompileOptions) ->
 	{GlobalVars00, AST00, InitCode00} = e_var:fetch_vars(AST),
 
 	{FnTypeMap00, StructMap00} = e_util:make_function_and_struct_map_from_ast(AST00),
@@ -63,8 +60,4 @@ compile_from_raw_ast(AST, CustomCompileOptions) ->
 	InitCode80 = e_varref:varref_to_offset_in_stmts(InitCode70, {GlobalVars10, FnTypeMap00}),
 
 	{AST80, GlobalVars10, InitCode80}.
-
--spec default_compiler_options() -> e_compile_options().
-default_compiler_options() ->
-	#{pointer_width => 8}.
 
