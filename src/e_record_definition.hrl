@@ -7,7 +7,7 @@
 	p_depth = 0 :: non_neg_integer(),
 	class = void :: struct | integer | float | void | any,
 	%% tag can be primitive tag like `byte`, `word` for `integer`, or struct name for `struct`
-	%% full list of primitive tags: u8|i8|u16|i16|u32|i32|u64|i64|byte|uptr|iptr|usize|isize|f64|f32|void|any.
+	%% full list of primitive tags: byte|word|float|void|any.
 	tag :: atom()
 	}).
 
@@ -51,7 +51,7 @@
 -record(e_varref,
 	{
 	loc = {0, 0} :: location(),
-	name :: atom()
+	name :: atom() | {fn, atom()}
 	}).
 
 -type e_var_type() :: none | local | global.

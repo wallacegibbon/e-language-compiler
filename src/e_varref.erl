@@ -37,7 +37,7 @@ varref_to_offset(#e_type_convert{expr = Expr}, Ctx) ->
 varref_to_offset(Any, _) ->
 	Any.
 
--spec find_name_in_vars_and_fn_map(#e_varref{}, context()) -> {ok, {atom(), var_offset()}} | notfound.
+-spec find_name_in_vars_and_fn_map(#e_varref{}, context()) -> {ok, {atom() | {fn, atom()}, var_offset()}} | notfound.
 find_name_in_vars_and_fn_map(Varref, {VarsList, FnTypeMap}) ->
 	case find_name_in_vars(Varref, VarsList) of
 		{ok, _} = R ->
