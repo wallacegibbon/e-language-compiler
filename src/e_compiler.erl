@@ -13,8 +13,8 @@ compile_to_c(InputFilename, OutputFilename) ->
 		{AST, Vars, InitCode} = parse_and_compile(InputFilename, compiler_options()),
 		e_dumper_c:generate_code(AST, Vars, InitCode, OutputFilename)
 	catch
-		{Filename, {{Line, Col}, ErrorInfo}} ->
-			throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
+		{{Line, Col}, ErrorInfo} ->
+			throw(e_util:fmt("~s:~w:~w: ~s~n", [InputFilename, Line, Col, ErrorInfo]))
 	end.
 
 %% Compiling to E (with invalid syntax). This function is for debug, just like `compile_to_c/2`.
@@ -24,8 +24,8 @@ compile_to_e(InputFilename, OutputFilename) ->
 		{AST, _, InitCode} = parse_and_compile(InputFilename, compiler_options()),
 		e_dumper_e:generate_code(AST, InitCode, OutputFilename)
 	catch
-		{Filename, {{Line, Col}, ErrorInfo}} ->
-			throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
+		{{Line, Col}, ErrorInfo} ->
+			throw(e_util:fmt("~s:~w:~w: ~s~n", [InputFilename, Line, Col, ErrorInfo]))
 	end.
 
 -spec compile_to_ir1(string(), string()) -> ok.
@@ -36,8 +36,8 @@ compile_to_ir1(InputFilename, OutputFilename) ->
 		{AST, _, InitCode} = parse_and_compile(InputFilename, Options),
 		e_dumper_ir1:generate_code(AST, InitCode, OutputFilename, {PointerWidth, top})
 	catch
-		{Filename, {{Line, Col}, ErrorInfo}} ->
-			throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
+		{{Line, Col}, ErrorInfo} ->
+			throw(e_util:fmt("~s:~w:~w: ~s~n", [InputFilename, Line, Col, ErrorInfo]))
 	end.
 
 -spec compile_to_ast(string()) -> {e_ast(), #e_vars{}, e_ast()}.
@@ -45,18 +45,13 @@ compile_to_ast(Filename) ->
 	try
 		parse_and_compile(Filename, compiler_options())
 	catch
-		{Filename, {{Line, Col}, ErrorInfo}} ->
+		{{Line, Col}, ErrorInfo} ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
 	end.
 
 -spec parse_and_compile(string(), e_compile_options()) -> {e_ast_raw(), #e_vars{}, e_ast()}.
 parse_and_compile(Filename, CompileOptions) ->
-	try
-		e_ast_compiler:compile_from_raw_ast(parse_file(Filename), CompileOptions)
-	catch
-		E ->
-			throw({Filename, E})
-	end.
+	e_ast_compiler:compile_from_raw_ast(parse_file(Filename), CompileOptions).
 
 -spec parse_file(string()) -> e_ast_raw().
 parse_file(Filename) ->

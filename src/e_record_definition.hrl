@@ -51,12 +51,12 @@
 -record(e_varref,
 	{
 	loc = {0, 0} :: location(),
-	name :: atom() | {fn, atom()}
+	name :: atom()
 	}).
 
 -type e_var_type() :: none | local | global.
 
--type var_offset() :: {Offset :: non_neg_integer(), Size :: pos_integer()}.
+-type e_var_offset() :: {Offset :: non_neg_integer(), Size :: pos_integer()}.
 
 %% `e_vars` is used by functions and structs to hold variables (including parameters) and fields.
 -record(e_vars,
@@ -64,7 +64,7 @@
 	%% `names` keeps the order that variables/fields got declared.
 	names = [] :: [atom()],
 	type_map = #{} :: #{atom() => e_type()},
-	offset_map = #{} :: #{atom() => var_offset()},
+	offset_map = #{} :: #{atom() => e_var_offset()},
 	%% The alignment of e_vars is the alignment of the biggest element in this `e_vars`.
 	%% The alignment should be higher than or equals `1`. `0` is the uninitialized value for alignments.
 	align = 0 :: non_neg_integer(),

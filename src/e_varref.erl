@@ -24,10 +24,13 @@ varref_to_offset_in_stmts_inner(Stmts, Ctx) ->
 	e_util:eliminate_pointer(Stmts1).
 
 -spec varref_to_offset(e_expr(), context()) -> e_expr().
-varref_to_offset(#e_varref{loc = Loc} = Varref, Ctx) ->
-	{ok, {Tag, {Offset, Size}}} = find_name_in_vars_and_fn_map(Varref, Ctx),
-	A = #e_op{tag = '+', data = [Varref#e_varref{name = Tag}, #e_integer{value = Offset, loc = Loc}], loc = Loc},
-	#e_op{tag = '^', data = [A, #e_integer{value = Size, loc = Loc}], loc = Loc};
+varref_to_offset(#e_varref{} = Varref, Ctx) ->
+	case find_name_in_vars_and_fn_map(Varref, Ctx) of
+		{ok, {Tag, VarOffset}} ->
+			varref_to_op(Varref, Tag, VarOffset);
+		{ok, _} ->
+			Varref
+	end;
 varref_to_offset(#e_op{tag = {call, Callee}, data = Args} = Op, Ctx) ->
 	Op#e_op{tag = {call, varref_to_offset(Callee, Ctx)}, data = lists:map(fun(E) -> varref_to_offset(E, Ctx) end, Args)};
 varref_to_offset(#e_op{data = Args} = Op, Ctx) ->
@@ -37,7 +40,12 @@ varref_to_offset(#e_type_convert{expr = Expr}, Ctx) ->
 varref_to_offset(Any, _) ->
 	Any.
 
--spec find_name_in_vars_and_fn_map(#e_varref{}, context()) -> {ok, {atom() | {fn, atom()}, var_offset()}} | notfound.
+-spec varref_to_op(#e_varref{}, atom(), e_var_offset()) -> #e_op{}.
+varref_to_op(#e_varref{loc = Loc} = Varref, Tag, {Offset, Size}) ->
+	A = #e_op{tag = '+', data = [Varref#e_varref{name = Tag}, #e_integer{value = Offset, loc = Loc}], loc = Loc},
+	#e_op{tag = '^', data = [A, #e_integer{value = Size, loc = Loc}], loc = Loc}.
+
+-spec find_name_in_vars_and_fn_map(#e_varref{}, context()) -> {ok, {atom(), e_var_offset()}} | {ok, atom()}.
 find_name_in_vars_and_fn_map(Varref, {VarsList, FnTypeMap}) ->
 	case find_name_in_vars(Varref, VarsList) of
 		{ok, _} = R ->
@@ -59,7 +67,7 @@ find_name_in_vars(_, []) ->
 find_name_in_fn_map(#e_varref{name = Name, loc = Loc}, FnTypeMap) ->
 	case maps:find(Name, FnTypeMap) of
 		{ok, _} ->
-			{ok, {{fn, Name}, {0, 0}}};
+			{ok, Name};
 		error ->
 			e_util:ethrow(Loc, "\"~s\" is not defined", [Name])
 	end.

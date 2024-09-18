@@ -62,8 +62,6 @@ stmt_to_str(#e_goto_stmt{label = Label}) ->
 	io_lib:format("goto ~s", [Label]);
 stmt_to_str(#e_label{name = Name}) ->
 	io_lib:format("@@~s", [Name]);
-stmt_to_str(#e_varref{name = {fn, Name}}) ->
-	atom_to_list(Name);
 stmt_to_str(#e_varref{name = Name}) ->
 	atom_to_list(Name);
 stmt_to_str(#e_vardef{name = Name}) ->

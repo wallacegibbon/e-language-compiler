@@ -79,17 +79,17 @@ comment(Tag, Info, {Line, Col}) ->
 	)).
 
 -spec expr_to_ir(e_expr(), context()) -> {irs(), atom()}.
-expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V)), Right), Ctx) ->
-	{RightIRs, R} = expr_to_ir(Right, Ctx),
-	{[RightIRs, {st_instr_from_v(V), {Name, N}, R}], R};
+expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{} = Varref, ?I(N)), ?I(V)), Right), Ctx) ->
+	{RightIRs, R1} = expr_to_ir(Right, Ctx),
+	{VarrefIRs, R2} = expr_to_ir(Varref, Ctx),
+	{[RightIRs, VarrefIRs, {st_instr_from_v(V), {R2, N}, R1}], R1};
 expr_to_ir(?OP2('=', ?OP2('^', Expr, ?I(V)), Right), Ctx) ->
 	{RightIRs, R_R} = expr_to_ir(Right, Ctx),
 	{LeftIRs, R_L} = expr_to_ir(Expr, Ctx),
 	{[RightIRs, LeftIRs, {st_instr_from_v(V), {R_L, 0}, R_R}], tn};
-expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), ?I(V)), _) when Name =:= gp; Name =:= fp ->
-	{[{ld_instr_from_v(V), tn, {Name, N}}], tn};
-expr_to_ir(?OP2('^', ?OP2('+', #e_varref{name = Name}, ?I(N)), _), _) ->
-	{[{la, tn, Name}, {lw, tn, {tn, N}}], tn};
+expr_to_ir(?OP2('^', ?OP2('+', #e_varref{} = Varref, ?I(N)), ?I(V)), Ctx) ->
+	{VarrefIRs, R} = expr_to_ir(Varref, Ctx),
+	{[VarrefIRs, {ld_instr_from_v(V), tn, {R, N}}], tn};
 expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
 	{IRs, R} = expr_to_ir(Expr, Ctx),
 	{[IRs, {ld_instr_from_v(V), tn, {R, 0}}], tn};
@@ -98,35 +98,36 @@ expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, Ctx) ->
 	{FnLoadIRs, R_Fn} = expr_to_ir(Fn, Ctx),
 	{[ArgPreparingIRs, FnLoadIRs, {call, R_Fn}, {comment, "load value returned"}, {lw, tn, {sp, 0}}], tn};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
-	{IRs, {R1, R2}} = op2_to_ir_merge(Left, Right, Ctx),
-	{[IRs, {Tag, tn, R1, R2}], tn};
+	{IRs1, R1} = expr_to_ir(Left, Ctx),
+	{IRs2, R2} = expr_to_ir(Right, Ctx),
+	{[IRs1, IRs2, {Tag, tn, R1, R2}], tn};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
-	{IRs, {R1, R2}} = op2_to_ir_merge(Left, Right, Ctx),
-	{[IRs, {e_util:reverse_compare_tag(Tag), tn, R1, R2}], tn};
+	{IRs1, R1} = expr_to_ir(Left, Ctx),
+	{IRs2, R2} = expr_to_ir(Right, Ctx),
+	{[IRs1, IRs2, {e_util:reverse_compare_tag(Tag), tn, R1, R2}], tn};
 expr_to_ir(?OP1(Tag, Expr), Ctx) ->
 	{IRs, R} = expr_to_ir(Expr, Ctx),
 	{[IRs, {Tag, tn, R}], tn};
-expr_to_ir(#e_varref{name = Name}, _) ->
+expr_to_ir(#e_varref{name = Name}, _) when Name =:= gp; Name =:= fp ->
 	{[], Name};
+expr_to_ir(#e_varref{name = Name}, _) ->
+	{[{la, tn, Name}], tn};
 expr_to_ir(#e_string{value = Value}, _) ->
+	%% TODO: string literals should be placed in certain place.
 	{[{la, tn, Value}], tn};
 expr_to_ir(?I(N), _) ->
 	{[{li, tn, N}], tn};
 expr_to_ir(?F(N), _) ->
 	%% TODO: float is special
-	{[{li, tn, N}], tn}.
+	{[{li, tn, N}], tn};
+expr_to_ir(Any, _) ->
+	e_util:ethrow(element(2, Any), "IR1: unsupported expr \"~w\"", [Any]).
 
 args_to_stack([Arg | Rest], N, {PointerWidth, _} = Ctx) ->
 	{IRs, R} = expr_to_ir(Arg, Ctx),
 	[IRs, {sw, {sp, N}, R} | args_to_stack(Rest, N + PointerWidth, Ctx)];
 args_to_stack([], _, _) ->
 	[].
-
--spec op2_to_ir_merge(e_expr(), e_expr(), context()) -> {irs(), {atom(), atom()}}.
-op2_to_ir_merge(OP1, OP2, Ctx) ->
-	{IRs1, R1} = expr_to_ir(OP1, Ctx),
-	{IRs2, R2} = expr_to_ir(OP2, Ctx),
-	{[IRs1, IRs2], {R1, R2}}.
 
 -spec write_irs(irs(), file:io_device()) -> ok.
 write_irs([IRs | Rest], IO_Dev) when is_list(IRs) ->
