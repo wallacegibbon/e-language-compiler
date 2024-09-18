@@ -156,3 +156,12 @@ fn add_call(): word
 	end
 	return 2,
 end
+
+fn f2(v: word): word
+	return v + 1,
+end
+
+fn long_expr(): word
+	a: word = 10,
+	return a + a * f2(2 * f2(3 * f2(a))),
+end

@@ -10,6 +10,8 @@ compile_from_raw_ast(AST, CompileOptions) ->
 	%% Once the AST got constructed, we check the recursive definition problem of struct.
 	e_struct:check_struct_recursion_in_map(StructMap00),
 
+	%io:format("AST before type checking: ~p~n", [AST00]),
+
 	%% type checking
 	io:format("PHASE: type checking (AST)...~n"),
 	e_type:check_types_in_ast(AST00, {GlobalVars00, FnTypeMap00, StructMap00}),

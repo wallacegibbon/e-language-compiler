@@ -152,10 +152,14 @@ e_alignof_expr -> alignof '(' e_type_anno ')' :
 	#e_op{tag = {alignof, '$3'}, loc = token_loc('$2')}.
 
 %% function invocation
-e_call_expr -> e_expr '(' e_params ')' :
-	#e_op{tag = {call, '$1'}, data = '$3', loc = token_loc('$2')}.
-e_call_expr -> e_expr '(' ')' :
-	#e_op{tag = {call, '$1'}, data = [], loc = token_loc('$2')}.
+e_call_expr -> identifier '(' e_params ')' :
+	#e_op{tag = {call, #e_varref{name = token_value('$1'), loc = token_loc('$1')}}, data = '$3', loc = token_loc('$2')}.
+e_call_expr -> identifier '(' ')' :
+	#e_op{tag = {call, #e_varref{name = token_value('$1'), loc = token_loc('$1')}}, loc = token_loc('$2')}.
+e_call_expr -> '(' e_expr ')' '(' e_params ')' :
+	#e_op{tag = {call, '$2'}, data = '$5', loc = token_loc('$4')}.
+e_call_expr -> '(' e_expr ')' '(' ')' :
+	#e_op{tag = {call, '$2'}, data = [], loc = token_loc('$4')}.
 
 e_assign_expr -> e_expr e_op2_with_assignment e_expr :
 	#e_op{tag = '=', data = ['$1', #e_op{tag = token_symbol('$2'), data = ['$1', '$3'], loc = token_loc('$2')}], loc = token_loc('$2')}.
