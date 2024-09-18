@@ -184,6 +184,8 @@ st_instr_from_v(_) -> sw.
 ld_instr_from_v(1) -> lb;
 ld_instr_from_v(_) -> lw.
 
+%% We don't need many registers with current allocation algorithm.
+%% Most RISC machine can provide 8 free registers.
 tmp_regs() ->
-	[t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15].
+	[t0, t1, t2, t3, t4, t5, t6, t7].
 

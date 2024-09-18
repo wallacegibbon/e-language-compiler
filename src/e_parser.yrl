@@ -154,6 +154,8 @@ e_alignof_expr -> alignof '(' e_type_anno ')' :
 %% function invocation
 e_call_expr -> e_call_expr '(' e_args ')' :
 	#e_op{tag = {call, '$1'}, data = '$3', loc = token_loc('$2')}.
+e_call_expr -> e_call_expr '(' ')' :
+	#e_op{tag = {call, '$1'}, data = [], loc = token_loc('$2')}.
 e_call_expr -> identifier '(' e_args ')' :
 	#e_op{tag = {call, #e_varref{name = token_value('$1'), loc = token_loc('$1')}}, data = '$3', loc = token_loc('$2')}.
 e_call_expr -> identifier '(' ')' :
