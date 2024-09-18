@@ -120,21 +120,25 @@ fn myfn(v1: word^, v2: byte^)
 	v2^ += 2,
 end
 
-%fn invalid1(user: User, id: word)
+%% Non-primitive & Non-pointer type is not allowed as parameter.
+%fn invalid_param(user: User, id: word)
 %	user.id = 1,
 %end
 
-%fn invalid2(): User
+%% Non-primitive & Non-pointer type is not allowed as returning value.
+%fn invalid_ret(): User
 %	u: User = User{id = 1},
 %	return u,
 %end
 
+%% Only comparing op is allow in the condition part of the `if` statement.
 %fn invalid_if(a: word, b: byte): word
 %	if a then
 %		return 1,
 %	end
 %end
 
+%% Only comparing op is allow in the condition part of the `while` statement.
 %fn invalid_while(a: word, b: byte): word
 %	while a do
 %		a -= 1,
