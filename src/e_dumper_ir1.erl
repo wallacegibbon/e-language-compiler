@@ -3,27 +3,31 @@
 -include("e_record_definition.hrl").
 
 -type irs() :: [tuple() | irs()].
--type context() :: {PointerWidth :: pos_integer(), ScopeTag :: atom()}.
+-type interface_context() :: {PointerWidth :: pos_integer()}.
+-type context() :: {PointerWidth :: pos_integer(), ScopeTag :: atom(), AvailableRegs :: [atom()]}.
 
--spec generate_code(e_ast(), e_ast(), string(), context()) -> ok.
-generate_code(AST, InitCode, OutputFile, Ctx) ->
-	IRs = [{fn, '<init1>'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, InitCode) | ast_to_ir(AST, Ctx)],
+-spec generate_code(e_ast(), e_ast(), string(), interface_context()) -> ok.
+generate_code(AST, InitCode, OutputFile, {PointerWidth} = Ctx) ->
+	Ctx1 = {PointerWidth, top, tmp_regs()},
+	IRs = [{fn, '<init1>'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx1) end, InitCode) | ast_to_ir(AST, Ctx)],
 	Fn = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"} | IRs], IO_Dev) end,
 	file_transaction(OutputFile, Fn).
 
--spec ast_to_ir(e_ast(), context()) -> irs().
-ast_to_ir([#e_function{name = Name, stmts = Stmts} = Fn | Rest], {PointerWidth, _} = Ctx) ->
+-spec ast_to_ir(e_ast(), interface_context()) -> irs().
+ast_to_ir([#e_function{name = Name, stmts = Stmts} = Fn | Rest], {PointerWidth} = Ctx) ->
 	#e_function{vars = #e_vars{size = Size0}} = Fn,
 	Size1 = e_util:fill_unit_pessi(Size0, PointerWidth),
 	%% The extra `2` is for `fp` and `returning address`.
 	FrameSize = Size1 + PointerWidth * 2,
 	SaveRegs = [{sw, {sp, Size1}, fp}, {sw, {sp, Size1 + PointerWidth}, ra}, {mv, fp, sp}],
-	PrepareFrame = [{li, t1, FrameSize}, {'+', sp, sp, t1}],
+	Regs = tmp_regs(),
+	[T1 | _] = Regs,
+	PrepareFrame = [{li, T1, FrameSize}, {'+', sp, sp, T1}],
 	Prologue = [{comment, prologue_start}, SaveRegs, PrepareFrame, {comment, prologue_end}],
 	RestoreRegs = [{mv, sp, fp}, {lw, fp, {sp, Size1}}, {lw, ra, {sp, Size1 + PointerWidth}}],
 	EndLabel = {label, concat_atoms([Name, epilogue])},
 	Epilogue = [{comment, epilogue_start}, EndLabel, RestoreRegs, {ret, ra}, {comment, epilogue_end}],
-	Ctx1 = {PointerWidth, Name},
+	Ctx1 = {PointerWidth, Name, Regs},
 	[{fn, Name}, Prologue, lists:map(fun(S) -> stmt_to_ir(S, Ctx1) end, Stmts), Epilogue | ast_to_ir(Rest, Ctx)];
 ast_to_ir([_ | Rest], Ctx) ->
 	ast_to_ir(Rest, Ctx);
@@ -32,7 +36,7 @@ ast_to_ir([], _) ->
 
 -spec stmt_to_ir(e_stmt(), context()) -> irs().
 stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, Ctx) ->
-	{CondiIRs, R_Cond} = expr_to_ir(Condi, Ctx),
+	{CondiIRs, R_Cond, _} = expr_to_ir(Condi, Ctx),
 	StartComment = comment('if', e_util:stmt_to_str(Condi), Loc),
 	EndComment = comment('if', "end", Loc),
 	Then1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Then0),
@@ -41,22 +45,22 @@ stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, C
 	Else2 = [comment('if', "else part", Loc), {label, else_label}, Else1, {j, end_if}, {label, end_if}],
 	[StartComment, CondiIRs, {jcond, R_Cond, else_label}, Then2, Else2, EndComment];
 stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, Ctx) ->
-	{CondiIRs, R_Cond} = expr_to_ir(Condi, Ctx),
+	{CondiIRs, R_Cond, _} = expr_to_ir(Condi, Ctx),
 	StartComment = comment(while, e_util:stmt_to_str(Condi), Loc),
 	EndComment = comment(while, "end", Loc),
 	Stmts1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
 	Stmts2 = [comment(while, "body part", Loc), {label, body_start}, Stmts1, {j, body_start}, {label, end_while}],
 	[StartComment, CondiIRs, {jcond, R_Cond, end_while}, Stmts2, EndComment];
-stmt_to_ir(#e_return_stmt{expr = Expr}, {_, Tag} = Ctx) ->
-	{ExprIRs, R} = expr_to_ir(Expr, Ctx),
+stmt_to_ir(#e_return_stmt{expr = Expr}, {_, ScopeTag, _} = Ctx) ->
+	{ExprIRs, R, _} = expr_to_ir(Expr, Ctx),
 	%% We use stack to pass result
-	[ExprIRs, {comment, "prepare return value"}, {sw, {fp, 0}, R}, {j, concat_atoms([Tag, epilogue])}];
+	[ExprIRs, {comment, "prepare return value"}, {sw, {fp, 0}, R}, {j, concat_atoms([ScopeTag, epilogue])}];
 stmt_to_ir(#e_goto_stmt{label = Label}, _) ->
 	[{j, Label}];
 stmt_to_ir(#e_label{name = Label}, _) ->
 	[{label, Label}];
 stmt_to_ir(Stmt, Ctx) ->
-	{Exprs, _} = expr_to_ir(Stmt, Ctx),
+	{Exprs, _, _} = expr_to_ir(Stmt, Ctx),
 	Exprs.
 
 concat_atoms(AtomList) ->
@@ -78,53 +82,74 @@ comment(Tag, Info, {Line, Col}) ->
 	Tag =:= '>=' orelse Tag =:= '<='
 	)).
 
--spec expr_to_ir(e_expr(), context()) -> {irs(), atom()}.
+-define(IS_SPECIAL_REG(Tag),
+	(
+	Tag =:= fp orelse Tag =:= gp orelse Tag =:= zero
+	)).
+
+-spec expr_to_ir(e_expr(), context()) -> {irs(), atom(), [atom()]}.
 expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{} = Varref, ?I(N)), ?I(V)), Right), Ctx) ->
-	{RightIRs, R1} = expr_to_ir(Right, Ctx),
-	{VarrefIRs, R2} = expr_to_ir(Varref, Ctx),
-	{[RightIRs, VarrefIRs, {st_instr_from_v(V), {R2, N}, R1}], R1};
+	{RightIRs, R1, Ctx1} = expr_to_ir(Right, Ctx),
+	{VarrefIRs, R2, Ctx2} = expr_to_ir(Varref, Ctx1),
+	{[RightIRs, VarrefIRs, {st_instr_from_v(V), {R2, N}, R1}], R1, Ctx2};
 expr_to_ir(?OP2('=', ?OP2('^', Expr, ?I(V)), Right), Ctx) ->
-	{RightIRs, R_R} = expr_to_ir(Right, Ctx),
-	{LeftIRs, R_L} = expr_to_ir(Expr, Ctx),
-	{[RightIRs, LeftIRs, {st_instr_from_v(V), {R_L, 0}, R_R}], tn};
+	{RightIRs, R1, Ctx1} = expr_to_ir(Right, Ctx),
+	{LeftIRs, R2, Ctx2} = expr_to_ir(Expr, Ctx1),
+	{[RightIRs, LeftIRs, {st_instr_from_v(V), {R2, 0}, R1}], R1, Ctx2};
 expr_to_ir(?OP2('^', ?OP2('+', #e_varref{} = Varref, ?I(N)), ?I(V)), Ctx) ->
-	{VarrefIRs, R} = expr_to_ir(Varref, Ctx),
-	{[VarrefIRs, {ld_instr_from_v(V), tn, {R, N}}], tn};
+	{IRs, R, {PointerWidth, ScopeTag, RestRegs}} = expr_to_ir(Varref, Ctx),
+	[T1 | RestRegs2] = RestRegs,
+	{[IRs, {ld_instr_from_v(V), T1, {R, N}}], T1, {PointerWidth, ScopeTag, recycle_tmpreg([R], RestRegs2)}};
 expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
-	{IRs, R} = expr_to_ir(Expr, Ctx),
-	{[IRs, {ld_instr_from_v(V), tn, {R, 0}}], tn};
+	{IRs, R, {PointerWidth, ScopeTag, RestRegs}} = expr_to_ir(Expr, Ctx),
+	[T1 | RestRegs2] = RestRegs,
+	{[IRs, {ld_instr_from_v(V), T1, {R, 0}}], T1, {PointerWidth, ScopeTag, recycle_tmpreg([R], RestRegs2)}};
 expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, Ctx) ->
 	ArgPreparingIRs = args_to_stack(Args, 0, Ctx),
-	{FnLoadIRs, R_Fn} = expr_to_ir(Fn, Ctx),
-	{[ArgPreparingIRs, FnLoadIRs, {call, R_Fn}, {comment, "load value returned"}, {lw, tn, {sp, 0}}], tn};
+	{FnLoadIRs, R, Ctx1} = expr_to_ir(Fn, Ctx),
+	{[ArgPreparingIRs, FnLoadIRs, {call, R}, {comment, "load returned value"}, {lw, R, {sp, 0}}], R, Ctx1};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
-	{IRs1, R1} = expr_to_ir(Left, Ctx),
-	{IRs2, R2} = expr_to_ir(Right, Ctx),
-	{[IRs1, IRs2, {Tag, tn, R1, R2}], tn};
+	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
+	{IRs2, R2, {PointerWidth, ScopeTag, RestRegs}} = expr_to_ir(Right, Ctx1),
+	[T1 | RestRegs2] = RestRegs,
+	{[IRs1, IRs2, {Tag, T1, R1, R2}], T1, {PointerWidth, ScopeTag, recycle_tmpreg([R2, R1], RestRegs2)}};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
-	{IRs1, R1} = expr_to_ir(Left, Ctx),
-	{IRs2, R2} = expr_to_ir(Right, Ctx),
-	{[IRs1, IRs2, {e_util:reverse_compare_tag(Tag), tn, R1, R2}], tn};
+	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
+	{IRs2, R2, {PointerWidth, ScopeTag, RestRegs}} = expr_to_ir(Right, Ctx1),
+	[T1 | RestRegs2] = RestRegs,
+	ReversedTag = e_util:reverse_compare_tag(Tag),
+	{[IRs1, IRs2, {ReversedTag, T1, R1, R2}], T1, {PointerWidth, ScopeTag, recycle_tmpreg([R2, R1], RestRegs2)}};
 expr_to_ir(?OP1(Tag, Expr), Ctx) ->
-	{IRs, R} = expr_to_ir(Expr, Ctx),
-	{[IRs, {Tag, tn, R}], tn};
-expr_to_ir(#e_varref{name = Name}, _) when Name =:= gp; Name =:= fp ->
-	{[], Name};
-expr_to_ir(#e_varref{name = Name}, _) ->
-	{[{la, tn, Name}], tn};
-expr_to_ir(#e_string{value = Value}, _) ->
+	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
+	{[IRs, {Tag, R}], R, Ctx1};
+expr_to_ir(#e_varref{name = Name}, Ctx) when ?IS_SPECIAL_REG(Name) ->
+	{[], Name, Ctx};
+expr_to_ir(#e_varref{name = Name}, {PointerWidth, ScopeTag, Regs}) ->
+	[R | RestRegs] = Regs,
+	{[{la, R, Name}], R, {PointerWidth, ScopeTag, RestRegs}};
+expr_to_ir(#e_string{value = Value}, {PointerWidth, ScopeTag, Regs}) ->
 	%% TODO: string literals should be placed in certain place.
-	{[{la, tn, Value}], tn};
-expr_to_ir(?I(N), _) ->
-	{[{li, tn, N}], tn};
-expr_to_ir(?F(N), _) ->
+	[R | RestRegs] = Regs,
+	{[{la, R, Value}], R, {PointerWidth, ScopeTag, RestRegs}};
+expr_to_ir(?I(N), {PointerWidth, ScopeTag, Regs}) ->
+	[R | RestRegs] = Regs,
+	{[{li, R, N}], R, {PointerWidth, ScopeTag, RestRegs}};
+expr_to_ir(?F(N), {PointerWidth, ScopeTag, Regs}) ->
 	%% TODO: float is special
-	{[{li, tn, N}], tn};
+	[R | RestRegs] = Regs,
+	{[{li, R, N}], R, {PointerWidth, ScopeTag, RestRegs}};
 expr_to_ir(Any, _) ->
 	e_util:ethrow(element(2, Any), "IR1: unsupported expr \"~w\"", [Any]).
 
-args_to_stack([Arg | Rest], N, {PointerWidth, _} = Ctx) ->
-	{IRs, R} = expr_to_ir(Arg, Ctx),
+recycle_tmpreg([R | Regs], RegBank) when ?IS_SPECIAL_REG(R) ->
+	recycle_tmpreg(Regs, RegBank);
+recycle_tmpreg([R | Regs], RegBank) ->
+	recycle_tmpreg(Regs, [R | RegBank]);
+recycle_tmpreg([], RegBank) ->
+	RegBank.
+
+args_to_stack([Arg | Rest], N, {PointerWidth, _, _} = Ctx) ->
+	{IRs, R, _} = expr_to_ir(Arg, Ctx),
 	[IRs, {sw, {sp, N}, R} | args_to_stack(Rest, N + PointerWidth, Ctx)];
 args_to_stack([], _, _) ->
 	[].
@@ -158,4 +183,8 @@ st_instr_from_v(1) -> sb;
 st_instr_from_v(_) -> sw.
 ld_instr_from_v(1) -> lb;
 ld_instr_from_v(_) -> lw.
+
+%% 4 temporary registers are enough for the current algorithm.
+tmp_regs() ->
+	[t0, t1, t2, t3, t4, t5].
 
