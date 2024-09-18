@@ -1,6 +1,6 @@
 Nonterminals
 
-e_root_stmts e_root_stmt e_struct_def e_function_def e_vardefs e_vardef e_params
+e_root_stmts e_root_stmt e_struct_def e_function_def e_vardefs e_vardef e_args
 e_function_stmts e_function_stmt e_if_stmt e_else_stmt e_while_stmt e_label
 e_expr e_call_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr e_typeof_type e_assign_expr
 e_type_annos e_type_anno e_op19 e_op30 e_op29 e_op28 e_op27 e_op26 e_op25 e_op2_with_assignment
@@ -152,11 +152,13 @@ e_alignof_expr -> alignof '(' e_type_anno ')' :
 	#e_op{tag = {alignof, '$3'}, loc = token_loc('$2')}.
 
 %% function invocation
-e_call_expr -> identifier '(' e_params ')' :
+e_call_expr -> e_call_expr '(' e_args ')' :
+	#e_op{tag = {call, '$1'}, data = '$3', loc = token_loc('$2')}.
+e_call_expr -> identifier '(' e_args ')' :
 	#e_op{tag = {call, #e_varref{name = token_value('$1'), loc = token_loc('$1')}}, data = '$3', loc = token_loc('$2')}.
 e_call_expr -> identifier '(' ')' :
 	#e_op{tag = {call, #e_varref{name = token_value('$1'), loc = token_loc('$1')}}, loc = token_loc('$2')}.
-e_call_expr -> '(' e_expr ')' '(' e_params ')' :
+e_call_expr -> '(' e_expr ')' '(' e_args ')' :
 	#e_op{tag = {call, '$2'}, data = '$5', loc = token_loc('$4')}.
 e_call_expr -> '(' e_expr ')' '(' ')' :
 	#e_op{tag = {call, '$2'}, data = [], loc = token_loc('$4')}.
@@ -170,9 +172,9 @@ e_op2_with_assignment -> e_op29 '=' : '$1'.
 e_op2_with_assignment -> e_op28 '=' : '$1'.
 e_op2_with_assignment -> e_op27 '=' : '$1'.
 
-e_params -> e_expr ',' e_params : ['$1' | '$3'].
-e_params -> e_expr ',' : ['$1'].
-e_params -> e_expr : ['$1'].
+e_args -> e_expr ',' e_args : ['$1' | '$3'].
+e_args -> e_expr ',' : ['$1'].
+e_args -> e_expr : ['$1'].
 
 e_atomic_literal_values -> integer : replace_tag('$1', e_integer).
 e_atomic_literal_values -> float : replace_tag('$1', e_float).

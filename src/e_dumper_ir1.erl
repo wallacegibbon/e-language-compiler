@@ -105,9 +105,9 @@ expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
 	[T1 | RestRegs2] = RestRegs,
 	{[IRs, {ld_instr_from_v(V), T1, {R, 0}}], T1, {PointerWidth, ScopeTag, recycle_tmpreg([R], RestRegs2)}};
 expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, Ctx) ->
-	ArgPreparingIRs = args_to_stack(Args, 0, Ctx),
 	{FnLoadIRs, R, Ctx1} = expr_to_ir(Fn, Ctx),
-	{[ArgPreparingIRs, FnLoadIRs, {call, R}, {comment, "load returned value"}, {lw, R, {sp, 0}}], R, Ctx1};
+	ArgPreparingIRs = args_to_stack(Args, 0, Ctx1),
+	{[FnLoadIRs, ArgPreparingIRs, {call, R}, {comment, "load returned value"}, {lw, R, {sp, 0}}], R, Ctx1};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
 	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
 	{IRs2, R2, {PointerWidth, ScopeTag, RestRegs}} = expr_to_ir(Right, Ctx1),

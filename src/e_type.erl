@@ -521,6 +521,8 @@ check_ret_type(#e_basic_type{p_depth = N}) when N > 0 ->
 	true;
 check_ret_type(#e_basic_type{class = C}) when C =:= integer; C =:= float; C =:= void ->
 	true;
+check_ret_type(#e_fn_type{}) ->
+	true;
 check_ret_type(T) ->
 	e_util:ethrow(element(2, T), "invalid returning type here").
 
