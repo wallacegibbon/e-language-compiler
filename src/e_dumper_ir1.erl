@@ -87,7 +87,7 @@ comment(Tag, Info, {Line, Col}) ->
 	Tag =:= fp orelse Tag =:= gp orelse Tag =:= zero
 	)).
 
--spec expr_to_ir(e_expr(), context()) -> {irs(), atom(), [atom()]}.
+-spec expr_to_ir(e_expr(), context()) -> {irs(), atom(), context()}.
 expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{} = Varref, ?I(N)), ?I(V)), Right), Ctx) ->
 	{RightIRs, R1, Ctx1} = expr_to_ir(Right, Ctx),
 	{VarrefIRs, R2, Ctx2} = expr_to_ir(Varref, Ctx1),
