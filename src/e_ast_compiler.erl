@@ -18,21 +18,21 @@ compile_from_raw_ast(AST, CompileOptions) ->
 	io:format("PHASE: type checking (INIT CODE)...~n"),
 	e_type:check_type_in_stmts(InitCode00, {GlobalVars00, FnTypeMap00, StructMap00}),
 
-	#{pointer_width := PointerWidth} = CompileOptions,
+	#{wordsize := WordSize} = CompileOptions,
 	%% Fill offset of variables and struct fields.
 	io:format("PHASE: size filling (AST)...~n"),
-	AST10 = e_size:fill_offsets_in_ast(AST00, {StructMap00, PointerWidth}),
+	AST10 = e_size:fill_offsets_in_ast(AST00, {StructMap00, WordSize}),
 	%% Struct info is updated, so StructMap needs to be updated, too.
 	{_, StructMap10} = e_util:make_function_and_struct_map_from_ast(AST10),
 	io:format("PHASE: size filling (GLOBAL VARS)...~n"),
-	GlobalVars10 = e_size:fill_offsets_in_vars(GlobalVars00, {StructMap10, PointerWidth}),
+	GlobalVars10 = e_size:fill_offsets_in_vars(GlobalVars00, {StructMap10, WordSize}),
 
 	%% Expand expressions like `sizeof` and `alignof`.
 	io:format("PHASE: keyword expanding (AST)...~n"),
-	AST20 = e_size:expand_kw_in_ast(AST10, {StructMap10, PointerWidth}),
+	AST20 = e_size:expand_kw_in_ast(AST10, {StructMap10, WordSize}),
 	%% Initializing code for global variables are not in main ast, do not forget them.
 	io:format("PHASE: keyword expanding (INIT CODE)...~n"),
-	InitCode20 = e_size:expand_kw_in_stmts(InitCode00, {StructMap10, PointerWidth}),
+	InitCode20 = e_size:expand_kw_in_stmts(InitCode00, {StructMap10, WordSize}),
 	%% sizeof expressions are expanded, so StructMap needs to be updated
 	{_, StructMap20} = e_util:make_function_and_struct_map_from_ast(AST20),
 
@@ -44,7 +44,7 @@ compile_from_raw_ast(AST, CompileOptions) ->
 
 	%% fix the pointer size. (Which was filled with `0`)
 	TypeCtx40 = {GlobalVars10, FnTypeMap00, StructMap20, #e_basic_type{}},
-	SizeCtx40 = {StructMap20, PointerWidth},
+	SizeCtx40 = {StructMap20, WordSize},
 	io:format("PHASE: pointer fixing (AST)...~n"),
 	AST40 = e_pointer:fix_pointer_size_in_ast(AST30, TypeCtx40, SizeCtx40),
 	io:format("PHASE: pointer fixing (INIT CODE)...~n"),

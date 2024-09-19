@@ -4,7 +4,7 @@
 -export_type([context/0]).
 -include("e_record_definition.hrl").
 
--type context() :: {StructMap :: #{atom() => #e_struct{}}, PointerWidth :: non_neg_integer()}.
+-type context() :: {StructMap :: #{atom() => #e_struct{}}, WordSize :: non_neg_integer()}.
 
 -spec expand_kw_in_ast(e_ast(), context()) -> e_ast().
 expand_kw_in_ast([#e_function{stmts = Stmts} = Fn | Rest], Ctx) ->
@@ -42,10 +42,10 @@ expand_kw_in_map(Map, Ctx) ->
 -spec fill_offsets_in_ast(e_ast(), context()) -> e_ast().
 fill_offsets_in_ast([#e_function{vars = Old} = Fn | Rest], Ctx) ->
 	[Fn#e_function{vars = fill_offsets_in_vars(Old, Ctx)} | fill_offsets_in_ast(Rest, Ctx)];
-fill_offsets_in_ast([#e_struct{name = Name, fields = Old} = S | Rest], {StructMap, PointerWidth} = Ctx) ->
+fill_offsets_in_ast([#e_struct{name = Name, fields = Old} = S | Rest], {StructMap, WordSize} = Ctx) ->
 	FilledS = S#e_struct{fields = fill_offsets_in_vars(Old, Ctx)},
 	%% StructMap in Ctx got updated to avoid some duplicated calculations.
-	[FilledS | fill_offsets_in_ast(Rest, {StructMap#{Name := FilledS}, PointerWidth})];
+	[FilledS | fill_offsets_in_ast(Rest, {StructMap#{Name := FilledS}, WordSize})];
 fill_offsets_in_ast([Any | Rest], Ctx) ->
 	[Any | fill_offsets_in_ast(Rest, Ctx)];
 fill_offsets_in_ast([], _) ->
@@ -97,16 +97,16 @@ size_and_offsets([], {CurrentOffset, MaxAlign, OffsetMap}, _) ->
 -spec size_of(e_type(), context()) -> non_neg_integer().
 size_of(#e_array_type{elem_type = T, length = Len}, Ctx) ->
 	size_of(T, Ctx) * Len;
-size_of(#e_basic_type{p_depth = N}, {_, PointerWidth}) when N > 0 ->
-	PointerWidth;
+size_of(#e_basic_type{p_depth = N}, {_, WordSize}) when N > 0 ->
+	WordSize;
 size_of(#e_basic_type{class = struct} = S, {StructMap, _} = Ctx) ->
 	size_of_struct(e_util:get_struct_from_type(S, StructMap), Ctx);
-size_of(#e_fn_type{}, {_, PointerWidth}) ->
-	PointerWidth;
-size_of(#e_basic_type{class = float}, {_, PointerWidth}) ->
-	PointerWidth;
-size_of(#e_basic_type{class = integer, tag = word}, {_, PointerWidth}) ->
-	PointerWidth;
+size_of(#e_fn_type{}, {_, WordSize}) ->
+	WordSize;
+size_of(#e_basic_type{class = float}, {_, WordSize}) ->
+	WordSize;
+size_of(#e_basic_type{class = integer, tag = word}, {_, WordSize}) ->
+	WordSize;
 size_of(#e_basic_type{class = integer, tag = byte}, _) ->
 	1;
 size_of(Any, _) ->
@@ -115,8 +115,8 @@ size_of(Any, _) ->
 -spec align_of(e_type(), context()) -> non_neg_integer().
 align_of(#e_array_type{elem_type = T}, Ctx) ->
 	align_of(T, Ctx);
-align_of(#e_basic_type{p_depth = N}, {_, PointerWidth}) when N > 0 ->
-	PointerWidth;
+align_of(#e_basic_type{p_depth = N}, {_, WordSize}) when N > 0 ->
+	WordSize;
 align_of(#e_basic_type{class = struct} = S, {StructMap, _} = Ctx) ->
 	align_of_struct(e_util:get_struct_from_type(S, StructMap), Ctx);
 align_of(Type, Ctx) ->
