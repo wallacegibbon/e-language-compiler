@@ -25,46 +25,54 @@ ast_to_ir([#e_function{name = Name, stmts = Stmts} = Fn | Rest], WordSize) ->
 	PrepareFrame = [{li, T1, FrameSize}, {'+', sp, sp, T1}],
 	Prologue = [{comment, prologue_start}, SaveRegs, PrepareFrame, {comment, prologue_end}],
 	RestoreRegs = [{mv, sp, fp}, {lw, fp, {sp, Size1}}, {lw, ra, {sp, Size1 + WordSize}}],
-	EndLabel = {label, concat_atoms([Name, epilogue])},
+	EndLabel = {label, generate_tag(Name, epilogue)},
 	Epilogue = [{comment, epilogue_start}, EndLabel, RestoreRegs, {ret, ra}, {comment, epilogue_end}],
 	Ctx = #{wordsize => WordSize, scope_tag => Name, tmp_regs => Regs, free_regs => Regs},
-	[{fn, Name}, Prologue, lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts), Epilogue | ast_to_ir(Rest, WordSize)];
+	Body = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts),
+	[{fn, Name}, Prologue, Body, Epilogue | ast_to_ir(Rest, WordSize)];
 ast_to_ir([_ | Rest], Ctx) ->
 	ast_to_ir(Rest, Ctx);
 ast_to_ir([], _) ->
 	[].
 
 -spec stmt_to_ir(e_stmt(), context()) -> irs().
-stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, Ctx) ->
+stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
 	{CondiIRs, R_Cond, _} = expr_to_ir(Condi, Ctx),
 	StartComment = comment('if', e_util:stmt_to_str(Condi), Loc),
 	EndComment = comment('if', "end", Loc),
 	Then1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Then0),
 	Else1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Else0),
-	Then2 = [comment('if', "then part", Loc), Then1, {j, end_if}],
-	Else2 = [comment('if', "else part", Loc), {label, else_label}, Else1, {j, end_if}, {label, end_if}],
-	[StartComment, CondiIRs, {jcond, R_Cond, else_label}, Then2, Else2, EndComment];
-stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, Ctx) ->
+	ElseLabel = generate_tag(ScopeTag, 'else', Loc),
+	EndLabel = generate_tag(ScopeTag, if_end, Loc),
+	Then2 = [comment('if', "then part", Loc), Then1, {j, EndLabel}],
+	Else2 = [comment('if', "else part", Loc), {label, ElseLabel}, Else1, {label, EndLabel}],
+	[StartComment, CondiIRs, {jcond, R_Cond, ElseLabel}, Then2, Else2, EndComment];
+stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
 	{CondiIRs, R_Cond, _} = expr_to_ir(Condi, Ctx),
 	StartComment = comment(while, e_util:stmt_to_str(Condi), Loc),
 	EndComment = comment(while, "end", Loc),
-	Stmts1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
-	Stmts2 = [comment(while, "body part", Loc), {label, body_start}, Stmts1, {j, body_start}, {label, end_while}],
-	[StartComment, CondiIRs, {jcond, R_Cond, end_while}, Stmts2, EndComment];
+	StartLabel = generate_tag(ScopeTag, while_start, Loc),
+	EndLabel = generate_tag(ScopeTag, while_end, Loc),
+	RawBody = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
+	Body = [comment(while, "body part", Loc), RawBody, {j, StartLabel}, {label, EndLabel}],
+	[StartComment, {label, StartLabel}, CondiIRs, {jcond, R_Cond, EndLabel}, Body, EndComment];
 stmt_to_ir(#e_return_stmt{expr = Expr}, #{scope_tag := ScopeTag} = Ctx) ->
 	{ExprIRs, R, _} = expr_to_ir(Expr, Ctx),
 	%% We use stack to pass result
-	[ExprIRs, {comment, "prepare return value"}, {sw, {fp, 0}, R}, {j, concat_atoms([ScopeTag, epilogue])}];
-stmt_to_ir(#e_goto_stmt{label = Label}, _) ->
-	[{j, Label}];
-stmt_to_ir(#e_label{name = Label}, _) ->
-	[{label, Label}];
+	[ExprIRs, {comment, "prepare return value"}, {sw, {fp, 0}, R}, {j, generate_tag(ScopeTag, epilogue)}];
+stmt_to_ir(#e_goto_stmt{label = Label}, #{scope_tag := ScopeTag}) ->
+	[{j, generate_tag(ScopeTag, Label)}];
+stmt_to_ir(#e_label{name = Label}, #{scope_tag := ScopeTag}) ->
+	[{label, generate_tag(ScopeTag, Label)}];
 stmt_to_ir(Stmt, Ctx) ->
 	{Exprs, _, _} = expr_to_ir(Stmt, Ctx),
 	Exprs.
 
-concat_atoms(AtomList) ->
-	list_to_atom(string:join(lists:map(fun(A) -> atom_to_list(A) end, AtomList), "_")).
+generate_tag(ScopeTag, Tag, {Line, Column}) ->
+	list_to_atom(e_util:fmt("~s_~s_~w_~w", [ScopeTag, Tag, Line, Column])).
+
+generate_tag(ScopeTag, Tag) ->
+	list_to_atom(e_util:fmt("~s_~s", [ScopeTag, Tag])).
 
 comment(Tag, Info, {Line, Col}) ->
 	{comment, io_lib:format("[~s@~w:~w] ~s", [Tag, Line, Col, Info])}.
