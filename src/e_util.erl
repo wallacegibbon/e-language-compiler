@@ -5,6 +5,9 @@
 -export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2, map_find_multi/2]).
 -export([reverse_compare_tag/1, is_compare_tag/1, list_map/2]).
 -include("e_record_definition.hrl").
+-ifdef(EUNIT).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
 
 %% This function is to avoid boilerplate code for statements. So you can concentrate on operators.
 -spec expr_map(fun((e_expr()) -> e_expr()), [e_stmt()]) -> [e_stmt()].
@@ -130,8 +133,6 @@ get_kvpair_by_keys(Names, Map) ->
 	lists:zip(Names, get_values_by_keys(Names, Map)).
 
 -ifdef(EUNIT).
-
--include_lib("eunit/include/eunit.hrl").
 
 get_values_by_keys_test() ->
 	?assertEqual([3, 2], get_values_by_keys([a, b], #{c => 1, b => 2, a => 3})).

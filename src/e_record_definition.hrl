@@ -70,6 +70,7 @@
 	align = 0 :: non_neg_integer(),
 	%% The whole size of this `e_vars`.
 	size = 0 :: non_neg_integer(),
+	shifted_size = 0 :: non_neg_integer(),
 	tag = none :: e_var_type()
 	}).
 

@@ -3,6 +3,9 @@
 -export([size_of/2, align_of/2]).
 -export_type([context/0]).
 -include("e_record_definition.hrl").
+-ifdef(EUNIT).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
 
 -type context() :: {StructMap :: #{atom() => #e_struct{}}, WordSize :: non_neg_integer()}.
 
@@ -40,8 +43,10 @@ expand_kw_in_map(Map, Ctx) ->
 	maps:map(fun(_, V1) -> expand_kw(V1, Ctx) end, Map).
 
 -spec fill_offsets_in_ast(e_ast(), context()) -> e_ast().
-fill_offsets_in_ast([#e_function{vars = Old} = Fn | Rest], Ctx) ->
-	[Fn#e_function{vars = fill_offsets_in_vars(Old, Ctx)} | fill_offsets_in_ast(Rest, Ctx)];
+fill_offsets_in_ast([#e_function{vars = Old, param_names = ParamNames} = Fn | Rest], Ctx) ->
+	Vars0 = fill_offsets_in_vars(Old, Ctx),
+	Vars1 = shift_offsets(Vars0, ParamNames),
+	[Fn#e_function{vars = Vars1} | fill_offsets_in_ast(Rest, Ctx)];
 fill_offsets_in_ast([#e_struct{name = Name, fields = Old} = S | Rest], {StructMap, WordSize} = Ctx) ->
 	FilledS = S#e_struct{fields = fill_offsets_in_vars(Old, Ctx)},
 	%% StructMap in Ctx got updated to avoid some duplicated calculations.
@@ -121,4 +126,33 @@ align_of(#e_basic_type{class = struct} = S, {StructMap, _} = Ctx) ->
 	align_of_struct(e_util:get_struct_from_type(S, StructMap), Ctx);
 align_of(Type, Ctx) ->
 	size_of(Type, Ctx).
+
+-spec shift_offsets(#e_vars{}, [atom()]) -> #e_vars{}.
+shift_offsets(#e_vars{names = Names, offset_map = OffsetMap, size = Size} = Vars, Before0) ->
+	case find_0th(Before0, Names) of
+		{ok, N} ->
+			{ok, {Offset, _}} = maps:find(N, OffsetMap),
+			OffsetMapNew = maps:map(fun(_, {O, S}) -> {O - Offset, S} end, OffsetMap),
+			Vars#e_vars{offset_map = OffsetMapNew, shifted_size = Size - Offset};
+		_ ->
+			OffsetMapNew = maps:map(fun(_, {O, S}) -> {O - Size, S} end, OffsetMap),
+			Vars#e_vars{offset_map = OffsetMapNew, shifted_size = 0}
+	end.
+
+-ifdef(EUNIT).
+shift_offsets_test() ->
+	V0 = #e_vars{names = [a, b, c], offset_map = #{a => {0, 4}, b => {4, 4}, c => {8, 1}}, size = 12, shifted_size = 12},
+	V1 = shift_offsets(V0, [a, b]),
+	?assertMatch(#e_vars{offset_map = #{a := {-8, 4}, b := {-4, 4}}, size = 12, shifted_size = 4}, V1).
+
+-endif.
+
+find_0th([N | Rest], [N | Names]) ->
+	find_0th(Rest, Names);
+find_0th([], [N | _]) ->
+	{ok, N};
+find_0th([], []) ->
+	ok;
+find_0th(_, _) ->
+	throw("invalid args and vars").
 

@@ -1,6 +1,9 @@
 -module(e_preprocessor).
 -export([process/1]).
 -include("e_record_definition.hrl").
+-ifdef(EUNIT).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
 
 %% Caution: Erlang do NOT support parametric polymorphism (generics), the following type is not correct:
 %% -type tree_list(T) :: list(T |  tree_list(T)).
@@ -164,8 +167,6 @@ replace_line_number(Tokens, Loc) ->
 	lists:map(fun(Token) -> setelement(2, Token, Loc) end, Tokens).
 
 -ifdef(EUNIT).
-
--include_lib("eunit/include/eunit.hrl").
 
 process_no_operator_test() ->
 	{ok, Tokens, _} = e_scanner:string("word a = 1;"),

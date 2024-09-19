@@ -3,6 +3,9 @@
 -export([replace_typeof_in_ast/2, replace_typeof_in_stmts/2, replace_typeof_in_vars/2]).
 -export_type([interface_context/0, context/0]).
 -include("e_record_definition.hrl").
+-ifdef(EUNIT).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
 
 -type interface_context() ::
 	{
@@ -460,7 +463,6 @@ bigger_type(#e_basic_type{class = float} = T, #e_basic_type{class = float}) ->
 	T.
 
 -ifdef(EUNIT).
--include_lib("eunit/include/eunit.hrl").
 
 -define(IOBJ(Tag, PDepth), #e_basic_type{class = integer, tag = Tag, p_depth = PDepth}).
 -define(FOBJ(PDepth), #e_basic_type{class = float, tag = float, p_depth = PDepth}).

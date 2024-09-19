@@ -15,7 +15,7 @@ generate_code(AST, InitCode, OutputFile, WordSize) ->
 
 -spec ast_to_ir(e_ast(), non_neg_integer()) -> irs().
 ast_to_ir([#e_function{name = Name, stmts = Stmts} = Fn | Rest], WordSize) ->
-	#e_function{vars = #e_vars{size = Size0}} = Fn,
+	#e_function{vars = #e_vars{shifted_size = Size0}} = Fn,
 	Size1 = e_util:fill_unit_pessi(Size0, WordSize),
 	%% The extra `2` is for `fp` and `returning address`.
 	FrameSize = Size1 + WordSize * 2,
@@ -113,6 +113,7 @@ expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
 	[T1 | RestRegs2] = RestRegs,
 	{[IRs, {ld_instr_from_v(V), T1, {R, 0}}], T1, Ctx#{free_regs := recycle_tmpreg([R], RestRegs2)}};
 expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, #{wordsize := WordSize} = Ctx) ->
+	%% register preparing and restoring steps
 	#{free_regs := FreeRegs, tmp_regs := TmpRegs} = Ctx,
 	UsedRegs = TmpRegs -- FreeRegs,
 	OffsetForUsedRegs = length(UsedRegs) * WordSize,
@@ -120,13 +121,14 @@ expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, #{wordsize := WordSize} = Ctx) 
 	StackOP1 = {'+', sp, sp, OffsetForUsedRegs},
 	RestoreIRs = e_util:list_map(fun(R, I) -> {lw, R, {sp, I * WordSize}} end, UsedRegs),
 	StackOP2 = {'-', sp, sp, OffsetForUsedRegs},
-	BeforeIRs = [{comment, e_util:fmt("regs to save (before call): ~w", [UsedRegs])}, StoreIRs, StackOP1],
-	AfterIRs = [{comment, e_util:fmt("regs to restore (after call): ~w", [UsedRegs])}, StackOP2, RestoreIRs],
+	BeforeIRs = [{comment, e_util:fmt("regs to save: ~w", [UsedRegs])}, StoreIRs, StackOP1],
+	AfterIRs = [{comment, e_util:fmt("regs to restore: ~w", [UsedRegs])}, StackOP2, RestoreIRs],
 	%% The calling related steps
-	ArgPreparingIRs = args_to_stack(Args, 0, Ctx),
-	{FnLoadIRs, R, Ctx1} = expr_to_ir(Fn, Ctx),
-	LoadRet = [{comment, "load returned value"}, {lw, R, {sp, 0}}],
-	{[{comment, "push args"}, ArgPreparingIRs, FnLoadIRs, BeforeIRs, {jalr, ra, R}, LoadRet, AfterIRs], R, Ctx1};
+	{FnLoadIRs, T1, Ctx1} = expr_to_ir(Fn, Ctx),
+	ArgPreparingIRs = args_to_stack(Args, Ctx1),
+	LoadRet = [{comment, "load returned value"}, {lw, T1, {sp, 0}}],
+	Call = [FnLoadIRs, {comment, "args"}, ArgPreparingIRs, {comment, "call"}, {jalr, ra, T1}, LoadRet],
+	{[BeforeIRs, Call, AfterIRs], T1, Ctx1};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
 	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
 	{IRs2, R2, #{free_regs := RestRegs}} = expr_to_ir(Right, Ctx1),
@@ -165,10 +167,10 @@ recycle_tmpreg([R | Regs], RegBank) ->
 recycle_tmpreg([], RegBank) ->
 	RegBank.
 
-args_to_stack([Arg | Rest], N, #{wordsize := WordSize} = Ctx) ->
+args_to_stack([Arg | Rest], #{wordsize := WordSize} = Ctx) ->
 	{IRs, R, _} = expr_to_ir(Arg, Ctx),
-	[IRs, {sw, R, {sp, N}} | args_to_stack(Rest, N + WordSize, Ctx)];
-args_to_stack([], _, _) ->
+	[IRs, {sw, R, {sp, 0}}, {'+', sp, sp, WordSize} | args_to_stack(Rest, Ctx)];
+args_to_stack([], _) ->
 	[].
 
 -spec write_irs(irs(), file:io_device()) -> ok.
