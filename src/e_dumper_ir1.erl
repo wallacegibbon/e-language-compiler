@@ -19,7 +19,7 @@ ast_to_ir([#e_function{name = Name, stmts = Stmts} = Fn | Rest], WordSize) ->
 	Size1 = e_util:fill_unit_pessi(Size0, WordSize),
 	%% The extra `2` is for `fp` and `returning address`.
 	FrameSize = Size1 + WordSize * 2,
-	SaveRegs = [{sw, {sp, Size1}, fp}, {sw, {sp, Size1 + WordSize}, ra}, {mv, fp, sp}],
+	SaveRegs = [{sw, fp, {sp, Size1}}, {sw, ra, {sp, Size1 + WordSize}}, {mv, fp, sp}],
 	Regs = tmp_regs(),
 	[T1 | _] = Regs,
 	PrepareFrame = [{li, T1, FrameSize}, {'+', sp, sp, T1}],
@@ -46,7 +46,7 @@ stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, #
 	EndLabel = generate_tag(ScopeTag, if_end, Loc),
 	Then2 = [comment('if', "then part", Loc), Then1, {j, EndLabel}],
 	Else2 = [comment('if', "else part", Loc), {label, ElseLabel}, Else1, {label, EndLabel}],
-	[StartComment, CondiIRs, {jcond, R_Cond, ElseLabel}, Then2, Else2, EndComment];
+	[StartComment, CondiIRs, {br, R_Cond, ElseLabel}, Then2, Else2, EndComment];
 stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
 	{CondiIRs, R_Cond, _} = expr_to_ir(Condi, Ctx),
 	StartComment = comment(while, e_util:stmt_to_str(Condi), Loc),
@@ -55,11 +55,11 @@ stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, #{scope_tag 
 	EndLabel = generate_tag(ScopeTag, while_end, Loc),
 	RawBody = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
 	Body = [comment(while, "body part", Loc), RawBody, {j, StartLabel}, {label, EndLabel}],
-	[StartComment, {label, StartLabel}, CondiIRs, {jcond, R_Cond, EndLabel}, Body, EndComment];
+	[StartComment, {label, StartLabel}, CondiIRs, {br, R_Cond, EndLabel}, Body, EndComment];
 stmt_to_ir(#e_return_stmt{expr = Expr}, #{scope_tag := ScopeTag} = Ctx) ->
 	{ExprIRs, R, _} = expr_to_ir(Expr, Ctx),
 	%% We use stack to pass result
-	[ExprIRs, {comment, "prepare return value"}, {sw, {fp, 0}, R}, {j, generate_tag(ScopeTag, epilogue)}];
+	[ExprIRs, {comment, "prepare return value"}, {sw, R, {fp, 0}}, {j, generate_tag(ScopeTag, epilogue)}];
 stmt_to_ir(#e_goto_stmt{label = Label}, #{scope_tag := ScopeTag}) ->
 	[{j, generate_tag(ScopeTag, Label)}];
 stmt_to_ir(#e_label{name = Label}, #{scope_tag := ScopeTag}) ->
@@ -112,10 +112,21 @@ expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
 	{IRs, R, #{free_regs := RestRegs}} = expr_to_ir(Expr, Ctx),
 	[T1 | RestRegs2] = RestRegs,
 	{[IRs, {ld_instr_from_v(V), T1, {R, 0}}], T1, Ctx#{free_regs := recycle_tmpreg([R], RestRegs2)}};
-expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, Ctx) ->
+expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, #{wordsize := WordSize} = Ctx) ->
+	#{free_regs := FreeRegs, tmp_regs := TmpRegs} = Ctx,
+	UsedRegs = TmpRegs -- FreeRegs,
+	OffsetForUsedRegs = length(UsedRegs) * WordSize,
+	StoreIRs = e_util:list_map(fun(R, I) -> {sw, R, {sp, I * WordSize}} end, UsedRegs),
+	StackOP1 = {'+', sp, sp, OffsetForUsedRegs},
+	RestoreIRs = e_util:list_map(fun(R, I) -> {lw, R, {sp, I * WordSize}} end, UsedRegs),
+	StackOP2 = {'-', sp, sp, OffsetForUsedRegs},
+	BeforeIRs = [{comment, e_util:fmt("regs to save (before call): ~w", [UsedRegs])}, StoreIRs, StackOP1],
+	AfterIRs = [{comment, e_util:fmt("regs to restore (after call): ~w", [UsedRegs])}, StackOP2, RestoreIRs],
+	%% The calling related steps
+	ArgPreparingIRs = args_to_stack(Args, 0, Ctx),
 	{FnLoadIRs, R, Ctx1} = expr_to_ir(Fn, Ctx),
-	ArgPreparingIRs = args_to_stack(Args, 0, Ctx1),
-	{[FnLoadIRs, ArgPreparingIRs, {call, R}, {comment, "load returned value"}, {lw, R, {sp, 0}}], R, Ctx1};
+	LoadRet = [{comment, "load returned value"}, {lw, R, {sp, 0}}],
+	{[{comment, "push args"}, ArgPreparingIRs, FnLoadIRs, BeforeIRs, {jalr, ra, R}, LoadRet, AfterIRs], R, Ctx1};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
 	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
 	{IRs2, R2, #{free_regs := RestRegs}} = expr_to_ir(Right, Ctx1),
@@ -156,7 +167,7 @@ recycle_tmpreg([], RegBank) ->
 
 args_to_stack([Arg | Rest], N, #{wordsize := WordSize} = Ctx) ->
 	{IRs, R, _} = expr_to_ir(Arg, Ctx),
-	[IRs, {sw, {sp, N}, R} | args_to_stack(Rest, N + WordSize, Ctx)];
+	[IRs, {sw, R, {sp, N}} | args_to_stack(Rest, N + WordSize, Ctx)];
 args_to_stack([], _, _) ->
 	[].
 

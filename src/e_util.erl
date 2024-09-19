@@ -3,7 +3,7 @@
 -export([names_of_var_defs/1, names_of_var_refs/1, get_struct_from_type/2, get_struct_from_name/3]).
 -export([void_type/1, fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, fix_special_chars/1]).
 -export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2, map_find_multi/2]).
--export([reverse_compare_tag/1, is_compare_tag/1]).
+-export([reverse_compare_tag/1, is_compare_tag/1, list_map/2]).
 -include("e_record_definition.hrl").
 
 %% This function is to avoid boilerplate code for statements. So you can concentrate on operators.
@@ -158,6 +158,10 @@ fill_unit_opti(Num, Unit) ->
 -spec fall_unit(non_neg_integer(), non_neg_integer()) -> non_neg_integer().
 fall_unit(Num, Unit) ->
 	Num div Unit * Unit.
+
+-spec list_map(fun((E1, pos_integer()) -> E2), [E1]) -> [E2] when E1 :: any(), E2 :: any().
+list_map(Fn, List) ->
+	lists:map(fun({I, E}) -> Fn(E, I) end, lists:enumerate(0, List)).
 
 void_type(Loc) ->
 	#e_basic_type{class = void, tag = void, p_depth = 0, loc = Loc}.
