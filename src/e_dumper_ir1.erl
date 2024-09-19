@@ -19,14 +19,14 @@ ast_to_ir([#e_function{name = Name, stmts = Stmts} = Fn | Rest], WordSize) ->
 	Size1 = e_util:fill_unit_pessi(Size0, WordSize),
 	%% The extra `2` is for `fp` and `returning address`.
 	FrameSize = Size1 + WordSize * 2,
-	SaveRegs = [{sw, fp, {sp, Size1}}, {sw, ra, {sp, Size1 + WordSize}}, {mv, fp, sp}],
+	RegSave = [{sw, fp, {sp, Size1}}, {sw, ra, {sp, Size1 + WordSize}}, {mv, fp, sp}],
 	Regs = tmp_regs(),
 	[T1 | _] = Regs,
-	PrepareFrame = [{li, T1, FrameSize}, {'+', sp, sp, T1}],
-	Prologue = [{comment, prologue_start}, SaveRegs, PrepareFrame, {comment, prologue_end}],
-	RestoreRegs = [{mv, sp, fp}, {lw, fp, {sp, Size1}}, {lw, ra, {sp, Size1 + WordSize}}],
+	FramePrepare = [{li, T1, FrameSize}, {'+', sp, sp, T1}],
+	Prologue = [{comment, prologue_start}, RegSave, FramePrepare, {comment, prologue_end}],
+	RegRestore = [{mv, sp, fp}, {lw, fp, {sp, Size1}}, {lw, ra, {sp, Size1 + WordSize}}],
 	EndLabel = {label, generate_tag(Name, epilogue)},
-	Epilogue = [{comment, epilogue_start}, EndLabel, RestoreRegs, {ret, ra}, {comment, epilogue_end}],
+	Epilogue = [{comment, epilogue_start}, EndLabel, RegRestore, {ret, ra}, {comment, epilogue_end}],
 	Ctx = #{wordsize => WordSize, scope_tag => Name, tmp_regs => Regs, free_regs => Regs},
 	Body = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts),
 	[{fn, Name}, Prologue, Body, Epilogue | ast_to_ir(Rest, WordSize)];
@@ -117,18 +117,18 @@ expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, #{wordsize := WordSize} = Ctx) 
 	#{free_regs := FreeRegs, tmp_regs := TmpRegs} = Ctx,
 	UsedRegs = TmpRegs -- FreeRegs,
 	OffsetForUsedRegs = length(UsedRegs) * WordSize,
-	StoreIRs = e_util:list_map(fun(R, I) -> {sw, R, {sp, I * WordSize}} end, UsedRegs),
-	StackOP1 = {'+', sp, sp, OffsetForUsedRegs},
-	RestoreIRs = e_util:list_map(fun(R, I) -> {lw, R, {sp, I * WordSize}} end, UsedRegs),
-	StackOP2 = {'-', sp, sp, OffsetForUsedRegs},
-	BeforeIRs = [{comment, e_util:fmt("regs to save: ~w", [UsedRegs])}, StoreIRs, StackOP1],
-	AfterIRs = [{comment, e_util:fmt("regs to restore: ~w", [UsedRegs])}, StackOP2, RestoreIRs],
+	StackGrow = {'+', sp, sp, OffsetForUsedRegs},
+	StackShrink = {'-', sp, sp, OffsetForUsedRegs},
+	TmpSave = e_util:list_map(fun(R, I) -> {sw, R, {sp, I * WordSize}} end, UsedRegs),
+	TmpRestore = e_util:list_map(fun(R, I) -> {lw, R, {sp, I * WordSize}} end, UsedRegs),
+	BeforeCall = [{comment, e_util:fmt("regs to save: ~w", [UsedRegs])}, TmpSave, StackGrow],
+	AfterCall = [{comment, e_util:fmt("regs to restore: ~w", [UsedRegs])}, StackShrink, TmpRestore],
 	%% The calling related steps
-	{FnLoadIRs, T1, Ctx1} = expr_to_ir(Fn, Ctx),
-	ArgPreparingIRs = args_to_stack(Args, Ctx1),
-	LoadRet = [{comment, "load returned value"}, {lw, T1, {sp, 0}}],
-	Call = [FnLoadIRs, {comment, "args"}, ArgPreparingIRs, {comment, "call"}, {jalr, ra, T1}, LoadRet],
-	{[BeforeIRs, Call, AfterIRs], T1, Ctx1};
+	{FnLoad, T1, Ctx1} = expr_to_ir(Fn, Ctx),
+	{ArgPrepare, N} = args_to_stack(Args, 0, [], Ctx1),
+	RetLoad = [{comment, "load ret"}, {lw, T1, {sp, 0}}, {'-', sp, sp, N}],
+	Call = [FnLoad, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, ra, T1}, RetLoad],
+	{[{comment, "call start"}, BeforeCall, Call, AfterCall, {comment, "call end"}], T1, Ctx1};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
 	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
 	{IRs2, R2, #{free_regs := RestRegs}} = expr_to_ir(Right, Ctx1),
@@ -167,11 +167,11 @@ recycle_tmpreg([R | Regs], RegBank) ->
 recycle_tmpreg([], RegBank) ->
 	RegBank.
 
-args_to_stack([Arg | Rest], #{wordsize := WordSize} = Ctx) ->
+args_to_stack([Arg | Rest], N, Result, #{wordsize := WordSize} = Ctx) ->
 	{IRs, R, _} = expr_to_ir(Arg, Ctx),
-	[IRs, {sw, R, {sp, 0}}, {'+', sp, sp, WordSize} | args_to_stack(Rest, Ctx)];
-args_to_stack([], _) ->
-	[].
+	args_to_stack(Rest, N + WordSize, [[IRs, {sw, R, {sp, 0}}, {'+', sp, sp, WordSize}] | Result], Ctx);
+args_to_stack([], N, Result, _) ->
+	{lists:reverse(Result), N}.
 
 -spec write_irs(irs(), file:io_device()) -> ok.
 write_irs([IRs | Rest], IO_Dev) when is_list(IRs) ->
