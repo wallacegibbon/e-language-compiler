@@ -99,11 +99,11 @@ comment(Tag, Info, {Line, Col}) ->
 expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{} = Varref, ?I(N)), ?I(V)), Right), Ctx) ->
 	{RightIRs, R1, Ctx1} = expr_to_ir(Right, Ctx),
 	{VarrefIRs, R2, Ctx2} = expr_to_ir(Varref, Ctx1),
-	{[RightIRs, VarrefIRs, {st_instr_from_v(V), {R2, N}, R1}], R1, Ctx2};
+	{[RightIRs, VarrefIRs, {st_instr_from_v(V), R1, {R2, N}}], R1, Ctx2};
 expr_to_ir(?OP2('=', ?OP2('^', Expr, ?I(V)), Right), Ctx) ->
 	{RightIRs, R1, Ctx1} = expr_to_ir(Right, Ctx),
 	{LeftIRs, R2, Ctx2} = expr_to_ir(Expr, Ctx1),
-	{[RightIRs, LeftIRs, {st_instr_from_v(V), {R2, 0}, R1}], R1, Ctx2};
+	{[RightIRs, LeftIRs, {st_instr_from_v(V), R1, {R2, 0}}], R1, Ctx2};
 expr_to_ir(?OP2('^', ?OP2('+', #e_varref{} = Varref, ?I(N)), ?I(V)), Ctx) ->
 	{IRs, R, #{free_regs := RestRegs}} = expr_to_ir(Varref, Ctx),
 	[T1 | RestRegs2] = RestRegs,
