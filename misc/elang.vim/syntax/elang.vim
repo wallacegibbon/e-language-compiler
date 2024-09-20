@@ -12,7 +12,7 @@ syn match e_comment		"%.*$"
 syn region e_pre		start="^\s*\zs\%(%:\|#\)\s*\%(if\|ifdef\|ifndef\|else\|elif\|endif\|define\|undef\|error\|warning\|include\)\>" skip="\\$" end="$" keepend contains=e_comment,e_string,e_char,e_integer,e_float
 syn match e_macro_ref		"?[A-Za-z_]\+\>"
 
-syn keyword e_keyword		struct fn end if then else elif while do goto sizeof alignof typeof return as
+syn keyword e_keyword		struct fn end if then else elif while do goto sizeof alignof typeof return as interrupt
 syn keyword e_type		byte word float any void
 syn keyword e_operator		band bor bxor bnot and or not rem
 syn match e_operator		"==\|!=\|>=\|<=\|>\|<\|@\|\^\|+\|-\|*\|/\|="

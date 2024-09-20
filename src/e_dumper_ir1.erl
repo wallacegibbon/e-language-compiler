@@ -8,25 +8,25 @@
 -spec generate_code(e_ast(), e_ast(), string(), non_neg_integer()) -> ok.
 generate_code(AST, InitCode, OutputFile, WordSize) ->
 	Regs = tmp_regs(),
-	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs},
+	Ctx = #{wordsize => WordSize, scope_tag => '<init1>', tmp_regs => Regs, free_regs => Regs},
 	IRs = [{fn, '<init1>'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, InitCode) | ast_to_ir(AST, WordSize)],
 	Fn = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"} | IRs], IO_Dev) end,
 	file_transaction(OutputFile, Fn).
 
 -spec ast_to_ir(e_ast(), non_neg_integer()) -> irs().
-ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size = Size0}} | Rest], WordSize) ->
+ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size = Size0}} = Fn | Rest], WordSize) ->
 	%% When there are no local variables, there should still be one word for returning value.
 	Size1 = erlang:max(e_util:fill_unit_pessi(Size0, WordSize), WordSize),
 	%% The extra `2` words are for `frame pointer`(fp) and `returning address`(ra).
 	FrameSize = Size1 + WordSize * 2,
 	RegSave = [{sw, fp, {sp, Size1}}, {sw, ra, {sp, Size1 + WordSize}}, {mv, fp, sp}],
 	Regs = tmp_regs(),
-	[T1 | _] = Regs,
-	FramePrepare = [{li, T1, FrameSize}, {'+', sp, sp, T1}],
-	Prologue = [{comment, prologue_start}, RegSave, FramePrepare, {comment, prologue_end}],
+	{Before, After} = interrupt_related_code(Fn, Regs, WordSize),
+	FramePrepare = {'+', sp, sp, FrameSize},
+	Prologue = [{comment, "prologue start"}, RegSave, FramePrepare, Before, {comment, "prologue end"}],
 	RegRestore = [{mv, sp, fp}, {lw, fp, {sp, Size1}}, {lw, ra, {sp, Size1 + WordSize}}],
 	EndLabel = {label, generate_tag(Name, epilogue)},
-	Epilogue = [{comment, epilogue_start}, EndLabel, RegRestore, {ret, ra}, {comment, epilogue_end}],
+	Epilogue = [{comment, "epilogue start"}, EndLabel, After, RegRestore, {ret, ra}, {comment, "epilogue end"}],
 	Ctx = #{wordsize => WordSize, scope_tag => Name, tmp_regs => Regs, free_regs => Regs},
 	Body = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts),
 	[{fn, Name}, Prologue, Body, Epilogue | ast_to_ir(Rest, WordSize)];
@@ -34,6 +34,11 @@ ast_to_ir([_ | Rest], Ctx) ->
 	ast_to_ir(Rest, Ctx);
 ast_to_ir([], _) ->
 	[].
+
+interrupt_related_code(#e_function{interrupt = true}, Regs, WordSize) ->
+	reg_save_restore(Regs, WordSize);
+interrupt_related_code(_, _, _) ->
+	{[], []}.
 
 -spec stmt_to_ir(e_stmt(), context()) -> irs().
 stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
@@ -116,13 +121,7 @@ expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, #{wordsize := WordSize} = Ctx) 
 	%% register preparing and restoring steps
 	#{free_regs := FreeRegs, tmp_regs := TmpRegs} = Ctx,
 	UsedRegs = TmpRegs -- FreeRegs,
-	OffsetForUsedRegs = length(UsedRegs) * WordSize,
-	StackGrow = [{comment, "grow stack"}, {'+', sp, sp, OffsetForUsedRegs}],
-	StackShrink = [{comment, "shrink stack"}, {'-', sp, sp, OffsetForUsedRegs}],
-	TmpSave = e_util:list_map(fun(R, I) -> {sw, R, {sp, I * WordSize}} end, UsedRegs),
-	TmpRestore = e_util:list_map(fun(R, I) -> {lw, R, {sp, I * WordSize}} end, UsedRegs),
-	BeforeCall = [{comment, e_util:fmt("regs to save: ~w", [UsedRegs])}, TmpSave, StackGrow],
-	AfterCall = [{comment, e_util:fmt("regs to restore: ~w", [UsedRegs])}, StackShrink, TmpRestore],
+	{BeforeCall, AfterCall} = reg_save_restore(UsedRegs, WordSize),
 	%% The calling related steps
 	{FnLoad, T1, Ctx1} = expr_to_ir(Fn, Ctx),
 	{ArgPrepare, N} = args_to_stack(Args, 0, [], Ctx1),
@@ -166,6 +165,16 @@ recycle_tmpreg([R | Regs], RegBank) ->
 	recycle_tmpreg(Regs, [R | RegBank]);
 recycle_tmpreg([], RegBank) ->
 	RegBank.
+
+reg_save_restore(Regs, WordSize) ->
+	TotalSize = length(Regs) * WordSize,
+	StackGrow = [{comment, "grow stack"}, {'+', sp, sp, TotalSize}],
+	StackShrink = [{comment, "shrink stack"}, {'-', sp, sp, TotalSize}],
+	Save = e_util:list_map(fun(R, I) -> {sw, R, {sp, I * WordSize}} end, Regs),
+	Restore = e_util:list_map(fun(R, I) -> {lw, R, {sp, I * WordSize}} end, Regs),
+	Before = [{comment, io_lib:format("regs to save: ~w", [Regs])}, Save, StackGrow],
+	After = [{comment, io_lib:format("regs to restore: ~w", [Regs])}, StackShrink, Restore],
+	{Before, After}.
 
 args_to_stack([Arg | Rest], N, Result, #{wordsize := WordSize} = Ctx) ->
 	{IRs, R, _} = expr_to_ir(Arg, Ctx),

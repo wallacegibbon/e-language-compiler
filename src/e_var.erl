@@ -71,8 +71,8 @@ fetch_vars([#e_vardef{} = Hd | Rest], AST, {#e_vars{type_map = TypeMap} = Vars, 
 	check_name_conflict(Name, Vars, Loc),
 	NewCtx = {Vars#e_vars{type_map = TypeMap#{Name => Type}}, [Name | Names], InitCode, false, Tag},
 	fetch_vars(Rest, append_to_ast(AST, Name, InitialValue, Loc), NewCtx);
-fetch_vars([#e_function_raw{} = Hd | Rest], AST, {GlobalVars, _, _, _, _} = Ctx) ->
-	#e_function_raw{name = Name, ret_type = Ret, params = Params, stmts = Stmts, loc = Loc} = Hd,
+fetch_vars([#e_function_raw{name = Name, loc = Loc} = Hd | Rest], AST, {GlobalVars, _, _, _, _} = Ctx) ->
+	#e_function_raw{ret_type = Ret, params = Params, stmts = Stmts, interrupt = Interrupt} = Hd,
 	{ParamVars, [], ParamInitCode} = fetch_vars(Params, [], {#e_vars{}, [], [], true, local}),
 	e_util:assert(ParamInitCode =:= [], {Loc, "function params can not have default value"}),
 	check_variable_conflict(GlobalVars, ParamVars),
@@ -81,7 +81,7 @@ fetch_vars([#e_function_raw{} = Hd | Rest], AST, {GlobalVars, _, _, _, _} = Ctx)
 	FnType = #e_fn_type{params = get_values_by_defs(Params, ParamVars), ret = Ret, loc = Loc},
 	ParamNames = e_util:names_of_var_defs(Params),
 	check_label_conflict(NewStmts, #{}),
-	Fn = #e_function{name = Name, vars = LocalVars, param_names = ParamNames, type = FnType, stmts = NewStmts, loc = Loc},
+	Fn = #e_function{name = Name, vars = LocalVars, param_names = ParamNames, type = FnType, stmts = NewStmts, loc = Loc, interrupt = Interrupt},
 	fetch_vars(Rest, [Fn | AST], Ctx);
 fetch_vars([#e_struct_raw{name = Name, fields = RawFields, loc = Loc} | Rest], AST, Ctx) ->
 	%% struct can have default value

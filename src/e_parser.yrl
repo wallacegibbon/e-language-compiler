@@ -16,10 +16,10 @@ Terminals
 
 %% keywords
 struct 'end' 'fn' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
-while do 'if' then elif 'else' return sizeof alignof typeof goto as new
+while do 'if' then elif 'else' return sizeof alignof goto as interrupt
 
 %% reserved keywords
-'cond' 'case' for break continue
+'cond' 'case' for break continue typeof new
 
 %%
 identifier integer float string int_type float_type void_type any_type
@@ -94,6 +94,8 @@ e_struct_def -> struct identifier e_vardefs 'end' :
 	#e_struct_raw{name = token_value('$2'), fields = '$3', loc = token_loc('$2')}.
 
 %% function definition
+e_function_def -> interrupt e_function_def :
+	'$2'#e_function_raw{interrupt = true}.
 e_function_def -> 'fn' identifier '(' e_vardefs ')' ':' e_type_anno e_function_stmts 'end' :
 	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = '$7', stmts = '$8', loc = token_loc('$2')}.
 e_function_def -> 'fn' identifier '(' ')' ':' e_type_anno e_function_stmts 'end' :

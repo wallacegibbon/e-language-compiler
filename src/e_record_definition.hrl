@@ -82,7 +82,8 @@
 	vars = #e_vars{} :: #e_vars{},
 	param_names = [] :: [atom()],
 	type :: #e_fn_type{},
-	stmts = [] :: [e_stmt()]
+	stmts = [] :: [e_stmt()],
+	interrupt = false :: boolean()
 	}).
 
 -record(e_struct,
@@ -187,7 +188,8 @@
 	name :: atom(),
 	params = [] :: [e_stmt()],
 	ret_type :: e_type(),
-	stmts = [] :: [e_stmt()]
+	stmts = [] :: [e_stmt()],
+	interrupt = false :: boolean()
 	}).
 
 -type e_expr() :: #e_op{} | #e_integer{} | #e_float{} | #e_string{} | #e_varref{} | #e_struct_init_expr{} | #e_array_init_expr{}.
