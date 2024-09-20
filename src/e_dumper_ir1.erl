@@ -14,10 +14,10 @@ generate_code(AST, InitCode, OutputFile, WordSize) ->
 	file_transaction(OutputFile, Fn).
 
 -spec ast_to_ir(e_ast(), non_neg_integer()) -> irs().
-ast_to_ir([#e_function{name = Name, stmts = Stmts} = Fn | Rest], WordSize) ->
-	#e_function{vars = #e_vars{shifted_size = Size0}} = Fn,
-	Size1 = e_util:fill_unit_pessi(Size0, WordSize),
-	%% The extra `2` is for `fp` and `returning address`.
+ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size = Size0}} | Rest], WordSize) ->
+	%% When there are no local variables, there should still be one word for returning value.
+	Size1 = erlang:max(e_util:fill_unit_pessi(Size0, WordSize), WordSize),
+	%% The extra `2` words are for `frame pointer`(fp) and `returning address`(ra).
 	FrameSize = Size1 + WordSize * 2,
 	RegSave = [{sw, fp, {sp, Size1}}, {sw, ra, {sp, Size1 + WordSize}}, {mv, fp, sp}],
 	Regs = tmp_regs(),
@@ -117,8 +117,8 @@ expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, #{wordsize := WordSize} = Ctx) 
 	#{free_regs := FreeRegs, tmp_regs := TmpRegs} = Ctx,
 	UsedRegs = TmpRegs -- FreeRegs,
 	OffsetForUsedRegs = length(UsedRegs) * WordSize,
-	StackGrow = {'+', sp, sp, OffsetForUsedRegs},
-	StackShrink = {'-', sp, sp, OffsetForUsedRegs},
+	StackGrow = [{comment, "grow stack"}, {'+', sp, sp, OffsetForUsedRegs}],
+	StackShrink = [{comment, "shrink stack"}, {'-', sp, sp, OffsetForUsedRegs}],
 	TmpSave = e_util:list_map(fun(R, I) -> {sw, R, {sp, I * WordSize}} end, UsedRegs),
 	TmpRestore = e_util:list_map(fun(R, I) -> {lw, R, {sp, I * WordSize}} end, UsedRegs),
 	BeforeCall = [{comment, e_util:fmt("regs to save: ~w", [UsedRegs])}, TmpSave, StackGrow],
@@ -126,7 +126,7 @@ expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, #{wordsize := WordSize} = Ctx) 
 	%% The calling related steps
 	{FnLoad, T1, Ctx1} = expr_to_ir(Fn, Ctx),
 	{ArgPrepare, N} = args_to_stack(Args, 0, [], Ctx1),
-	RetLoad = [{comment, "load ret"}, {lw, T1, {sp, 0}}, {'-', sp, sp, N}],
+	RetLoad = [{comment, "load ret"}, {lw, T1, {sp, 0}}, {comment, "drop args"}, {'-', sp, sp, N}],
 	Call = [FnLoad, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, ra, T1}, RetLoad],
 	{[{comment, "call start"}, BeforeCall, Call, AfterCall, {comment, "call end"}], T1, Ctx1};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
