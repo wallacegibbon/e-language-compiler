@@ -54,9 +54,11 @@ e_type_anno -> int_type e_pointer_depth :
 e_type_anno -> int_type :
 	#e_basic_type{class = integer, p_depth = 0, tag = token_value('$1'), loc = token_loc('$1')}.
 e_type_anno -> float_type e_pointer_depth :
-	#e_basic_type{class = float, p_depth = '$2', tag = token_value('$1'), loc = token_loc('$1')}.
+	%#e_basic_type{class = float, p_depth = '$2', tag = token_value('$1'), loc = token_loc('$1')}.
+	return_error(token_loc('$1'), "type \"float\" is not supported yet").
 e_type_anno -> float_type :
-	#e_basic_type{class = float, p_depth = 0, tag = token_value('$1'), loc = token_loc('$1')}.
+	%#e_basic_type{class = float, p_depth = 0, tag = token_value('$1'), loc = token_loc('$1')}.
+	return_error(token_loc('$1'), "type \"float\" is not supported yet").
 e_type_anno -> identifier e_pointer_depth :
 	#e_basic_type{class = struct, p_depth = '$2', tag = token_value('$1'), loc = token_loc('$1')}.
 e_type_anno -> identifier :

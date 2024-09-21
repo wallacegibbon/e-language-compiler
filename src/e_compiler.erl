@@ -1,5 +1,5 @@
 -module(e_compiler).
--export([compile_to_ast/1, compile_to_asm/2, compile_to_ir1/2, compile_to_c/2, compile_to_e/2]).
+-export([compile_to_ast/1, compile_to_machine1/2, compile_to_ir1/2, compile_to_c/2, compile_to_e/2]).
 -export_type([e_compile_options/0]).
 -include("e_record_definition.hrl").
 
@@ -40,13 +40,13 @@ compile_to_ir1(InputFilename, OutputFilename) ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [InputFilename, Line, Col, ErrorInfo]))
 	end.
 
--spec compile_to_asm(string(), string()) -> ok.
-compile_to_asm(InputFilename, OutputFilename) ->
+-spec compile_to_machine1(string(), string()) -> ok.
+compile_to_machine1(InputFilename, OutputFilename) ->
 	IR1Filename = OutputFilename ++ ".ir1",
 	try
 		compile_to_ir1(InputFilename, IR1Filename),
 		{ok, IRs} = file:consult(IR1Filename),
-		e_dumper_asm:generate_code(IRs, OutputFilename)
+		e_dumper_machine1:generate_code(IRs, OutputFilename)
 	catch
 		{{Line, Col}, ErrorInfo} ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [InputFilename, Line, Col, ErrorInfo]))

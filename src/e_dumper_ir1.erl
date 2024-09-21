@@ -2,8 +2,8 @@
 -export([generate_code/4]).
 -include("e_record_definition.hrl").
 
--type context() :: #{wordsize => pos_integer(), scope_tag => atom(), tmp_regs => [atom()], free_regs => [atom()]}.
--type irs() :: [tuple() | irs()].
+%% According the calling convention of RISC-V: RA is X1, SP is X2, GP is X3, FP is X8. X5-X7 is T0-T2.
+%% We use A0-A4 as T3-T7 since we pass arguments through stack and `Ax` are caller saved just like `Tx`.
 
 -spec generate_code(e_ast(), e_ast(), string(), non_neg_integer()) -> ok.
 generate_code(AST, InitCode, OutputFile, WordSize) ->
@@ -13,20 +13,22 @@ generate_code(AST, InitCode, OutputFile, WordSize) ->
 	Fn = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"} | IRs], IO_Dev) end,
 	e_util:file_write(OutputFile, Fn).
 
+-type irs() :: [tuple() | irs()].
+
 -spec ast_to_ir(e_ast(), non_neg_integer()) -> irs().
 ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size = Size0}} = Fn | Rest], WordSize) ->
 	%% When there are no local variables, there should still be one word for returning value.
 	Size1 = erlang:max(e_util:fill_unit_pessi(Size0, WordSize), WordSize),
-	%% The extra `2` words are for `frame pointer`(fp) and `returning address`(ra).
+	%% The extra `2` words are for `frame pointer`({x, 8}) and `returning address`({x, 1}).
 	FrameSize = Size1 + WordSize * 2,
-	RegSave = [{sw, fp, {sp, Size1}}, {sw, ra, {sp, Size1 + WordSize}}, {mv, fp, sp}],
+	RegSave = [{sw, {x, 8}, {{x, 2}, Size1}}, {sw, {x, 1}, {{x, 2}, Size1 + WordSize}}, {mv, {x, 8}, {x, 2}}],
 	Regs = tmp_regs(),
 	{Before, After} = interrupt_related_code(Fn, Regs, WordSize),
-	FramePrepare = {'+', sp, sp, FrameSize},
-	Prologue = [{comment, "prologue start"}, RegSave, FramePrepare, Before, {comment, "prologue end"}],
-	RegRestore = [{mv, sp, fp}, {lw, fp, {sp, Size1}}, {lw, ra, {sp, Size1 + WordSize}}],
+	FramePrepare = {'+', {x, 2}, {x, 2}, FrameSize},
+	Prologue = [RegSave, FramePrepare, Before, {comment, "prologue end"}],
+	RegRestore = [{mv, {x, 2}, {x, 8}}, {lw, {x, 8}, {{x, 2}, Size1}}, {lw, {x, 1}, {{x, 2}, Size1 + WordSize}}],
 	EndLabel = {label, generate_tag(Name, epilogue)},
-	Epilogue = [{comment, "epilogue start"}, EndLabel, After, RegRestore, {ret, ra}, {comment, "epilogue end"}],
+	Epilogue = [EndLabel, After, RegRestore, {jalr, {x, 0}, {x, 1}}],
 	Ctx = #{wordsize => WordSize, scope_tag => Name, tmp_regs => Regs, free_regs => Regs},
 	Body = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts),
 	[{fn, Name}, Prologue, Body, Epilogue | ast_to_ir(Rest, WordSize)];
@@ -39,6 +41,16 @@ interrupt_related_code(#e_function{interrupt = true}, Regs, WordSize) ->
 	reg_save_restore(Regs, WordSize);
 interrupt_related_code(_, _, _) ->
 	{[], []}.
+
+-type machine_reg() :: {x, non_neg_integer()}.
+
+-type context() ::
+	#{
+	wordsize => pos_integer(),
+	scope_tag => atom(),
+	tmp_regs => [machine_reg()],
+	free_regs => [machine_reg()]
+	}.
 
 -spec stmt_to_ir(e_stmt(), context()) -> irs().
 stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
@@ -64,7 +76,7 @@ stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, #{scope_tag 
 stmt_to_ir(#e_return_stmt{expr = Expr}, #{scope_tag := ScopeTag} = Ctx) ->
 	{ExprIRs, R, _} = expr_to_ir(Expr, Ctx),
 	%% We use stack to pass result
-	[ExprIRs, {comment, "prepare return value"}, {sw, R, {fp, 0}}, {j, generate_tag(ScopeTag, epilogue)}];
+	[ExprIRs, {comment, "prepare return value"}, {sw, R, {{x, 8}, 0}}, {j, generate_tag(ScopeTag, epilogue)}];
 stmt_to_ir(#e_goto_stmt{label = Label}, #{scope_tag := ScopeTag}) ->
 	[{j, generate_tag(ScopeTag, Label)}];
 stmt_to_ir(#e_label{name = Label}, #{scope_tag := ScopeTag}) ->
@@ -97,10 +109,10 @@ comment(Tag, Info, {Line, Col}) ->
 
 -define(IS_SPECIAL_REG(Tag),
 	(
-	Tag =:= fp orelse Tag =:= gp orelse Tag =:= zero
+	Tag =:= {x, 8} orelse Tag =:= {x, 3} orelse Tag =:= {x, 2} orelse Tag =:= {x, 1} orelse Tag =:= {x, 0}
 	)).
 
--spec expr_to_ir(e_expr(), context()) -> {irs(), atom(), context()}.
+-spec expr_to_ir(e_expr(), context()) -> {irs(), machine_reg(), context()}.
 expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{} = Varref, ?I(N)), ?I(V)), Right), Ctx) ->
 	{RightIRs, R1, Ctx1} = expr_to_ir(Right, Ctx),
 	{VarrefIRs, R2, Ctx2} = expr_to_ir(Varref, Ctx1),
@@ -125,8 +137,8 @@ expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, #{wordsize := WordSize} = Ctx) 
 	%% The calling related steps
 	{FnLoad, T1, Ctx1} = expr_to_ir(Fn, Ctx),
 	{ArgPrepare, N} = args_to_stack(Args, 0, [], Ctx1),
-	RetLoad = [{comment, "load ret"}, {lw, T1, {sp, 0}}, {comment, "drop args"}, {'-', sp, sp, N}],
-	Call = [FnLoad, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, ra, T1}, RetLoad],
+	RetLoad = [{comment, "load ret"}, {lw, T1, {{x, 2}, 0}}, {comment, "drop args"}, {'-', {x, 2}, {x, 2}, N}],
+	Call = [FnLoad, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, T1}, RetLoad],
 	{[{comment, "call start"}, BeforeCall, Call, AfterCall, {comment, "call end"}], T1, Ctx1};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
 	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
@@ -142,13 +154,17 @@ expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
 expr_to_ir(?OP1(Tag, Expr), Ctx) ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
 	{[IRs, {Tag, R}], R, Ctx1};
-expr_to_ir(#e_varref{name = Name}, Ctx) when ?IS_SPECIAL_REG(Name) ->
-	{[], Name, Ctx};
+expr_to_ir(#e_varref{name = sp}, Ctx) ->
+	{[], {x, 2}, Ctx};
+expr_to_ir(#e_varref{name = gp}, Ctx) ->
+	{[], {x, 3}, Ctx};
 expr_to_ir(#e_varref{name = Name}, #{free_regs := [R | RestRegs]} = Ctx) ->
 	{[{la, R, Name}], R, Ctx#{free_regs := RestRegs}};
 expr_to_ir(#e_string{value = Value}, #{free_regs := [R | RestRegs]} = Ctx) ->
 	%% TODO: string literals should be placed in certain place.
 	{[{la, R, Value}], R, Ctx#{free_regs := RestRegs}};
+expr_to_ir(?I(0), Ctx) ->
+	{[], {x, 0}, Ctx};
 expr_to_ir(?I(N), #{free_regs := Regs} = Ctx) ->
 	[R | RestRegs] = Regs,
 	{[{li, R, N}], R, Ctx#{free_regs := RestRegs}};
@@ -168,17 +184,17 @@ recycle_tmpreg([], RegBank) ->
 
 reg_save_restore(Regs, WordSize) ->
 	TotalSize = length(Regs) * WordSize,
-	StackGrow = [{comment, "grow stack"}, {'+', sp, sp, TotalSize}],
-	StackShrink = [{comment, "shrink stack"}, {'-', sp, sp, TotalSize}],
-	Save = e_util:list_map(fun(R, I) -> {sw, R, {sp, I * WordSize}} end, Regs),
-	Restore = e_util:list_map(fun(R, I) -> {lw, R, {sp, I * WordSize}} end, Regs),
+	StackGrow = [{comment, "grow stack"}, {'+', {x, 2}, {x, 2}, TotalSize}],
+	StackShrink = [{comment, "shrink stack"}, {'-', {x, 2}, {x, 2}, TotalSize}],
+	Save = e_util:list_map(fun(R, I) -> {sw, R, {{x, 2}, I * WordSize}} end, Regs),
+	Restore = e_util:list_map(fun(R, I) -> {lw, R, {{x, 2}, I * WordSize}} end, Regs),
 	Before = [{comment, io_lib:format("regs to save: ~w", [Regs])}, Save, StackGrow],
 	After = [{comment, io_lib:format("regs to restore: ~w", [Regs])}, StackShrink, Restore],
 	{Before, After}.
 
 args_to_stack([Arg | Rest], N, Result, #{wordsize := WordSize} = Ctx) ->
 	{IRs, R, _} = expr_to_ir(Arg, Ctx),
-	args_to_stack(Rest, N + WordSize, [[IRs, {sw, R, {sp, 0}}, {'+', sp, sp, WordSize}] | Result], Ctx);
+	args_to_stack(Rest, N + WordSize, [[IRs, {sw, R, {{x, 2}, 0}}, {'+', {x, 2}, {x, 2}, WordSize}] | Result], Ctx);
 args_to_stack([], N, Result, _) ->
 	{lists:reverse(Result), N}.
 
@@ -205,6 +221,7 @@ ld_instr_from_v(_) -> lw.
 
 %% We don't need many registers with current allocation algorithm.
 %% Most RISC machine can provide 8 free registers.
+-spec tmp_regs() -> [machine_reg()].
 tmp_regs() ->
-	[t0, t1, t2, t3, t4, t5, t6, t7].
+	[{x, 5}, {x, 6}, {x, 7}, {x, 10}, {x, 11}, {x, 12}, {x, 13}, {x, 14}].
 
