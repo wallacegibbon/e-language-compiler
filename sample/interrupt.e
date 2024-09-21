@@ -1,5 +1,3 @@
-interrupt_vector_table: {word, 3} = {fn2 as (word), 0, fn3 as (word)};
-
 flag: word = 0;
 
 fn fn1()
@@ -24,3 +22,4 @@ end
 fn main()
 	fn3(1, 2);
 end
+

@@ -3,7 +3,7 @@
 -export([names_of_var_defs/1, names_of_var_refs/1, get_struct_from_type/2, get_struct_from_name/3]).
 -export([void_type/1, fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, fix_special_chars/1]).
 -export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2, map_find_multi/2]).
--export([reverse_compare_tag/1, is_compare_tag/1, list_map/2]).
+-export([reverse_compare_tag/1, is_compare_tag/1, list_map/2, file_write/2]).
 -include("e_record_definition.hrl").
 -ifdef(EUNIT).
 -include_lib("eunit/include/eunit.hrl").
@@ -220,6 +220,15 @@ map_find_multi(Key, [Map| RestMaps]) ->
 	end;
 map_find_multi(_, []) ->
 	notfound.
+
+-spec file_write(string(), fun((file:io_device()) -> R)) -> R when R :: ok.
+file_write(Filename, Handle) ->
+	{ok, IO_Dev} = file:open(Filename, [write]),
+	try
+		Handle(IO_Dev)
+	after
+		ok = file:close(IO_Dev)
+	end.
 
 reverse_compare_tag('==') -> '!=';
 reverse_compare_tag('!=') -> '==';

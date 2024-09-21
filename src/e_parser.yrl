@@ -85,7 +85,6 @@ e_vardefs -> e_vardef : ['$1'].
 
 e_vardef -> identifier ':' e_type_anno '=' e_expr :
 	#e_vardef{name = token_value('$1'), type = '$3', init_value = '$5', loc = token_loc('$1')}.
-
 e_vardef -> identifier ':' e_type_anno :
 	#e_vardef{name = token_value('$1'), type = '$3', loc = token_loc('$1')}.
 

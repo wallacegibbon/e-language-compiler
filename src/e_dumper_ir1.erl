@@ -8,10 +8,10 @@
 -spec generate_code(e_ast(), e_ast(), string(), non_neg_integer()) -> ok.
 generate_code(AST, InitCode, OutputFile, WordSize) ->
 	Regs = tmp_regs(),
-	Ctx = #{wordsize => WordSize, scope_tag => '<init1>', tmp_regs => Regs, free_regs => Regs},
-	IRs = [{fn, '<init1>'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, InitCode) | ast_to_ir(AST, WordSize)],
+	Ctx = #{wordsize => WordSize, scope_tag => '__init', tmp_regs => Regs, free_regs => Regs},
+	IRs = [{fn, '__init'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, InitCode) | ast_to_ir(AST, WordSize)],
 	Fn = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"} | IRs], IO_Dev) end,
-	file_transaction(OutputFile, Fn).
+	e_util:file_write(OutputFile, Fn).
 
 -spec ast_to_ir(e_ast(), non_neg_integer()) -> irs().
 ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size = Size0}} = Fn | Rest], WordSize) ->
@@ -197,15 +197,6 @@ write_irs([IR | Rest], IO_Dev) ->
 	write_irs(Rest, IO_Dev);
 write_irs([], _) ->
 	ok.
-
--spec file_transaction(string(), fun((file:io_device()) -> R)) -> R when R :: ok.
-file_transaction(Filename, Handle) ->
-	{ok, IO_Dev} = file:open(Filename, [write]),
-	try
-		Handle(IO_Dev)
-	after
-		ok = file:close(IO_Dev)
-	end.
 
 st_instr_from_v(1) -> sb;
 st_instr_from_v(_) -> sw.
