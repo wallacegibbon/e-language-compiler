@@ -38,9 +38,12 @@ compile_from_raw_ast(AST, CompileOptions) ->
 
 	%% expand init exprs like A{a = 1} and {1, 2, 3}
 	io:format("PHASE: init expanding (AST)...~n"),
-	AST30 = e_init_expr:expand_in_ast(AST20, StructMap20),
+	AST30 = e_init_expr:expand_in_ast(AST20, {StructMap20, WordSize}),
 	io:format("PHASE: init expanding (INIT CODE)...~n"),
-	InitCode30 = e_init_expr:expand_in_stmts(InitCode20, StructMap20),
+	InitCode30 = e_init_expr:expand_in_stmts(InitCode20, {StructMap20, WordSize}),
+
+	%io:format("AST before pointer fixing: ~p~n", [AST30]),
+	%io:format("INIT Code before pointer fixing: ~p~n", [InitCode30]),
 
 	%% fix the pointer size. (Which was filled with `0`)
 	TypeCtx40 = {GlobalVars10, FnTypeMap00, StructMap20, #e_basic_type{}},

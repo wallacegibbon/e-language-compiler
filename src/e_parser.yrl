@@ -33,10 +33,10 @@ e_root_stmts -> e_root_stmt : ['$1'].
 
 e_root_stmt -> e_struct_def : '$1'.
 e_root_stmt -> e_function_def : '$1'.
-e_root_stmt -> e_vardef ',' : '$1'.
+e_root_stmt -> e_vardef ';' : '$1'.
 
-%% type annotation inside array or function
-e_type_annos -> e_type_anno ',' e_type_annos : ['$1' | '$3'].
+%% type annotation inside function type
+e_type_annos -> e_type_anno ';' e_type_annos : ['$1' | '$3'].
 e_type_annos -> e_type_anno : ['$1'].
 
 e_type_anno -> 'fn' '(' e_type_annos ')' ':' e_type_anno :
@@ -79,8 +79,8 @@ e_pointer_depth -> '^' : 1.
 e_typeof_type -> typeof '(' e_expr ')' :
 	return_error(token_loc('$1'), "\"typeof\" is not supported by E languge.").
 
-e_vardefs -> e_vardef ',' e_vardefs : ['$1' | '$3'].
-e_vardefs -> e_vardef ',' : ['$1'].
+e_vardefs -> e_vardef ';' e_vardefs : ['$1' | '$3'].
+e_vardefs -> e_vardef ';' : ['$1'].
 e_vardefs -> e_vardef : ['$1'].
 
 e_vardef -> identifier ':' e_type_anno '=' e_expr :
@@ -127,6 +127,8 @@ e_array_init_expr -> '{' e_array_init_elements '}' :
 	#e_array_init_expr{elements = '$2', loc = token_loc('$1')}.
 e_array_init_expr -> '{' string '}' :
 	#e_array_init_expr{elements = str_to_int_tokens('$2'), loc = token_loc('$1')}.
+e_array_init_expr -> '{' '}' :
+	#e_array_init_expr{elements = [], loc = token_loc('$1')}.
 
 e_array_init_elements -> e_expr ',' e_array_init_elements :
 	['$1' | '$3'].
@@ -136,6 +138,8 @@ e_array_init_elements -> e_expr :
 Unary 2000 e_struct_init_expr.
 e_struct_init_expr -> identifier '{' e_struct_init_fields '}' :
 	#e_struct_init_raw_expr{name = token_value('$1'), fields = '$3', loc = token_loc('$1')}.
+e_struct_init_expr -> identifier '{' '}' :
+	#e_struct_init_raw_expr{name = token_value('$1'), fields = [], loc = token_loc('$1')}.
 
 e_struct_init_fields -> e_struct_init_assignment ',' e_struct_init_fields :
 	['$1' | '$3'].
@@ -167,6 +171,7 @@ e_call_expr -> '(' e_expr ')' '(' e_args ')' :
 e_call_expr -> '(' e_expr ')' '(' ')' :
 	#e_op{tag = {call, '$2'}, data = [], loc = token_loc('$4')}.
 
+Unary 100 e_assign_expr.
 e_assign_expr -> e_expr e_op2_with_assignment e_expr :
 	#e_op{tag = '=', data = ['$1', #e_op{tag = token_symbol('$2'), data = ['$1', '$3'], loc = token_loc('$2')}], loc = token_loc('$2')}.
 e_assign_expr -> e_expr '=' e_expr :
@@ -187,13 +192,12 @@ e_atomic_literal_values -> string : replace_tag('$1', e_string).
 e_function_stmts -> e_function_stmt e_function_stmts : ['$1' | '$2'].
 e_function_stmts -> e_function_stmt : ['$1'].
 
-e_function_stmt -> e_expr ',' : '$1'.
-e_function_stmt -> e_vardef ',' : '$1'.
-e_function_stmt -> e_assign_expr ',' : '$1'.
+e_function_stmt -> e_expr ';' : '$1'.
+e_function_stmt -> e_vardef ';' : '$1'.
 e_function_stmt -> e_if_stmt : '$1'.
 e_function_stmt -> e_while_stmt : '$1'.
-e_function_stmt -> goto identifier ',' : #e_goto_stmt{label = token_value('$2'), loc = token_loc('$1')}.
-e_function_stmt -> return e_expr ',' : #e_return_stmt{expr = '$2', loc = token_loc('$1')}.
+e_function_stmt -> goto identifier ';' : #e_goto_stmt{label = token_value('$2'), loc = token_loc('$1')}.
+e_function_stmt -> return e_expr ';' : #e_return_stmt{expr = '$2', loc = token_loc('$1')}.
 e_function_stmt -> e_label : '$1'.
 
 e_label -> '@' '@' identifier :
@@ -228,6 +232,7 @@ e_expr -> e_array_init_expr : '$1'.
 e_expr -> e_struct_init_expr : '$1'.
 e_expr -> e_atomic_literal_values : '$1'.
 e_expr -> e_call_expr : '$1'.
+e_expr -> e_assign_expr : '$1'.
 e_expr -> e_sizeof_expr : '$1'.
 e_expr -> e_alignof_expr : '$1'.
 e_expr -> '(' e_expr ')' : '$2'.

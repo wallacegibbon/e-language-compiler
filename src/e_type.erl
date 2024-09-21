@@ -278,20 +278,26 @@ check_compare_op(#e_op{tag = Tag, loc = Loc}) ->
 check_compare_op(Node) ->
 	e_util:ethrow(element(2, Node), "invalid comparing expression").
 
-%% Functions can be converted to any kind of pointers in current design.
 -spec convert_type(e_type(), e_type(), location()) -> e_type().
-convert_type(#e_fn_type{}, #e_basic_type{p_depth = D} = Type, _) when D > 0 ->
-	Type;
-convert_type(#e_basic_type{p_depth = D}, #e_fn_type{} = Type, _) when D > 0 ->
-	Type;
-convert_type(#e_basic_type{p_depth = D1}, #e_basic_type{p_depth = D2} = Type, _) when D1 > 0, D2 > 0 ->
-	Type;
-convert_type(#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{p_depth = D2} = Type, _) when D2 > 0 ->
-	Type;
-convert_type(#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{class = integer, p_depth = 0} = Type, _) ->
-	Type;
-convert_type(ExprType, Type, Loc) ->
-	e_util:ethrow(Loc, type_error_of(to, ExprType, Type)).
+convert_type(Type1, Type2, Loc) ->
+	case type_compatible(Type1, Type2) orelse type_compatible(Type2, Type1) of
+		true ->
+			Type2;
+		false ->
+			e_util:ethrow(Loc, type_error_of(to, Type1, Type2))
+	end.
+
+%% Functions can be converted to any kind of pointers in current design.
+type_compatible(#e_fn_type{loc = Loc}, Type2) ->
+	type_compatible(#e_basic_type{class = integer, p_depth = 1, loc = Loc}, Type2);
+type_compatible(#e_basic_type{class = integer}, #e_basic_type{p_depth = N}) when N > 0 ->
+	true;
+type_compatible(#e_basic_type{class = integer}, #e_basic_type{class = integer}) ->
+	true;
+type_compatible(#e_basic_type{class = float, p_depth = N}, #e_basic_type{class = float, p_depth = N}) ->
+	true;
+type_compatible(_, _) ->
+	false.
 
 -spec compare_expect_left(e_type(), e_type(), location()) -> e_type().
 compare_expect_left(Type1, Type2, Loc) ->
