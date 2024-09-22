@@ -6,8 +6,16 @@
 %% We use A0-A4 as T3-T7 since we pass arguments and result through stack and `Ax` are caller saved just like `Tx`.
 
 -type machine_reg() :: {x, non_neg_integer()}.
--type context() :: #{wordsize => pos_integer(), scope_tag => atom(), tmp_regs => [machine_reg()], free_regs => [machine_reg()]}.
 -type irs() :: [tuple() | irs()].
+-type context() ::
+	#{
+	wordsize => pos_integer(),
+	scope_tag => atom(),
+	tmp_regs => [machine_reg()],
+	free_regs => [machine_reg()],
+	%% this field is for helping generating logic operator related codes.
+	condi_label => {atom(), atom()}
+	}.
 
 -spec generate_code(e_ast(), e_ast(), string(), non_neg_integer()) -> ok.
 generate_code(AST, InitCode, OutputFile, WordSize) ->
@@ -47,25 +55,27 @@ interrupt_related_code(_, _, _) ->
 
 -spec stmt_to_ir(e_stmt(), context()) -> irs().
 stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
-	{CondiIRs, R_Cond, _} = expr_to_ir(Condi, Ctx),
+	ThenLabel = generate_tag(ScopeTag, 'then', Loc),
+	ElseLabel = generate_tag(ScopeTag, 'else', Loc),
+	EndLabel = generate_tag(ScopeTag, 'end', Loc),
+	{CondiIRs, R_Cond, _} = expr_to_ir(Condi, Ctx#{condi_label => {ThenLabel, ElseLabel}}),
 	StartComment = comment('if', e_util:stmt_to_str(Condi), Loc),
 	EndComment = comment('if', "end", Loc),
 	Then1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Then0),
 	Else1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Else0),
-	ElseLabel = generate_tag(ScopeTag, 'else', Loc),
-	EndLabel = generate_tag(ScopeTag, if_end, Loc),
-	Then2 = [comment('if', "then part", Loc), Then1, {j, EndLabel}],
-	Else2 = [comment('if', "else part", Loc), {label, ElseLabel}, Else1, {label, EndLabel}],
-	[StartComment, CondiIRs, {br, R_Cond, ElseLabel}, Then2, Else2, EndComment];
+	Then2 = [{label, ThenLabel}, Then1, {j, EndLabel}],
+	Else2 = [{label, ElseLabel}, Else1, {label, EndLabel}],
+	[StartComment, CondiIRs, br_of_reg(R_Cond, ElseLabel), Then2, Else2, EndComment];
 stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
-	{CondiIRs, R_Cond, _} = expr_to_ir(Condi, Ctx),
+	StartLabel = generate_tag(ScopeTag, start, Loc),
+	BodyLabel = generate_tag(ScopeTag, body, Loc),
+	EndLabel = generate_tag(ScopeTag, 'end', Loc),
+	{CondiIRs, R_Cond, _} = expr_to_ir(Condi, Ctx#{condi_label => {BodyLabel, EndLabel}}),
 	StartComment = comment(while, e_util:stmt_to_str(Condi), Loc),
 	EndComment = comment(while, "end", Loc),
-	StartLabel = generate_tag(ScopeTag, while_start, Loc),
-	EndLabel = generate_tag(ScopeTag, while_end, Loc),
 	RawBody = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
-	Body = [comment(while, "body part", Loc), RawBody, {j, StartLabel}, {label, EndLabel}],
-	[StartComment, {label, StartLabel}, CondiIRs, {br, R_Cond, EndLabel}, Body, EndComment];
+	Body = [{label, BodyLabel}, RawBody, {j, StartLabel}, {label, EndLabel}],
+	[StartComment, {label, StartLabel}, CondiIRs, br_of_reg(R_Cond, EndLabel), Body, EndComment];
 stmt_to_ir(#e_return_stmt{expr = Expr}, #{scope_tag := ScopeTag} = Ctx) ->
 	{ExprIRs, R, _} = expr_to_ir(Expr, Ctx),
 	%% We use stack to pass result
@@ -77,6 +87,9 @@ stmt_to_ir(#e_label{name = Label}, #{scope_tag := ScopeTag}) ->
 stmt_to_ir(Stmt, Ctx) ->
 	{Exprs, _, _} = expr_to_ir(Stmt, Ctx),
 	Exprs.
+
+br_of_reg({x, 0}, _)	-> [];
+br_of_reg(Reg, Label)	-> [{br, Reg, Label}].
 
 generate_tag(ScopeTag, Tag, {Line, Column}) ->
 	list_to_atom(e_util:fmt("~s_~s_~w_~w", [ScopeTag, Tag, Line, Column])).
@@ -145,22 +158,18 @@ expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
 	[T1 | RestRegs2] = RestRegs,
 	ReversedTag = e_util:reverse_cmp_tag(Tag),
 	{[IRs1, IRs2, {ReversedTag, T1, R1, R2}], T1, Ctx#{free_regs := recycle_tmpreg([R2, R1], RestRegs2)}};
-expr_to_ir(#e_op{tag = 'and', data = [Left, Right], loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
-	FalseLabel = generate_tag(ScopeTag, 'and_false', Loc),
-	EndLabel = generate_tag(ScopeTag, 'and_end', Loc),
-	{IRs1, R1, _} = expr_to_ir(Left, Ctx),
-	Condi1 = [IRs1, {'==', R1, R1, {x, 0}}, {br, R1, FalseLabel}],
-	{IRs2, R2, #{free_regs := RestRegs}} = expr_to_ir(Right, Ctx),
-	[T1 | RestRegs2] = RestRegs,
-	Condi2 = [IRs2, {'==', R2, R2, {x, 0}}, {br, R2, FalseLabel}, {addi, T1, {x, 0}, 1}],
-	Final = [{'==', T1, {x, 0}, {x, 0}}, {label, FalseLabel}, {label, EndLabel}, {}],
-	{[Condi1, Condi2], T1, Ctx#{free_regs := recycle_tmpreg([R2], RestRegs2)}};
-expr_to_ir(#e_op{tag = 'or', data = [Left, Right], loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
-	%% TODO
-	{[{'==', {x, 0}, {x, 0}, {x, 0}}], {x, 0}, Ctx};
-expr_to_ir(?OP1('not', Expr), Ctx) ->
-	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
-	{[IRs, {'==', R, R, {x, 0}}], R, Ctx1};
+expr_to_ir(#e_op{tag = 'and', data = [Left, Right], loc = Loc}, #{scope_tag := ScopeTag, condi_label := {True, False}} = Ctx) ->
+	True1 = generate_tag(ScopeTag, 'and_true', Loc),
+	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {True1, False}}),
+	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {True, False}}),
+	{[IRs1, {br, R1, False}, {label, True1}, IRs2, {br, R2, False}, {j, True}], {x, 0}, Ctx};
+expr_to_ir(#e_op{tag = 'or', data = [Left, Right], loc = Loc}, #{scope_tag := ScopeTag, condi_label := {True, False}} = Ctx) ->
+	False1 = generate_tag(ScopeTag, 'or_false', Loc),
+	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {True, False1}}),
+	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {True, False}}),
+	{[IRs1, {br, R1, True}, {label, False1}, IRs2, {br, R2, True}, {j, False}], {x, 0}, Ctx};
+expr_to_ir(?OP1('not', Expr), #{condi_label := {True, False}} = Ctx) ->
+	expr_to_ir(Expr, Ctx#{condi_label := {False, True}});
 expr_to_ir(?OP1('bnot', Expr), Ctx) ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
 	{[IRs, {xori, R, R, -1}], R, Ctx1};
@@ -247,6 +256,9 @@ write_irs([{comment, Content} | Rest], IO_Dev) ->
 	io:format(IO_Dev, "\t%% ~s~n", [Content]),
 	write_irs(Rest, IO_Dev);
 write_irs([{fn, _} = IR | Rest], IO_Dev) ->
+	io:format(IO_Dev, "~w.~n", [IR]),
+	write_irs(Rest, IO_Dev);
+write_irs([{label, _} = IR | Rest], IO_Dev) ->
 	io:format(IO_Dev, "~w.~n", [IR]),
 	write_irs(Rest, IO_Dev);
 write_irs([IR | Rest], IO_Dev) ->
