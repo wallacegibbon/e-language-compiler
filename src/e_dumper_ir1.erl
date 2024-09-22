@@ -32,7 +32,9 @@ ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size =
 	EndLabel = {label, generate_tag(Name, epilogue)},
 	Epilogue = [EndLabel, After, RegRestore, {jalr, {x, 0}, {x, 1}}],
 	Body = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts),
-	[{fn, Name}, Prologue, Body, Epilogue | ast_to_ir(Rest, WordSize)];
+	%% The result should be flattened before calling `fix_branch/1`.
+	FinalIRs = lists:flatten([{fn, Name}, Prologue, Body, Epilogue | ast_to_ir(Rest, WordSize)]),
+	fix_branch(FinalIRs);
 ast_to_ir([_ | Rest], Ctx) ->
 	ast_to_ir(Rest, Ctx);
 ast_to_ir([], _) ->
@@ -167,6 +169,9 @@ expr_to_ir(?OP1('~', Expr), Ctx) ->
 expr_to_ir(?OP1('!', Expr), Ctx) ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
 	{[IRs, {sltiu, R, R, 1}], R, Ctx1};
+expr_to_ir(?OP1('-', Expr), Ctx) ->
+	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
+	{[IRs, {sub, R, {x, 0}, R}], R, Ctx1};
 expr_to_ir(#e_varref{name = fp}, Ctx) ->
 	{[], {x, 8}, Ctx};
 expr_to_ir(#e_varref{name = gp}, Ctx) ->
@@ -183,6 +188,13 @@ expr_to_ir(?I(N), #{free_regs := Regs} = Ctx) ->
 	{smart_li(R, N), R, Ctx#{free_regs := RestRegs}};
 expr_to_ir(Any, _) ->
 	e_util:ethrow(element(2, Any), "IR1: unsupported expr \"~w\"", [Any]).
+
+fix_branch([{Tag, Rd, R1, R2}, {br, Rd, DestTag} | Rest]) ->
+	[{to_cmp_op(Tag), R1, R2, DestTag} | fix_branch(Rest)];
+fix_branch([Any | Rest]) ->
+	[Any | fix_branch(Rest)];
+fix_branch([]) ->
+	[].
 
 recycle_tmpreg([R | Regs], RegBank) when ?IS_SPECIAL_REG(R) ->
 	recycle_tmpreg(Regs, RegBank);
@@ -274,4 +286,11 @@ to_op_immedi('bor')	-> ori;
 to_op_immedi('bxor')	-> xori;
 to_op_immedi('bsl')	-> slli;
 to_op_immedi('bsr')	-> srai.
+
+to_cmp_op('==')		-> beq;
+to_cmp_op('!=')		-> bne;
+to_cmp_op('>=')		-> bge;
+to_cmp_op('<=')		-> ble;
+to_cmp_op('>')		-> bgt;
+to_cmp_op('<')		-> blt.
 

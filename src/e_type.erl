@@ -296,6 +296,8 @@ type_compatible(#e_basic_type{class = integer}, #e_basic_type{class = integer}) 
 	true;
 type_compatible(#e_basic_type{class = float, p_depth = N}, #e_basic_type{class = float, p_depth = N}) ->
 	true;
+type_compatible(#e_basic_type{p_depth = N1}, #e_basic_type{p_depth = N2}) when N1 > 0, N2 > 0 ->
+	true;
 type_compatible(_, _) ->
 	false.
 

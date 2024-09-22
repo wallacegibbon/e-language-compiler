@@ -1,17 +1,17 @@
-fn fn0(a: word, b: word): word
-	tmp: word = 11,
-	return a + b * 2 + tmp,
+fn fn0(a: word; b: word): word
+	tmp: word = 11;
+	return a + b * 2 + tmp;
 end
 
-fn fn1(): fn(word, word): word
-	return fn0,
+fn fn1(): fn(word; word): word
+	return fn0;
 end
 
-fn fn2(): fn(): fn(word, word): word
-	return fn1,
+fn fn2(): fn(): fn(word; word): word
+	return fn1;
 end
 
 fn fn3(v: word): word
-	return 9 + fn2()()(v + 1, v + 2) + 8,
+	return 9 + fn2()()(v + 1, v + 2) + 8;
 end
 

@@ -31,16 +31,16 @@ Here are some comparisons of C language and E language:
 ## Array And Struct
 
 ```
-arr: {word, 3} = {1, 2, 3},
+arr: {word, 3} = {1, 2, 3};
 
 struct Blah
-	id: word,
-	name: byte^,
+	id: word;
+	name: byte^;
 end
 
-b: Blah = Blah{id = 1, name = "hello"},
+b: Blah = Blah{id = 1, name = "hello"};
 
-c: {Blah, 2} = {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}},
+c: {Blah, 2} = {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}};
 ```
 
 ```c
@@ -60,8 +60,8 @@ The `struct` in E language support default value. You can write:
 
 ```
 struct Blah
-	id: word = 1,
-	name: byte^ = "default_name_string",
+	id: word = 1;
+	name: byte^ = "default_name_string";
 end
 ```
 
@@ -92,12 +92,12 @@ In E language (and also in C language), you can use pointer manipulation to achi
 
 ```
 struct A
-	tag: byte,
-	value: word,
+	tag: byte;
+	value: word;
 end
 
-a: A = A{tag = 1, value = 0x12345678},
-printf("%x\n", (a.value@ + 2)^),
+a: A = A{tag = 1, value = 0x12345678};
+printf("%x\n", (a.value@ + 2)^);
 %> 34
 ```
 
@@ -115,7 +115,7 @@ To keep things minimum, E language do not support `enum`, either.
 
 ```
 fn main(argc: word, argv: byte^^): word
-	return 0,
+	return 0;
 end
 ```
 
@@ -131,11 +131,11 @@ int main(int argc, char **argv)
 
 ```
 if fn1(fn2(val1)) >= fn3(val2) then
-	fn4(),
+	fn4();
 elif val3 > 100 then
-	fn5(),
+	fn5();
 else
-	fn6(),
+	fn6();
 end
 ```
 
@@ -155,7 +155,7 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 
 ```
 while test() do
-	do_something(),
+	do_something();
 end
 ```
 
@@ -169,9 +169,9 @@ while (test()) {
 ## Function Pointer
 
 ```
-my_fn1: fn (): fn (): fn () = another_fn1,
+my_fn1: fn (): fn (): fn () = another_fn1;
 
-my_fn2: fn (byte^, word): fn (byte^, byte^): fn (word, word): byte^ = another_fn2,
+my_fn2: fn (byte^, word): fn (byte^, byte^): fn (word, word): byte^ = another_fn2;
 
 ```
 
