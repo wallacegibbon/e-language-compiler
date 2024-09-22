@@ -3,7 +3,11 @@
 -include("e_record_definition.hrl").
 
 %% According the calling convention of RISC-V: RA is X1, SP is X2, GP is X3, FP is X8. X5-X7 is T0-T2.
-%% We use A0-A4 as T3-T7 since we pass arguments through stack and `Ax` are caller saved just like `Tx`.
+%% We use A0-A4 as T3-T7 since we pass arguments and result through stack and `Ax` are caller saved just like `Tx`.
+
+-type machine_reg() :: {x, non_neg_integer()}.
+-type context() :: #{wordsize => pos_integer(), scope_tag => atom(), tmp_regs => [machine_reg()], free_regs => [machine_reg()]}.
+-type irs() :: [tuple() | irs()].
 
 -spec generate_code(e_ast(), e_ast(), string(), non_neg_integer()) -> ok.
 generate_code(AST, InitCode, OutputFile, WordSize) ->
@@ -13,8 +17,6 @@ generate_code(AST, InitCode, OutputFile, WordSize) ->
 	Fn = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"} | IRs], IO_Dev) end,
 	e_util:file_write(OutputFile, Fn).
 
--type irs() :: [tuple() | irs()].
-
 -spec ast_to_ir(e_ast(), non_neg_integer()) -> irs().
 ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size = Size0}} = Fn | Rest], WordSize) ->
 	%% When there are no local variables, there should still be one word for returning value.
@@ -23,13 +25,12 @@ ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size =
 	FrameSize = Size1 + WordSize * 2,
 	RegSave = [{sw, {x, 8}, {{x, 2}, Size1}}, {sw, {x, 1}, {{x, 2}, Size1 + WordSize}}, {mv, {x, 8}, {x, 2}}],
 	Regs = tmp_regs(),
-	{Before, After} = interrupt_related_code(Fn, Regs, WordSize),
-	FramePrepare = {'+', {x, 2}, {x, 2}, FrameSize},
-	Prologue = [RegSave, FramePrepare, Before, {comment, "prologue end"}],
+	Ctx = #{wordsize => WordSize, scope_tag => Name, tmp_regs => Regs, free_regs => Regs},
+	{Before, After} = interrupt_related_code(Fn, Regs, Ctx),
+	Prologue = [RegSave, smart_addi({x, 2}, FrameSize, Ctx), Before, {comment, "prologue end"}],
 	RegRestore = [{mv, {x, 2}, {x, 8}}, {lw, {x, 8}, {{x, 2}, Size1}}, {lw, {x, 1}, {{x, 2}, Size1 + WordSize}}],
 	EndLabel = {label, generate_tag(Name, epilogue)},
 	Epilogue = [EndLabel, After, RegRestore, {jalr, {x, 0}, {x, 1}}],
-	Ctx = #{wordsize => WordSize, scope_tag => Name, tmp_regs => Regs, free_regs => Regs},
 	Body = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts),
 	[{fn, Name}, Prologue, Body, Epilogue | ast_to_ir(Rest, WordSize)];
 ast_to_ir([_ | Rest], Ctx) ->
@@ -37,20 +38,10 @@ ast_to_ir([_ | Rest], Ctx) ->
 ast_to_ir([], _) ->
 	[].
 
-interrupt_related_code(#e_function{interrupt = true}, Regs, WordSize) ->
-	reg_save_restore(Regs, WordSize);
+interrupt_related_code(#e_function{interrupt = true}, Regs, Ctx) ->
+	reg_save_restore(Regs, Ctx);
 interrupt_related_code(_, _, _) ->
 	{[], []}.
-
--type machine_reg() :: {x, non_neg_integer()}.
-
--type context() ::
-	#{
-	wordsize => pos_integer(),
-	scope_tag => atom(),
-	tmp_regs => [machine_reg()],
-	free_regs => [machine_reg()]
-	}.
 
 -spec stmt_to_ir(e_stmt(), context()) -> irs().
 stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
@@ -101,6 +92,11 @@ comment(Tag, Info, {Line, Col}) ->
 	Tag =:= 'bsl' orelse Tag =:= 'bsr'
 	)).
 
+-define(IS_IMMID_ARITH(Tag),
+	(
+	Tag =:= '+' orelse Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor'
+	)).
+
 -define(IS_COMPARE(Tag),
 	(
 	Tag =:= '>' orelse Tag =:= '<' orelse Tag =:= '==' orelse Tag =:= '!=' orelse
@@ -112,50 +108,67 @@ comment(Tag, Info, {Line, Col}) ->
 	Tag =:= {x, 8} orelse Tag =:= {x, 3} orelse Tag =:= {x, 2} orelse Tag =:= {x, 1} orelse Tag =:= {x, 0}
 	)).
 
+-define(IS_SMALL_IMMEDI(N),
+	(
+	N >= -2048 andalso N < 2048
+	)).
+
 -spec expr_to_ir(e_expr(), context()) -> {irs(), machine_reg(), context()}.
-expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{} = Varref, ?I(N)), ?I(V)), Right), Ctx) ->
+expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{} = Var, ?I(N)), ?I(V)), Right), Ctx) when ?IS_SMALL_IMMEDI(N) ->
 	{RightIRs, R1, Ctx1} = expr_to_ir(Right, Ctx),
-	{VarrefIRs, R2, Ctx2} = expr_to_ir(Varref, Ctx1),
+	{VarrefIRs, R2, Ctx2} = expr_to_ir(Var, Ctx1),
 	{[RightIRs, VarrefIRs, {st_instr_from_v(V), R1, {R2, N}}], R1, Ctx2};
 expr_to_ir(?OP2('=', ?OP2('^', Expr, ?I(V)), Right), Ctx) ->
 	{RightIRs, R1, Ctx1} = expr_to_ir(Right, Ctx),
 	{LeftIRs, R2, Ctx2} = expr_to_ir(Expr, Ctx1),
 	{[RightIRs, LeftIRs, {st_instr_from_v(V), R1, {R2, 0}}], R1, Ctx2};
-expr_to_ir(?OP2('^', ?OP2('+', #e_varref{} = Varref, ?I(N)), ?I(V)), Ctx) ->
-	{IRs, R, #{free_regs := RestRegs}} = expr_to_ir(Varref, Ctx),
+expr_to_ir(?OP2('^', ?OP2('+', #e_varref{} = Var, ?I(N)), ?I(V)), Ctx) when ?IS_SMALL_IMMEDI(N) ->
+	{IRs, R, #{free_regs := RestRegs}} = expr_to_ir(Var, Ctx),
 	[T1 | RestRegs2] = RestRegs,
 	{[IRs, {ld_instr_from_v(V), T1, {R, N}}], T1, Ctx#{free_regs := recycle_tmpreg([R], RestRegs2)}};
 expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
 	{IRs, R, #{free_regs := RestRegs}} = expr_to_ir(Expr, Ctx),
 	[T1 | RestRegs2] = RestRegs,
 	{[IRs, {ld_instr_from_v(V), T1, {R, 0}}], T1, Ctx#{free_regs := recycle_tmpreg([R], RestRegs2)}};
-expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, #{wordsize := WordSize} = Ctx) ->
+expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, Ctx) ->
 	%% register preparing and restoring steps
 	#{free_regs := FreeRegs, tmp_regs := TmpRegs} = Ctx,
 	UsedRegs = TmpRegs -- FreeRegs,
-	{BeforeCall, AfterCall} = reg_save_restore(UsedRegs, WordSize),
+	{BeforeCall, AfterCall} = reg_save_restore(UsedRegs, Ctx),
 	%% The calling related steps
 	{FnLoad, T1, Ctx1} = expr_to_ir(Fn, Ctx),
 	{ArgPrepare, N} = args_to_stack(Args, 0, [], Ctx1),
-	RetLoad = [{comment, "load ret"}, {lw, T1, {{x, 2}, 0}}, {comment, "drop args"}, {'-', {x, 2}, {x, 2}, N}],
-	Call = [FnLoad, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, T1}, RetLoad],
+	RetLoad = [{comment, "load ret"}, {lw, T1, {{x, 2}, 0}}],
+	StackRestore = [{comment, "drop args"}, smart_addi({x, 2}, -N, Ctx1)],
+	Call = [FnLoad, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, T1}, RetLoad, StackRestore],
 	{[{comment, "call start"}, BeforeCall, Call, AfterCall, {comment, "call end"}], T1, Ctx1};
+expr_to_ir(?OP2('-', Expr, ?I(N)) = OP, Ctx) ->
+	expr_to_ir(OP?OP2('+', Expr, ?I(-N)), Ctx);
+expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when (Tag =:= 'bsl' orelse Tag =:= 'bsr'), N > 0, N =< 32 ->
+	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
+	{[IRs, {to_op_immedi(Tag), R, R, N}], R, Ctx1};
+expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when ?IS_IMMID_ARITH(Tag), ?IS_SMALL_IMMEDI(N) ->
+	{IRs1, R, Ctx1} = expr_to_ir(Expr, Ctx),
+	{[IRs1, {to_op_immedi(Tag), R, R, N}], R, Ctx1};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
 	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
 	{IRs2, R2, #{free_regs := RestRegs}} = expr_to_ir(Right, Ctx1),
 	[T1 | RestRegs2] = RestRegs,
-	{[IRs1, IRs2, {Tag, T1, R1, R2}], T1, Ctx#{free_regs := recycle_tmpreg([R2, R1], RestRegs2)}};
+	{[IRs1, IRs2, {to_op_normal(Tag), T1, R1, R2}], T1, Ctx#{free_regs := recycle_tmpreg([R2, R1], RestRegs2)}};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
 	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
 	{IRs2, R2, #{free_regs := RestRegs}} = expr_to_ir(Right, Ctx1),
 	[T1 | RestRegs2] = RestRegs,
-	ReversedTag = e_util:reverse_compare_tag(Tag),
+	ReversedTag = e_util:reverse_cmp_tag(Tag),
 	{[IRs1, IRs2, {ReversedTag, T1, R1, R2}], T1, Ctx#{free_regs := recycle_tmpreg([R2, R1], RestRegs2)}};
-expr_to_ir(?OP1(Tag, Expr), Ctx) ->
+expr_to_ir(?OP1('~', Expr), Ctx) ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
-	{[IRs, {Tag, R}], R, Ctx1};
-expr_to_ir(#e_varref{name = sp}, Ctx) ->
-	{[], {x, 2}, Ctx};
+	{[IRs, {xori, R, R, -1}], R, Ctx1};
+expr_to_ir(?OP1('!', Expr), Ctx) ->
+	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
+	{[IRs, {sltiu, R, R, 1}], R, Ctx1};
+expr_to_ir(#e_varref{name = fp}, Ctx) ->
+	{[], {x, 8}, Ctx};
 expr_to_ir(#e_varref{name = gp}, Ctx) ->
 	{[], {x, 3}, Ctx};
 expr_to_ir(#e_varref{name = Name}, #{free_regs := [R | RestRegs]} = Ctx) ->
@@ -167,11 +180,7 @@ expr_to_ir(?I(0), Ctx) ->
 	{[], {x, 0}, Ctx};
 expr_to_ir(?I(N), #{free_regs := Regs} = Ctx) ->
 	[R | RestRegs] = Regs,
-	{[{li, R, N}], R, Ctx#{free_regs := RestRegs}};
-expr_to_ir(?F(N), #{free_regs := Regs} = Ctx) ->
-	%% TODO: float is special
-	[R | RestRegs] = Regs,
-	{[{li, R, N}], R, Ctx#{free_regs := RestRegs}};
+	{smart_li(R, N), R, Ctx#{free_regs := RestRegs}};
 expr_to_ir(Any, _) ->
 	e_util:ethrow(element(2, Any), "IR1: unsupported expr \"~w\"", [Any]).
 
@@ -182,19 +191,42 @@ recycle_tmpreg([R | Regs], RegBank) ->
 recycle_tmpreg([], RegBank) ->
 	RegBank.
 
-reg_save_restore(Regs, WordSize) ->
+reg_save_restore(Regs, #{wordsize := WordSize} = Ctx) ->
 	TotalSize = length(Regs) * WordSize,
-	StackGrow = [{comment, "grow stack"}, {'+', {x, 2}, {x, 2}, TotalSize}],
-	StackShrink = [{comment, "shrink stack"}, {'-', {x, 2}, {x, 2}, TotalSize}],
+	StackGrow = [{comment, "grow stack"}, smart_addi({x, 2}, TotalSize, Ctx)],
+	StackShrink = [{comment, "shrink stack"}, smart_addi({x, 2}, -TotalSize, Ctx)],
 	Save = e_util:list_map(fun(R, I) -> {sw, R, {{x, 2}, I * WordSize}} end, Regs),
 	Restore = e_util:list_map(fun(R, I) -> {lw, R, {{x, 2}, I * WordSize}} end, Regs),
 	Before = [{comment, io_lib:format("regs to save: ~w", [Regs])}, Save, StackGrow],
 	After = [{comment, io_lib:format("regs to restore: ~w", [Regs])}, StackShrink, Restore],
 	{Before, After}.
 
+smart_addi(Reg, N, _) when ?IS_SMALL_IMMEDI(N) ->
+	[{addi, Reg, Reg, N}];
+smart_addi(Reg, N, #{free_regs := [T | _]}) ->
+	[smart_li(T, N), {add, Reg, Reg, T}].
+
+smart_li(Reg, N) when ?IS_SMALL_IMMEDI(N) ->
+	[{addi, Reg, {x, 0}, N}];
+smart_li(Reg, N) ->
+	{High, Low} = separate_immedi_for_lui(N),
+	[{lui, Reg, High}, {addi, Reg, Reg, Low}].
+
+%% The immediate value of `LUI` instruction is a signed value. When it is negative, High should be increased to balance it.
+%% The mechanism is simple: `+1` then `+(-1)` keeps the number unchanged. Negative signed extending can be treated as `-1`.
+separate_immedi_for_lui(N) ->
+	High = N bsr 12,
+	Low = N band 16#FFF,
+	case Low > 2047 of
+		true ->
+			{High + 1, Low};
+		false ->
+			{High, Low}
+	end.
+
 args_to_stack([Arg | Rest], N, Result, #{wordsize := WordSize} = Ctx) ->
 	{IRs, R, _} = expr_to_ir(Arg, Ctx),
-	args_to_stack(Rest, N + WordSize, [[IRs, {sw, R, {{x, 2}, 0}}, {'+', {x, 2}, {x, 2}, WordSize}] | Result], Ctx);
+	args_to_stack(Rest, N + WordSize, [[IRs, {sw, R, {{x, 2}, 0}}, {addi, {x, 2}, {x, 2}, WordSize}] | Result], Ctx);
 args_to_stack([], N, Result, _) ->
 	{lists:reverse(Result), N}.
 
@@ -224,4 +256,22 @@ ld_instr_from_v(_) -> lw.
 -spec tmp_regs() -> [machine_reg()].
 tmp_regs() ->
 	[{x, 5}, {x, 6}, {x, 7}, {x, 10}, {x, 11}, {x, 12}, {x, 13}, {x, 14}].
+
+to_op_normal('+')	->  add;
+to_op_normal('-')	->  sub;
+to_op_normal('*')	->  mul;
+to_op_normal('/')	-> 'div';
+to_op_normal('rem')	-> 'rem';
+to_op_normal('band')	-> 'and';
+to_op_normal('bor')	-> 'or';
+to_op_normal('bxor')	-> 'xor';
+to_op_normal('bsl')	->  sll;
+to_op_normal('bsr')	->  sra.
+
+to_op_immedi('+')	-> addi;
+to_op_immedi('band')	-> andi;
+to_op_immedi('bor')	-> ori;
+to_op_immedi('bxor')	-> xori;
+to_op_immedi('bsl')	-> slli;
+to_op_immedi('bsr')	-> srai.
 

@@ -14,7 +14,7 @@ syn match e_macro_ref		"?[A-Za-z_]\+\>"
 
 syn keyword e_keyword		struct fn end if then else elif while do goto sizeof alignof typeof return as interrupt
 syn keyword e_type		byte word float any void
-syn keyword e_operator		band bor bxor bnot and or not rem
+syn keyword e_operator		band bor bxor bnot and or not rem bsl bsr
 syn match e_operator		"==\|!=\|>=\|<=\|>\|<\|@\|\^\|+\|-\|*\|/\|="
 
 hi def link e_comment		Comment

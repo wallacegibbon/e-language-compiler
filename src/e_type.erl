@@ -269,7 +269,7 @@ type_of_node(Any, _) ->
 	e_util:ethrow(element(2, Any), "invalid statement: ~s~n", [e_util:stmt_to_str(Any)]).
 
 check_compare_op(#e_op{tag = Tag, loc = Loc}) ->
-	case e_util:is_compare_tag(Tag) of
+	case e_util:is_cmp_tag(Tag) of
 		true ->
 			ok;
 		false ->

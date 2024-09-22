@@ -3,6 +3,12 @@ flag: word = 0;
 fn fn1()
 	v: word = 1;
 	flag += v;
+	flag += 3;
+	flag += 2047;
+	flag += 2048;
+	flag -= 2048;
+	flag -= 2049;
+	flag -= v;
 end
 
 interrupt
@@ -16,7 +22,10 @@ fn fn3(
 	b: word;
 ): word
 	c: word = 3;
-	return a + b + c;
+	if c bsl 3 != 0 then
+		a += 1;
+	end
+	return a + b + 5 + c - 2048;
 end
 
 fn main()
