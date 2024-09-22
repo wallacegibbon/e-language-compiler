@@ -8,7 +8,7 @@ fn cond_test1(): word
 	val2: word = 1000;
 	result: word;
 
-	if val1 / 2 != 0 and val2 / 2 != 0 or val1 + val2 == 0 then
+	if not(val1 / 2 != 0 and val2 / 2 != 0) or val1 + val2 == 0 then
 		result = val1 + val2;
 	else
 		result = val1 / val2;

@@ -3,7 +3,7 @@
 -export([names_of_var_defs/1, names_of_var_refs/1, get_struct_from_type/2, get_struct_from_name/3]).
 -export([void_type/1, fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, fix_special_chars/1]).
 -export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2, map_find_multi/2]).
--export([reverse_cmp_tag/1, is_cmp_tag/1, list_map/2, file_write/2]).
+-export([reverse_cmp_tag/1, list_map/2, file_write/2]).
 -include("e_record_definition.hrl").
 -ifdef(EUNIT).
 -include_lib("eunit/include/eunit.hrl").
@@ -74,10 +74,14 @@ stmt_to_str(#e_op{tag = {call, Callee}, data = Args}) ->
 stmt_to_str(#e_op{tag = '^', data = [Op1, _Size]}) ->
 	%io_lib:format("(~s^ <size:~s>)", [stmt_to_str(Op1), stmt_to_str(_Size)]);
 	io_lib:format("((~s)^)", [stmt_to_str(Op1)]);
-stmt_to_str(#e_op{tag = Operator, data = [Op1, Op2]}) ->
-	io_lib:format("(~s ~s ~s)", [stmt_to_str(Op1), Operator, stmt_to_str(Op2)]);
-stmt_to_str(#e_op{tag = Operator, data = [Operand]}) ->
-	io_lib:format("(~s ~s)", [stmt_to_str(Operand), Operator]);
+stmt_to_str(#e_op{tag = Tag, data = [Op1, Op2]}) ->
+	io_lib:format("(~s ~s ~s)", [stmt_to_str(Op1), Tag, stmt_to_str(Op2)]);
+stmt_to_str(#e_op{tag = 'not', data = [Op]}) ->
+	io_lib:format("not(~s)", [stmt_to_str(Op)]);
+stmt_to_str(#e_op{tag = 'bnot', data = [Op]}) ->
+	io_lib:format("bnot(~s)", [stmt_to_str(Op)]);
+stmt_to_str(#e_op{tag = Tag, data = [Op]}) ->
+	io_lib:format("(~s ~s)", [stmt_to_str(Op), Tag]);
 stmt_to_str(#e_array_init_expr{elements = Elements}) ->
 	ElementStr = string:join(lists:map(fun(#e_integer{value = V}) -> integer_to_list(V) end, Elements), ","),
 	io_lib:format("{~s}", [ElementStr]);
@@ -236,12 +240,4 @@ reverse_cmp_tag('>=')	-> '<';
 reverse_cmp_tag('<=')	-> '>';
 reverse_cmp_tag('>')	-> '<=';
 reverse_cmp_tag('<')	-> '>='.
-
-is_cmp_tag('==')	-> true;
-is_cmp_tag('!=')	-> true;
-is_cmp_tag('>=')	-> true;
-is_cmp_tag('<=')	-> true;
-is_cmp_tag('>')		-> true;
-is_cmp_tag('<')		-> true;
-is_cmp_tag(_)		-> false.
 

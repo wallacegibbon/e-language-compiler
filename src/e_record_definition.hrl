@@ -5,7 +5,7 @@
 	{
 	loc = {0, 0} :: location(),
 	p_depth = 0 :: non_neg_integer(),
-	class = void :: struct | integer | float | void | any,
+	class = void :: struct | integer | float | boolean | void | any,
 	%% tag can be primitive tag like `byte`, `word` for `integer`, or struct name for `struct`
 	%% full list of primitive tags: byte|word|float|void|any.
 	tag :: atom()
@@ -204,4 +204,25 @@
 -define(OP1(Tag, O), #e_op{tag = Tag, data = [O]}).
 -define(I(V), #e_integer{value = V}).
 -define(F(V), #e_float{value = V}).
+
+-define(IS_ARITH(Tag),
+	(
+	Tag =:= '+' orelse Tag =:= '-' orelse Tag =:= '*' orelse Tag =:= '/' orelse Tag =:= 'rem' orelse
+	Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor' orelse Tag =:= 'bnot' orelse Tag =:= 'bsl' orelse Tag =:= 'bsr'
+	)).
+
+-define(IS_IMMID_ARITH(Tag),
+	(
+	Tag =:= '+' orelse Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor'
+	)).
+
+-define(IS_LOGIC(Tag),
+	(
+	Tag =:= 'and' orelse Tag =:= 'or' orelse Tag =:= 'not'
+	)).
+
+-define(IS_COMPARE(Tag),
+	(
+	Tag =:= '>' orelse Tag =:= '<' orelse Tag =:= '==' orelse Tag =:= '!=' orelse Tag =:= '>=' orelse Tag =:= '<='
+	)).
 

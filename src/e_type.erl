@@ -191,7 +191,25 @@ type_of_node(#e_op{tag = {call, FunExpr}, data = Args, loc = Loc}, Ctx) ->
 		T ->
 			e_util:ethrow(Loc, "invalid function type: ~s", [type_to_str(T)])
 	end;
-%% the left operators are: and, or, band, bor, bxor, bsl, bsr, >, <, ...
+%% Boolean operator accepts booleans and returns a boolean.
+type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) when ?IS_LOGIC(Tag) ->
+	case {type_of_node(Op1, Ctx), type_of_node(Op2, Ctx)} of
+		{#e_basic_type{class = boolean}, #e_basic_type{class = boolean}} ->
+			#e_basic_type{class = boolean, loc = Loc};
+		{T1, T2} ->
+			e_util:ethrow(Loc, type_error_of(Tag, T1, T2))
+	end;
+%% Comparing operator accepts integers and returns a boolean.
+type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) when ?IS_COMPARE(Tag) ->
+	Op1Type = type_of_node(Op1, Ctx),
+	Op2Type = type_of_node(Op2, Ctx),
+	case are_integers(Op1Type, Op2Type) of
+		{true, _} ->
+			#e_basic_type{class = boolean, loc = Loc};
+		false ->
+			e_util:ethrow(Loc, type_error_of(Tag, Op1Type, Op2Type))
+	end;
+%% the left operators are integer operators: band, bor, bxor, bsl, bsr, >, <, ...
 type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
@@ -207,6 +225,13 @@ type_of_node(#e_op{tag = {sizeof, _}, loc = Loc}, _) ->
 	#e_basic_type{class = integer, tag = word, loc = Loc};
 type_of_node(#e_op{tag = {alignof, _}, loc = Loc}, _) ->
 	#e_basic_type{class = integer, tag = word, loc = Loc};
+type_of_node(#e_op{tag = 'not', data = [Operand], loc = Loc}, Ctx) ->
+	case type_of_node(Operand, Ctx) of
+		#e_basic_type{class = boolean} ->
+			#e_basic_type{class = boolean, loc = Loc};
+		_ ->
+			e_util:ethrow(Loc, "invalid operand type for 'not'")
+	end;
 type_of_node(#e_op{data = [Operand]}, Ctx) ->
 	type_of_node(Operand, Ctx);
 type_of_node(#e_varref{name = Name, loc = Loc}, {#e_vars{type_map = TypeMap}, FnTypeMap, _, _} = Ctx) ->
@@ -243,13 +268,22 @@ type_of_node(#e_integer{loc = Loc}, _) ->
 type_of_node(#e_string{loc = Loc}, _) ->
 	#e_basic_type{class = integer, p_depth = 1, tag = byte, loc = Loc};
 type_of_node(#e_if_stmt{condi = Condi, then = Then, 'else' = Else, loc = Loc}, Ctx) ->
-	check_compare_op(Condi),
-	type_of_node(Condi, Ctx),
+	case type_of_node(Condi, Ctx) of
+		#e_basic_type{class = boolean} ->
+			ok;
+		_ ->
+			e_util:ethrow(Loc, "invalid boolean expression for if")
+	end,
 	type_of_nodes(Then, Ctx),
 	type_of_nodes(Else, Ctx),
 	e_util:void_type(Loc);
 type_of_node(#e_while_stmt{condi = Condi, stmts = Stmts, loc = Loc}, Ctx) ->
-	check_compare_op(Condi),
+	case type_of_node(Condi, Ctx) of
+		#e_basic_type{class = boolean} ->
+			ok;
+		_ ->
+			e_util:ethrow(Loc, "invalid boolean expression for while")
+	end,
 	type_of_node(Condi, Ctx),
 	type_of_nodes(Stmts, Ctx),
 	e_util:void_type(Loc);
@@ -267,16 +301,6 @@ type_of_node(#e_label{loc = Loc}, _) ->
 	e_util:void_type(Loc);
 type_of_node(Any, _) ->
 	e_util:ethrow(element(2, Any), "invalid statement: ~s~n", [e_util:stmt_to_str(Any)]).
-
-check_compare_op(#e_op{tag = Tag, loc = Loc}) ->
-	case e_util:is_cmp_tag(Tag) of
-		true ->
-			ok;
-		false ->
-			e_util:ethrow(Loc, "Only comparing expression is allowed here")
-	end;
-check_compare_op(Node) ->
-	e_util:ethrow(element(2, Node), "invalid comparing expression").
 
 -spec convert_type(e_type(), e_type(), location()) -> e_type().
 convert_type(Type1, Type2, Loc) ->
@@ -551,8 +575,8 @@ type_to_str(#e_array_type{elem_type = Type, length = N}) ->
 	e_util:fmt("{~s, ~w}", [type_to_str(Type), N]);
 type_to_str(#e_struct_init_expr{name = Name}) ->
 	atom_to_list(Name);
-type_to_str(#e_basic_type{tag = Tag, p_depth = N}) when N > 0 ->
+type_to_str(#e_basic_type{class = struct, tag = Tag, p_depth = N}) ->
 	e_util:fmt("(~s~s)", [Tag, lists:duplicate(N, "^")]);
-type_to_str(#e_basic_type{tag = Tag, p_depth = 0}) ->
-	atom_to_list(Tag).
+type_to_str(#e_basic_type{class = Class, p_depth = N}) ->
+	e_util:fmt("(~s~s)", [Class, lists:duplicate(N, "^")]).
 

@@ -2,8 +2,8 @@ Nonterminals
 
 e_root_stmts e_root_stmt e_struct_def e_function_def e_vardefs e_vardef e_args
 e_function_stmts e_function_stmt e_if_stmt e_else_stmt e_while_stmt e_label
-e_expr e_call_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr e_typeof_type e_assign_expr
-e_type_annos e_type_anno e_op19 e_op30 e_op29 e_op28 e_op27 e_op26 e_op25 e_op2_with_assignment
+e_expr e_call_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr e_assign_expr e_not_expr e_bnot_expr
+e_typeof_type e_type_annos e_type_anno e_op19 e_op30 e_op29 e_op28 e_op27 e_op26 e_op25 e_op2_with_assignment
 e_pointer_depth e_atomic_literal_values e_reserved
 e_array_init_expr e_array_init_elements e_struct_init_expr e_struct_init_fields e_struct_init_assignment
 
@@ -12,10 +12,10 @@ e_array_init_expr e_array_init_elements e_struct_init_expr e_struct_init_fields 
 Terminals
 
 %% operators
-';' ':' ',' '=' '{' '}' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '~' '!' '!=' '==' '>=' '<='
+';' ':' ',' '=' '{' '}' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '!=' '==' '>=' '<='
 
 %% keywords
-struct 'end' 'fn' 'rem' 'and' 'or' 'band' 'bor' 'bxor' 'bsl' 'bsr'
+struct 'end' 'fn' 'rem' 'and' 'or' 'not' 'band' 'bor' 'bnot' 'bxor' 'bsl' 'bsr'
 while do 'if' then elif 'else' return sizeof alignof goto as interrupt
 
 %% reserved keywords
@@ -152,11 +152,19 @@ e_struct_init_assignment -> identifier '=' e_expr :
 
 %% sizeof
 e_sizeof_expr -> sizeof '(' e_type_anno ')' :
-	#e_op{tag = {sizeof, '$3'}, loc = token_loc('$2')}.
+	#e_op{tag = {sizeof, '$3'}, loc = token_loc('$1')}.
 
 %% alignof
 e_alignof_expr -> alignof '(' e_type_anno ')' :
-	#e_op{tag = {alignof, '$3'}, loc = token_loc('$2')}.
+	#e_op{tag = {alignof, '$3'}, loc = token_loc('$1')}.
+
+%% not
+e_not_expr -> 'not' '(' e_expr ')' :
+	#e_op{tag = 'not', data = ['$3'], loc = token_loc('$1')}.
+
+%% bnot
+e_bnot_expr -> 'bnot' '(' e_expr ')' :
+	#e_op{tag = 'bnot', data = ['$3'], loc = token_loc('$1')}.
 
 %% function invocation
 e_call_expr -> e_call_expr '(' e_args ')' :
@@ -236,6 +244,8 @@ e_expr -> e_call_expr : '$1'.
 e_expr -> e_assign_expr : '$1'.
 e_expr -> e_sizeof_expr : '$1'.
 e_expr -> e_alignof_expr : '$1'.
+e_expr -> e_not_expr : '$1'.
+e_expr -> e_bnot_expr : '$1'.
 e_expr -> '(' e_expr ')' : '$2'.
 e_expr -> e_expr as '(' e_type_anno ')' :
 	#e_type_convert{expr = '$1', type = '$4', loc = token_loc('$2')}.
@@ -261,8 +271,6 @@ e_pre_minus_plus_expr -> '+' e_expr :
 Unary 900 e_op19.
 e_op19 -> '^' : '$1'.
 e_op19 -> '@' : '$1'.
-e_op19 -> '!' : '$1'.
-e_op19 -> '~' : '$1'.
 
 Left 1000 e_op30.
 e_op30 -> '.' : '$1'.

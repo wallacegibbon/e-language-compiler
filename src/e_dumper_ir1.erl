@@ -87,24 +87,6 @@ generate_tag(ScopeTag, Tag) ->
 comment(Tag, Info, {Line, Col}) ->
 	{comment, io_lib:format("[~s@~w:~w] ~s", [Tag, Line, Col, Info])}.
 
--define(IS_ARITH(Tag),
-	(
-	Tag =:= '+' orelse Tag =:= '-' orelse Tag =:= '*' orelse Tag =:= '/' orelse Tag =:= 'rem' orelse
-	Tag =:= 'and' orelse Tag =:= 'or' orelse Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor' orelse
-	Tag =:= 'bsl' orelse Tag =:= 'bsr'
-	)).
-
--define(IS_IMMID_ARITH(Tag),
-	(
-	Tag =:= '+' orelse Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor'
-	)).
-
--define(IS_COMPARE(Tag),
-	(
-	Tag =:= '>' orelse Tag =:= '<' orelse Tag =:= '==' orelse Tag =:= '!=' orelse
-	Tag =:= '>=' orelse Tag =:= '<='
-	)).
-
 -define(IS_SPECIAL_REG(Tag),
 	(
 	Tag =:= {x, 8} orelse Tag =:= {x, 3} orelse Tag =:= {x, 2} orelse Tag =:= {x, 1} orelse Tag =:= {x, 0}
@@ -163,12 +145,25 @@ expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
 	[T1 | RestRegs2] = RestRegs,
 	ReversedTag = e_util:reverse_cmp_tag(Tag),
 	{[IRs1, IRs2, {ReversedTag, T1, R1, R2}], T1, Ctx#{free_regs := recycle_tmpreg([R2, R1], RestRegs2)}};
-expr_to_ir(?OP1('~', Expr), Ctx) ->
+expr_to_ir(#e_op{tag = 'and', data = [Left, Right], loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
+	FalseLabel = generate_tag(ScopeTag, 'and_false', Loc),
+	EndLabel = generate_tag(ScopeTag, 'and_end', Loc),
+	{IRs1, R1, _} = expr_to_ir(Left, Ctx),
+	Condi1 = [IRs1, {'==', R1, R1, {x, 0}}, {br, R1, FalseLabel}],
+	{IRs2, R2, #{free_regs := RestRegs}} = expr_to_ir(Right, Ctx),
+	[T1 | RestRegs2] = RestRegs,
+	Condi2 = [IRs2, {'==', R2, R2, {x, 0}}, {br, R2, FalseLabel}, {addi, T1, {x, 0}, 1}],
+	Final = [{'==', T1, {x, 0}, {x, 0}}, {label, FalseLabel}, {label, EndLabel}, {}],
+	{[Condi1, Condi2], T1, Ctx#{free_regs := recycle_tmpreg([R2], RestRegs2)}};
+expr_to_ir(#e_op{tag = 'or', data = [Left, Right], loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
+	%% TODO
+	{[{'==', {x, 0}, {x, 0}, {x, 0}}], {x, 0}, Ctx};
+expr_to_ir(?OP1('not', Expr), Ctx) ->
+	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
+	{[IRs, {'==', R, R, {x, 0}}], R, Ctx1};
+expr_to_ir(?OP1('bnot', Expr), Ctx) ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
 	{[IRs, {xori, R, R, -1}], R, Ctx1};
-expr_to_ir(?OP1('!', Expr), Ctx) ->
-	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
-	{[IRs, {sltiu, R, R, 1}], R, Ctx1};
 expr_to_ir(?OP1('-', Expr), Ctx) ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
 	{[IRs, {sub, R, {x, 0}, R}], R, Ctx1};
@@ -224,8 +219,10 @@ smart_li(Reg, N) ->
 	{High, Low} = separate_immedi_for_lui(N),
 	[{lui, Reg, High}, {addi, Reg, Reg, Low}].
 
-%% The immediate value of `LUI` instruction is a signed value. When it is negative, High should be increased to balance it.
-%% The mechanism is simple: `+1` then `+(-1)` keeps the number unchanged. Negative signed extending can be treated as `-1`.
+%% The immediate value of `LUI` instruction is a signed value.
+%% When N is negative, the high part should be increased by 1 to balance it.
+%% The mechanism is simple:
+%% `+1` then `+(-1)` keeps the number unchanged. Negative signed extending can be treated as `-1`.
 separate_immedi_for_lui(N) ->
 	High = N bsr 12,
 	Low = N band 16#FFF,

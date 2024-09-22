@@ -29,7 +29,7 @@ Rules.
 {DecimalDigit}\.{DecimalDigit}+e{DecimalDigit}+ : {token, {float, TokenLoc, list_to_float(TokenChars)}}.
 {Delimiter} : {token, {list_to_atom(TokenChars), TokenLoc}}.
 struct|end|fn|return|if|then|elif|else|while|do|goto|sizeof|alignof|as|interrupt : {token, {list_to_atom(TokenChars), TokenLoc}}.
-rem|and|or|band|bor|bxor|bsl|bsr : {token, {list_to_atom(TokenChars), TokenLoc}}.
+rem|and|or|not|band|bor|bnot|bxor|bsl|bsr : {token, {list_to_atom(TokenChars), TokenLoc}}.
 cond|case|for|break|continue|typeof|new : {token, {list_to_atom(TokenChars), TokenLoc}}.
 byte|word : {token, {int_type, TokenLoc, list_to_atom(TokenChars)}}.
 float : {token, {float_type, TokenLoc, list_to_atom(TokenChars)}}.
