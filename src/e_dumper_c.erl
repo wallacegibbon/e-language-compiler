@@ -170,9 +170,9 @@ stmt_to_str(#e_varref{name = Name}, EndChar) ->
 	io_lib:format("~s~c", [Name, EndChar]);
 stmt_to_str(#e_type_convert{expr = Expr, type = Type}, EndChar) ->
 	io_lib:format("((~s) ~s)~c", [type_to_c_str(Type, ""), stmt_to_str(Expr, $\s), EndChar]);
-stmt_to_str(#e_integer{value = Value}, EndChar) ->
+stmt_to_str(?I(Value), EndChar) ->
 	io_lib:format("~w~c", [Value, EndChar]);
-stmt_to_str(#e_float{value = Value}, EndChar) ->
+stmt_to_str(?F(Value), EndChar) ->
 	io_lib:format("~w~c", [Value, EndChar]);
 stmt_to_str(#e_string{value = S}, EndChar) ->
 	io_lib:format("\"~s\"~c", [e_util:fix_special_chars(S), EndChar]).

@@ -83,13 +83,13 @@ stmt_to_str(?OP1('bnot', Op)) ->
 stmt_to_str(?OP1(Tag, Op)) ->
 	io_lib:format("(~s ~s)", [stmt_to_str(Op), Tag]);
 stmt_to_str(#e_array_init_expr{elements = Elements}) ->
-	ElementStr = string:join(lists:map(fun(#e_integer{value = V}) -> integer_to_list(V) end, Elements), ","),
+	ElementStr = string:join(lists:map(fun(?I(V)) -> integer_to_list(V) end, Elements), ","),
 	io_lib:format("{~s}", [ElementStr]);
 stmt_to_str(#e_struct_init_expr{name = Name}) ->
 	io_lib:format("{...} (struct ~s init expr)", [Name]);
-stmt_to_str(#e_integer{value = Val}) ->
+stmt_to_str(?I(Val)) ->
 	io_lib:format("~w", [Val]);
-stmt_to_str(#e_float{value = Val}) ->
+stmt_to_str(?F(Val)) ->
 	io_lib:format("~w", [Val]);
 stmt_to_str(#e_string{value = Val}) ->
 	io_lib:format("\"~s\"", [fix_special_chars(Val)]);

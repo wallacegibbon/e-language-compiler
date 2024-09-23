@@ -23,9 +23,9 @@ expand_kw_in_stmts(Stmts, Ctx) ->
 
 -spec expand_kw(e_expr(), context()) -> e_expr().
 expand_kw(#e_op{tag = {sizeof, T}, loc = Loc}, Ctx) ->
-	#e_integer{value = size_of(T, Ctx), loc = Loc};
+	?I(size_of(T, Ctx), Loc);
 expand_kw(#e_op{tag = {alignof, T}, loc = Loc}, Ctx) ->
-	#e_integer{value = align_of(T, Ctx), loc = Loc};
+	?I(align_of(T, Ctx), Loc);
 expand_kw(?CALL(Callee, Args) = E, Ctx) ->
 	E?CALL(expand_kw(Callee, Ctx), lists:map(fun(O) -> expand_kw(O, Ctx) end, Args));
 expand_kw(#e_op{data = Data} = E, Ctx) ->

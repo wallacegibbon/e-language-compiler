@@ -261,9 +261,9 @@ type_of_node(#e_struct_init_expr{} = S, {_, _, StructMap, _} = Ctx) ->
 	end;
 type_of_node(#e_type_convert{expr = Expr, type = Type, loc = Loc}, Ctx) ->
 	convert_type(type_of_node(Expr, Ctx), Type, Loc);
-type_of_node(#e_float{loc = Loc}, _) ->
+type_of_node(?F(_, Loc), _) ->
 	#e_basic_type{class = float, tag = float, loc = Loc};
-type_of_node(#e_integer{loc = Loc}, _) ->
+type_of_node(?I(_, Loc), _) ->
 	#e_basic_type{class = integer, tag = word, loc = Loc};
 type_of_node(#e_string{loc = Loc}, _) ->
 	#e_basic_type{class = integer, p_depth = 1, tag = byte, loc = Loc};
