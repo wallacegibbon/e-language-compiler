@@ -9,41 +9,45 @@
 
 -type context() ::
 	#{
-	wordsize => pos_integer(),
-	scope_tag => atom(),
-	tmp_regs => [machine_reg()],
-	free_regs => [machine_reg()],
+	wordsize		=> pos_integer(),
+	scope_tag		=> atom(),
+	tmp_regs		=> [machine_reg()],
+	free_regs		=> [machine_reg()],
+	string_collector	=> pid(),
 	%% `condi_label` is for generating logic operator (and, or, not) related code.
-	condi_label => {atom(), atom()}
+	condi_label		=> {atom(), atom()}
 	}.
 
 -spec generate_code(e_ast(), e_ast(), string(), non_neg_integer()) -> ok.
 generate_code(AST, InitCode, OutputFile, WordSize) ->
+	Pid = spawn_link(fun() -> string_collect_loop([]) end),
 	Regs = tmp_regs(),
-	Ctx = #{wordsize => WordSize, scope_tag => '__init', tmp_regs => Regs, free_regs => Regs},
-	IRs = [{fn, '__init'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, InitCode) | ast_to_ir(AST, WordSize)],
-	Fn = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"} | IRs], IO_Dev) end,
+	Ctx = #{wordsize => WordSize, tmp_regs => Regs, free_regs => Regs, string_collector => Pid},
+	InitIRs = [{fn, '__init'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init'}) end, InitCode)],
+	IRs = ast_to_ir(AST, Ctx),
+	StrTable = string_collect_dump(Pid),
+	Fn = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"}, InitIRs, IRs, StrTable], IO_Dev) end,
 	e_util:file_write(OutputFile, Fn).
 
 -type irs() :: [tuple() | irs()].
 
 -spec ast_to_ir(e_ast(), non_neg_integer()) -> irs().
-ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size = Size0}} = Fn | Rest], WordSize) ->
+ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size = Size0}} = Fn | Rest], Ctx) ->
+	#{wordsize := WordSize, free_regs := Regs} = Ctx,
 	%% When there are no local variables, there should still be one word for returning value.
 	Size1 = erlang:max(e_util:fill_unit_pessi(Size0, WordSize), WordSize),
 	%% The extra `2` words are for `frame pointer`({x, 8}) and `returning address`({x, 1}).
 	FrameSize = Size1 + WordSize * 2,
 	RegSave = [{sw, {x, 8}, {{x, 2}, Size1}}, {sw, {x, 1}, {{x, 2}, Size1 + WordSize}}, {mv, {x, 8}, {x, 2}}],
-	Regs = tmp_regs(),
-	Ctx = #{wordsize => WordSize, scope_tag => Name, tmp_regs => Regs, free_regs => Regs},
-	{Before, After} = interrupt_related_code(Fn, Regs, Ctx),
-	Prologue = [RegSave, smart_addi({x, 2}, FrameSize, Ctx), Before, {comment, "prologue end"}],
+	Ctx1 = Ctx#{scope_tag => Name},
+	{Before, After} = interrupt_related_code(Fn, Regs, Ctx1),
+	Prologue = [RegSave, smart_addi({x, 2}, FrameSize, Ctx1), Before, {comment, "prologue end"}],
 	RegRestore = [{mv, {x, 2}, {x, 8}}, {lw, {x, 8}, {{x, 2}, Size1}}, {lw, {x, 1}, {{x, 2}, Size1 + WordSize}}],
 	EndLabel = {label, generate_tag(Name, epilogue)},
 	Epilogue = [EndLabel, After, RegRestore, {jalr, {x, 0}, {x, 1}}],
-	Body = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts),
+	Body = lists:map(fun(S) -> stmt_to_ir(S, Ctx1) end, Stmts),
 	%% The result should be flattened before calling `fix_irs/1`.
-	FinalIRs = lists:flatten([{fn, Name}, Prologue, Body, Epilogue | ast_to_ir(Rest, WordSize)]),
+	FinalIRs = lists:flatten([{fn, Name}, Prologue, Body, Epilogue | ast_to_ir(Rest, Ctx)]),
 	fix_irs(FinalIRs);
 ast_to_ir([_ | Rest], Ctx) ->
 	ast_to_ir(Rest, Ctx);
@@ -181,20 +185,20 @@ expr_to_ir(?OP1('bnot', Expr), Ctx) ->
 expr_to_ir(?OP1('-', Expr), Ctx) ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
 	{[IRs, {sub, R, {x, 0}, R}], R, Ctx1};
+expr_to_ir(#e_string{value = String, loc = Loc}, #{free_regs := [R | RestRegs], string_collector := Pid} = Ctx) ->
+	Label = generate_tag(g, s, Loc),
+	Pid ! {put, Label, String},
+	{[{la, R, Label}], R, Ctx#{free_regs := RestRegs}};
+expr_to_ir(?I(0), Ctx) ->
+	{[], {x, 0}, Ctx};
+expr_to_ir(?I(N), #{free_regs := [R | RestRegs]} = Ctx) ->
+	{smart_li(R, N), R, Ctx#{free_regs := RestRegs}};
 expr_to_ir(#e_varref{name = fp}, Ctx) ->
 	{[], {x, 8}, Ctx};
 expr_to_ir(#e_varref{name = gp}, Ctx) ->
 	{[], {x, 3}, Ctx};
 expr_to_ir(#e_varref{name = Name}, #{free_regs := [R | RestRegs]} = Ctx) ->
 	{[{la, R, Name}], R, Ctx#{free_regs := RestRegs}};
-expr_to_ir(#e_string{value = Value}, #{free_regs := [R | RestRegs]} = Ctx) ->
-	%% TODO: string literals should be placed in certain place.
-	{[{la, R, Value}], R, Ctx#{free_regs := RestRegs}};
-expr_to_ir(?I(0), Ctx) ->
-	{[], {x, 0}, Ctx};
-expr_to_ir(?I(N), #{free_regs := Regs} = Ctx) ->
-	[R | RestRegs] = Regs,
-	{smart_li(R, N), R, Ctx#{free_regs := RestRegs}};
 expr_to_ir(Any, _) ->
 	e_util:ethrow(element(2, Any), "IR1: unsupported expr \"~w\"", [Any]).
 
@@ -210,6 +214,25 @@ fix_irs([Any | Rest]) ->
 	[Any | fix_irs(Rest)];
 fix_irs([]) ->
 	[].
+
+-type string_collect() :: {atom(), string()}.
+
+-spec string_collect_loop([string_collect()]) -> ok.
+string_collect_loop(Collected) ->
+	receive
+		{put, Tag, String} ->
+			string_collect_loop([{Tag, String} | Collected]);
+		{dump, Pid} ->
+			Pid ! {self(), Collected}
+	end.
+
+-spec string_collect_dump(pid()) -> irs().
+string_collect_dump(Pid) ->
+	Pid ! {dump, self()},
+	receive
+		{Pid, Collected} ->
+			lists:map(fun({L, S}) -> [{label, L}, {string, S}] end, Collected)
+	end.
 
 recycle_tmpreg([R | Regs], RegBank) when ?IS_SPECIAL_REG(R) ->
 	recycle_tmpreg(Regs, RegBank);
