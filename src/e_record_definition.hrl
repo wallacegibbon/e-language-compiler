@@ -200,9 +200,16 @@
 -type e_ast_elem() :: #e_function{} | #e_struct{} | #e_vardef{} | e_stmt().
 -type e_ast() :: [e_ast_elem()].
 
+-define(OP2(Tag, O1, O2, Loc), #e_op{tag = Tag, data = [O1, O2], loc = Loc}).
 -define(OP2(Tag, O1, O2), #e_op{tag = Tag, data = [O1, O2]}).
+-define(OP1(Tag, O, Loc), #e_op{tag = Tag, data = [O], loc = Loc}).
 -define(OP1(Tag, O), #e_op{tag = Tag, data = [O]}).
+-define(CALL(Fn, ARGS, Loc), #e_op{tag = {call, Fn}, data = ARGS, loc = Loc}).
+-define(CALL(Fn, ARGS), #e_op{tag = {call, Fn}, data = ARGS}).
+
+-define(I(V, Loc), #e_integer{value = V, loc = Loc}).
 -define(I(V), #e_integer{value = V}).
+-define(F(V, Loc), #e_float{value = V, loc = Loc}).
 -define(F(V), #e_float{value = V}).
 
 -define(IS_ARITH(Tag),

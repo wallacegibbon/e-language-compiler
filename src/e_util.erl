@@ -29,26 +29,26 @@ eliminate_pointer(Stmts1) ->
 -spec merge_plus(e_expr()) -> e_expr().
 %% Handling expressions like `1 + 2 + 3 + ...`
 merge_plus(?OP2('+', ?OP2('+', O1, ?I(N1) = I), ?I(N2)) = Orig) ->
-	merge_plus(Orig#e_op{data = [O1, I?I(N1 + N2)]});
+	merge_plus(Orig?OP2('+', O1, I?I(N1 + N2)));
 %% Handling expressions like `... + (1 + (2 + 3))`
 merge_plus(?OP2('+', ?I(N1) = I, ?OP2('+', ?I(N2), O2)) = Orig) ->
-	merge_plus(Orig#e_op{data = [I?I(N1 + N2), O2]});
+	merge_plus(Orig?OP2('+', I?I(N1 + N2), O2));
 merge_plus(?OP2('+', ?I(N1) = I, ?I(N2))) ->
 	I?I(N1 + N2);
-merge_plus(#e_op{tag = {call, Callee}, data = Args} = Op) ->
-	Op#e_op{tag = {call, merge_plus(Callee)}, data = lists:map(fun merge_plus/1, Args)};
+merge_plus(?CALL(Callee, Args) = Op) ->
+	Op?CALL(merge_plus(Callee), lists:map(fun merge_plus/1, Args));
 merge_plus(#e_op{data = Args} = Op) ->
 	Op#e_op{data = lists:map(fun merge_plus/1, Args)};
 merge_plus(Any) ->
 	Any.
 
 -spec merge_pointer(e_expr()) -> e_expr().
-merge_pointer(#e_op{tag = '^', data = [#e_op{tag = '@', data = [E]}, _]}) ->
+merge_pointer(?OP2('^', ?OP1('@', E), _)) ->
 	merge_pointer(E);
-merge_pointer(#e_op{tag = '@', data = [#e_op{tag = '^', data = [E, _]}]}) ->
+merge_pointer(?OP1('@', ?OP2('^', E, _))) ->
 	merge_pointer(E);
-merge_pointer(#e_op{tag = {call, Callee}, data = Args} = Op) ->
-	Op#e_op{tag = {call, merge_pointer(Callee)}, data = lists:map(fun merge_pointer/1, Args)};
+merge_pointer(?CALL(Callee, Args) = Op) ->
+	Op?CALL(merge_pointer(Callee), lists:map(fun merge_pointer/1, Args));
 merge_pointer(#e_op{data = Args} = Op) ->
 	Op#e_op{data = lists:map(fun merge_pointer/1, Args)};
 merge_pointer(Any) ->
@@ -69,18 +69,18 @@ stmt_to_str(#e_varref{name = Name}) ->
 	atom_to_list(Name);
 stmt_to_str(#e_vardef{name = Name}) ->
 	io_lib:format("variable definition for ~s", [Name]);
-stmt_to_str(#e_op{tag = {call, Callee}, data = Args}) ->
+stmt_to_str(?CALL(Callee, Args)) ->
 	io_lib:format("(~s)(~s)", [stmt_to_str(Callee), string:join(lists:map(fun stmt_to_str/1, Args), ",")]);
-stmt_to_str(#e_op{tag = '^', data = [Op1, _Size]}) ->
+stmt_to_str(?OP2('^', Op1, _Size)) ->
 	%io_lib:format("(~s^ <size:~s>)", [stmt_to_str(Op1), stmt_to_str(_Size)]);
 	io_lib:format("((~s)^)", [stmt_to_str(Op1)]);
-stmt_to_str(#e_op{tag = Tag, data = [Op1, Op2]}) ->
+stmt_to_str(?OP2(Tag, Op1, Op2)) ->
 	io_lib:format("(~s ~s ~s)", [stmt_to_str(Op1), Tag, stmt_to_str(Op2)]);
-stmt_to_str(#e_op{tag = 'not', data = [Op]}) ->
+stmt_to_str(?OP1('not', Op)) ->
 	io_lib:format("not(~s)", [stmt_to_str(Op)]);
-stmt_to_str(#e_op{tag = 'bnot', data = [Op]}) ->
+stmt_to_str(?OP1('bnot', Op)) ->
 	io_lib:format("bnot(~s)", [stmt_to_str(Op)]);
-stmt_to_str(#e_op{tag = Tag, data = [Op]}) ->
+stmt_to_str(?OP1(Tag, Op)) ->
 	io_lib:format("(~s ~s)", [stmt_to_str(Op), Tag]);
 stmt_to_str(#e_array_init_expr{elements = Elements}) ->
 	ElementStr = string:join(lists:map(fun(#e_integer{value = V}) -> integer_to_list(V) end, Elements), ","),

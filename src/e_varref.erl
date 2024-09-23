@@ -31,10 +31,10 @@ varref_to_offset(#e_varref{} = Varref, Ctx) ->
 		{ok, _} ->
 			Varref
 	end;
-varref_to_offset(#e_op{tag = {call, Callee}, data = Args} = Op, Ctx) ->
-	Op#e_op{tag = {call, varref_to_offset(Callee, Ctx)}, data = lists:map(fun(E) -> varref_to_offset(E, Ctx) end, Args)};
-varref_to_offset(#e_op{data = Args} = Op, Ctx) ->
-	Op#e_op{data = lists:map(fun(E) -> varref_to_offset(E, Ctx) end, Args)};
+varref_to_offset(?CALL(Callee, Args) = Op, Ctx) ->
+	Op?CALL(varref_to_offset(Callee, Ctx), lists:map(fun(E) -> varref_to_offset(E, Ctx) end, Args));
+varref_to_offset(#e_op{data = Operands} = Op, Ctx) ->
+	Op#e_op{data = lists:map(fun(E) -> varref_to_offset(E, Ctx) end, Operands)};
 varref_to_offset(#e_type_convert{expr = Expr}, Ctx) ->
 	varref_to_offset(Expr, Ctx);
 varref_to_offset(Any, _) ->
@@ -42,8 +42,7 @@ varref_to_offset(Any, _) ->
 
 -spec varref_to_op(#e_varref{}, atom(), e_var_offset()) -> #e_op{}.
 varref_to_op(#e_varref{loc = Loc} = Varref, Tag, {Offset, Size}) ->
-	A = #e_op{tag = '+', data = [Varref#e_varref{name = Tag}, #e_integer{value = Offset, loc = Loc}], loc = Loc},
-	#e_op{tag = '^', data = [A, #e_integer{value = Size, loc = Loc}], loc = Loc}.
+	?OP2('^', ?OP2('+', Varref#e_varref{name = Tag}, ?I(Offset, Loc), Loc), ?I(Size, Loc), Loc).
 
 -spec find_name_in_vars_and_fn_map(#e_varref{}, context()) -> {ok, {atom(), e_var_offset()}} | {ok, atom()}.
 find_name_in_vars_and_fn_map(Varref, {VarsList, FnTypeMap}) ->

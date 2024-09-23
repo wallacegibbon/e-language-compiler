@@ -79,16 +79,15 @@ eliminate_dot_in_stmts_inner(Stmts0, Ctx) ->
 
 %% `a.b` will be converted to `(a@ + OFFSET_OF_b)^`.
 -spec eliminate_dot(e_expr(), e_type:context()) -> e_expr().
-eliminate_dot(#e_op{tag = '.', loc = Loc} = Op, {_, _, StructMap, _} = Ctx) ->
-	#e_op{data = [O, #e_varref{name = FieldName}]} = Op,
+eliminate_dot(?OP2('.', O, #e_varref{name = FieldName}, Loc), {_, _, StructMap, _} = Ctx) ->
 	#e_basic_type{class = struct, tag = Name, p_depth = 0} = e_type:type_of_node(O, Ctx),
 	{ok, #e_struct{fields = #e_vars{offset_map = FieldOffsetMap}}} = maps:find(Name, StructMap),
 	{ok, {Offset, Size}} = maps:find(FieldName, FieldOffsetMap),
-	A = #e_op{tag = '@', data = [eliminate_dot(O, Ctx)], loc = Loc},
-	B = #e_op{tag = '+', data = [A, #e_integer{value = Offset, loc = Loc}], loc = Loc},
-	#e_op{tag = '^', data = [B, #e_integer{value = Size, loc = Loc}], loc = Loc};
-eliminate_dot(#e_op{tag = {call, Callee}, data = Args} = Op, Ctx) ->
-	Op#e_op{tag = {call, eliminate_dot(Callee, Ctx)}, data = lists:map(fun(E) -> eliminate_dot(E, Ctx) end, Args)};
+	A = ?OP1('@', eliminate_dot(O, Ctx), Loc),
+	B = ?OP2('+', A, ?I(Offset, Loc), Loc),
+	?OP2('^', B, ?I(Size, Loc), Loc);
+eliminate_dot(?CALL(Callee, Args) = Op, Ctx) ->
+	Op?CALL(eliminate_dot(Callee, Ctx), lists:map(fun(E) -> eliminate_dot(E, Ctx) end, Args));
 eliminate_dot(#e_op{data = Args} = Op, Ctx) ->
 	Op#e_op{data = lists:map(fun(E) -> eliminate_dot(E, Ctx) end, Args)};
 eliminate_dot(#e_type_convert{expr = Expr} = C, Ctx) ->

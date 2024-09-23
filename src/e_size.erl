@@ -26,8 +26,8 @@ expand_kw(#e_op{tag = {sizeof, T}, loc = Loc}, Ctx) ->
 	#e_integer{value = size_of(T, Ctx), loc = Loc};
 expand_kw(#e_op{tag = {alignof, T}, loc = Loc}, Ctx) ->
 	#e_integer{value = align_of(T, Ctx), loc = Loc};
-expand_kw(#e_op{tag = {call, Callee}, data = Args} = E, Ctx) ->
-	E#e_op{tag = {call, expand_kw(Callee, Ctx)}, data = lists:map(fun(O) -> expand_kw(O, Ctx) end, Args)};
+expand_kw(?CALL(Callee, Args) = E, Ctx) ->
+	E?CALL(expand_kw(Callee, Ctx), lists:map(fun(O) -> expand_kw(O, Ctx) end, Args));
 expand_kw(#e_op{data = Data} = E, Ctx) ->
 	E#e_op{data = lists:map(fun(O) -> expand_kw(O, Ctx) end, Data)};
 expand_kw(#e_type_convert{expr = Expr} = C, Ctx) ->

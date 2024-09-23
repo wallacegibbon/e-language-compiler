@@ -88,8 +88,8 @@ replace_typeof_in_vars(#e_vars{type_map = TypeMap} = Vars, {GlobalVars, FnTypeMa
 -spec replace_typeof(e_expr(), context()) -> e_expr().
 replace_typeof(#e_type_convert{type = #e_typeof{expr = Expr}} = E, Ctx) ->
 	E#e_type_convert{type = type_of_node(Expr, Ctx)};
-replace_typeof(#e_op{tag = {call, Callee}, data = Data} = E, Ctx) ->
-	E#e_op{tag = {call, replace_typeof(Callee, Ctx)}, data = lists:map(fun(V) -> replace_typeof(V, Ctx) end, Data)};
+replace_typeof(?CALL(Callee, Args) = E, Ctx) ->
+	E?CALL(replace_typeof(Callee, Ctx), lists:map(fun(V) -> replace_typeof(V, Ctx) end, Args));
 replace_typeof(#e_op{tag = {sizeof, Type}} = E, Ctx) ->
 	E#e_op{tag = {sizeof, replace_typeof_in_type(Type, Ctx)}};
 replace_typeof(#e_op{tag = {alignof, Type}} = E, Ctx) ->
@@ -117,25 +117,25 @@ type_of_nodes(Stmts, Ctx) ->
 	lists:map(fun(Expr) -> type_of_node(Expr, Ctx) end, Stmts).
 
 -spec type_of_node(e_stmt(), context()) -> e_type().
-type_of_node(#e_op{tag = '=', data = [#e_op{tag = '.', data = [Op11, Op12], loc = DotLoc}, Op2], loc = Loc}, {_, _, StructMap, _} = Ctx) ->
+type_of_node(?OP2('=', ?OP2('.', Op11, Op12, DotLoc), Op2, Loc), {_, _, StructMap, _} = Ctx) ->
 	Op1Type = type_of_struct_field(type_of_node(Op11, Ctx), Op12, StructMap, DotLoc),
 	Op1TypeFixed = check_type(Op1Type, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
 	compare_expect_left(Op1TypeFixed, Op2Type, Loc);
-type_of_node(#e_op{tag = '=', data = [#e_op{tag = '^', data = [SubOp, _]}, Op2], loc = Loc}, Ctx) ->
+type_of_node(?OP2('=', ?OP2('^', SubOp, _), Op2, Loc), Ctx) ->
 	Op1Type = dec_pointer_depth(type_of_node(SubOp, Ctx), Loc),
 	Op2Type = type_of_node(Op2, Ctx),
 	compare_expect_left(Op1Type, Op2Type, Loc);
-type_of_node(#e_op{tag = '=', data = [#e_varref{} = Op1, Op2], loc = Loc}, Ctx) ->
+type_of_node(?OP2('=', #e_varref{} = Op1, Op2, Loc), Ctx) ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
 	compare_expect_left(Op1Type, Op2Type, Loc);
-type_of_node(#e_op{tag = '=', data = [Any, _], loc = Loc}, _) ->
+type_of_node(?OP2('=', Any, _, Loc), _) ->
 	e_util:ethrow(Loc, "invalid left value (~s)", [e_util:stmt_to_str(Any)]);
-type_of_node(#e_op{tag = '.', data = [Op1, Op2], loc = Loc}, {_, _, StructMap, _} = Ctx) ->
+type_of_node(?OP2('.', Op1, Op2, Loc), {_, _, StructMap, _} = Ctx) ->
 	T1 = type_of_struct_field(type_of_node(Op1, Ctx), Op2, StructMap, Loc),
 	check_type(T1, Ctx);
-type_of_node(#e_op{tag = '+', data = [Op1, Op2], loc = Loc}, Ctx) ->
+type_of_node(?OP2('+', Op1, Op2, Loc), Ctx) ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
 	Checkers = [fun are_numbers_of_same_type/2, fun are_pointer_and_integer_ignore_order/2],
@@ -146,7 +146,7 @@ type_of_node(#e_op{tag = '+', data = [Op1, Op2], loc = Loc}, Ctx) ->
 			e_util:ethrow(Loc, type_error_of('+', Op1Type, Op2Type))
 	end;
 %% `integer + pointer` is valid, but `integer - pointer` is invalid
-type_of_node(#e_op{tag = '-', data = [Op1, Op2], loc = Loc}, Ctx) ->
+type_of_node(?OP2('-', Op1, Op2, Loc), Ctx) ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
 	case are_pointers_of_same_type(Op1Type, Op2Type) of
@@ -162,14 +162,14 @@ type_of_node(#e_op{tag = '-', data = [Op1, Op2], loc = Loc}, Ctx) ->
 					e_util:ethrow(Loc, type_error_of('-', Op1Type, Op2Type))
 			end
 	end;
-type_of_node(#e_op{tag = '^', data = [Operand, _], loc = Loc}, Ctx) ->
+type_of_node(?OP2('^', Operand, _, Loc), Ctx) ->
 	case type_of_node(Operand, Ctx) of
 		#e_basic_type{} = T ->
 			dec_pointer_depth(T, Loc);
 		_ ->
 			e_util:ethrow(Loc, "invalid \"^\" on operand ~s", [e_util:stmt_to_str(Operand)])
 	end;
-type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) when Tag =:= '*'; Tag =:= '/' ->
+type_of_node(?OP2(Tag, Op1, Op2, Loc), Ctx) when Tag =:= '*'; Tag =:= '/' ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
 	case are_numbers_of_same_type(Op1Type, Op2Type) of
@@ -178,7 +178,7 @@ type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) when Tag =:= '
 		false ->
 			e_util:ethrow(Loc, type_error_of(Tag, Op1Type, Op2Type))
 	end;
-type_of_node(#e_op{tag = {call, FunExpr}, data = Args, loc = Loc}, Ctx) ->
+type_of_node(?CALL(FunExpr, Args, Loc), Ctx) ->
 	ArgTypes = type_of_nodes(Args, Ctx),
 	case type_of_node(FunExpr, Ctx) of
 		#e_fn_type{params = FnParamTypes, ret = FnRetType} ->
@@ -192,7 +192,7 @@ type_of_node(#e_op{tag = {call, FunExpr}, data = Args, loc = Loc}, Ctx) ->
 			e_util:ethrow(Loc, "invalid function type: ~s", [type_to_str(T)])
 	end;
 %% Boolean operator accepts booleans and returns a boolean.
-type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) when ?IS_LOGIC(Tag) ->
+type_of_node(?OP2(Tag, Op1, Op2, Loc), Ctx) when ?IS_LOGIC(Tag) ->
 	case {type_of_node(Op1, Ctx), type_of_node(Op2, Ctx)} of
 		{#e_basic_type{class = boolean}, #e_basic_type{class = boolean}} ->
 			#e_basic_type{class = boolean, loc = Loc};
@@ -200,7 +200,7 @@ type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) when ?IS_LOGIC
 			e_util:ethrow(Loc, type_error_of(Tag, T1, T2))
 	end;
 %% Comparing operator accepts integers and returns a boolean.
-type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) when ?IS_COMPARE(Tag) ->
+type_of_node(?OP2(Tag, Op1, Op2, Loc), Ctx) when ?IS_COMPARE(Tag) ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
 	case are_integers(Op1Type, Op2Type) of
@@ -210,7 +210,7 @@ type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) when ?IS_COMPA
 			e_util:ethrow(Loc, type_error_of(Tag, Op1Type, Op2Type))
 	end;
 %% the left operators are integer operators: band, bor, bxor, bsl, bsr, >, <, ...
-type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) ->
+type_of_node(?OP2(Tag, Op1, Op2, Loc), Ctx) ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
 	case are_integers(Op1Type, Op2Type) of
@@ -219,20 +219,20 @@ type_of_node(#e_op{tag = Tag, data = [Op1, Op2], loc = Loc}, Ctx) ->
 		false ->
 			e_util:ethrow(Loc, type_error_of(Tag, Op1Type, Op2Type))
 	end;
-type_of_node(#e_op{tag = '@', data = [Operand], loc = Loc}, Ctx) ->
+type_of_node(?OP1('@', Operand, Loc), Ctx) ->
 	inc_pointer_depth(type_of_node(Operand, Ctx), Loc);
 type_of_node(#e_op{tag = {sizeof, _}, loc = Loc}, _) ->
 	#e_basic_type{class = integer, tag = word, loc = Loc};
 type_of_node(#e_op{tag = {alignof, _}, loc = Loc}, _) ->
 	#e_basic_type{class = integer, tag = word, loc = Loc};
-type_of_node(#e_op{tag = 'not', data = [Operand], loc = Loc}, Ctx) ->
+type_of_node(?OP1('not', Operand, Loc), Ctx) ->
 	case type_of_node(Operand, Ctx) of
 		#e_basic_type{class = boolean} ->
 			#e_basic_type{class = boolean, loc = Loc};
 		_ ->
 			e_util:ethrow(Loc, "invalid operand type for 'not'")
 	end;
-type_of_node(#e_op{data = [Operand]}, Ctx) ->
+type_of_node(?OP1(_, Operand), Ctx) ->
 	type_of_node(Operand, Ctx);
 type_of_node(#e_varref{name = Name, loc = Loc}, {#e_vars{type_map = TypeMap}, FnTypeMap, _, _} = Ctx) ->
 	case e_util:map_find_multi(Name, [TypeMap, FnTypeMap]) of

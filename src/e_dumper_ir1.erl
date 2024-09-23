@@ -126,7 +126,7 @@ expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
 	{IRs, R, #{free_regs := RestRegs}} = expr_to_ir(Expr, Ctx),
 	[T1 | RestRegs2] = RestRegs,
 	{[IRs, {ld_instr_from_v(V), T1, {R, 0}}], T1, Ctx#{free_regs := recycle_tmpreg([R], RestRegs2)}};
-expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, Ctx) ->
+expr_to_ir(?CALL(Fn, Args), Ctx) ->
 	%% register preparing and restoring steps
 	#{free_regs := FreeRegs, tmp_regs := TmpRegs} = Ctx,
 	{BeforeCall, AfterCall} = reg_save_restore(TmpRegs -- FreeRegs, Ctx),
@@ -161,12 +161,12 @@ expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
 	{IRs2, R2, _} = expr_to_ir(Right, Ctx1),
 	{[IRs1, IRs2, {Tag, R1, R1, R2}], R1, Ctx1};
 %% `and` and `or` do not consume tmp registers, it returns the same context and {x, 0} as a sign.
-expr_to_ir(#e_op{tag = 'and', data = [Left, Right], loc = Loc}, #{scope_tag := ScopeTag, condi_label := {True, False}} = Ctx) ->
+expr_to_ir(?OP2('and', Left, Right, Loc), #{scope_tag := ScopeTag, condi_label := {True, False}} = Ctx) ->
 	Next = generate_tag(ScopeTag, 'and_next', Loc),
 	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {Next, False}}),
 	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {True, False}}),
 	{[IRs1, 'br!_reg'(R1, False), {label, Next}, IRs2, 'br!_reg'(R2, False), {j, True}], {x, 0}, Ctx};
-expr_to_ir(#e_op{tag = 'or', data = [Left, Right], loc = Loc}, #{scope_tag := ScopeTag, condi_label := {True, False}} = Ctx) ->
+expr_to_ir(?OP2('or', Left, Right, Loc), #{scope_tag := ScopeTag, condi_label := {True, False}} = Ctx) ->
 	Next = generate_tag(ScopeTag, 'or_next', Loc),
 	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {True, Next}}),
 	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {True, False}}),

@@ -27,8 +27,8 @@ fix_struct_init(#e_array_init_expr{elements = Elements} = A) ->
 	A#e_array_init_expr{elements = lists:map(fun fix_struct_init/1, Elements)};
 fix_struct_init(#e_vardef{init_value = InitialValue} = V) ->
 	V#e_vardef{init_value = fix_struct_init(InitialValue)};
-fix_struct_init(#e_op{tag = {call, Callee}, data = Operands} = O) ->
-	O#e_op{tag = {call, fix_struct_init(Callee)}, data = lists:map(fun fix_struct_init/1, Operands)};
+fix_struct_init(?CALL(Callee, Args) = O) ->
+	O?CALL(fix_struct_init(Callee), lists:map(fun fix_struct_init/1, Args));
 fix_struct_init(#e_op{data = Operands} = O) ->
 	O#e_op{data = lists:map(fun fix_struct_init/1, Operands)};
 fix_struct_init(#e_type_convert{expr = Expr} = C) ->
@@ -37,7 +37,7 @@ fix_struct_init(Any) ->
 	Any.
 
 -spec struct_init_to_map([e_expr()], #{atom() => e_expr()}) -> #{atom() => e_expr()}.
-struct_init_to_map([#e_op{tag = '=', data = [#e_varref{name = Field}, Val]} | Rest], ExprMap) ->
+struct_init_to_map([?OP2('=', #e_varref{name = Field}, Val) | Rest], ExprMap) ->
 	struct_init_to_map(Rest, ExprMap#{Field => fix_struct_init(Val)});
 struct_init_to_map([], ExprMap) ->
 	ExprMap.
@@ -97,7 +97,7 @@ fetch_vars([], AST, {#e_vars{names = OldNames} = Vars, Names, InitCode, _, Tag})
 
 -spec append_to_ast([e_stmt()], atom(), e_expr(), location()) -> e_ast().
 append_to_ast(AST, VarName, InitialValue, Loc) when InitialValue =/= none ->
-	[#e_op{tag = '=', data = [#e_varref{name = VarName, loc = Loc}, InitialValue], loc = Loc} | AST];
+	[?OP2('=', #e_varref{name = VarName, loc = Loc}, InitialValue, Loc) | AST];
 append_to_ast(AST, _, _, _) ->
 	AST.
 

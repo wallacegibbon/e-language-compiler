@@ -33,15 +33,15 @@ fix_exprs_for_c(Stmts, Ctx) ->
 	e_util:expr_map(fun(E) -> fix_expr_for_c(E, Ctx) end, Stmts).
 
 -spec fix_expr_for_c(e_expr(), context()) -> e_expr().
-fix_expr_for_c(#e_op{tag = '@', data = [Operand], loc = Loc} = E, {FnTypeMap, StructMap, Vars} = Ctx) ->
+fix_expr_for_c(?OP1('@', Operand, Loc) = E, {FnTypeMap, StructMap, Vars} = Ctx) ->
 	case e_type:type_of_node(Operand, {Vars, FnTypeMap, StructMap, #e_basic_type{}}) of
 		#e_array_type{} ->
-			#e_op{tag = '.', data = [fix_expr_for_c(Operand, Ctx), #e_varref{name = value, loc = Loc}]};
+			?OP2('.', fix_expr_for_c(Operand, Ctx), #e_varref{name = value, loc = Loc});
 		_ ->
 			E
 	end;
-fix_expr_for_c(#e_op{tag = {call, Callee}, data = Operands} = E, Ctx) ->
-	E#e_op{tag = {call, fix_expr_for_c(Callee, Ctx)}, data = lists:map(fun(D) -> fix_expr_for_c(D, Ctx) end, Operands)};
+fix_expr_for_c(?CALL(Callee, Args) = E, Ctx) ->
+	E?CALL(fix_expr_for_c(Callee, Ctx), lists:map(fun(D) -> fix_expr_for_c(D, Ctx) end, Args));
 fix_expr_for_c(#e_op{data = Operands} = E, Ctx) ->
 	E#e_op{data = lists:map(fun(D) -> fix_expr_for_c(D, Ctx) end, Operands)};
 fix_expr_for_c(#e_type_convert{expr = Expr} = C, Ctx) ->
@@ -153,12 +153,12 @@ stmt_to_str(#e_if_stmt{condi = Condi, then = Then, 'else' = Else}, _) ->
 	io_lib:format("if (~s) {\n~s\n} else {\n~s}", [stmt_to_str(Condi, $\s), stmts_to_str(Then), stmts_to_str(Else)]);
 stmt_to_str(#e_while_stmt{condi = Condi, stmts = Stmts}, _) ->
 	io_lib:format("while (~s) {\n~s\n}\n", [stmt_to_str(Condi, $\s), stmts_to_str(Stmts)]);
-stmt_to_str(#e_op{tag = {call, Fn}, data = Args}, EndChar) ->
+stmt_to_str(?CALL(Fn, Args), EndChar) ->
 	ArgStr = lists:join(",", lists:map(fun(E) -> stmt_to_str(E, $\s) end, Args)),
 	io_lib:format("~s(~s)~c", [stmt_to_str(Fn, $\s), ArgStr, EndChar]);
-stmt_to_str(#e_op{tag = Tag, data = [Op1, Op2]}, EndChar) ->
+stmt_to_str(?OP2(Tag, Op1, Op2), EndChar) ->
 	io_lib:format("(~s ~s ~s)~c", [stmt_to_str(Op1, $\s), translate_op(Tag), stmt_to_str(Op2, $\s), EndChar]);
-stmt_to_str(#e_op{tag = Tag, data = [Operand]}, EndChar) ->
+stmt_to_str(?OP1(Tag, Operand), EndChar) ->
 	io_lib:format("(~s ~s)~c", [translate_op(Tag), stmt_to_str(Operand, $\s), EndChar]);
 stmt_to_str(#e_return_stmt{expr = Expr}, EndChar) ->
 	io_lib:format("return ~s~c", [stmt_to_str(Expr, $\s), EndChar]);
