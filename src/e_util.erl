@@ -1,7 +1,7 @@
 -module(e_util).
 -export([make_function_and_struct_map_from_ast/1, expr_map/2, eliminate_pointer/1, stmt_to_str/1, merge_vars/3]).
--export([names_of_var_defs/1, names_of_var_refs/1, get_struct_from_type/2, get_struct_from_name/3]).
--export([void_type/1, fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, fix_special_chars/1]).
+-export([names_of_var_defs/1, names_of_var_refs/1, get_struct_from_type/2, get_struct_from_name/3, void_type/1]).
+-export([fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, u_type_immedi/1, fix_special_chars/1]).
 -export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2, map_find_multi/2]).
 -export([reverse_cmp_tag/1, list_map/2, file_write/2]).
 -include("e_record_definition.hrl").
@@ -163,6 +163,20 @@ fill_unit_opti(Num, Unit) ->
 -spec fall_unit(non_neg_integer(), non_neg_integer()) -> non_neg_integer().
 fall_unit(Num, Unit) ->
 	Num div Unit * Unit.
+
+%% The immediate value of instructions like `LUI` is a signed value.
+%% When N is negative, the high part should be increased by 1 to balance it.
+%% The mechanism is simple:
+%% `+1` then `+(-1)` keeps the number unchanged. Negative signed extending can be treated as `-1`.
+u_type_immedi(N) ->
+	High = N bsr 12,
+	Low = N band 16#FFF,
+	case Low > 2047 of
+		true ->
+			{High + 1, Low};
+		false ->
+			{High, Low}
+	end.
 
 -spec list_map(fun((E1, pos_integer()) -> E2), [E1]) -> [E2] when E1 :: any(), E2 :: any().
 list_map(Fn, List) ->

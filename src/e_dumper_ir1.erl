@@ -257,22 +257,8 @@ smart_addi(Reg, N, #{free_regs := [T | _]}) ->
 smart_li(Reg, N) when ?IS_SMALL_IMMEDI(N) ->
 	[{addi, Reg, {x, 0}, N}];
 smart_li(Reg, N) ->
-	{High, Low} = separate_immedi_for_lui(N),
+	{High, Low} = e_util:u_type_immedi(N),
 	[{lui, Reg, High}, {addi, Reg, Reg, Low}].
-
-%% The immediate value of `LUI` instruction is a signed value.
-%% When N is negative, the high part should be increased by 1 to balance it.
-%% The mechanism is simple:
-%% `+1` then `+(-1)` keeps the number unchanged. Negative signed extending can be treated as `-1`.
-separate_immedi_for_lui(N) ->
-	High = N bsr 12,
-	Low = N band 16#FFF,
-	case Low > 2047 of
-		true ->
-			{High + 1, Low};
-		false ->
-			{High, Low}
-	end.
 
 args_to_stack([Arg | Rest], N, Result, #{wordsize := WordSize} = Ctx) ->
 	{IRs, R, _} = expr_to_ir(Arg, Ctx),
