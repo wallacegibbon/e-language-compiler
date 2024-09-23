@@ -6,14 +6,14 @@
 %% We use A0-A4 as T3-T7 since we pass arguments and result through stack and `Ax` are caller saved just like `Tx`.
 
 -type machine_reg() :: {x, non_neg_integer()}.
--type irs() :: [tuple() | irs()].
+
 -type context() ::
 	#{
 	wordsize => pos_integer(),
 	scope_tag => atom(),
 	tmp_regs => [machine_reg()],
 	free_regs => [machine_reg()],
-	%% this field is for helping generating logic operator related codes.
+	%% `condi_label` is for generating logic operator (and, or, not) related code.
 	condi_label => {atom(), atom()}
 	}.
 
@@ -24,6 +24,8 @@ generate_code(AST, InitCode, OutputFile, WordSize) ->
 	IRs = [{fn, '__init'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, InitCode) | ast_to_ir(AST, WordSize)],
 	Fn = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"} | IRs], IO_Dev) end,
 	e_util:file_write(OutputFile, Fn).
+
+-type irs() :: [tuple() | irs()].
 
 -spec ast_to_ir(e_ast(), non_neg_integer()) -> irs().
 ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size = Size0}} = Fn | Rest], WordSize) ->
@@ -40,9 +42,9 @@ ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size =
 	EndLabel = {label, generate_tag(Name, epilogue)},
 	Epilogue = [EndLabel, After, RegRestore, {jalr, {x, 0}, {x, 1}}],
 	Body = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts),
-	%% The result should be flattened before calling `fix_branch/1`.
+	%% The result should be flattened before calling `fix_irs/1`.
 	FinalIRs = lists:flatten([{fn, Name}, Prologue, Body, Epilogue | ast_to_ir(Rest, WordSize)]),
-	fix_branch(FinalIRs);
+	fix_irs(FinalIRs);
 ast_to_ir([_ | Rest], Ctx) ->
 	ast_to_ir(Rest, Ctx);
 ast_to_ir([], _) ->
@@ -65,7 +67,7 @@ stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, #
 	Else1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Else0),
 	Then2 = [{label, ThenLabel}, Then1, {j, EndLabel}],
 	Else2 = [{label, ElseLabel}, Else1, {label, EndLabel}],
-	[StartComment, CondiIRs, br_of_reg(R_Cond, ElseLabel), Then2, Else2, EndComment];
+	[StartComment, CondiIRs, 'br!_reg'(R_Cond, ElseLabel), Then2, Else2, EndComment];
 stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
 	StartLabel = generate_tag(ScopeTag, start, Loc),
 	BodyLabel = generate_tag(ScopeTag, body, Loc),
@@ -75,7 +77,7 @@ stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, #{scope_tag 
 	EndComment = comment(while, "end", Loc),
 	RawBody = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
 	Body = [{label, BodyLabel}, RawBody, {j, StartLabel}, {label, EndLabel}],
-	[StartComment, {label, StartLabel}, CondiIRs, br_of_reg(R_Cond, EndLabel), Body, EndComment];
+	[StartComment, {label, StartLabel}, CondiIRs, 'br!_reg'(R_Cond, EndLabel), Body, EndComment];
 stmt_to_ir(#e_return_stmt{expr = Expr}, #{scope_tag := ScopeTag} = Ctx) ->
 	{ExprIRs, R, _} = expr_to_ir(Expr, Ctx),
 	%% We use stack to pass result
@@ -87,9 +89,6 @@ stmt_to_ir(#e_label{name = Label}, #{scope_tag := ScopeTag}) ->
 stmt_to_ir(Stmt, Ctx) ->
 	{Exprs, _, _} = expr_to_ir(Stmt, Ctx),
 	Exprs.
-
-br_of_reg({x, 0}, _)	-> [];
-br_of_reg(Reg, Label)	-> [{br, Reg, Label}].
 
 generate_tag(ScopeTag, Tag, {Line, Column}) ->
 	list_to_atom(e_util:fmt("~s_~s_~w_~w", [ScopeTag, Tag, Line, Column])).
@@ -130,8 +129,7 @@ expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
 expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, Ctx) ->
 	%% register preparing and restoring steps
 	#{free_regs := FreeRegs, tmp_regs := TmpRegs} = Ctx,
-	UsedRegs = TmpRegs -- FreeRegs,
-	{BeforeCall, AfterCall} = reg_save_restore(UsedRegs, Ctx),
+	{BeforeCall, AfterCall} = reg_save_restore(TmpRegs -- FreeRegs, Ctx),
 	%% The calling related steps
 	{FnLoad, T1, Ctx1} = expr_to_ir(Fn, Ctx),
 	{ArgPrepare, N} = args_to_stack(Args, 0, [], Ctx1),
@@ -139,8 +137,14 @@ expr_to_ir(#e_op{tag = {call, Fn}, data = Args}, Ctx) ->
 	StackRestore = [{comment, "drop args"}, smart_addi({x, 2}, -N, Ctx1)],
 	Call = [FnLoad, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, T1}, RetLoad, StackRestore],
 	{[{comment, "call start"}, BeforeCall, Call, AfterCall, {comment, "call end"}], T1, Ctx1};
+%% RISC-V do not have immediate version `sub` instruction, convert `-` to `+` to make use of `addi` later.
 expr_to_ir(?OP2('-', Expr, ?I(N)) = OP, Ctx) ->
 	expr_to_ir(OP?OP2('+', Expr, ?I(-N)), Ctx);
+expr_to_ir(?OP2(Tag, Expr, ?I(0)), Ctx) when Tag =:= '+'; Tag =:= 'bor'; Tag =:= 'bxor'; Tag =:= 'bsl'; Tag =:= 'bsr' ->
+	expr_to_ir(Expr, Ctx);
+expr_to_ir(?OP2('band', Expr, ?I(-1)), Ctx) ->
+	expr_to_ir(Expr, Ctx);
+%% The immediate ranges for shifting instructions are different from other immediate ranges.
 expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when (Tag =:= 'bsl' orelse Tag =:= 'bsr'), N > 0, N =< 32 ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
 	{[IRs, {to_op_immedi(Tag), R, R, N}], R, Ctx1};
@@ -149,27 +153,28 @@ expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when ?IS_IMMID_ARITH(Tag), ?IS_SMALL_IMM
 	{[IRs1, {to_op_immedi(Tag), R, R, N}], R, Ctx1};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
 	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
-	{IRs2, R2, #{free_regs := RestRegs}} = expr_to_ir(Right, Ctx1),
-	[T1 | RestRegs2] = RestRegs,
-	{[IRs1, IRs2, {to_op_normal(Tag), T1, R1, R2}], T1, Ctx#{free_regs := recycle_tmpreg([R2, R1], RestRegs2)}};
+	{IRs2, R2, _} = expr_to_ir(Right, Ctx1),
+	{[IRs1, IRs2, {to_op_normal(Tag), R1, R1, R2}], R1, Ctx1};
+%% The tags for comparing operations are not translated here, it will be merged with the pseudo `br` or `br!`.
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
 	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
-	{IRs2, R2, #{free_regs := RestRegs}} = expr_to_ir(Right, Ctx1),
-	[T1 | RestRegs2] = RestRegs,
-	ReversedTag = e_util:reverse_cmp_tag(Tag),
-	{[IRs1, IRs2, {ReversedTag, T1, R1, R2}], T1, Ctx#{free_regs := recycle_tmpreg([R2, R1], RestRegs2)}};
+	{IRs2, R2, _} = expr_to_ir(Right, Ctx1),
+	{[IRs1, IRs2, {Tag, R1, R1, R2}], R1, Ctx1};
+%% `and` and `or` do not consume tmp registers, it returns the same context and {x, 0} as a sign.
 expr_to_ir(#e_op{tag = 'and', data = [Left, Right], loc = Loc}, #{scope_tag := ScopeTag, condi_label := {True, False}} = Ctx) ->
-	True1 = generate_tag(ScopeTag, 'and_true', Loc),
-	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {True1, False}}),
+	Next = generate_tag(ScopeTag, 'and_next', Loc),
+	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {Next, False}}),
 	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {True, False}}),
-	{[IRs1, {br, R1, False}, {label, True1}, IRs2, {br, R2, False}, {j, True}], {x, 0}, Ctx};
+	{[IRs1, 'br!_reg'(R1, False), {label, Next}, IRs2, 'br!_reg'(R2, False), {j, True}], {x, 0}, Ctx};
 expr_to_ir(#e_op{tag = 'or', data = [Left, Right], loc = Loc}, #{scope_tag := ScopeTag, condi_label := {True, False}} = Ctx) ->
-	False1 = generate_tag(ScopeTag, 'or_false', Loc),
-	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {True, False1}}),
+	Next = generate_tag(ScopeTag, 'or_next', Loc),
+	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {True, Next}}),
 	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {True, False}}),
-	{[IRs1, {br, R1, True}, {label, False1}, IRs2, {br, R2, True}, {j, False}], {x, 0}, Ctx};
+	{[IRs1, br_reg(R1, True), {label, Next}, IRs2, br_reg(R2, True), {j, False}], {x, 0}, Ctx};
 expr_to_ir(?OP1('not', Expr), #{condi_label := {True, False}} = Ctx) ->
-	expr_to_ir(Expr, Ctx#{condi_label := {False, True}});
+	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx#{condi_label := {False, True}}),
+	{[IRs, 'br!_reg'(R, True), {j, False}], {x, 0}, Ctx1};
+%% RISC-V do not have instruction for `bnot`, use `xor` to do that.
 expr_to_ir(?OP1('bnot', Expr), Ctx) ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
 	{[IRs, {xori, R, R, -1}], R, Ctx1};
@@ -193,11 +198,17 @@ expr_to_ir(?I(N), #{free_regs := Regs} = Ctx) ->
 expr_to_ir(Any, _) ->
 	e_util:ethrow(element(2, Any), "IR1: unsupported expr \"~w\"", [Any]).
 
-fix_branch([{Tag, Rd, R1, R2}, {br, Rd, DestTag} | Rest]) ->
-	[{to_cmp_op(Tag), R1, R2, DestTag} | fix_branch(Rest)];
-fix_branch([Any | Rest]) ->
-	[Any | fix_branch(Rest)];
-fix_branch([]) ->
+fix_irs([{Tag, Rd, R1, R2}, {'br!', Rd, DestTag} | Rest]) ->
+	fix_irs([{e_util:reverse_cmp_tag(Tag), Rd, R1, R2}, {br, Rd, DestTag} | Rest]);
+fix_irs([{Tag, Rd, R1, R2}, {br, Rd, DestTag} | Rest]) ->
+	[{to_cmp_op(Tag), R1, R2, DestTag} | fix_irs(Rest)];
+fix_irs([{j, Label} = I, {j, Label} | Rest]) ->
+	fix_irs([I | Rest]);
+fix_irs([{j, Label}, {label, Label} = L | Rest]) ->
+	fix_irs([L | Rest]);
+fix_irs([Any | Rest]) ->
+	[Any | fix_irs(Rest)];
+fix_irs([]) ->
 	[].
 
 recycle_tmpreg([R | Regs], RegBank) when ?IS_SPECIAL_REG(R) ->
@@ -217,6 +228,8 @@ reg_save_restore(Regs, #{wordsize := WordSize} = Ctx) ->
 	After = [{comment, io_lib:format("regs to restore: ~w", [Regs])}, StackShrink, Restore],
 	{Before, After}.
 
+smart_addi(_, 0, _) ->
+	[];
 smart_addi(Reg, N, _) when ?IS_SMALL_IMMEDI(N) ->
 	[{addi, Reg, Reg, N}];
 smart_addi(Reg, N, #{free_regs := [T | _]}) ->
@@ -266,6 +279,13 @@ write_irs([IR | Rest], IO_Dev) ->
 	write_irs(Rest, IO_Dev);
 write_irs([], _) ->
 	ok.
+
+%% {x, 0} means there are not branching to generate. (already generated in previous IRs)
+'br!_reg'({x, 0}, _)	-> [];
+'br!_reg'(Reg, Label)	-> [{'br!', Reg, Label}].
+
+br_reg({x, 0}, _)	-> [];
+br_reg(Reg, Label)	-> [{'br', Reg, Label}].
 
 st_instr_from_v(1) -> sb;
 st_instr_from_v(_) -> sw.
