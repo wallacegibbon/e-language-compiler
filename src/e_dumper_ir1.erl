@@ -22,7 +22,7 @@
 generate_code(AST, InitCode, OutputFile, WordSize) ->
 	Pid = spawn_link(fun() -> string_collect_loop([]) end),
 	Regs = tmp_regs(),
-	Ctx = #{wordsize => WordSize, tmp_regs => Regs, free_regs => Regs, string_collector => Pid},
+	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid},
 	InitIRs = [{fn, '__init'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init'}) end, InitCode)],
 	IRs = ast_to_ir(AST, Ctx),
 	StrTable = string_collect_dump(Pid),
@@ -31,7 +31,7 @@ generate_code(AST, InitCode, OutputFile, WordSize) ->
 
 -type irs() :: [tuple() | irs()].
 
--spec ast_to_ir(e_ast(), non_neg_integer()) -> irs().
+-spec ast_to_ir(e_ast(), context()) -> irs().
 ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size = Size0}} = Fn | Rest], Ctx) ->
 	#{wordsize := WordSize, free_regs := Regs} = Ctx,
 	%% When there are no local variables, there should still be one word for returning value.
@@ -215,9 +215,6 @@ fix_irs([Any | Rest]) ->
 fix_irs([]) ->
 	[].
 
--type string_collect() :: {atom(), string()}.
-
--spec string_collect_loop([string_collect()]) -> ok.
 string_collect_loop(Collected) ->
 	receive
 		{put, Tag, String} ->
@@ -226,7 +223,6 @@ string_collect_loop(Collected) ->
 			Pid ! {self(), Collected}
 	end.
 
--spec string_collect_dump(pid()) -> irs().
 string_collect_dump(Pid) ->
 	Pid ! {dump, self()},
 	receive
