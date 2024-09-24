@@ -61,3 +61,7 @@ fn cond_test3(): word
 	return result;
 end
 
+fn main()
+	cond_test1();
+end
+

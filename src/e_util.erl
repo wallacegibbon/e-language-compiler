@@ -164,7 +164,7 @@ fill_unit_opti(Num, Unit) ->
 fall_unit(Num, Unit) ->
 	Num div Unit * Unit.
 
-%% The immediate value of instructions like `LUI` is a signed value.
+%% The immediate value of `LUI` and `AUIPC` is a signed value.
 %% When N is negative, the high part should be increased by 1 to balance it.
 %% The mechanism is simple:
 %% `+1` then `+(-1)` keeps the number unchanged. Negative signed extending can be treated as `-1`.
