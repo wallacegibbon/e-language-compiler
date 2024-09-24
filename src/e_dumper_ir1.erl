@@ -4,15 +4,16 @@
 
 %% According the calling convention of RISC-V: RA is X1, SP is X2, GP is X3, FP is X8. X5-X7 is T0-T2.
 %% We use A0-A4 as T3-T7 since we pass arguments and result through stack and `Ax` are caller saved just like `Tx`.
-
 -type machine_reg() :: {x, non_neg_integer()}.
 
 -type context() ::
 	#{
 	wordsize		=> pos_integer(),
 	scope_tag		=> atom(),
+	%% `free_regs` will be a subset of `tmp_regs`. (And initialized as `tmp_regs`)
 	tmp_regs		=> [machine_reg()],
 	free_regs		=> [machine_reg()],
+	%% The string literals are collected by a separate process to avoid complex functions.
 	string_collector	=> pid(),
 	%% `condi_label` is for generating logic operator (and, or, not) related code.
 	condi_label		=> {atom(), atom()}
@@ -252,16 +253,16 @@ reg_save_restore(Regs, #{wordsize := WordSize} = Ctx) ->
 
 smart_addi(_, 0, _) ->
 	[];
-smart_addi(Reg, N, _) when ?IS_SMALL_IMMEDI(N) ->
-	[{addi, Reg, Reg, N}];
-smart_addi(Reg, N, #{free_regs := [T | _]}) ->
-	[smart_li(T, N), {add, Reg, Reg, T}].
+smart_addi(R, N, _) when ?IS_SMALL_IMMEDI(N) ->
+	[{addi, R, R, N}];
+smart_addi(R, N, #{free_regs := [T | _]}) ->
+	[smart_li(T, N), {add, R, R, T}].
 
-smart_li(Reg, N) when ?IS_SMALL_IMMEDI(N) ->
-	[{addi, Reg, {x, 0}, N}];
-smart_li(Reg, N) ->
+smart_li(R, N) when ?IS_SMALL_IMMEDI(N) ->
+	[{addi, R, {x, 0}, N}];
+smart_li(R, N) ->
 	{High, Low} = e_util:u_type_immedi(N),
-	[{lui, Reg, High}, {addi, Reg, Reg, Low}].
+	[{lui, R, High}, {addi, R, R, Low}].
 
 args_to_stack([Arg | Rest], N, Result, #{wordsize := WordSize} = Ctx) ->
 	{IRs, R, _} = expr_to_ir(Arg, Ctx),
@@ -290,10 +291,10 @@ write_irs([], _) ->
 
 %% {x, 0} means there are not branching to generate. (already generated in previous IRs)
 'br!_reg'({x, 0}, _)	-> [];
-'br!_reg'(Reg, Label)	-> [{'br!', Reg, Label}].
+'br!_reg'(R, Label)	-> [{'br!', R, Label}].
 
 br_reg({x, 0}, _)	-> [];
-br_reg(Reg, Label)	-> [{'br', Reg, Label}].
+br_reg(R, Label)	-> [{'br', R, Label}].
 
 st_instr_from_v(1) -> sb;
 st_instr_from_v(_) -> sw.

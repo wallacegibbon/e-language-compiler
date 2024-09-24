@@ -15,6 +15,8 @@ fn cond_test1(): word
 		v3 = 3;
 	elif not(v1 > 200) then
 		v3 = 4;
+	elif v1 > 2048 then
+		v3 = 5;
 	end
 end
 
