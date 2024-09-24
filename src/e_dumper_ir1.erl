@@ -206,10 +206,13 @@ fix_irs([{Tag, Rd, R1, R2}, {'br!', Rd, DestTag} | Rest]) ->
 	fix_irs([{e_util:reverse_cmp_tag(Tag), Rd, R1, R2}, {br, Rd, DestTag} | Rest]);
 fix_irs([{Tag, Rd, R1, R2}, {br, Rd, DestTag} | Rest]) ->
 	[{to_cmp_op(Tag), R1, R2, DestTag} | fix_irs(Rest)];
+%% Continuous and duplicated jump instructions (to the same address) without any labels in between are useless.
 fix_irs([{j, Label} = I, {j, Label} | Rest]) ->
 	fix_irs([I | Rest]);
-fix_irs([{j, Label}, {label, Label} = L | Rest]) ->
-	fix_irs([L | Rest]);
+%% Jumping to next instruction is also useless and should got eliminated.
+%% But doing these optimizations is easier in later phases, so we simply pass them here.
+%fix_irs([{j, Label}, {label, Label} = L | Rest]) ->
+%	fix_irs([L | Rest]);
 fix_irs([Any | Rest]) ->
 	[Any | fix_irs(Rest)];
 fix_irs([]) ->
