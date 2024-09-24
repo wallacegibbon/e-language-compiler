@@ -39,11 +39,11 @@ ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size =
 	Size1 = erlang:max(e_util:fill_unit_pessi(Size0, WordSize), WordSize),
 	%% The extra `2` words are for `frame pointer`({x, 8}) and `returning address`({x, 1}).
 	FrameSize = Size1 + WordSize * 2,
-	RegSave = [{sw, {x, 8}, {{x, 2}, Size1}}, {sw, {x, 1}, {{x, 2}, Size1 + WordSize}}, {mv, {x, 8}, {x, 2}}],
+	RegSave = [{sw, {x, 8}, {{x, 2}, Size1}}, {sw, {x, 1}, {{x, 2}, Size1 + WordSize}}, mv({x, 8}, {x, 2})],
 	Ctx1 = Ctx#{scope_tag => Name},
 	{Before, After} = interrupt_related_code(Fn, Regs, Ctx1),
 	Prologue = [RegSave, smart_addi({x, 2}, FrameSize, Ctx1), Before, {comment, "prologue end"}],
-	RegRestore = [{mv, {x, 2}, {x, 8}}, {lw, {x, 8}, {{x, 2}, Size1}}, {lw, {x, 1}, {{x, 2}, Size1 + WordSize}}],
+	RegRestore = [mv({x, 2}, {x, 8}), {lw, {x, 8}, {{x, 2}, Size1}}, {lw, {x, 1}, {{x, 2}, Size1 + WordSize}}],
 	EndLabel = {label, generate_tag(Name, epilogue)},
 	Epilogue = [EndLabel, After, RegRestore, {jalr, {x, 0}, {x, 1}}],
 	Body = lists:map(fun(S) -> stmt_to_ir(S, Ctx1) end, Stmts),
@@ -150,9 +150,12 @@ expr_to_ir(?OP2(Tag, Expr, ?I(0)), Ctx) when Tag =:= '+'; Tag =:= 'bor'; Tag =:=
 expr_to_ir(?OP2('band', Expr, ?I(-1)), Ctx) ->
 	expr_to_ir(Expr, Ctx);
 %% The immediate ranges for shifting instructions are different from other immediate ranges.
-expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when (Tag =:= 'bsl' orelse Tag =:= 'bsr'), N > 0, N =< 32 ->
+expr_to_ir(?OP2('bsl', Expr, ?I(N)), Ctx) when N > 0, N =< 32 ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
-	{[IRs, {to_op_immedi(Tag), R, R, N}], R, Ctx1};
+	{[IRs, {to_op_immedi('bsl'), R, R, N}], R, Ctx1};
+expr_to_ir(?OP2('bsr', Expr, ?I(N)), Ctx) when N > 0, N =< 32 ->
+	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
+	{[IRs, {to_op_immedi('bsr'), R, R, N bor 2#010000000000}], R, Ctx1};
 expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when ?IS_IMMID_ARITH(Tag), ?IS_SMALL_IMMEDI(N) ->
 	{IRs1, R, Ctx1} = expr_to_ir(Expr, Ctx),
 	{[IRs1, {to_op_immedi(Tag), R, R, N}], R, Ctx1};
@@ -161,6 +164,10 @@ expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
 	{IRs2, R2, _} = expr_to_ir(Right, Ctx1),
 	{[IRs1, IRs2, {to_op_normal(Tag), R1, R1, R2}], R1, Ctx1};
 %% The tags for comparing operations are not translated here, it will be merged with the pseudo `br` or `br!`.
+expr_to_ir(?OP2('<=', Left, Right) = Op, Ctx) ->
+	expr_to_ir(Op?OP2('>=', Right, Left), Ctx);
+expr_to_ir(?OP2('>', Left, Right) = Op, Ctx) ->
+	expr_to_ir(Op?OP2('<', Right, Left), Ctx);
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
 	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
 	{IRs2, R2, _} = expr_to_ir(Right, Ctx1),
@@ -188,7 +195,7 @@ expr_to_ir(?OP1('-', Expr), Ctx) ->
 	{[IRs, {sub, R, {x, 0}, R}], R, Ctx1};
 expr_to_ir(#e_string{value = String, loc = Loc}, #{free_regs := [R | RestRegs], string_collector := Pid} = Ctx) ->
 	Label = generate_tag(g, s, Loc),
-	Pid ! {put, Label, String},
+	Pid ! {put, Label, list_to_binary([String, 0])},
 	{[{la, R, Label}], R, Ctx#{free_regs := RestRegs}};
 expr_to_ir(?I(0), Ctx) ->
 	{[], {x, 0}, Ctx};
@@ -204,7 +211,7 @@ expr_to_ir(Any, _) ->
 	e_util:ethrow(element(2, Any), "IR1: unsupported expr \"~w\"", [Any]).
 
 fix_irs([{Tag, Rd, R1, R2}, {'br!', Rd, DestTag} | Rest]) ->
-	fix_irs([{e_util:reverse_cmp_tag(Tag), Rd, R1, R2}, {br, Rd, DestTag} | Rest]);
+	fix_irs([{reverse_cmp_tag(Tag), Rd, R1, R2}, {br, Rd, DestTag} | Rest]);
 fix_irs([{Tag, Rd, R1, R2}, {br, Rd, DestTag} | Rest]) ->
 	[{to_cmp_op(Tag), R1, R2, DestTag} | fix_irs(Rest)];
 %% Continuous and duplicated jump instructions (to the same address) without any labels in between are useless.
@@ -264,6 +271,9 @@ smart_li(R, N) ->
 	{High, Low} = e_util:u_type_immedi(N),
 	[{lui, R, High}, {addi, R, R, Low}].
 
+mv(R1, R2) ->
+	{addi, R1, R2, 0}.
+
 args_to_stack([Arg | Rest], N, Result, #{wordsize := WordSize} = Ctx) ->
 	{IRs, R, _} = expr_to_ir(Arg, Ctx),
 	args_to_stack(Rest, N + WordSize, [[IRs, {sw, R, {{x, 2}, 0}}, {addi, {x, 2}, {x, 2}, WordSize}] | Result], Ctx);
@@ -307,6 +317,13 @@ ld_instr_from_v(_) -> lw.
 tmp_regs() ->
 	[{x, 5}, {x, 6}, {x, 7}, {x, 10}, {x, 11}, {x, 12}, {x, 13}, {x, 14}].
 
+reverse_cmp_tag('==')	-> '!=';
+reverse_cmp_tag('!=')	-> '==';
+reverse_cmp_tag('>=')	-> '<';
+reverse_cmp_tag('<=')	-> '>';
+reverse_cmp_tag('>')	-> '<=';
+reverse_cmp_tag('<')	-> '>='.
+
 to_op_normal('+')	->  add;
 to_op_normal('-')	->  sub;
 to_op_normal('*')	->  mul;
@@ -328,7 +345,5 @@ to_op_immedi('bsr')	-> srai.
 to_cmp_op('==')		-> beq;
 to_cmp_op('!=')		-> bne;
 to_cmp_op('>=')		-> bge;
-to_cmp_op('<=')		-> ble;
-to_cmp_op('>')		-> bgt;
 to_cmp_op('<')		-> blt.
 

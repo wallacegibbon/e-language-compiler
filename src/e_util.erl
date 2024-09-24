@@ -1,9 +1,9 @@
 -module(e_util).
 -export([make_function_and_struct_map_from_ast/1, expr_map/2, eliminate_pointer/1, stmt_to_str/1, merge_vars/3]).
 -export([names_of_var_defs/1, names_of_var_refs/1, get_struct_from_type/2, get_struct_from_name/3, void_type/1]).
--export([fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, u_type_immedi/1, fix_special_chars/1]).
+-export([fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, fix_special_chars/1, list_map/2, file_write/2]).
 -export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2, map_find_multi/2]).
--export([reverse_cmp_tag/1, list_map/2, file_write/2]).
+-export([u_type_immedi/1, s_type_immedi/1, b_type_immedi/1]).
 -include("e_record_definition.hrl").
 -ifdef(EUNIT).
 -include_lib("eunit/include/eunit.hrl").
@@ -178,6 +178,30 @@ u_type_immedi(N) ->
 			{High, Low}
 	end.
 
+s_type_immedi(N) ->
+	High = (N bsr 5) band 2#1111111,
+	Low = N band 2#11111,
+	{High, Low}.
+
+b_type_immedi(N) ->
+	High = (((N bsr 12) band 1) bsl 7) bor ((N bsr 5) band 2#111111),
+	Low = N band 2#11110 bor ((N bsr 11) band 1),
+	{High, Low}.
+
+-ifdef(EUNIT).
+
+u_type_immedi_test() ->
+	?assertEqual({16#11223, 16#344}, u_type_immedi(16#11223344)),
+	?assertEqual({16#AABBD, 16#CDD}, u_type_immedi(16#AABBCCDD)).
+
+s_type_immedi_test() ->
+	?assertEqual({2#1100110, 2#11101}, s_type_immedi(16#AABBCCDD)).
+
+b_type_immedi_test() ->
+	?assertEqual({2#0100110, 2#11101}, b_type_immedi(16#AABBCCDD)).
+
+-endif.
+
 -spec list_map(fun((E1, pos_integer()) -> E2), [E1]) -> [E2] when E1 :: any(), E2 :: any().
 list_map(Fn, List) ->
 	lists:map(fun({I, E}) -> Fn(E, I) end, lists:enumerate(0, List)).
@@ -247,11 +271,4 @@ file_write(Filename, Handle) ->
 	after
 		ok = file:close(IO_Dev)
 	end.
-
-reverse_cmp_tag('==')	-> '!=';
-reverse_cmp_tag('!=')	-> '==';
-reverse_cmp_tag('>=')	-> '<';
-reverse_cmp_tag('<=')	-> '>';
-reverse_cmp_tag('>')	-> '<=';
-reverse_cmp_tag('<')	-> '>='.
 

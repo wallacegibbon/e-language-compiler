@@ -6,8 +6,9 @@
 -spec generate_code([tuple()], string()) -> ok.
 generate_code(IRs, OutputFile) ->
 	{Instrs, {LabelMap, OffsetMap}} = scan_address(IRs, 0, [], {#{}, #{}}),
-	Fn = fun(IO_Dev) -> write_instrs(encode_instr(replace_address(Instrs, LabelMap)), IO_Dev) end,
-	io:format(">> LabelMap:~p~n>> OffsetMap:~p~n", [LabelMap, OffsetMap]),
+	Encoded = lists:map(fun encode_instr/1, replace_address(Instrs, LabelMap)),
+	Fn = fun(IO_Dev) -> write_instrs(Encoded, IO_Dev) end,
+	%io:format(">> LabelMap:~p~n>> OffsetMap:~p~n", [LabelMap, OffsetMap]),
 	e_util:file_write(OutputFile, Fn).
 
 -spec scan_address([tuple()], non_neg_integer(), [tuple()], scan_context()) -> {R, scan_context()} when R :: [tuple()].
@@ -17,6 +18,8 @@ scan_address([{L, Name} | Rest], Offset, Result, {LabelMap, OffsetMap}) when L =
 	scan_address(Rest, Offset, Result, {NewLabelMap, NewOffsetMap});
 scan_address([{la, _, _} = Orig | Rest], Offset, Result, Ctx) ->
 	scan_address(Rest, Offset + 8, [{Orig, Offset} | Result], Ctx);
+scan_address([{string, Data} = Orig | Rest], Offset, Result, Ctx) ->
+	scan_address(Rest, Offset + byte_size(Data), [{Orig, Offset} | Result], Ctx);
 scan_address([Any | Rest], Offset, Result, Ctx) ->
 	scan_address(Rest, Offset + 4, [{Any, Offset} | Result], Ctx);
 scan_address([], _, Result, Ctx) ->
@@ -39,6 +42,8 @@ replace_address([{{j, Label}, Offset} | Rest], LabelMap) ->
 	if
 		Address =:= Offset + 4 ->
 			replace_address(Rest, LabelMap);
+		Address > 16#7FFFF orelse Address < -16#80000 ->
+			throw({instruction_error, j, {out_of_range, Address}});
 		true ->
 			[{{j, Address - Offset}, Offset} | replace_address(Rest, LabelMap)]
 	end;
@@ -47,12 +52,40 @@ replace_address([Any | Rest], LabelMap) ->
 replace_address([], _) ->
 	[].
 
-encode_instr([{{j, Address} = I, Offset} | Rest]) ->
-	[{I, <<Address:20, (0):5, (2#1101111):7>>, Offset} | encode_instr(Rest)];
-encode_instr([Any | Rest]) ->
-	[Any | encode_instr(Rest)];
-encode_instr([]) ->
-	[].
+encode_instr({{Br, {x, N1}, {x, N2}, Address} = I, Offset}) when Br =:= bge; Br =:= blt; Br =:= beq; Br =:= bne ->
+	{High, Low} = e_util:b_type_immedi(Address),
+	Immedi = (High bsl 24) bor (Low bsl 6),
+	Code =  Immedi bor (N2 bsl 19) bor (N1 bsl 14) bor (f3code_of(Br) bsl 11) bor 2#1100011,
+	{I, <<Code:32/little>>, Offset};
+encode_instr({{S, {x, N1}, {{x, N2}, O}} = I, Offset}) when S =:= sw; S =:= sb ->
+	{High, Low} = e_util:s_type_immedi(O),
+	Immedi = (High bsl 24) bor (Low bsl 6),
+	Code = Immedi bor (N2 bsl 19) bor (N1 bsl 14) bor (f3code_of(S) bsl 11) bor 2#0100011,
+	{I, <<Code:32/little>>, Offset};
+encode_instr({{L, {x, N1}, {{x, N2}, O}} = I, Offset}) when L =:= lw; L =:= lb ->
+	Code = (O bsl 19)  bor (N2 bsl 14) bor (f3code_of(L) bsl 11) bor (N1 bsl 6) bor 2#0000011,
+	{I, <<Code:32/little>>, Offset};
+encode_instr({{Imm, {x, N1}, {x, N2}, A} = I, Offset}) when Imm =:= addi; Imm =:= andi; Imm =:= ori; Imm =:= xori; Imm =:= slli; Imm =:= srai ->
+	Code = (A bsl 19) bor (N2 bsl 14) bor 0 bor (N1 bsl 6) bor 2#0010011,
+	{I, <<Code:32/little>>, Offset};
+encode_instr({{Tag, {x, N1}, {x, N2}, {x, N3}} = I, Offset}) when Tag =:= add; Tag =:= sub; Tag =:= 'and'; Tag =:= 'or'; Tag =:= 'xor'; Tag =:= sll; Tag =:= sra ->
+	Rs = (N3 bsl 19) bor (N2 bsl 14) bor (N1 bsl 6),
+	Code = Rs bor (f7code_of(Tag) bsl 24) bor (f3code_of(Tag) bsl 11) bor 2#0110011,
+	{I, <<Code:32/little>>, Offset};
+encode_instr({{auipc, {x, N}, Address} = I, Offset}) ->
+	Code = (Address bsl 11) bor (N bsl 6) bor 2#0010111,
+	{I, <<Code:32/little>>, Offset};
+encode_instr({{lui, {x, N}, Address} = I, Offset}) ->
+	Code = (Address bsl 11) bor (N bsl 6) bor 2#0110111,
+	{I, <<Code:32/little>>, Offset};
+encode_instr({{j, Address} = I, Offset}) ->
+	Code = (Address bsl 11) bor 2#1101111,
+	{I, <<Code:32/little>>, Offset};
+encode_instr({{jalr, {x, N1}, {x, N2}} = I, Offset}) ->
+	Code = (N2 bsl 14) bor (N1 bsl 6) bor 2#1100111,
+	{I, <<Code:32/little>>, Offset};
+encode_instr(Any) ->
+	Any.
 
 -spec write_instrs([tuple()], file:io_device()) -> ok.
 write_instrs([Raw | Rest], IO_Dev) ->
@@ -60,4 +93,30 @@ write_instrs([Raw | Rest], IO_Dev) ->
 	write_instrs(Rest, IO_Dev);
 write_instrs([], _) ->
 	ok.
+
+f3code_of(beq)		-> 2#000;
+f3code_of(bne)		-> 2#001;
+f3code_of(blt)		-> 2#100;
+f3code_of(bge)		-> 2#101;
+f3code_of(lw)		-> 2#010;
+f3code_of(lb)		-> 2#000;
+f3code_of(sw)		-> 2#010;
+f3code_of(sb)		-> 2#000;
+f3code_of(addi)		-> 2#000;
+f3code_of(andi)		-> 2#111;
+f3code_of(ori)		-> 2#110;
+f3code_of(xori)		-> 2#100;
+f3code_of(slli)		-> 2#001;
+f3code_of(srai)		-> 2#101;
+f3code_of(add)		-> 2#000;
+f3code_of(sub)		-> 2#000;
+f3code_of('and')	-> 2#111;
+f3code_of('or')		-> 2#110;
+f3code_of('xor')	-> 2#100;
+f3code_of(sll)		-> 2#001;
+f3code_of(sra)		-> 2#101.
+
+f7code_of(sub)		-> 2#0100000;
+f7code_of(sra)		-> 2#0100000;
+f7code_of(_)		-> 2#0000000.
 
