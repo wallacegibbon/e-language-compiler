@@ -61,9 +61,9 @@ interrupt_related_code(_, _, _) ->
 
 -spec stmt_to_ir(e_stmt(), context()) -> irs().
 stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
-	ThenLabel = generate_tag(ScopeTag, 'then', Loc),
-	ElseLabel = generate_tag(ScopeTag, 'else', Loc),
-	EndLabel = generate_tag(ScopeTag, 'end', Loc),
+	ThenLabel = generate_tag(ScopeTag, if_then, Loc),
+	ElseLabel = generate_tag(ScopeTag, if_else, Loc),
+	EndLabel = generate_tag(ScopeTag, if_end, Loc),
 	{CondiIRs, R_Cond, _} = expr_to_ir(Condi, Ctx#{condi_label => {ThenLabel, ElseLabel}}),
 	StartComment = comment('if', e_util:stmt_to_str(Condi), Loc),
 	EndComment = comment('if', "end", Loc),
@@ -73,9 +73,9 @@ stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, #
 	Else2 = [{label, ElseLabel}, Else1, {label, EndLabel}],
 	[StartComment, CondiIRs, 'br!_reg'(R_Cond, ElseLabel), Then2, Else2, EndComment];
 stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
-	StartLabel = generate_tag(ScopeTag, start, Loc),
-	BodyLabel = generate_tag(ScopeTag, body, Loc),
-	EndLabel = generate_tag(ScopeTag, 'end', Loc),
+	StartLabel = generate_tag(ScopeTag, while_start, Loc),
+	BodyLabel = generate_tag(ScopeTag, while_body, Loc),
+	EndLabel = generate_tag(ScopeTag, while_end, Loc),
 	{CondiIRs, R_Cond, _} = expr_to_ir(Condi, Ctx#{condi_label => {BodyLabel, EndLabel}}),
 	StartComment = comment(while, e_util:stmt_to_str(Condi), Loc),
 	EndComment = comment(while, "end", Loc),
@@ -166,12 +166,12 @@ expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
 	{[IRs1, IRs2, {Tag, R1, R1, R2}], R1, Ctx1};
 %% `and` and `or` do not consume tmp registers, it returns the same context and {x, 0} as a sign.
 expr_to_ir(?OP2('and', Left, Right, Loc), #{scope_tag := ScopeTag, condi_label := {True, False}} = Ctx) ->
-	Next = generate_tag(ScopeTag, 'and_next', Loc),
+	Next = generate_tag(ScopeTag, and_next, Loc),
 	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {Next, False}}),
 	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {True, False}}),
 	{[IRs1, 'br!_reg'(R1, False), {label, Next}, IRs2, 'br!_reg'(R2, False), {j, True}], {x, 0}, Ctx};
 expr_to_ir(?OP2('or', Left, Right, Loc), #{scope_tag := ScopeTag, condi_label := {True, False}} = Ctx) ->
-	Next = generate_tag(ScopeTag, 'or_next', Loc),
+	Next = generate_tag(ScopeTag, or_next, Loc),
 	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {True, Next}}),
 	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {True, False}}),
 	{[IRs1, br_reg(R1, True), {label, Next}, IRs2, br_reg(R2, True), {j, False}], {x, 0}, Ctx};

@@ -88,8 +88,8 @@ eliminate_dot(?OP2('.', O, #e_varref{name = FieldName}, Loc), {_, _, StructMap, 
 	?OP2('^', B, ?I(Size, Loc), Loc);
 eliminate_dot(?CALL(Callee, Args) = Op, Ctx) ->
 	Op?CALL(eliminate_dot(Callee, Ctx), lists:map(fun(E) -> eliminate_dot(E, Ctx) end, Args));
-eliminate_dot(#e_op{data = Args} = Op, Ctx) ->
-	Op#e_op{data = lists:map(fun(E) -> eliminate_dot(E, Ctx) end, Args)};
+eliminate_dot(#e_op{data = Operands} = Op, Ctx) ->
+	Op#e_op{data = lists:map(fun(E) -> eliminate_dot(E, Ctx) end, Operands)};
 eliminate_dot(#e_type_convert{expr = Expr} = C, Ctx) ->
 	C#e_type_convert{expr = eliminate_dot(Expr, Ctx)};
 eliminate_dot(Any, _) ->

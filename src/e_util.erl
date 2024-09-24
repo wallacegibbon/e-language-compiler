@@ -37,8 +37,8 @@ merge_plus(?OP2('+', ?I(N1) = I, ?I(N2))) ->
 	I?I(N1 + N2);
 merge_plus(?CALL(Callee, Args) = Op) ->
 	Op?CALL(merge_plus(Callee), lists:map(fun merge_plus/1, Args));
-merge_plus(#e_op{data = Args} = Op) ->
-	Op#e_op{data = lists:map(fun merge_plus/1, Args)};
+merge_plus(#e_op{data = Operands} = Op) ->
+	Op#e_op{data = lists:map(fun merge_plus/1, Operands)};
 merge_plus(Any) ->
 	Any.
 
@@ -49,8 +49,8 @@ merge_pointer(?OP1('@', ?OP2('^', E, _))) ->
 	merge_pointer(E);
 merge_pointer(?CALL(Callee, Args) = Op) ->
 	Op?CALL(merge_pointer(Callee), lists:map(fun merge_pointer/1, Args));
-merge_pointer(#e_op{data = Args} = Op) ->
-	Op#e_op{data = lists:map(fun merge_pointer/1, Args)};
+merge_pointer(#e_op{data = Operands} = Op) ->
+	Op#e_op{data = lists:map(fun merge_pointer/1, Operands)};
 merge_pointer(Any) ->
 	Any.
 
