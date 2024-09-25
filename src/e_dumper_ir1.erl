@@ -45,7 +45,7 @@ ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size =
 	Prologue = [RegSave, smart_addi({x, 2}, FrameSize, Ctx1), Before, {comment, "prologue end"}],
 	RegRestore = [mv({x, 2}, {x, 8}), {lw, {x, 8}, {{x, 2}, Size1}}, {lw, {x, 1}, {{x, 2}, Size1 + WordSize}}],
 	EndLabel = {label, generate_tag(Name, epilogue)},
-	Epilogue = [EndLabel, After, RegRestore, {jalr, {x, 0}, {x, 1}}],
+	Epilogue = [EndLabel, After, RegRestore, ret_instruction_of(Fn)],
 	Body = lists:map(fun(S) -> stmt_to_ir(S, Ctx1) end, Stmts),
 	%% The result should be flattened before calling `fix_irs/1`.
 	FinalIRs = lists:flatten([{fn, Name}, Prologue, Body, Epilogue | ast_to_ir(Rest, Ctx)]),
@@ -59,6 +59,11 @@ interrupt_related_code(#e_function{interrupt = true}, Regs, Ctx) ->
 	reg_save_restore(Regs, Ctx);
 interrupt_related_code(_, _, _) ->
 	{[], []}.
+
+ret_instruction_of(#e_function{interrupt = true}) ->
+	{jalr, {x, 0}, {x, 1}};
+ret_instruction_of(_) ->
+	{mret}.
 
 -spec stmt_to_ir(e_stmt(), context()) -> irs().
 stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->

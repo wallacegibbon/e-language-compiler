@@ -84,6 +84,10 @@ encode_instr({{j, Address} = I, Offset}) ->
 encode_instr({{jalr, {x, N1}, {x, N2}} = I, Offset}) ->
 	Code = (N2 bsl 14) bor (N1 bsl 6) bor 2#1100111,
 	{I, <<Code:32/little>>, Offset};
+encode_instr({{mret} = I, Offset}) ->
+	{I, <<16#30200073:32/little>>, Offset};
+encode_instr({{wfi} = I, Offset}) ->
+	{I, <<16#10500073:32/little>>, Offset};
 encode_instr(Any) ->
 	Any.
 
