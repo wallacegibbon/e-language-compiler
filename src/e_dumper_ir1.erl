@@ -61,9 +61,9 @@ interrupt_related_code(_, _, _) ->
 	{[], []}.
 
 ret_instruction_of(#e_function{interrupt = true}) ->
-	{jalr, {x, 0}, {x, 1}};
+	{mret};
 ret_instruction_of(_) ->
-	{mret}.
+	{jalr, {x, 0}, {x, 1}}.
 
 -spec stmt_to_ir(e_stmt(), context()) -> irs().
 stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
