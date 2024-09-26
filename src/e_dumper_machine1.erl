@@ -6,10 +6,13 @@
 -spec generate_code([tuple()], string()) -> ok.
 generate_code(IRs, OutputFile) ->
 	{Instrs, {LabelMap, OffsetMap}} = scan_address(IRs, 0, [], {#{}, #{}}),
-	Encoded = lists:map(fun encode_instr/1, replace_address(Instrs, LabelMap)),
-	Fn = fun(IO_Dev) -> write_instrs(Encoded, IO_Dev) end,
 	%io:format(">> LabelMap:~p~n>> OffsetMap:~p~n", [LabelMap, OffsetMap]),
-	e_util:file_write(OutputFile, Fn).
+	Encoded = lists:map(fun encode_instr/1, replace_address(Instrs, LabelMap)),
+	Fn1 = fun(IO_Dev) -> write_binary(Encoded, IO_Dev) end,
+	e_util:file_write(OutputFile, Fn1),
+	Fn2 = fun(IO_Dev) -> write_detail(Encoded, OffsetMap, IO_Dev) end,
+	e_util:file_write(OutputFile ++ ".detail", Fn2),
+	ok.
 
 -spec scan_address([tuple()], non_neg_integer(), [tuple()], scan_context()) -> {R, scan_context()} when R :: [tuple()].
 scan_address([{L, Name} | Rest], Offset, Result, {LabelMap, OffsetMap}) when L =:= fn; L =:= label ->
@@ -91,11 +94,25 @@ encode_instr({{wfi} = I, Offset}) ->
 encode_instr(Any) ->
 	Any.
 
--spec write_instrs([tuple()], file:io_device()) -> ok.
-write_instrs([Raw | Rest], IO_Dev) ->
-	io:format(IO_Dev, "\t~w~n", [Raw]),
-	write_instrs(Rest, IO_Dev);
-write_instrs([], _) ->
+write_detail([{Instr, Encoded, Loc} | Rest], OffsetMap, IO_Dev) ->
+	case maps:find(Loc, OffsetMap) of
+		{ok, Labels} ->
+			lists:foreach(fun(L) -> io:format(IO_Dev, "\t~s~n", [L]) end, Labels);
+		_ ->
+			ok
+	end,
+	io:format(IO_Dev, "~8.16.0B\t~s\t~w~n", [Loc, fmt_code(Encoded), Instr]),
+	write_detail(Rest, OffsetMap, IO_Dev);
+write_detail([], _, _) ->
+	ok.
+
+fmt_code(<<A, B, C, D>>) ->
+	io_lib:format("~2.16.0B ~2.16.0B ~2.16.0B ~2.16.0B", [D, C, B, A]).
+
+write_binary([{_, Raw, _} | Rest], IO_Dev) ->
+	file:write(IO_Dev, Raw),
+	write_binary(Rest, IO_Dev);
+write_binary([], _) ->
 	ok.
 
 f3code_of(beq)		-> 2#000;
