@@ -13,17 +13,18 @@ generate_code(IRs, OutputFile, WordSize) ->
 	{Instrs, #{label_map := LabelMap, offset_map := OffsetMap}} = scan_address(IRs, 0, [], #{label_map => #{}, offset_map => #{}, wordsize => WordSize}),
 	%io:format(">> LabelMap:~p~n>> OffsetMap:~p~n", [LabelMap, OffsetMap]),
 	Encoded = lists:map(fun encode_instr/1, replace_address(Instrs, LabelMap)),
-	Fn1 = fun(IO_Dev) -> write_binary(Encoded, IO_Dev) end,
+	Fn1 = fun(IO_Dev) -> write_binary(Encoded, 0, IO_Dev) end,
 	e_util:file_write(OutputFile, Fn1),
-	Fn2 = fun(IO_Dev) -> write_detail(Encoded, OffsetMap, IO_Dev) end,
+	Fn2 = fun(IO_Dev) -> write_detail(Encoded, 0, OffsetMap, IO_Dev) end,
 	e_util:file_write(OutputFile ++ ".detail", Fn2),
 	ok.
 
 -spec scan_address([tuple()], non_neg_integer(), [tuple()], scan_context()) -> {R, scan_context()} when R :: [tuple()].
 scan_address([{fn, Name} | Rest], Offset, Result, #{label_map := LabelMap, offset_map := OffsetMap, wordsize := WordSize} = Ctx) ->
-	NewLabelMap = LabelMap#{Name => e_util:fill_unit_pessi(Offset, WordSize)},
-	NewOffsetMap = maps:update_with(Offset, fun(Ns) -> [Name | Ns] end, [Name], OffsetMap),
-	scan_address(Rest, Offset, Result, Ctx#{label_map := NewLabelMap, offset_map := NewOffsetMap});
+	FixedOffset = e_util:fill_unit_pessi(Offset, WordSize),
+	NewLabelMap = LabelMap#{Name => FixedOffset},
+	NewOffsetMap = maps:update_with(FixedOffset, fun(Ns) -> [Name | Ns] end, [Name], OffsetMap),
+	scan_address(Rest, FixedOffset, Result, Ctx#{label_map := NewLabelMap, offset_map := NewOffsetMap});
 scan_address([{label, {align, N}, Name} | Rest], Offset, Result, #{label_map := LabelMap, offset_map := OffsetMap} = Ctx) ->
 	FixedOffset = e_util:fill_unit_pessi(Offset, N),
 	NewLabelMap = LabelMap#{Name => FixedOffset},
@@ -113,34 +114,44 @@ encode_instr({{mret} = I, Offset}) ->
 	{I, <<16#30200073:32/little>>, Offset};
 encode_instr({{wfi} = I, Offset}) ->
 	{I, <<16#10500073:32/little>>, Offset};
+encode_instr({{string, _, _} = I, Offset}) ->
+	{I, <<>>, Offset};
 encode_instr(Any) ->
 	Any.
 
-write_detail([{{string, Content, _}, Loc} | Rest], OffsetMap, IO_Dev) ->
+write_detail([{{string, Content, Length}, _, Loc} | Rest], Loc, OffsetMap, IO_Dev) ->
 	io:format(IO_Dev, "~8.16.0B:\t\t\t\"~s\\0\"~n", [Loc, e_util:fix_special_chars(Content)]),
-	write_detail(Rest, OffsetMap, IO_Dev);
-write_detail([{Instr, Encoded, Loc} | Rest], OffsetMap, IO_Dev) ->
+	write_detail(Rest, Loc + Length + 1, OffsetMap, IO_Dev);
+write_detail([{Instr, Raw, Loc} | Rest], Loc, OffsetMap, IO_Dev) ->
 	case maps:find(Loc, OffsetMap) of
 		{ok, Labels} ->
-			lists:foreach(fun(L) -> io:format(IO_Dev, "\t~s~n", [L]) end, Labels);
+			lists:foreach(fun(L) -> io:format(IO_Dev, "\t~s:~n", [L]) end, Labels);
 		_ ->
 			ok
 	end,
-	io:format(IO_Dev, "~8.16.0B:\t~s\t~w~n", [Loc, fmt_code(Encoded), Instr]),
-	write_detail(Rest, OffsetMap, IO_Dev);
-write_detail([], _, _) ->
+	io:format(IO_Dev, "~8.16.0B:\t~s\t~w~n", [Loc, fmt_code(Raw), Instr]),
+	write_detail(Rest, Loc + byte_size(Raw), OffsetMap, IO_Dev);
+write_detail([{_, _, Loc} | _] = Data, N, OffsetMap, IO_Dev) when Loc > N ->
+	io:format(IO_Dev, "\t\t\t\t.byte 0~n", []),
+	write_detail(Data, N + 1, OffsetMap, IO_Dev);
+write_detail([], _, _, _) ->
 	ok.
 
 fmt_code(<<A, B, C, D>>) ->
-	io_lib:format("~2.16.0b~2.16.0b~2.16.0b~2.16.0b", [D, C, B, A]).
+	io_lib:format("~2.16.0b~2.16.0b~2.16.0b~2.16.0b", [D, C, B, A]);
+fmt_code(<<>>) ->
+	"".
 
-write_binary([{{string, Content, _}, _} | Rest], IO_Dev) ->
+write_binary([{{string, Content, Length}, _, Loc} | Rest], Loc, IO_Dev) ->
 	file:write(IO_Dev, [Content, 0]),
-	write_binary(Rest, IO_Dev);
-write_binary([{_, Raw, _} | Rest], IO_Dev) ->
+	write_binary(Rest, Loc + Length + 1, IO_Dev);
+write_binary([{_, Raw, Loc} | Rest], Loc, IO_Dev) ->
 	file:write(IO_Dev, Raw),
-	write_binary(Rest, IO_Dev);
-write_binary([], _) ->
+	write_binary(Rest, Loc + byte_size(Raw), IO_Dev);
+write_binary([{_, _, Loc} | _] = Data, N, IO_Dev) when Loc > N ->
+	file:write(IO_Dev, [0]),
+	write_binary(Data, N + 1, IO_Dev);
+write_binary([], _, _) ->
 	ok.
 
 f3code_of(beq)		-> 2#000;

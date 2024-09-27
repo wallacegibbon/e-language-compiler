@@ -11,7 +11,9 @@ asm_file=$1.ir1.asm
 
 riscv64-unknown-elf-as $asm_file -o $asm_file.o
 riscv64-unknown-elf-ld $asm_file.o -o $asm_file.elf
-riscv64-unknown-elf-objdump -S $asm_file.elf > $asm_file.dump
+riscv64-unknown-elf-objdump -D $asm_file.elf \
+	| sed -z 's/\(.*\)Disassembly of section \.riscv\.attributes:.*/\1/' \
+	> $asm_file.dump
 
 fetch_machine_code() {
 	sed -n 's/^\s*[0-9a-fA-F]*:\s*\([0-9a-f]\+\).*/\1/p' $1 > $1.1

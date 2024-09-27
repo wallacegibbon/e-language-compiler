@@ -29,7 +29,7 @@ generate_code(AST, InitCode, OutputFile, WordSize) ->
 	StrTable = lists:map(fun({T, S, L}) -> [{label, {align, WordSize}, T}, {string, S, L}] end, string_collect_dump(Pid)),
 	Fn1 = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"}, InitIRs, IRs, StrTable], IO_Dev) end,
 	e_util:file_write(OutputFile, Fn1),
-	Fn2 = fun(IO_Dev) -> write_asm([{comment, "For GNU assembler"}, {org, 0}, InitIRs, IRs, StrTable], IO_Dev) end,
+	Fn2 = fun(IO_Dev) -> write_asm([{comment, "For GNU assembler"}, InitIRs, IRs, StrTable], IO_Dev) end,
 	e_util:file_write(OutputFile ++ ".asm", Fn2),
 	ok.
 
@@ -307,9 +307,6 @@ write_irs([], _) ->
 -spec write_asm(irs(), file:io_device()) -> ok.
 write_asm([IRs | Rest], IO_Dev) when is_list(IRs) ->
 	write_asm(IRs, IO_Dev),
-	write_asm(Rest, IO_Dev);
-write_asm([{org, Address} | Rest], IO_Dev) ->
-	io:format(IO_Dev, "\t.org ~w~n", [Address]),
 	write_asm(Rest, IO_Dev);
 write_asm([{comment, Content} | Rest], IO_Dev) ->
 	io:format(IO_Dev, "\t## ~s~n", [Content]),
