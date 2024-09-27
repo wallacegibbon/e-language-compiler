@@ -173,9 +173,9 @@ u_type_immedi(N) ->
 	Low = N band 16#FFF,
 	case Low > 2047 of
 		true ->
-			{High + 1, Low};
+			{(High + 1) band 16#000FFFFF, fix_signed_num(Low, 12)};
 		false ->
-			{High, Low}
+			{High band 16#000FFFFF, fix_signed_num(Low, 12)}
 	end.
 
 s_type_immedi(N) ->
@@ -188,7 +188,24 @@ b_type_immedi(N) ->
 	Low = N band 2#11110 bor ((N bsr 11) band 1),
 	{High, Low}.
 
+fix_signed_num(N, BitNum) ->
+	SignNum = sign_to_num((N bsr (BitNum - 1)) band 1),
+	case SignNum of
+		-1 ->
+			SignNum * (((bnot N) + 1) band (bnot (-1 bsl BitNum)));
+		1 ->
+			N
+	end.
+
+sign_to_num(0) ->  1;
+sign_to_num(1) -> -1.
+
 -ifdef(EUNIT).
+
+fix_signed_num_test() ->
+	?assertEqual( 7, fix_signed_num(7, 4)),
+	?assertEqual(-8, fix_signed_num(8, 4)),
+	?assertEqual(-7, fix_signed_num(9, 4)).
 
 u_type_immedi_test() ->
 	?assertEqual({16#11223, 16#344}, u_type_immedi(16#11223344)),

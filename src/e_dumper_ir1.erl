@@ -27,8 +27,11 @@ generate_code(AST, InitCode, OutputFile, WordSize) ->
 	InitIRs = [{fn, '__init'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init'}) end, InitCode)],
 	IRs = ast_to_ir(AST, Ctx),
 	StrTable = string_collect_dump(Pid),
-	Fn = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"}, InitIRs, IRs, StrTable], IO_Dev) end,
-	e_util:file_write(OutputFile, Fn).
+	Fn1 = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"}, InitIRs, IRs, StrTable], IO_Dev) end,
+	e_util:file_write(OutputFile, Fn1),
+	Fn2 = fun(IO_Dev) -> write_asm([InitIRs, IRs, StrTable], IO_Dev) end,
+	e_util:file_write(OutputFile ++ ".asm", Fn2),
+	ok.
 
 -type irs() :: [tuple() | irs()].
 
@@ -292,10 +295,7 @@ write_irs([IRs | Rest], IO_Dev) when is_list(IRs) ->
 write_irs([{comment, Content} | Rest], IO_Dev) ->
 	io:format(IO_Dev, "\t%% ~s~n", [Content]),
 	write_irs(Rest, IO_Dev);
-write_irs([{fn, _} = IR | Rest], IO_Dev) ->
-	io:format(IO_Dev, "~w.~n", [IR]),
-	write_irs(Rest, IO_Dev);
-write_irs([{label, _} = IR | Rest], IO_Dev) ->
+write_irs([{Tag, _} = IR | Rest], IO_Dev) when Tag =:= fn; Tag =:= label ->
 	io:format(IO_Dev, "~w.~n", [IR]),
 	write_irs(Rest, IO_Dev);
 write_irs([IR | Rest], IO_Dev) ->
@@ -303,6 +303,41 @@ write_irs([IR | Rest], IO_Dev) ->
 	write_irs(Rest, IO_Dev);
 write_irs([], _) ->
 	ok.
+
+-spec write_asm(irs(), file:io_device()) -> ok.
+write_asm([IRs | Rest], IO_Dev) when is_list(IRs) ->
+	write_asm(IRs, IO_Dev),
+	write_asm(Rest, IO_Dev);
+write_asm([{comment, Content} | Rest], IO_Dev) ->
+	%io:format(IO_Dev, "\t;; ~s~n", [Content]),
+	write_asm(Rest, IO_Dev);
+write_asm([{Tag, Name} | Rest], IO_Dev) when Tag =:= fn; Tag =:= label ->
+	io:format(IO_Dev, "~s:~n", [Name]),
+	write_asm(Rest, IO_Dev);
+write_asm([{Tag, Op1, Op2, Op3} | Rest], IO_Dev) ->
+	io:format(IO_Dev, "\t~s\t~s, ~s, ~s~n", [Tag, op_tag_str(Op1), op_tag_str(Op2), op_tag_str(Op3)]),
+	write_asm(Rest, IO_Dev);
+write_asm([{Tag, Op1, {{x, _} = Op2, N}} | Rest], IO_Dev) ->
+	io:format(IO_Dev, "\t~s\t~s, ~w(~s)~n", [Tag, op_tag_str(Op1), N, op_tag_str(Op2)]),
+	write_asm(Rest, IO_Dev);
+write_asm([{Tag, Op1, Op2} | Rest], IO_Dev) ->
+	io:format(IO_Dev, "\t~s\t~s, ~s~n", [Tag, op_tag_str(Op1), op_tag_str(Op2)]),
+	write_asm(Rest, IO_Dev);
+write_asm([{Tag, Op1} | Rest], IO_Dev) ->
+	io:format(IO_Dev, "\t~s\t~s~n", [Tag, op_tag_str(Op1)]),
+	write_asm(Rest, IO_Dev);
+write_asm([{Tag} | Rest], IO_Dev) ->
+	io:format(IO_Dev, "\t~s~n", [Tag]),
+	write_asm(Rest, IO_Dev);
+write_asm([], _) ->
+	ok.
+
+op_tag_str(N) when is_integer(N) ->
+	integer_to_list(N);
+op_tag_str({x, N}) ->
+	"x" ++ integer_to_list(N);
+op_tag_str(Label) when is_atom(Label) ->
+	Label.
 
 %% {x, 0} means there are not branching to generate. (already generated in previous IRs)
 'br!_reg'({x, 0}, _)	-> [];

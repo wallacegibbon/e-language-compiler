@@ -57,35 +57,36 @@ replace_address([], _) ->
 
 encode_instr({{Br, {x, N1}, {x, N2}, Address} = I, Offset}) when Br =:= bge; Br =:= blt; Br =:= beq; Br =:= bne ->
 	{High, Low} = e_util:b_type_immedi(Address),
-	Immedi = (High bsl 24) bor (Low bsl 6),
-	Code =  Immedi bor (N2 bsl 19) bor (N1 bsl 14) bor (f3code_of(Br) bsl 11) bor 2#1100011,
+	Immedi = (High bsl 25) bor (Low bsl 7),
+	Code =  Immedi bor (N2 bsl 20) bor (N1 bsl 15) bor (f3code_of(Br) bsl 12) bor 2#1100011,
 	{I, <<Code:32/little>>, Offset};
 encode_instr({{S, {x, N1}, {{x, N2}, O}} = I, Offset}) when S =:= sw; S =:= sb ->
 	{High, Low} = e_util:s_type_immedi(O),
-	Immedi = (High bsl 24) bor (Low bsl 6),
-	Code = Immedi bor (N2 bsl 19) bor (N1 bsl 14) bor (f3code_of(S) bsl 11) bor 2#0100011,
+	Immedi = (High bsl 25) bor (Low bsl 7),
+	%% N2 is RS1, the pointer.
+	Code = Immedi bor (N2 bsl 15) bor (N1 bsl 20) bor (f3code_of(S) bsl 12) bor 2#0100011,
 	{I, <<Code:32/little>>, Offset};
 encode_instr({{L, {x, N1}, {{x, N2}, O}} = I, Offset}) when L =:= lw; L =:= lb ->
-	Code = (O bsl 19)  bor (N2 bsl 14) bor (f3code_of(L) bsl 11) bor (N1 bsl 6) bor 2#0000011,
+	Code = (O bsl 20)  bor (N2 bsl 15) bor (f3code_of(L) bsl 12) bor (N1 bsl 7) bor 2#0000011,
 	{I, <<Code:32/little>>, Offset};
 encode_instr({{Imm, {x, N1}, {x, N2}, A} = I, Offset}) when Imm =:= addi; Imm =:= andi; Imm =:= ori; Imm =:= xori; Imm =:= slli; Imm =:= srai ->
-	Code = (A bsl 19) bor (N2 bsl 14) bor 0 bor (N1 bsl 6) bor 2#0010011,
+	Code = (A bsl 20) bor (N2 bsl 15) bor 0 bor (N1 bsl 7) bor 2#0010011,
 	{I, <<Code:32/little>>, Offset};
 encode_instr({{Tag, {x, N1}, {x, N2}, {x, N3}} = I, Offset}) when Tag =:= add; Tag =:= sub; Tag =:= 'and'; Tag =:= 'or'; Tag =:= 'xor'; Tag =:= sll; Tag =:= sra ->
-	Rs = (N3 bsl 19) bor (N2 bsl 14) bor (N1 bsl 6),
-	Code = Rs bor (f7code_of(Tag) bsl 24) bor (f3code_of(Tag) bsl 11) bor 2#0110011,
+	Rs = (N3 bsl 20) bor (N2 bsl 15) bor (N1 bsl 7),
+	Code = Rs bor (f7code_of(Tag) bsl 25) bor (f3code_of(Tag) bsl 12) bor 2#0110011,
 	{I, <<Code:32/little>>, Offset};
 encode_instr({{auipc, {x, N}, Address} = I, Offset}) ->
-	Code = (Address bsl 11) bor (N bsl 6) bor 2#0010111,
+	Code = (Address bsl 12) bor (N bsl 7) bor 2#0010111,
 	{I, <<Code:32/little>>, Offset};
 encode_instr({{lui, {x, N}, Address} = I, Offset}) ->
-	Code = (Address bsl 11) bor (N bsl 6) bor 2#0110111,
+	Code = (Address bsl 12) bor (N bsl 7) bor 2#0110111,
 	{I, <<Code:32/little>>, Offset};
 encode_instr({{j, Address} = I, Offset}) ->
-	Code = (Address bsl 11) bor 2#1101111,
+	Code = (Address bsl 12) bor 2#1101111,
 	{I, <<Code:32/little>>, Offset};
 encode_instr({{jalr, {x, N1}, {x, N2}} = I, Offset}) ->
-	Code = (N2 bsl 14) bor (N1 bsl 6) bor 2#1100111,
+	Code = (N2 bsl 15) bor (N1 bsl 7) bor 2#1100111,
 	{I, <<Code:32/little>>, Offset};
 encode_instr({{mret} = I, Offset}) ->
 	{I, <<16#30200073:32/little>>, Offset};
