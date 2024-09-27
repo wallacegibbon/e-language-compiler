@@ -42,11 +42,13 @@ compile_to_ir1(InputFilename, OutputFilename) ->
 
 -spec compile_to_machine1(string(), string()) -> ok.
 compile_to_machine1(InputFilename, OutputFilename) ->
+	Options = compiler_options(),
+	#{wordsize := WordSize} = Options,
 	IR1Filename = OutputFilename ++ ".ir1",
 	try
 		compile_to_ir1(InputFilename, IR1Filename),
 		{ok, IRs} = file:consult(IR1Filename),
-		e_dumper_machine1:generate_code(IRs, OutputFilename)
+		e_dumper_machine1:generate_code(IRs, OutputFilename, WordSize)
 	catch
 		{{Line, Col}, ErrorInfo} ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [InputFilename, Line, Col, ErrorInfo]))

@@ -8,15 +8,15 @@
 
 -type context() ::
 	#{
-	wordsize		=> pos_integer(),
-	scope_tag		=> atom(),
 	%% `free_regs` will be a subset of `tmp_regs`. (And initialized as `tmp_regs`)
 	tmp_regs		=> [machine_reg()],
 	free_regs		=> [machine_reg()],
 	%% The string literals are collected by a separate process to avoid complex functions.
 	string_collector	=> pid(),
 	%% `condi_label` is for generating logic operator (and, or, not) related code.
-	condi_label		=> {atom(), atom()}
+	condi_label		=> {atom(), atom()},
+	scope_tag		=> atom(),
+	wordsize		=> pos_integer()
 	}.
 
 -spec generate_code(e_ast(), e_ast(), string(), non_neg_integer()) -> ok.
@@ -26,10 +26,10 @@ generate_code(AST, InitCode, OutputFile, WordSize) ->
 	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid},
 	InitIRs = [{fn, '__init'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init'}) end, InitCode)],
 	IRs = ast_to_ir(AST, Ctx),
-	StrTable = string_collect_dump(Pid),
+	StrTable = lists:map(fun({T, S, L}) -> [{label, {align, WordSize}, T}, {string, S, L}] end, string_collect_dump(Pid)),
 	Fn1 = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"}, InitIRs, IRs, StrTable], IO_Dev) end,
 	e_util:file_write(OutputFile, Fn1),
-	Fn2 = fun(IO_Dev) -> write_asm([InitIRs, IRs, StrTable], IO_Dev) end,
+	Fn2 = fun(IO_Dev) -> write_asm([{comment, "For GNU assembler"}, {org, 0}, InitIRs, IRs, StrTable], IO_Dev) end,
 	e_util:file_write(OutputFile ++ ".asm", Fn2),
 	ok.
 
@@ -47,7 +47,7 @@ ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size =
 	{Before, After} = interrupt_related_code(Fn, Regs, Ctx1),
 	Prologue = [RegSave, smart_addi({x, 2}, FrameSize, Ctx1), Before, {comment, "prologue end"}],
 	RegRestore = [mv({x, 2}, {x, 8}), {lw, {x, 8}, {{x, 2}, Size1}}, {lw, {x, 1}, {{x, 2}, Size1 + WordSize}}],
-	EndLabel = {label, generate_tag(Name, epilogue)},
+	EndLabel = {label, {align, 1}, generate_tag(Name, epilogue)},
 	Epilogue = [EndLabel, After, RegRestore, ret_instruction_of(Fn)],
 	Body = lists:map(fun(S) -> stmt_to_ir(S, Ctx1) end, Stmts),
 	%% The result should be flattened before calling `fix_irs/1`.
@@ -78,8 +78,8 @@ stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, #
 	EndComment = comment('if', "end", Loc),
 	Then1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Then0),
 	Else1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Else0),
-	Then2 = [{label, ThenLabel}, Then1, {j, EndLabel}],
-	Else2 = [{label, ElseLabel}, Else1, {label, EndLabel}],
+	Then2 = [{label, {align, 1}, ThenLabel}, Then1, {j, EndLabel}],
+	Else2 = [{label, {align, 1}, ElseLabel}, Else1, {label, {align, 1}, EndLabel}],
 	[StartComment, CondiIRs, 'br!_reg'(R_Cond, ElseLabel), Then2, Else2, EndComment];
 stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
 	StartLabel = generate_tag(ScopeTag, while_start, Loc),
@@ -89,8 +89,8 @@ stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, #{scope_tag 
 	StartComment = comment(while, e_util:stmt_to_str(Condi), Loc),
 	EndComment = comment(while, "end", Loc),
 	RawBody = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
-	Body = [{label, BodyLabel}, RawBody, {j, StartLabel}, {label, EndLabel}],
-	[StartComment, {label, StartLabel}, CondiIRs, 'br!_reg'(R_Cond, EndLabel), Body, EndComment];
+	Body = [{label, {align, 1}, BodyLabel}, RawBody, {j, StartLabel}, {label, {align, 1}, EndLabel}],
+	[StartComment, {label, {align, 1}, StartLabel}, CondiIRs, 'br!_reg'(R_Cond, EndLabel), Body, EndComment];
 stmt_to_ir(#e_return_stmt{expr = Expr}, #{scope_tag := ScopeTag} = Ctx) ->
 	{ExprIRs, R, _} = expr_to_ir(Expr, Ctx),
 	%% We use stack to pass result
@@ -98,7 +98,7 @@ stmt_to_ir(#e_return_stmt{expr = Expr}, #{scope_tag := ScopeTag} = Ctx) ->
 stmt_to_ir(#e_goto_stmt{label = Label}, #{scope_tag := ScopeTag}) ->
 	[{j, generate_tag(ScopeTag, Label)}];
 stmt_to_ir(#e_label{name = Label}, #{scope_tag := ScopeTag}) ->
-	[{label, generate_tag(ScopeTag, Label)}];
+	[{label, {align, 1}, generate_tag(ScopeTag, Label)}];
 stmt_to_ir(Stmt, Ctx) ->
 	{Exprs, _, _} = expr_to_ir(Stmt, Ctx),
 	Exprs.
@@ -185,12 +185,12 @@ expr_to_ir(?OP2('and', Left, Right, Loc), #{scope_tag := ScopeTag, condi_label :
 	Next = generate_tag(ScopeTag, and_next, Loc),
 	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {Next, False}}),
 	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {True, False}}),
-	{[IRs1, 'br!_reg'(R1, False), {label, Next}, IRs2, 'br!_reg'(R2, False), {j, True}], {x, 0}, Ctx};
+	{[IRs1, 'br!_reg'(R1, False), {label, {align, 1}, Next}, IRs2, 'br!_reg'(R2, False), {j, True}], {x, 0}, Ctx};
 expr_to_ir(?OP2('or', Left, Right, Loc), #{scope_tag := ScopeTag, condi_label := {True, False}} = Ctx) ->
 	Next = generate_tag(ScopeTag, or_next, Loc),
 	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {True, Next}}),
 	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {True, False}}),
-	{[IRs1, br_reg(R1, True), {label, Next}, IRs2, br_reg(R2, True), {j, False}], {x, 0}, Ctx};
+	{[IRs1, br_reg(R1, True), {label, {align, 1}, Next}, IRs2, br_reg(R2, True), {j, False}], {x, 0}, Ctx};
 expr_to_ir(?OP1('not', Expr), #{condi_label := {True, False}} = Ctx) ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx#{condi_label := {False, True}}),
 	{[IRs, 'br!_reg'(R, True), {j, False}], {x, 0}, Ctx1};
@@ -203,7 +203,7 @@ expr_to_ir(?OP1('-', Expr), Ctx) ->
 	{[IRs, {sub, R, {x, 0}, R}], R, Ctx1};
 expr_to_ir(#e_string{value = String, loc = Loc}, #{free_regs := [R | RestRegs], string_collector := Pid} = Ctx) ->
 	Label = generate_tag(g, s, Loc),
-	Pid ! {put, Label, list_to_binary([String, 0])},
+	Pid ! {put, Label, String, length(String)},
 	{[{la, R, Label}], R, Ctx#{free_regs := RestRegs}};
 expr_to_ir(?I(0), Ctx) ->
 	{[], {x, 0}, Ctx};
@@ -227,7 +227,7 @@ fix_irs([{j, Label} = I, {j, Label} | Rest]) ->
 	fix_irs([I | Rest]);
 %% Jumping to next instruction is also useless and should got eliminated.
 %% But doing these optimizations is easier in later phases, so we simply pass them here.
-%fix_irs([{j, Label}, {label, Label} = L | Rest]) ->
+%fix_irs([{j, Label}, {label, {align, 1}, Label} = L | Rest]) ->
 %	fix_irs([L | Rest]);
 fix_irs([Any | Rest]) ->
 	[Any | fix_irs(Rest)];
@@ -236,8 +236,8 @@ fix_irs([]) ->
 
 string_collect_loop(Collected) ->
 	receive
-		{put, Tag, String} ->
-			string_collect_loop([{Tag, String} | Collected]);
+		{put, Tag, String, Length} ->
+			string_collect_loop([{Tag, String, Length} | Collected]);
 		{dump, Pid} ->
 			Pid ! {self(), Collected}
 	end.
@@ -246,7 +246,7 @@ string_collect_dump(Pid) ->
 	Pid ! {dump, self()},
 	receive
 		{Pid, Collected} ->
-			lists:map(fun({L, S}) -> [{label, L}, {string, S}] end, Collected)
+			Collected
 	end.
 
 recycle_tmpreg([R | Regs], RegBank) when ?IS_SPECIAL_REG(R) ->
@@ -308,8 +308,11 @@ write_irs([], _) ->
 write_asm([IRs | Rest], IO_Dev) when is_list(IRs) ->
 	write_asm(IRs, IO_Dev),
 	write_asm(Rest, IO_Dev);
+write_asm([{org, Address} | Rest], IO_Dev) ->
+	io:format(IO_Dev, "\t.org ~w~n", [Address]),
+	write_asm(Rest, IO_Dev);
 write_asm([{comment, Content} | Rest], IO_Dev) ->
-	%io:format(IO_Dev, "\t;; ~s~n", [Content]),
+	io:format(IO_Dev, "\t## ~s~n", [Content]),
 	write_asm(Rest, IO_Dev);
 write_asm([{Tag, Name} | Rest], IO_Dev) when Tag =:= fn; Tag =:= label ->
 	io:format(IO_Dev, "~s:~n", [Name]),
@@ -319,6 +322,15 @@ write_asm([{Tag, Op1, Op2, Op3} | Rest], IO_Dev) ->
 	write_asm(Rest, IO_Dev);
 write_asm([{Tag, Op1, {{x, _} = Op2, N}} | Rest], IO_Dev) ->
 	io:format(IO_Dev, "\t~s\t~s, ~w(~s)~n", [Tag, op_tag_str(Op1), N, op_tag_str(Op2)]),
+	write_asm(Rest, IO_Dev);
+write_asm([{label, {align, 1}, Name} | Rest], IO_Dev) ->
+	io:format(IO_Dev, "~s:\t~n", [Name]),
+	write_asm(Rest, IO_Dev);
+write_asm([{label, {align, N}, Name} | Rest], IO_Dev) ->
+	io:format(IO_Dev, "\t.balign ~w~n~s:~n", [N, Name]),
+	write_asm(Rest, IO_Dev);
+write_asm([{string, Content, _} | Rest], IO_Dev) ->
+	io:format(IO_Dev, "\t.string\t\"~ts\"~n", [e_util:fix_special_chars(Content)]),
 	write_asm(Rest, IO_Dev);
 write_asm([{Tag, Op1, Op2} | Rest], IO_Dev) ->
 	io:format(IO_Dev, "\t~s\t~s, ~s~n", [Tag, op_tag_str(Op1), op_tag_str(Op2)]),

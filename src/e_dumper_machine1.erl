@@ -1,11 +1,16 @@
 -module(e_dumper_machine1).
--export([generate_code/2]).
+-export([generate_code/3]).
 
--type scan_context() :: {LabelMap :: #{atom() => non_neg_integer()}, OffsetMap :: #{non_neg_integer() => [atom()]}}.
+-type scan_context() ::
+	#{
+	label_map	=> #{atom() => non_neg_integer()},
+	offset_map	=> #{non_neg_integer() => [atom()]},
+	wordsize	=> non_neg_integer()
+	}.
 
--spec generate_code([tuple()], string()) -> ok.
-generate_code(IRs, OutputFile) ->
-	{Instrs, {LabelMap, OffsetMap}} = scan_address(IRs, 0, [], {#{}, #{}}),
+-spec generate_code([tuple()], string(), non_neg_integer()) -> ok.
+generate_code(IRs, OutputFile, WordSize) ->
+	{Instrs, #{label_map := LabelMap, offset_map := OffsetMap}} = scan_address(IRs, 0, [], #{label_map => #{}, offset_map => #{}, wordsize => WordSize}),
 	%io:format(">> LabelMap:~p~n>> OffsetMap:~p~n", [LabelMap, OffsetMap]),
 	Encoded = lists:map(fun encode_instr/1, replace_address(Instrs, LabelMap)),
 	Fn1 = fun(IO_Dev) -> write_binary(Encoded, IO_Dev) end,
@@ -15,14 +20,19 @@ generate_code(IRs, OutputFile) ->
 	ok.
 
 -spec scan_address([tuple()], non_neg_integer(), [tuple()], scan_context()) -> {R, scan_context()} when R :: [tuple()].
-scan_address([{L, Name} | Rest], Offset, Result, {LabelMap, OffsetMap}) when L =:= fn; L =:= label ->
-	NewLabelMap = LabelMap#{Name => Offset},
+scan_address([{fn, Name} | Rest], Offset, Result, #{label_map := LabelMap, offset_map := OffsetMap, wordsize := WordSize} = Ctx) ->
+	NewLabelMap = LabelMap#{Name => e_util:fill_unit_pessi(Offset, WordSize)},
 	NewOffsetMap = maps:update_with(Offset, fun(Ns) -> [Name | Ns] end, [Name], OffsetMap),
-	scan_address(Rest, Offset, Result, {NewLabelMap, NewOffsetMap});
+	scan_address(Rest, Offset, Result, Ctx#{label_map := NewLabelMap, offset_map := NewOffsetMap});
+scan_address([{label, {align, N}, Name} | Rest], Offset, Result, #{label_map := LabelMap, offset_map := OffsetMap} = Ctx) ->
+	FixedOffset = e_util:fill_unit_pessi(Offset, N),
+	NewLabelMap = LabelMap#{Name => FixedOffset},
+	NewOffsetMap = maps:update_with(FixedOffset, fun(Ns) -> [Name | Ns] end, [Name], OffsetMap),
+	scan_address(Rest, FixedOffset, Result, Ctx#{label_map := NewLabelMap, offset_map := NewOffsetMap});
 scan_address([{la, _, _} = Orig | Rest], Offset, Result, Ctx) ->
 	scan_address(Rest, Offset + 8, [{Orig, Offset} | Result], Ctx);
-scan_address([{string, Data} = Orig | Rest], Offset, Result, Ctx) ->
-	scan_address(Rest, Offset + byte_size(Data), [{Orig, Offset} | Result], Ctx);
+scan_address([{string, _, Length} = Orig | Rest], Offset, Result, Ctx) ->
+	scan_address(Rest, Offset + Length + 1, [{Orig, Offset} | Result], Ctx);
 scan_address([Any | Rest], Offset, Result, Ctx) ->
 	scan_address(Rest, Offset + 4, [{Any, Offset} | Result], Ctx);
 scan_address([], _, Result, Ctx) ->
@@ -53,6 +63,19 @@ replace_address([Any | Rest], LabelMap) ->
 replace_address([], _) ->
 	[].
 
+-define(IS_IMMEDI_CALC(Tag),
+	(
+	Tag =:= addi orelse Tag =:= andi orelse Tag =:= ori orelse Tag =:= xori orelse
+	Tag =:= slli orelse Tag =:= srai
+	)).
+
+-define(IS_NORMAL_CALC(Tag),
+	(
+	Tag =:= add orelse Tag =:= sub orelse Tag =:= 'and' orelse Tag =:= 'or' orelse Tag =:= 'xor' orelse
+	Tag =:= sll orelse Tag =:= sra orelse
+	Tag =:= mul orelse Tag =:= mulh orelse Tag =:= 'div' orelse Tag =:= 'rem'
+	)).
+
 encode_instr({{Br, {x, N1}, {x, N2}, Address} = I, Offset}) when Br =:= bge; Br =:= blt; Br =:= beq; Br =:= bne ->
 	{High, Low} = e_util:b_type_immedi(Address),
 	Immedi = (High bsl 25) bor (Low bsl 7),
@@ -67,10 +90,10 @@ encode_instr({{S, {x, N1}, {{x, N2}, O}} = I, Offset}) when S =:= sw; S =:= sb -
 encode_instr({{L, {x, N1}, {{x, N2}, O}} = I, Offset}) when L =:= lw; L =:= lb ->
 	Code = (O bsl 20)  bor (N2 bsl 15) bor (f3code_of(L) bsl 12) bor (N1 bsl 7) bor 2#0000011,
 	{I, <<Code:32/little>>, Offset};
-encode_instr({{Tag, {x, N1}, {x, N2}, A} = I, Offset}) when Tag =:= addi; Tag =:= andi; Tag =:= ori; Tag =:= xori; Tag =:= slli; Tag =:= srai ->
+encode_instr({{Tag, {x, N1}, {x, N2}, A} = I, Offset}) when ?IS_IMMEDI_CALC(Tag) ->
 	Code = (A bsl 20) bor (N2 bsl 15) bor (f3code_of(Tag) bsl 12) bor (N1 bsl 7) bor 2#0010011,
 	{I, <<Code:32/little>>, Offset};
-encode_instr({{Tag, {x, N1}, {x, N2}, {x, N3}} = I, Offset}) when Tag =:= add; Tag =:= sub; Tag =:= 'and'; Tag =:= 'or'; Tag =:= 'xor'; Tag =:= sll; Tag =:= sra ->
+encode_instr({{Tag, {x, N1}, {x, N2}, {x, N3}} = I, Offset}) when ?IS_NORMAL_CALC(Tag) ->
 	Rs = (N3 bsl 20) bor (N2 bsl 15) bor (N1 bsl 7),
 	Code = Rs bor (f7code_of(Tag) bsl 25) bor (f3code_of(Tag) bsl 12) bor 2#0110011,
 	{I, <<Code:32/little>>, Offset};
@@ -93,6 +116,9 @@ encode_instr({{wfi} = I, Offset}) ->
 encode_instr(Any) ->
 	Any.
 
+write_detail([{{string, Content, _}, Loc} | Rest], OffsetMap, IO_Dev) ->
+	io:format(IO_Dev, "~8.16.0B:\t\t\t\"~s\\0\"~n", [Loc, e_util:fix_special_chars(Content)]),
+	write_detail(Rest, OffsetMap, IO_Dev);
 write_detail([{Instr, Encoded, Loc} | Rest], OffsetMap, IO_Dev) ->
 	case maps:find(Loc, OffsetMap) of
 		{ok, Labels} ->
@@ -108,6 +134,9 @@ write_detail([], _, _) ->
 fmt_code(<<A, B, C, D>>) ->
 	io_lib:format("~2.16.0b~2.16.0b~2.16.0b~2.16.0b", [D, C, B, A]).
 
+write_binary([{{string, Content, _}, _} | Rest], IO_Dev) ->
+	file:write(IO_Dev, [Content, 0]),
+	write_binary(Rest, IO_Dev);
 write_binary([{_, Raw, _} | Rest], IO_Dev) ->
 	file:write(IO_Dev, Raw),
 	write_binary(Rest, IO_Dev);
@@ -134,9 +163,17 @@ f3code_of('and')	-> 2#111;
 f3code_of('or')		-> 2#110;
 f3code_of('xor')	-> 2#100;
 f3code_of(sll)		-> 2#001;
-f3code_of(sra)		-> 2#101.
+f3code_of(sra)		-> 2#101;
+f3code_of(mul)		-> 2#000;
+f3code_of(mulh)		-> 2#001;
+f3code_of('div')	-> 2#100;
+f3code_of('rem')	-> 2#110.
 
 f7code_of(sub)		-> 2#0100000;
 f7code_of(sra)		-> 2#0100000;
+f7code_of(mul)		-> 2#0000001;
+f7code_of(mulh)		-> 2#0000001;
+f7code_of('div')	-> 2#0000001;
+f7code_of('rem')	-> 2#0000001;
 f7code_of(_)		-> 2#0000000.
 

@@ -1,9 +1,10 @@
 -module(e_util).
 -export([make_function_and_struct_map_from_ast/1, expr_map/2, eliminate_pointer/1, stmt_to_str/1, merge_vars/3]).
 -export([names_of_var_defs/1, names_of_var_refs/1, get_struct_from_type/2, get_struct_from_name/3, void_type/1]).
--export([fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, fix_special_chars/1, list_map/2, file_write/2]).
+-export([fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, fix_special_chars/1]).
 -export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2, map_find_multi/2]).
 -export([u_type_immedi/1, j_type_immedi/1, s_type_immedi/1, b_type_immedi/1]).
+-export([list_map/2, file_write/2]).
 -include("e_record_definition.hrl").
 -ifdef(EUNIT).
 -include_lib("eunit/include/eunit.hrl").
@@ -101,6 +102,7 @@ stmt_to_str(Any) ->
 special_char_map() ->
 	#{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}.
 
+-spec fix_special_chars(string()) -> string().
 fix_special_chars(String) ->
 	lists:map(fun(C) -> maps:get(C, special_char_map(), C) end, String).
 
@@ -180,11 +182,12 @@ u_type_immedi(N) ->
 
 %% imm[20|10:1|11|19:12]
 j_type_immedi(N) ->
-	N20 = (N bsr 20) band 1,
-	N10_1 = (N bsr 1) band 2#1111111111,
+	%% The lowest bit is dropped. bit-1 -> bit-0 and bit-20 -> bit-19
+	N20 = (N bsr 20) bsl 19,
+	N10_1 = ((N bsr 1) band 2#1111111111 bsl 9),
 	N19_12 = (N bsr 12) band 2#11111111,
-	N11 = (N bsr 11) band 1,
-	(N20 bsl 20) bor (N10_1 bsl 9) bor (N11 bsl 8) bor N19_12.
+	N11 = ((N bsr 11) band 1 bsl 8),
+	N20 bor N10_1 bor N11 bor N19_12.
 
 %% High: imm[11:5]; Low: imm[4:0]
 s_type_immedi(N) ->
@@ -221,8 +224,14 @@ u_type_immedi_test() ->
 	?assertEqual({16#11223, fix_signed_num(16#344, 12)}, u_type_immedi(16#11223344)),
 	?assertEqual({16#AABBD, fix_signed_num(16#CDD, 12)}, u_type_immedi(16#AABBCCDD)).
 
-j_type_immedi_test() ->
-	?assertEqual(2#00101010101110101010, j_type_immedi(2#10101010101010101010101010101010)).
+%% imm[20|10:1|11|19:12]
+j_type_immedi_1_test() ->
+	?assertEqual(2#0_0101010101_1_10101010, j_type_immedi(2#00000000000_0_10101010_1_0101010101_0)).
+
+j_type_immedi_2_test() ->
+	N1 = 2#1_01010101_0_1010101010_1,
+	N2 = 2#1_1010101010_0_01010101,
+	?assertEqual(fix_signed_num(N2, 20), fix_signed_num(j_type_immedi(N1), 20)).
 
 s_type_immedi_test() ->
 	?assertEqual({2#1100110, 2#11101}, s_type_immedi(16#AABBCCDD)).
