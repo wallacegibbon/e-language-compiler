@@ -43,8 +43,6 @@ replace_address([{{la, R, Label}, Offset} | Rest], LabelMap) ->
 replace_address([{{j, Label}, Offset} | Rest], LabelMap) ->
 	{ok, Address} = maps:find(Label, LabelMap),
 	if
-		Address =:= Offset + 4 ->
-			replace_address(Rest, LabelMap);
 		Address > 16#7FFFF orelse Address < -16#80000 ->
 			throw({instruction_error, j, {out_of_range, Address}});
 		true ->
@@ -69,8 +67,8 @@ encode_instr({{S, {x, N1}, {{x, N2}, O}} = I, Offset}) when S =:= sw; S =:= sb -
 encode_instr({{L, {x, N1}, {{x, N2}, O}} = I, Offset}) when L =:= lw; L =:= lb ->
 	Code = (O bsl 20)  bor (N2 bsl 15) bor (f3code_of(L) bsl 12) bor (N1 bsl 7) bor 2#0000011,
 	{I, <<Code:32/little>>, Offset};
-encode_instr({{Imm, {x, N1}, {x, N2}, A} = I, Offset}) when Imm =:= addi; Imm =:= andi; Imm =:= ori; Imm =:= xori; Imm =:= slli; Imm =:= srai ->
-	Code = (A bsl 20) bor (N2 bsl 15) bor 0 bor (N1 bsl 7) bor 2#0010011,
+encode_instr({{Tag, {x, N1}, {x, N2}, A} = I, Offset}) when Tag =:= addi; Tag =:= andi; Tag =:= ori; Tag =:= xori; Tag =:= slli; Tag =:= srai ->
+	Code = (A bsl 20) bor (N2 bsl 15) bor (f3code_of(Tag) bsl 12) bor (N1 bsl 7) bor 2#0010011,
 	{I, <<Code:32/little>>, Offset};
 encode_instr({{Tag, {x, N1}, {x, N2}, {x, N3}} = I, Offset}) when Tag =:= add; Tag =:= sub; Tag =:= 'and'; Tag =:= 'or'; Tag =:= 'xor'; Tag =:= sll; Tag =:= sra ->
 	Rs = (N3 bsl 20) bor (N2 bsl 15) bor (N1 bsl 7),
@@ -83,7 +81,7 @@ encode_instr({{lui, {x, N}, Address} = I, Offset}) ->
 	Code = (Address bsl 12) bor (N bsl 7) bor 2#0110111,
 	{I, <<Code:32/little>>, Offset};
 encode_instr({{j, Address} = I, Offset}) ->
-	Code = (Address bsl 12) bor 2#1101111,
+	Code = (e_util:j_type_immedi(Address) bsl 12) bor 2#1101111,
 	{I, <<Code:32/little>>, Offset};
 encode_instr({{jalr, {x, N1}, {x, N2}} = I, Offset}) ->
 	Code = (N2 bsl 15) bor (N1 bsl 7) bor 2#1100111,
@@ -102,13 +100,13 @@ write_detail([{Instr, Encoded, Loc} | Rest], OffsetMap, IO_Dev) ->
 		_ ->
 			ok
 	end,
-	io:format(IO_Dev, "~8.16.0B\t~s\t~w~n", [Loc, fmt_code(Encoded), Instr]),
+	io:format(IO_Dev, "~8.16.0B:\t~s\t~w~n", [Loc, fmt_code(Encoded), Instr]),
 	write_detail(Rest, OffsetMap, IO_Dev);
 write_detail([], _, _) ->
 	ok.
 
 fmt_code(<<A, B, C, D>>) ->
-	io_lib:format("~2.16.0B ~2.16.0B ~2.16.0B ~2.16.0B", [D, C, B, A]).
+	io_lib:format("~2.16.0b~2.16.0b~2.16.0b~2.16.0b", [D, C, B, A]).
 
 write_binary([{_, Raw, _} | Rest], IO_Dev) ->
 	file:write(IO_Dev, Raw),

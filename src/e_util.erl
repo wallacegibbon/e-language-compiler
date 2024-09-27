@@ -3,7 +3,7 @@
 -export([names_of_var_defs/1, names_of_var_refs/1, get_struct_from_type/2, get_struct_from_name/3, void_type/1]).
 -export([fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, fix_special_chars/1, list_map/2, file_write/2]).
 -export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2, map_find_multi/2]).
--export([u_type_immedi/1, s_type_immedi/1, b_type_immedi/1]).
+-export([u_type_immedi/1, j_type_immedi/1, s_type_immedi/1, b_type_immedi/1]).
 -include("e_record_definition.hrl").
 -ifdef(EUNIT).
 -include_lib("eunit/include/eunit.hrl").
@@ -178,11 +178,21 @@ u_type_immedi(N) ->
 			{High band 16#000FFFFF, fix_signed_num(Low, 12)}
 	end.
 
+%% imm[20|10:1|11|19:12]
+j_type_immedi(N) ->
+	N20 = (N bsr 20) band 1,
+	N10_1 = (N bsr 1) band 2#1111111111,
+	N19_12 = (N bsr 12) band 2#11111111,
+	N11 = (N bsr 11) band 1,
+	(N20 bsl 20) bor (N10_1 bsl 9) bor (N11 bsl 8) bor N19_12.
+
+%% High: imm[11:5]; Low: imm[4:0]
 s_type_immedi(N) ->
 	High = (N bsr 5) band 2#1111111,
 	Low = N band 2#11111,
 	{High, Low}.
 
+%% High: imm[12|10:5]; Low: imm[4:1|11]
 b_type_immedi(N) ->
 	High = (((N bsr 12) band 1) bsl 7) bor ((N bsr 5) band 2#111111),
 	Low = N band 2#11110 bor ((N bsr 11) band 1),
@@ -208,8 +218,11 @@ fix_signed_num_test() ->
 	?assertEqual(-7, fix_signed_num(9, 4)).
 
 u_type_immedi_test() ->
-	?assertEqual({16#11223, 16#344}, u_type_immedi(16#11223344)),
-	?assertEqual({16#AABBD, 16#CDD}, u_type_immedi(16#AABBCCDD)).
+	?assertEqual({16#11223, fix_signed_num(16#344, 12)}, u_type_immedi(16#11223344)),
+	?assertEqual({16#AABBD, fix_signed_num(16#CDD, 12)}, u_type_immedi(16#AABBCCDD)).
+
+j_type_immedi_test() ->
+	?assertEqual(2#00101010101110101010, j_type_immedi(2#10101010101010101010101010101010)).
 
 s_type_immedi_test() ->
 	?assertEqual({2#1100110, 2#11101}, s_type_immedi(16#AABBCCDD)).
