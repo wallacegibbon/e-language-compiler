@@ -19,12 +19,13 @@
 	wordsize		=> pos_integer()
 	}.
 
--spec generate_code(e_ast(), e_ast(), string(), non_neg_integer()) -> ok.
-generate_code(AST, InitCode, OutputFile, WordSize) ->
+-spec generate_code(e_ast(), e_ast(), string(), e_compile_option:option()) -> ok.
+generate_code(AST, InitCode, OutputFile, #{wordsize := WordSize, entry_function := Entry}) ->
 	Pid = spawn_link(fun() -> string_collect_loop([]) end),
 	Regs = tmp_regs(),
 	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid},
-	InitIRs = [{fn, '__init'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init'}) end, InitCode)],
+	InitVarIRs = [{fn, '__init_vars'}, lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init_vars'}) end, InitCode)],
+	InitIRs = [InitVarIRs, stmt_to_ir(?CALL(#e_varref{name = Entry}, []), Ctx#{scope_tag := '__init'})],
 	IRs = ast_to_ir(AST, Ctx),
 	%StrTable = lists:map(fun({T, S, L}) -> [{label, {align, WordSize}, T}, {string, S, L}] end, string_collect_dump(Pid)),
 	StrTable = lists:map(fun({T, S, L}) -> [{label, {align, 1}, T}, {string, S, L}] end, string_collect_dump(Pid)),

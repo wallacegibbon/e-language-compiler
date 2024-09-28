@@ -2,11 +2,13 @@
 -export([compile_from_raw_ast/2]).
 -include("e_record_definition.hrl").
 
--spec compile_from_raw_ast(e_ast(), e_compiler:e_compile_options()) -> {e_ast(), #e_vars{}, e_ast()}.
-compile_from_raw_ast(AST, CompileOptions) ->
+-spec compile_from_raw_ast(e_ast(), e_compile_option:option()) -> {e_ast(), #e_vars{}, e_ast()}.
+compile_from_raw_ast(AST, #{wordsize := WordSize, entry_function := Entry}) ->
 	{GlobalVars00, AST00, InitCode00} = e_var:fetch_vars(AST),
 
 	{FnTypeMap00, StructMap00} = e_util:make_function_and_struct_map_from_ast(AST00),
+	ensure_function_exist(Entry, FnTypeMap00),
+
 	%% Once the AST got constructed, we check the recursive definition problem of struct.
 	e_struct:check_struct_recursion_in_map(StructMap00),
 
@@ -18,7 +20,6 @@ compile_from_raw_ast(AST, CompileOptions) ->
 	io:format("PHASE: type checking (INIT CODE)...~n"),
 	e_type:check_type_in_stmts(InitCode00, {GlobalVars00, FnTypeMap00, StructMap00}),
 
-	#{wordsize := WordSize} = CompileOptions,
 	%% Fill offset of variables and struct fields.
 	io:format("PHASE: size filling (AST)...~n"),
 	AST10 = e_size:fill_offsets_in_ast(AST00, {StructMap00, WordSize}),
@@ -65,4 +66,12 @@ compile_from_raw_ast(AST, CompileOptions) ->
 	InitCode80 = e_varref:varref_to_offset_in_stmts(InitCode70, {GlobalVars10, FnTypeMap00}),
 
 	{AST80, GlobalVars10, InitCode80}.
+
+ensure_function_exist(FnName, FnTypeMap) ->
+	case maps:find(FnName, FnTypeMap) of
+		{ok, _} ->
+			ok;
+		_ ->
+			e_util:ethrow({0, 0}, "entry function \"~s\" is not defined", [FnName])
+	end.
 
