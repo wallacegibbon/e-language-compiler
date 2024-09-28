@@ -19,6 +19,16 @@
 	wordsize		=> pos_integer()
 	}.
 
+-define(IS_SPECIAL_REG(Tag),
+	(
+	Tag =:= {x, 8} orelse Tag =:= {x, 3} orelse Tag =:= {x, 2} orelse Tag =:= {x, 1} orelse Tag =:= {x, 0}
+	)).
+
+-define(IS_SMALL_IMMEDI(N),
+	(
+	N >= -2048 andalso N < 2048
+	)).
+
 -spec generate_code(e_ast(), e_ast(), string(), e_compile_option:option()) -> ok.
 generate_code(AST, InitCode, OutputFile, #{wordsize := WordSize, entry_function := Entry}) ->
 	Pid = spawn_link(fun() -> string_collect_loop([]) end),
@@ -40,17 +50,19 @@ generate_code(AST, InitCode, OutputFile, #{wordsize := WordSize, entry_function 
 -spec ast_to_ir(e_ast(), context()) -> irs().
 ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size = Size0}} = Fn | Rest], Ctx) ->
 	#{wordsize := WordSize, free_regs := Regs} = Ctx,
+	Ctx1 = Ctx#{scope_tag => Name},
 	%% When there are no local variables, there should still be one word for returning value.
 	Size1 = erlang:max(e_util:fill_unit_pessi(Size0, WordSize), WordSize),
 	%% The extra `2` words are for `frame pointer`({x, 8}) and `returning address`({x, 1}).
 	FrameSize = Size1 + WordSize * 2,
-	RegSave = [{sw, {x, 8}, {{x, 2}, Size1}}, {sw, {x, 1}, {{x, 2}, Size1 + WordSize}}, mv({x, 8}, {x, 2})],
-	Ctx1 = Ctx#{scope_tag => Name},
-	{Before, After} = interrupt_related_code(Fn, Regs, Ctx1),
-	Prologue = [RegSave, smart_addi({x, 2}, FrameSize, Ctx1), Before, {comment, "prologue end"}],
-	RegRestore = [mv({x, 2}, {x, 8}), {lw, {x, 8}, {{x, 2}, Size1}}, {lw, {x, 1}, {{x, 2}, Size1 + WordSize}}],
+	SaveFpRa = [{sw, {x, 8}, {{x, 2}, -WordSize * 2}}, {sw, {x, 1}, {{x, 2}, -WordSize}}],
+	RestoreFpRa = [{lw, {x, 8}, {{x, 2}, -WordSize * 2}}, {lw, {x, 1}, {{x, 2}, -WordSize}}],
+	RegSave = [smart_addi({x, 2}, FrameSize, Ctx1), SaveFpRa, mv({x, 8}, {x, 2}), smart_addi({x, 8}, -FrameSize, Ctx1)],
+	{I1, I2} = interrupt_related_code(Fn, Regs, Ctx1),
+	RegRestore = [RestoreFpRa, smart_addi({x, 2}, -FrameSize, Ctx1)],
 	EndLabel = {label, {align, 1}, generate_tag(Name, epilogue)},
-	Epilogue = [EndLabel, After, RegRestore, ret_instruction_of(Fn)],
+	Prologue = [RegSave, I1, {comment, "prologue end"}],
+	Epilogue = [EndLabel, I2, RegRestore, ret_instruction_of(Fn)],
 	Body = lists:map(fun(S) -> stmt_to_ir(S, Ctx1) end, Stmts),
 	%% The result should be flattened before calling `fix_irs/1`.
 	FinalIRs = lists:flatten([{fn, Name}, Prologue, Body, Epilogue | ast_to_ir(Rest, Ctx)]),
@@ -114,33 +126,23 @@ generate_tag(ScopeTag, Tag) ->
 comment(Tag, Info, {Line, Col}) ->
 	{comment, io_lib:format("[~s@~w:~w] ~s", [Tag, Line, Col, Info])}.
 
--define(IS_SPECIAL_REG(Tag),
-	(
-	Tag =:= {x, 8} orelse Tag =:= {x, 3} orelse Tag =:= {x, 2} orelse Tag =:= {x, 1} orelse Tag =:= {x, 0}
-	)).
-
--define(IS_SMALL_IMMEDI(N),
-	(
-	N >= -2048 andalso N < 2048
-	)).
-
 -spec expr_to_ir(e_expr(), context()) -> {irs(), machine_reg(), context()}.
 expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{} = Var, ?I(N)), ?I(V)), Right), Ctx) when ?IS_SMALL_IMMEDI(N) ->
 	{RightIRs, R1, Ctx1} = expr_to_ir(Right, Ctx),
 	{VarrefIRs, R2, Ctx2} = expr_to_ir(Var, Ctx1),
-	{[RightIRs, VarrefIRs, {st_instr_from_v(V), R1, {R2, N}}], R1, Ctx2};
+	{[RightIRs, VarrefIRs, {st_tag(V), R1, {R2, N}}], R1, Ctx2};
 expr_to_ir(?OP2('=', ?OP2('^', Expr, ?I(V)), Right), Ctx) ->
 	{RightIRs, R1, Ctx1} = expr_to_ir(Right, Ctx),
 	{LeftIRs, R2, Ctx2} = expr_to_ir(Expr, Ctx1),
-	{[RightIRs, LeftIRs, {st_instr_from_v(V), R1, {R2, 0}}], R1, Ctx2};
+	{[RightIRs, LeftIRs, {st_tag(V), R1, {R2, 0}}], R1, Ctx2};
 expr_to_ir(?OP2('^', ?OP2('+', #e_varref{} = Var, ?I(N)), ?I(V)), Ctx) when ?IS_SMALL_IMMEDI(N) ->
 	{IRs, R, #{free_regs := RestRegs}} = expr_to_ir(Var, Ctx),
 	[T1 | RestRegs2] = RestRegs,
-	{[IRs, {ld_instr_from_v(V), T1, {R, N}}], T1, Ctx#{free_regs := recycle_tmpreg([R], RestRegs2)}};
+	{[IRs, {ld_tag(V), T1, {R, N}}], T1, Ctx#{free_regs := recycle_tmpreg([R], RestRegs2)}};
 expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
 	{IRs, R, #{free_regs := RestRegs}} = expr_to_ir(Expr, Ctx),
 	[T1 | RestRegs2] = RestRegs,
-	{[IRs, {ld_instr_from_v(V), T1, {R, 0}}], T1, Ctx#{free_regs := recycle_tmpreg([R], RestRegs2)}};
+	{[IRs, {ld_tag(V), T1, {R, 0}}], T1, Ctx#{free_regs := recycle_tmpreg([R], RestRegs2)}};
 expr_to_ir(?CALL(Fn, Args), Ctx) ->
 	%% register preparing and restoring steps
 	#{free_regs := FreeRegs, tmp_regs := TmpRegs} = Ctx,
@@ -234,6 +236,8 @@ fix_irs([{j, Label} = I | Rest]) ->
 		false ->
 			[I | fix_irs(Rest)]
 	end;
+fix_irs([{addi, R1, R2, N1}, {addi, R1, R1, N2} | Rest]) when ?IS_SMALL_IMMEDI(N1 + N2) ->
+	fix_irs([{addi, R1, R2, N1 + N2} | Rest]);
 fix_irs([Any | Rest]) ->
 	[Any | fix_irs(Rest)];
 fix_irs([]) ->
@@ -272,27 +276,11 @@ reg_save_restore(Regs, #{wordsize := WordSize} = Ctx) ->
 	TotalSize = length(Regs) * WordSize,
 	StackGrow = [{comment, "grow stack"}, smart_addi({x, 2}, TotalSize, Ctx)],
 	StackShrink = [{comment, "shrink stack"}, smart_addi({x, 2}, -TotalSize, Ctx)],
-	Save = e_util:list_map(fun(R, I) -> {sw, R, {{x, 2}, I * WordSize}} end, Regs),
-	Restore = e_util:list_map(fun(R, I) -> {lw, R, {{x, 2}, I * WordSize}} end, Regs),
-	Before = [{comment, io_lib:format("regs to save: ~w", [Regs])}, Save, StackGrow],
-	After = [{comment, io_lib:format("regs to restore: ~w", [Regs])}, StackShrink, Restore],
+	Save = e_util:list_map(fun(R, I) -> {sw, R, {{x, 2}, I * WordSize - TotalSize}} end, Regs),
+	Restore = e_util:list_map(fun(R, I) -> {lw, R, {{x, 2}, I * WordSize - TotalSize}} end, Regs),
+	Before = [{comment, io_lib:format("regs to save: ~w", [Regs])}, StackGrow, Save],
+	After = [{comment, io_lib:format("regs to restore: ~w", [Regs])}, Restore, StackShrink],
 	{Before, After}.
-
-smart_addi(_, 0, _) ->
-	[];
-smart_addi(R, N, _) when ?IS_SMALL_IMMEDI(N) ->
-	[{addi, R, R, N}];
-smart_addi(R, N, #{free_regs := [T | _]}) ->
-	[smart_li(T, N), {add, R, R, T}].
-
-smart_li(R, N) when ?IS_SMALL_IMMEDI(N) ->
-	[{addi, R, {x, 0}, N}];
-smart_li(R, N) ->
-	{High, Low} = e_util:u_type_immedi(N),
-	[{lui, R, High}, {addi, R, R, Low}].
-
-mv(R1, R2) ->
-	{addi, R1, R2, 0}.
 
 args_to_stack([Arg | Rest], N, Result, #{wordsize := WordSize} = Ctx) ->
 	{IRs, R, _} = expr_to_ir(Arg, Ctx),
@@ -360,6 +348,25 @@ op_tag_str({x, N}) ->
 op_tag_str(Label) when is_atom(Label) ->
 	Label.
 
+smart_addi(_, 0, _) ->
+	[];
+smart_addi(R, N, _) when ?IS_SMALL_IMMEDI(N) ->
+	[{addi, R, R, N}];
+smart_addi(R, N, #{free_regs := [T | _]}) ->
+	[smart_li(T, N), {add, R, R, T}].
+
+smart_li(R, N) when ?IS_SMALL_IMMEDI(N) ->
+	[{addi, R, {x, 0}, N}];
+smart_li(R, N) ->
+	ld_big_immedi(R, N).
+
+ld_big_immedi(R, N) ->
+	{High, Low} = e_util:u_type_immedi(N),
+	[{lui, R, High}, {addi, R, R, Low}].
+
+mv(R1, R2) ->
+	{addi, R1, R2, 0}.
+
 %% {x, 0} means there are not branching to generate. (already generated in previous IRs)
 'br!_reg'({x, 0}, _)	-> [];
 'br!_reg'(R, Label)	-> [{'br!', R, Label}].
@@ -367,10 +374,10 @@ op_tag_str(Label) when is_atom(Label) ->
 br_reg({x, 0}, _)	-> [];
 br_reg(R, Label)	-> [{'br', R, Label}].
 
-st_instr_from_v(1) -> sb;
-st_instr_from_v(_) -> sw.
-ld_instr_from_v(1) -> lb;
-ld_instr_from_v(_) -> lw.
+st_tag(1) -> sb;
+st_tag(_) -> sw.
+ld_tag(1) -> lb;
+ld_tag(_) -> lw.
 
 %% We don't need many registers with current allocation algorithm.
 %% Most RISC machine can provide 8 free registers.
