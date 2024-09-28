@@ -22,16 +22,13 @@ generate_code(IRs, OutputFile, #{wordsize := WordSize} = Options) ->
 	ok.
 
 -spec scan_address([tuple()], non_neg_integer(), [tuple()], scan_context()) -> {R, scan_context()} when R :: [tuple()].
-scan_address([{fn, Name} | Rest], Offset, Result, #{label_map := LabelMap, offset_map := OffsetMap, wordsize := WordSize} = Ctx) ->
-	FixedOffset = e_util:fill_unit_pessi(Offset, WordSize),
-	NewLabelMap = LabelMap#{Name => FixedOffset},
-	NewOffsetMap = maps:update_with(FixedOffset, fun(Ns) -> [Name | Ns] end, [Name], OffsetMap),
-	scan_address(Rest, FixedOffset, Result, Ctx#{label_map := NewLabelMap, offset_map := NewOffsetMap});
 scan_address([{label, {align, N}, Name} | Rest], Offset, Result, #{label_map := LabelMap, offset_map := OffsetMap} = Ctx) ->
 	FixedOffset = e_util:fill_unit_pessi(Offset, N),
 	NewLabelMap = LabelMap#{Name => FixedOffset},
 	NewOffsetMap = maps:update_with(FixedOffset, fun(Ns) -> [Name | Ns] end, [Name], OffsetMap),
 	scan_address(Rest, FixedOffset, Result, Ctx#{label_map := NewLabelMap, offset_map := NewOffsetMap});
+scan_address([{fn, Name} | Rest], Offset, Result, #{wordsize := WordSize} = Ctx) ->
+	scan_address([{label, {align, WordSize}, Name} | Rest], Offset, Result, Ctx);
 scan_address([{la, _, _} = Orig | Rest], Offset, Result, Ctx) ->
 	scan_address(Rest, Offset + 8, [{Orig, Offset} | Result], Ctx);
 scan_address([{string, _, Length} = Orig | Rest], Offset, Result, Ctx) ->
