@@ -75,24 +75,24 @@ stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, #
 	ThenLabel = generate_tag(ScopeTag, if_then, Loc),
 	ElseLabel = generate_tag(ScopeTag, if_else, Loc),
 	EndLabel = generate_tag(ScopeTag, if_end, Loc),
-	{CondiIRs, R_Cond, _} = expr_to_ir(Condi, Ctx#{condi_label => {ThenLabel, ElseLabel}}),
+	{CondiIRs, R_Bool, _} = expr_to_ir(Condi, Ctx#{condi_label => {ThenLabel, ElseLabel}}),
 	StartComment = comment('if', e_util:stmt_to_str(Condi), Loc),
 	EndComment = comment('if', "end", Loc),
 	Then1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Then0),
 	Else1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Else0),
 	Then2 = [{label, {align, 1}, ThenLabel}, Then1, {j, EndLabel}],
 	Else2 = [{label, {align, 1}, ElseLabel}, Else1, {label, {align, 1}, EndLabel}],
-	[StartComment, CondiIRs, 'br!_reg'(R_Cond, ElseLabel), Then2, Else2, EndComment];
+	[StartComment, CondiIRs, 'br!_reg'(R_Bool, ElseLabel), Then2, Else2, EndComment];
 stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
 	StartLabel = generate_tag(ScopeTag, while_start, Loc),
 	BodyLabel = generate_tag(ScopeTag, while_body, Loc),
 	EndLabel = generate_tag(ScopeTag, while_end, Loc),
-	{CondiIRs, R_Cond, _} = expr_to_ir(Condi, Ctx#{condi_label => {BodyLabel, EndLabel}}),
+	{CondiIRs, R_Bool, _} = expr_to_ir(Condi, Ctx#{condi_label => {BodyLabel, EndLabel}}),
 	StartComment = comment(while, e_util:stmt_to_str(Condi), Loc),
 	EndComment = comment(while, "end", Loc),
 	RawBody = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
 	Body = [{label, {align, 1}, BodyLabel}, RawBody, {j, StartLabel}, {label, {align, 1}, EndLabel}],
-	[StartComment, {label, {align, 1}, StartLabel}, CondiIRs, 'br!_reg'(R_Cond, EndLabel), Body, EndComment];
+	[StartComment, {label, {align, 1}, StartLabel}, CondiIRs, 'br!_reg'(R_Bool, EndLabel), Body, EndComment];
 stmt_to_ir(#e_return_stmt{expr = Expr}, #{scope_tag := ScopeTag} = Ctx) ->
 	{ExprIRs, R, _} = expr_to_ir(Expr, Ctx),
 	%% We use stack to pass result
@@ -183,19 +183,19 @@ expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
 	{IRs2, R2, _} = expr_to_ir(Right, Ctx1),
 	{[IRs1, IRs2, {Tag, R1, R1, R2}], R1, Ctx1};
 %% `and` and `or` do not consume tmp registers, it returns the same context and {x, 0} as a sign.
-expr_to_ir(?OP2('and', Left, Right, Loc), #{scope_tag := ScopeTag, condi_label := {True, False}} = Ctx) ->
-	Next = generate_tag(ScopeTag, and_next, Loc),
-	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {Next, False}}),
-	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {True, False}}),
-	{[IRs1, 'br!_reg'(R1, False), {label, {align, 1}, Next}, IRs2, 'br!_reg'(R2, False), {j, True}], {x, 0}, Ctx};
-expr_to_ir(?OP2('or', Left, Right, Loc), #{scope_tag := ScopeTag, condi_label := {True, False}} = Ctx) ->
-	Next = generate_tag(ScopeTag, or_next, Loc),
-	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {True, Next}}),
-	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {True, False}}),
-	{[IRs1, br_reg(R1, True), {label, {align, 1}, Next}, IRs2, br_reg(R2, True), {j, False}], {x, 0}, Ctx};
-expr_to_ir(?OP1('not', Expr), #{condi_label := {True, False}} = Ctx) ->
-	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx#{condi_label := {False, True}}),
-	{[IRs, 'br!_reg'(R, True), {j, False}], {x, 0}, Ctx1};
+expr_to_ir(?OP2('and', Left, Right, Loc), #{scope_tag := ScopeTag, condi_label := {L1, L2}} = Ctx) ->
+	L_Middle = generate_tag(ScopeTag, and_middle, Loc),
+	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {L_Middle, L2}}),
+	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {L1, L2}}),
+	{[IRs1, 'br!_reg'(R1, L2), {label, {align, 1}, L_Middle}, IRs2, 'br!_reg'(R2, L2), {j, L1}], {x, 0}, Ctx};
+expr_to_ir(?OP2('or', Left, Right, Loc), #{scope_tag := ScopeTag, condi_label := {L1, L2}} = Ctx) ->
+	L_Middle = generate_tag(ScopeTag, or_middle, Loc),
+	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {L1, L_Middle}}),
+	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {L1, L2}}),
+	{[IRs1, br_reg(R1, L1), {label, {align, 1}, L_Middle}, IRs2, br_reg(R2, L1), {j, L2}], {x, 0}, Ctx};
+expr_to_ir(?OP1('not', Expr), #{condi_label := {L1, L2}} = Ctx) ->
+	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx#{condi_label := {L2, L1}}),
+	{[IRs, 'br!_reg'(R, L1), {j, L2}], {x, 0}, Ctx1};
 %% RISC-V do not have instruction for `bnot`, use `xor` to do that.
 expr_to_ir(?OP1('bnot', Expr), Ctx) ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
@@ -227,14 +227,24 @@ fix_irs([{Tag, Rd, R1, R2}, {br, Rd, DestTag} | Rest]) ->
 %% Continuous and duplicated jump instructions (to the same address) without any labels in between are useless.
 fix_irs([{j, Label} = I, {j, Label} | Rest]) ->
 	fix_irs([I | Rest]);
-%% Jumping to next instruction is also useless and should got eliminated.
-%% But doing these optimizations is easier in later phases, so we simply pass them here.
-%fix_irs([{j, Label}, {label, {align, 1}, Label} = L | Rest]) ->
-%	fix_irs([L | Rest]);
+fix_irs([{j, Label} = I | Rest]) ->
+	case has_label_before_op(Label, Rest) of
+		true ->
+			fix_irs(Rest);
+		false ->
+			[I | fix_irs(Rest)]
+	end;
 fix_irs([Any | Rest]) ->
 	[Any | fix_irs(Rest)];
 fix_irs([]) ->
 	[].
+
+has_label_before_op(Name, [{label, _, Name} | _]) ->
+	true;
+has_label_before_op(Name, [{label, _, _} | Rest]) ->
+	has_label_before_op(Name, Rest);
+has_label_before_op(_, _) ->
+	false.
 
 string_collect_loop(Collected) ->
 	receive
