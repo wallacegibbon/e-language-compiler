@@ -160,11 +160,15 @@ expr_to_ir(?OP2(Tag, Expr, ?I(0)), Ctx) when Tag =:= '+'; Tag =:= 'bor'; Tag =:=
 expr_to_ir(?OP2('band', Expr, ?I(-1)), Ctx) ->
 	expr_to_ir(Expr, Ctx);
 %% The immediate ranges for shifting instructions are different from other immediate ranges.
-expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when (Tag =:= 'bsl' orelse Tag =:= 'bsr'), N > 0, N =< 32 ->
+expr_to_ir(?OP2(Tag, _, ?I(N), Loc), _) when (Tag =:= 'bsl' orelse Tag =:= 'bsr'), N < 0 ->
+	e_util:ethrow(Loc, "shift number can not be negative but `~w` was given.", [N]);
+expr_to_ir(?OP2(Tag, _, ?I(N), Loc), #{wordsize := 4}) when (Tag =:= 'bsl' orelse Tag =:= 'bsr'), N > 32 ->
+	e_util:ethrow(Loc, "shift number `~w` is out of range.", [N]);
+expr_to_ir(?OP2(Tag, _, ?I(N), Loc), #{wordsize := 8}) when (Tag =:= 'bsl' orelse Tag =:= 'bsr'), N > 64 ->
+	e_util:ethrow(Loc, "shift number `~w` is out of range.", [N]);
+expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when Tag =:= 'bsl' orelse Tag =:= 'bsr' ->
 	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
 	{[IRs, {to_op_immedi(Tag), T, R, N}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
-expr_to_ir(?OP2(Tag, _, ?I(N), Loc), _) when Tag =:= 'bsl' orelse Tag =:= 'bsr' ->
-	e_util:ethrow(Loc, "shift number (~w) out of range", [N]);
 expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when ?IS_IMMID_ARITH(Tag), ?IS_SMALL_IMMEDI(N) ->
 	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
 	{[IRs, {to_op_immedi(Tag), T, R, N}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
@@ -195,6 +199,8 @@ expr_to_ir(?OP1('not', Expr), #{condi_label := {L1, L2}} = Ctx) ->
 expr_to_ir(?OP1('bnot', Expr), Ctx) ->
 	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
 	{[IRs, {xori, T, R, -1}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
+expr_to_ir(?OP1('-', ?I(N) = Num), Ctx) when ?IS_SMALL_IMMEDI(-N) ->
+	expr_to_ir(Num?I(-N), Ctx);
 expr_to_ir(?OP1('-', Expr), Ctx) ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
 	{[IRs, {sub, R, {x, 0}, R}], R, Ctx1};

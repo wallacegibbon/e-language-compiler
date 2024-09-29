@@ -2,6 +2,7 @@ fn main()
 	tmp: word;
 	n: word = 10;
 
+	tmp = tmp bsl -1;
 	tmp = tmp bsl 0;
 	tmp = tmp bsl 10;
 	tmp = tmp bsl 20;
