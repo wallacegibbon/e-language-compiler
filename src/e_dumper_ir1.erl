@@ -162,28 +162,21 @@ expr_to_ir(?OP2(Tag, Expr, ?I(0)), Ctx) when Tag =:= '+'; Tag =:= 'bor'; Tag =:=
 expr_to_ir(?OP2('band', Expr, ?I(-1)), Ctx) ->
 	expr_to_ir(Expr, Ctx);
 %% The immediate ranges for shifting instructions are different from other immediate ranges.
-expr_to_ir(?OP2('bsl', Expr, ?I(N)), Ctx) when N > 0, N =< 32 ->
-	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
-	{[IRs, {to_op_immedi('bsl'), R, R, N}], R, Ctx1};
-expr_to_ir(?OP2('bsr', Expr, ?I(N)), Ctx) when N > 0, N =< 32 ->
-	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
-	{[IRs, {to_op_immedi('bsr'), R, R, N bor 2#010000000000}], R, Ctx1};
+expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when (Tag =:= 'bsl' orelse Tag =:= 'bsr'), N > 0, N =< 32 ->
+	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
+	{[IRs, {to_op_immedi('bsl'), T, R, N}], T, Ctx#{free_regs := [R | RestRegs]}};
 expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when ?IS_IMMID_ARITH(Tag), ?IS_SMALL_IMMEDI(N) ->
-	{IRs1, R, Ctx1} = expr_to_ir(Expr, Ctx),
-	{[IRs1, {to_op_immedi(Tag), R, R, N}], R, Ctx1};
+	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
+	{[IRs, {to_op_immedi(Tag), T, R, N}], T, Ctx#{free_regs := [R | RestRegs]}};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
-	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
-	{IRs2, R2, _} = expr_to_ir(Right, Ctx1),
-	{[IRs1, IRs2, {to_op_normal(Tag), R1, R1, R2}], R1, Ctx1};
+	op3_to_ir(to_op_normal(Tag), Left, Right, Ctx);
 %% The tags for comparing operations are not translated here, it will be merged with the pseudo `br` or `br!`.
 expr_to_ir(?OP2('<=', Left, Right) = Op, Ctx) ->
 	expr_to_ir(Op?OP2('>=', Right, Left), Ctx);
 expr_to_ir(?OP2('>', Left, Right) = Op, Ctx) ->
 	expr_to_ir(Op?OP2('<', Right, Left), Ctx);
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
-	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
-	{IRs2, R2, _} = expr_to_ir(Right, Ctx1),
-	{[IRs1, IRs2, {Tag, R1, R1, R2}], R1, Ctx1};
+	op3_to_ir(Tag, Left, Right, Ctx);
 %% `and` and `or` do not consume tmp registers, it returns the same context and {x, 0} as a sign.
 expr_to_ir(?OP2('and', Left, Right, Loc), #{scope_tag := ScopeTag, condi_label := {L1, L2}} = Ctx) ->
 	L_Middle = generate_tag(ScopeTag, and_middle, Loc),
@@ -200,8 +193,8 @@ expr_to_ir(?OP1('not', Expr), #{condi_label := {L1, L2}} = Ctx) ->
 	{[IRs, 'br!_reg'(R, L1), {j, L2}], {x, 0}, Ctx1};
 %% RISC-V do not have instruction for `bnot`, use `xor` to do that.
 expr_to_ir(?OP1('bnot', Expr), Ctx) ->
-	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
-	{[IRs, {xori, R, R, -1}], R, Ctx1};
+	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
+	{[IRs, {xori, T, R, -1}], T, Ctx#{free_regs := [R | RestRegs]}};
 expr_to_ir(?OP1('-', Expr), Ctx) ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
 	{[IRs, {sub, R, {x, 0}, R}], R, Ctx1};
@@ -221,6 +214,11 @@ expr_to_ir(#e_varref{name = Name}, #{free_regs := [R | RestRegs]} = Ctx) ->
 	{[{la, R, Name}], R, Ctx#{free_regs := RestRegs}};
 expr_to_ir(Any, _) ->
 	e_util:ethrow(element(2, Any), "IR1: unsupported expr \"~w\"", [Any]).
+
+op3_to_ir(Tag, Left, Right, Ctx) ->
+	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
+	{IRs2, R2, #{free_regs := [T | RestRegs]}} = expr_to_ir(Right, Ctx1),
+	{[IRs1, IRs2, {Tag, T, R1, R2}], T, Ctx#{free_regs := [R2, R1 | RestRegs]}}.
 
 fix_irs([{Tag, Rd, R1, R2}, {'br!', Rd, DestTag} | Rest]) ->
 	fix_irs([{reverse_cmp_tag(Tag), Rd, R1, R2}, {br, Rd, DestTag} | Rest]);
@@ -272,19 +270,21 @@ recycle_tmpreg([R | Regs], RegBank) ->
 recycle_tmpreg([], RegBank) ->
 	RegBank.
 
+%% There are limited number of regs, which means immediate number is small enough for single `lw`/`sw`.
 reg_save_restore(Regs, #{wordsize := WordSize} = Ctx) ->
 	TotalSize = length(Regs) * WordSize,
 	StackGrow = [{comment, "grow stack"}, smart_addi({x, 2}, TotalSize, Ctx)],
 	StackShrink = [{comment, "shrink stack"}, smart_addi({x, 2}, -TotalSize, Ctx)],
 	Save = e_util:list_map(fun(R, I) -> {sw, R, {{x, 2}, I * WordSize - TotalSize}} end, Regs),
 	Restore = e_util:list_map(fun(R, I) -> {lw, R, {{x, 2}, I * WordSize - TotalSize}} end, Regs),
-	Before = [{comment, io_lib:format("regs to save: ~w", [Regs])}, StackGrow, Save],
-	After = [{comment, io_lib:format("regs to restore: ~w", [Regs])}, Restore, StackShrink],
-	{Before, After}.
+	Enter = [{comment, io_lib:format("regs to save: ~w", [Regs])}, StackGrow, Save],
+	Leave = [{comment, io_lib:format("regs to restore: ~w", [Regs])}, Restore, StackShrink],
+	{Enter, Leave}.
 
 args_to_stack([Arg | Rest], N, Result, #{wordsize := WordSize} = Ctx) ->
 	{IRs, R, _} = expr_to_ir(Arg, Ctx),
-	args_to_stack(Rest, N + WordSize, [[IRs, {sw, R, {{x, 2}, 0}}, {addi, {x, 2}, {x, 2}, WordSize}] | Result], Ctx);
+	PushIRs = [IRs, {addi, {x, 2}, {x, 2}, WordSize}, {sw, R, {{x, 2}, -WordSize}}],
+	args_to_stack(Rest, N + WordSize, [PushIRs | Result], Ctx);
 args_to_stack([], N, Result, _) ->
 	{lists:reverse(Result), N}.
 
@@ -348,6 +348,7 @@ op_tag_str({x, N}) ->
 op_tag_str(Label) when is_atom(Label) ->
 	Label.
 
+%% Be careful! `smart_addi/3` will change the source register.
 smart_addi(_, 0, _) ->
 	[];
 smart_addi(R, N, _) when ?IS_SMALL_IMMEDI(N) ->
@@ -355,12 +356,10 @@ smart_addi(R, N, _) when ?IS_SMALL_IMMEDI(N) ->
 smart_addi(R, N, #{free_regs := [T | _]}) ->
 	[smart_li(T, N), {add, R, R, T}].
 
+%% Be careful! `smart_li/2` will change the source register.
 smart_li(R, N) when ?IS_SMALL_IMMEDI(N) ->
 	[{addi, R, {x, 0}, N}];
 smart_li(R, N) ->
-	ld_big_immedi(R, N).
-
-ld_big_immedi(R, N) ->
 	{High, Low} = e_util:u_type_immedi(N),
 	[{lui, R, High}, {addi, R, R, Low}].
 
