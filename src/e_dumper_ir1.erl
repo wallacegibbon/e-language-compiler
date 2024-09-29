@@ -13,8 +13,8 @@
 	free_regs		=> [machine_reg()],
 	%% The string literals are collected by a separate process to avoid complex functions.
 	string_collector	=> pid(),
-	%% `condi_label` is for generating logic operator (and, or, not) related code.
-	condi_label		=> {atom(), atom()},
+	%% `cond_label` is for generating logic operator (and, or, not) related code.
+	cond_label		=> {atom(), atom()},
 	scope_tag		=> atom(),
 	wordsize		=> pos_integer()
 	}.
@@ -87,7 +87,7 @@ stmt_to_ir(#e_if_stmt{'cond' = Cond, then = Then0, 'else' = Else0, loc = Loc}, #
 	ThenLabel = generate_tag(ScopeTag, if_then, Loc),
 	ElseLabel = generate_tag(ScopeTag, if_else, Loc),
 	EndLabel = generate_tag(ScopeTag, if_end, Loc),
-	{CondIRs, R_Bool, _} = expr_to_ir(Cond, Ctx#{condi_label => {ThenLabel, ElseLabel}}),
+	{CondIRs, R_Bool, _} = expr_to_ir(Cond, Ctx#{cond_label => {ThenLabel, ElseLabel}}),
 	%% The branch/jump must be following CondIRs since it relys on the result register of CondIRs.
 	CondWithJmp = [CondIRs, 'br!_reg'(R_Bool, ElseLabel)],
 	StartComment = comment('if', e_util:stmt_to_str(Cond), Loc),
@@ -101,7 +101,7 @@ stmt_to_ir(#e_while_stmt{'cond' = Cond, stmts = Stmts0, loc = Loc}, #{scope_tag 
 	StartLabel = generate_tag(ScopeTag, while_start, Loc),
 	BodyLabel = generate_tag(ScopeTag, while_body, Loc),
 	EndLabel = generate_tag(ScopeTag, while_end, Loc),
-	{CondIRs, R_Bool, _} = expr_to_ir(Cond, Ctx#{condi_label => {BodyLabel, EndLabel}}),
+	{CondIRs, R_Bool, _} = expr_to_ir(Cond, Ctx#{cond_label => {BodyLabel, EndLabel}}),
 	StartComment = comment(while, e_util:stmt_to_str(Cond), Loc),
 	EndComment = comment(while, "end", Loc),
 	RawBody = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
@@ -184,18 +184,18 @@ expr_to_ir(?OP2('>', Left, Right) = Op, Ctx) ->
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
 	op3_to_ir(Tag, Left, Right, Ctx);
 %% `and` and `or` do not consume tmp registers, it returns the same context and {x, 0} as a sign.
-expr_to_ir(?OP2('and', Left, Right, Loc), #{scope_tag := ScopeTag, condi_label := {L1, L2}} = Ctx) ->
+expr_to_ir(?OP2('and', Left, Right, Loc), #{scope_tag := ScopeTag, cond_label := {L1, L2}} = Ctx) ->
 	L_Middle = generate_tag(ScopeTag, and_middle, Loc),
-	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {L_Middle, L2}}),
-	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {L1, L2}}),
+	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{cond_label := {L_Middle, L2}}),
+	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{cond_label := {L1, L2}}),
 	{[IRs1, 'br!_reg'(R1, L2), {label, {align, 1}, L_Middle}, IRs2, 'br!_reg'(R2, L2), {j, L1}], {x, 0}, Ctx};
-expr_to_ir(?OP2('or', Left, Right, Loc), #{scope_tag := ScopeTag, condi_label := {L1, L2}} = Ctx) ->
+expr_to_ir(?OP2('or', Left, Right, Loc), #{scope_tag := ScopeTag, cond_label := {L1, L2}} = Ctx) ->
 	L_Middle = generate_tag(ScopeTag, or_middle, Loc),
-	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{condi_label := {L1, L_Middle}}),
-	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{condi_label := {L1, L2}}),
+	{IRs1, R1, _} = expr_to_ir(Left, Ctx#{cond_label := {L1, L_Middle}}),
+	{IRs2, R2, _} = expr_to_ir(Right, Ctx#{cond_label := {L1, L2}}),
 	{[IRs1, br_reg(R1, L1), {label, {align, 1}, L_Middle}, IRs2, br_reg(R2, L1), {j, L2}], {x, 0}, Ctx};
-expr_to_ir(?OP1('not', Expr), #{condi_label := {L1, L2}} = Ctx) ->
-	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx#{condi_label := {L2, L1}}),
+expr_to_ir(?OP1('not', Expr), #{cond_label := {L1, L2}} = Ctx) ->
+	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx#{cond_label := {L2, L1}}),
 	{[IRs, 'br!_reg'(R, L1), {j, L2}], {x, 0}, Ctx1};
 %% RISC-V do not have instruction for `bnot`, use `xor` to do that.
 expr_to_ir(?OP1('bnot', Expr), Ctx) ->
