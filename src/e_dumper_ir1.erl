@@ -136,24 +136,22 @@ expr_to_ir(?OP2('=', ?OP2('^', Expr, ?I(V)), Right), Ctx) ->
 	{LeftIRs, R2, Ctx2} = expr_to_ir(Expr, Ctx1),
 	{[RightIRs, LeftIRs, {st_tag(V), R1, {R2, 0}}], R1, Ctx2};
 expr_to_ir(?OP2('^', ?OP2('+', #e_varref{} = Var, ?I(N)), ?I(V)), Ctx) when ?IS_SMALL_IMMEDI(N) ->
-	{IRs, R, #{free_regs := RestRegs}} = expr_to_ir(Var, Ctx),
-	[T1 | RestRegs2] = RestRegs,
-	{[IRs, {ld_tag(V), T1, {R, N}}], T1, Ctx#{free_regs := recycle_tmpreg([R], RestRegs2)}};
+	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Var, Ctx),
+	{[IRs, {ld_tag(V), T, {R, N}}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
-	{IRs, R, #{free_regs := RestRegs}} = expr_to_ir(Expr, Ctx),
-	[T1 | RestRegs2] = RestRegs,
-	{[IRs, {ld_tag(V), T1, {R, 0}}], T1, Ctx#{free_regs := recycle_tmpreg([R], RestRegs2)}};
+	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
+	{[IRs, {ld_tag(V), T, {R, 0}}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 expr_to_ir(?CALL(Fn, Args), Ctx) ->
 	%% register preparing and restoring steps
 	#{free_regs := FreeRegs, tmp_regs := TmpRegs} = Ctx,
 	{BeforeCall, AfterCall} = reg_save_restore(TmpRegs -- FreeRegs, Ctx),
 	%% The calling related steps
-	{FnLoad, T1, Ctx1} = expr_to_ir(Fn, Ctx),
+	{FnLoad, R, Ctx1} = expr_to_ir(Fn, Ctx),
 	{ArgPrepare, N} = args_to_stack(Args, 0, [], Ctx1),
-	RetLoad = [{comment, "load ret"}, {lw, T1, {{x, 2}, 0}}],
+	RetLoad = [{comment, "load ret"}, {lw, R, {{x, 2}, 0}}],
 	StackRestore = [{comment, "drop args"}, smart_addi({x, 2}, -N, Ctx1)],
-	Call = [FnLoad, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, T1}, RetLoad, StackRestore],
-	{[{comment, "call start"}, BeforeCall, Call, AfterCall, {comment, "call end"}], T1, Ctx1};
+	Call = [FnLoad, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, R}, RetLoad, StackRestore],
+	{[{comment, "call start"}, BeforeCall, Call, AfterCall, {comment, "call end"}], R, Ctx1};
 %% RISC-V do not have immediate version `sub` instruction, convert `-` to `+` to make use of `addi` later.
 expr_to_ir(?OP2('-', Expr, ?I(N)) = OP, Ctx) ->
 	expr_to_ir(OP?OP2('+', Expr, ?I(-N)), Ctx);
@@ -164,10 +162,12 @@ expr_to_ir(?OP2('band', Expr, ?I(-1)), Ctx) ->
 %% The immediate ranges for shifting instructions are different from other immediate ranges.
 expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when (Tag =:= 'bsl' orelse Tag =:= 'bsr'), N > 0, N =< 32 ->
 	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
-	{[IRs, {to_op_immedi('bsl'), T, R, N}], T, Ctx#{free_regs := [R | RestRegs]}};
+	{[IRs, {to_op_immedi(Tag), T, R, N}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
+expr_to_ir(?OP2(Tag, _, ?I(N), Loc), _) when Tag =:= 'bsl' orelse Tag =:= 'bsr' ->
+	e_util:ethrow(Loc, "shift number (~w) out of range", [N]);
 expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when ?IS_IMMID_ARITH(Tag), ?IS_SMALL_IMMEDI(N) ->
 	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
-	{[IRs, {to_op_immedi(Tag), T, R, N}], T, Ctx#{free_regs := [R | RestRegs]}};
+	{[IRs, {to_op_immedi(Tag), T, R, N}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
 	op3_to_ir(to_op_normal(Tag), Left, Right, Ctx);
 %% The tags for comparing operations are not translated here, it will be merged with the pseudo `br` or `br!`.
@@ -194,7 +194,7 @@ expr_to_ir(?OP1('not', Expr), #{condi_label := {L1, L2}} = Ctx) ->
 %% RISC-V do not have instruction for `bnot`, use `xor` to do that.
 expr_to_ir(?OP1('bnot', Expr), Ctx) ->
 	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
-	{[IRs, {xori, T, R, -1}], T, Ctx#{free_regs := [R | RestRegs]}};
+	{[IRs, {xori, T, R, -1}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 expr_to_ir(?OP1('-', Expr), Ctx) ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
 	{[IRs, {sub, R, {x, 0}, R}], R, Ctx1};
@@ -218,7 +218,7 @@ expr_to_ir(Any, _) ->
 op3_to_ir(Tag, Left, Right, Ctx) ->
 	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
 	{IRs2, R2, #{free_regs := [T | RestRegs]}} = expr_to_ir(Right, Ctx1),
-	{[IRs1, IRs2, {Tag, T, R1, R2}], T, Ctx#{free_regs := [R2, R1 | RestRegs]}}.
+	{[IRs1, IRs2, {Tag, T, R1, R2}], T, Ctx#{free_regs := recycle_tmpreg([R2, R1], RestRegs)}}.
 
 fix_irs([{Tag, Rd, R1, R2}, {'br!', Rd, DestTag} | Rest]) ->
 	fix_irs([{reverse_cmp_tag(Tag), Rd, R1, R2}, {br, Rd, DestTag} | Rest]);
