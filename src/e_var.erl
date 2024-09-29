@@ -1,5 +1,5 @@
 -module(e_var).
--export([fetch_vars/1]).
+-export([fetch_vars/1, shift_offset/2, shift_offset_middle/1]).
 -include("e_record_definition.hrl").
 
 -spec fetch_vars(e_ast_raw()) -> {#e_vars{}, e_ast_raw(), e_ast_raw()}.
@@ -135,4 +135,13 @@ check_label_conflict([], _) ->
 -spec get_values_by_defs([#e_vardef{}], #e_vars{}) -> [any()].
 get_values_by_defs(DefList, #e_vars{type_map = Map}) ->
 	e_util:get_values_by_keys(e_util:names_of_var_defs(DefList), Map).
+
+-spec shift_offset(#e_vars{}, non_neg_integer()) -> #e_vars{}.
+shift_offset(#e_vars{offset_map = OffsetMap, size = Size} = Vars, Num) ->
+	OffsetMapNew = maps:map(fun(_, {O, S}) -> {O - Num, S} end, OffsetMap),
+	Vars#e_vars{offset_map = OffsetMapNew, shifted_size = Size - Num}.
+
+-spec shift_offset_middle(#e_vars{}) -> #e_vars{}.
+shift_offset_middle(#e_vars{size = Size} = Vars) ->
+	shift_offset(Vars, Size div 2).
 

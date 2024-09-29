@@ -27,6 +27,7 @@ compile_from_raw_ast(AST, #{wordsize := WordSize, entry_function := Entry}) ->
 	{_, StructMap10} = e_util:make_function_and_struct_map_from_ast(AST10),
 	io:format("PHASE: size filling (GLOBAL VARS)...~n"),
 	GlobalVars10 = e_size:fill_offsets_in_vars(GlobalVars00, {StructMap10, WordSize}),
+	GlobalVars20 = e_var:shift_offset_middle(GlobalVars10),
 
 	%% Expand expressions like `sizeof` and `alignof`.
 	io:format("PHASE: keyword expanding (AST)...~n"),
@@ -47,7 +48,7 @@ compile_from_raw_ast(AST, #{wordsize := WordSize, entry_function := Entry}) ->
 	%io:format("INIT Code before pointer fixing: ~p~n", [InitCode30]),
 
 	%% fix the pointer size. (Which was filled with `0`)
-	TypeCtx40 = {GlobalVars10, FnTypeMap00, StructMap20, #e_basic_type{}},
+	TypeCtx40 = {GlobalVars20, FnTypeMap00, StructMap20, #e_basic_type{}},
 	SizeCtx40 = {StructMap20, WordSize},
 	io:format("PHASE: pointer fixing (AST)...~n"),
 	AST40 = e_pointer:fix_pointer_size_in_ast(AST30, TypeCtx40, SizeCtx40),
@@ -56,16 +57,16 @@ compile_from_raw_ast(AST, #{wordsize := WordSize, entry_function := Entry}) ->
 
 	%% convert `.` into `@`, `+` and `^`
 	io:format("PHASE: struct and pointer expanding (AST)...~n"),
-	AST70 = e_struct:eliminate_dot_in_ast(AST40, GlobalVars10, {FnTypeMap00, StructMap20}),
+	AST70 = e_struct:eliminate_dot_in_ast(AST40, GlobalVars20, {FnTypeMap00, StructMap20}),
 	io:format("PHASE: struct and pointer expanding (INIT CODE)...~n"),
-	InitCode70 = e_struct:eliminate_dot_in_stmts(InitCode40, GlobalVars10, {FnTypeMap00, StructMap20}),
+	InitCode70 = e_struct:eliminate_dot_in_stmts(InitCode40, GlobalVars20, {FnTypeMap00, StructMap20}),
 
 	io:format("PHASE: varref to offset (AST)...~n"),
-	AST80 = e_varref:varref_to_offset_in_ast(AST70, {GlobalVars10, FnTypeMap00}),
+	AST80 = e_varref:varref_to_offset_in_ast(AST70, {GlobalVars20, FnTypeMap00}),
 	io:format("PHASE: varref to offset (INIT CODE)...~n"),
-	InitCode80 = e_varref:varref_to_offset_in_stmts(InitCode70, {GlobalVars10, FnTypeMap00}),
+	InitCode80 = e_varref:varref_to_offset_in_stmts(InitCode70, {GlobalVars20, FnTypeMap00}),
 
-	{AST80, GlobalVars10, InitCode80}.
+	{AST80, GlobalVars20, InitCode80}.
 
 ensure_function_exist(FnName, FnTypeMap) ->
 	case maps:find(FnName, FnTypeMap) of

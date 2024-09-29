@@ -45,7 +45,7 @@ expand_kw_in_map(Map, Ctx) ->
 -spec fill_offsets_in_ast(e_ast(), context()) -> e_ast().
 fill_offsets_in_ast([#e_function{vars = Old, param_names = ParamNames} = Fn | Rest], Ctx) ->
 	Vars0 = fill_offsets_in_vars(Old, Ctx),
-	Vars1 = shift_offsets(Vars0, ParamNames),
+	Vars1 = shift_offset_params(Vars0, ParamNames),
 	[Fn#e_function{vars = Vars1} | fill_offsets_in_ast(Rest, Ctx)];
 fill_offsets_in_ast([#e_struct{name = Name, fields = Old} = S | Rest], {StructMap, WordSize} = Ctx) ->
 	FilledS = S#e_struct{fields = fill_offsets_in_vars(Old, Ctx)},
@@ -127,22 +127,27 @@ align_of(#e_basic_type{class = struct} = S, {StructMap, _} = Ctx) ->
 align_of(Type, Ctx) ->
 	size_of(Type, Ctx).
 
--spec shift_offsets(#e_vars{}, [atom()]) -> #e_vars{}.
-shift_offsets(#e_vars{names = Names, offset_map = OffsetMap, size = Size} = Vars, Before0) ->
-	case find_0th(Before0, Names) of
+local_var_offset(#e_vars{names = Names, offset_map = OffsetMap, size = Size}, ParamNames) ->
+	case find_0th(ParamNames, Names) of
 		{ok, N} ->
 			{ok, {Offset, _}} = maps:find(N, OffsetMap),
-			OffsetMapNew = maps:map(fun(_, {O, S}) -> {O - Offset, S} end, OffsetMap),
-			Vars#e_vars{offset_map = OffsetMapNew, shifted_size = Size - Offset};
+			Offset;
 		_ ->
-			OffsetMapNew = maps:map(fun(_, {O, S}) -> {O - Size, S} end, OffsetMap),
-			Vars#e_vars{offset_map = OffsetMapNew, shifted_size = 0}
+			Size
 	end.
 
+-spec shift_offset_params(#e_vars{}, [atom()]) -> #e_vars{}.
+shift_offset_params(Vars, ParamNames) ->
+	e_var:shift_offset(Vars, local_var_offset(Vars, ParamNames)).
+
 -ifdef(EUNIT).
-shift_offsets_test() ->
+local_var_offset_test() ->
 	V0 = #e_vars{names = [a, b, c], offset_map = #{a => {0, 4}, b => {4, 4}, c => {8, 1}}, size = 12, shifted_size = 12},
-	V1 = shift_offsets(V0, [a, b]),
+	?assertEqual(8, local_var_offset(V0, [a, b])).
+
+shift_offset_params_test() ->
+	V0 = #e_vars{names = [a, b, c], offset_map = #{a => {0, 4}, b => {4, 4}, c => {8, 1}}, size = 12, shifted_size = 12},
+	V1 = shift_offset_params(V0, [a, b]),
 	?assertMatch(#e_vars{offset_map = #{a := {-8, 4}, b := {-4, 4}}, size = 12, shifted_size = 4}, V1).
 
 -endif.
