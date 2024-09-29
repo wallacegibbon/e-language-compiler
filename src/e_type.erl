@@ -267,8 +267,8 @@ type_of_node(?I(_, Loc), _) ->
 	#e_basic_type{class = integer, tag = word, loc = Loc};
 type_of_node(#e_string{loc = Loc}, _) ->
 	#e_basic_type{class = integer, p_depth = 1, tag = byte, loc = Loc};
-type_of_node(#e_if_stmt{condi = Condi, then = Then, 'else' = Else, loc = Loc}, Ctx) ->
-	case type_of_node(Condi, Ctx) of
+type_of_node(#e_if_stmt{'cond' = Cond, then = Then, 'else' = Else, loc = Loc}, Ctx) ->
+	case type_of_node(Cond, Ctx) of
 		#e_basic_type{class = boolean} ->
 			ok;
 		_ ->
@@ -277,14 +277,14 @@ type_of_node(#e_if_stmt{condi = Condi, then = Then, 'else' = Else, loc = Loc}, C
 	type_of_nodes(Then, Ctx),
 	type_of_nodes(Else, Ctx),
 	e_util:void_type(Loc);
-type_of_node(#e_while_stmt{condi = Condi, stmts = Stmts, loc = Loc}, Ctx) ->
-	case type_of_node(Condi, Ctx) of
+type_of_node(#e_while_stmt{'cond' = Cond, stmts = Stmts, loc = Loc}, Ctx) ->
+	case type_of_node(Cond, Ctx) of
 		#e_basic_type{class = boolean} ->
 			ok;
 		_ ->
 			e_util:ethrow(Loc, "invalid boolean expression for while")
 	end,
-	type_of_node(Condi, Ctx),
+	type_of_node(Cond, Ctx),
 	type_of_nodes(Stmts, Ctx),
 	e_util:void_type(Loc);
 type_of_node(#e_return_stmt{expr = Expr, loc = Loc}, {_, _, _, FnRetType} = Ctx) ->

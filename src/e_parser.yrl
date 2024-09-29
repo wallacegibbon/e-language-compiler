@@ -108,14 +108,14 @@ e_function_def -> 'fn' identifier '(' ')' e_function_stmts 'end' :
 
 %% while
 e_while_stmt -> while e_expr do e_function_stmts 'end' :
-	#e_while_stmt{condi = '$2', stmts = '$4', loc = token_loc('$1')}.
+	#e_while_stmt{'cond' = '$2', stmts = '$4', loc = token_loc('$1')}.
 
 %% if
 e_if_stmt -> 'if' e_expr then e_function_stmts e_else_stmt :
-	#e_if_stmt{condi = '$2', then = '$4', 'else' = '$5', loc = token_loc('$1')}.
+	#e_if_stmt{'cond' = '$2', then = '$4', 'else' = '$5', loc = token_loc('$1')}.
 
 e_else_stmt -> elif e_expr then e_function_stmts e_else_stmt :
-	[#e_if_stmt{condi = '$2', then = '$4', 'else' = '$5', loc = token_loc('$1')}].
+	[#e_if_stmt{'cond' = '$2', then = '$4', 'else' = '$5', loc = token_loc('$1')}].
 e_else_stmt -> 'else' e_function_stmts 'end' :
 	'$2'.
 e_else_stmt -> 'end' :

@@ -163,14 +163,14 @@
 -record(e_while_stmt,
 	{
 	loc = {0, 0} :: location(),
-	condi :: e_expr(),
+	'cond' :: e_expr(),
 	stmts = [] :: [e_stmt()]
 	}).
 
 -record(e_if_stmt,
 	{
 	loc = {0, 0} :: location(),
-	condi :: e_expr(),
+	'cond' :: e_expr(),
 	then = [] :: [e_stmt()],
 	'else' = [] :: [e_stmt()]
 	}).

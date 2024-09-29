@@ -149,10 +149,10 @@ stmts_to_str([], ExprList) ->
 	lists:reverse(ExprList).
 
 -spec stmt_to_str(e_expr(), char()) -> iolist().
-stmt_to_str(#e_if_stmt{condi = Condi, then = Then, 'else' = Else}, _) ->
-	io_lib:format("if (~s) {\n~s\n} else {\n~s}", [stmt_to_str(Condi, $\s), stmts_to_str(Then), stmts_to_str(Else)]);
-stmt_to_str(#e_while_stmt{condi = Condi, stmts = Stmts}, _) ->
-	io_lib:format("while (~s) {\n~s\n}\n", [stmt_to_str(Condi, $\s), stmts_to_str(Stmts)]);
+stmt_to_str(#e_if_stmt{'cond' = Cond, then = Then, 'else' = Else}, _) ->
+	io_lib:format("if (~s) {\n~s\n} else {\n~s}", [stmt_to_str(Cond, $\s), stmts_to_str(Then), stmts_to_str(Else)]);
+stmt_to_str(#e_while_stmt{'cond' = Cond, stmts = Stmts}, _) ->
+	io_lib:format("while (~s) {\n~s\n}\n", [stmt_to_str(Cond, $\s), stmts_to_str(Stmts)]);
 stmt_to_str(?CALL(Fn, Args), EndChar) ->
 	ArgStr = lists:join(",", lists:map(fun(E) -> stmt_to_str(E, $\s) end, Args)),
 	io_lib:format("~s(~s)~c", [stmt_to_str(Fn, $\s), ArgStr, EndChar]);

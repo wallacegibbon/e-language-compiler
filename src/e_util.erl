@@ -12,10 +12,10 @@
 
 %% This function is to avoid boilerplate code for statements. So you can concentrate on operators.
 -spec expr_map(fun((e_expr()) -> e_expr()), [e_stmt()]) -> [e_stmt()].
-expr_map(Fn, [#e_if_stmt{condi = Condi, then = Then, 'else' = Else} = If | Rest]) ->
-	[If#e_if_stmt{condi = Fn(Condi), then = expr_map(Fn, Then), 'else' = expr_map(Fn, Else)} | expr_map(Fn, Rest)];
-expr_map(Fn, [#e_while_stmt{condi = Cond, stmts = Stmts} = While | Rest]) ->
-	[While#e_while_stmt{condi = Fn(Cond), stmts = expr_map(Fn, Stmts)} | expr_map(Fn, Rest)];
+expr_map(Fn, [#e_if_stmt{'cond' = Cond, then = Then, 'else' = Else} = If | Rest]) ->
+	[If#e_if_stmt{'cond' = Fn(Cond), then = expr_map(Fn, Then), 'else' = expr_map(Fn, Else)} | expr_map(Fn, Rest)];
+expr_map(Fn, [#e_while_stmt{'cond' = Cond, stmts = Stmts} = While | Rest]) ->
+	[While#e_while_stmt{'cond' = Fn(Cond), stmts = expr_map(Fn, Stmts)} | expr_map(Fn, Rest)];
 expr_map(Fn, [#e_return_stmt{expr = Expr} = Ret | Rest]) ->
 	[Ret#e_return_stmt{expr = Fn(Expr)} | expr_map(Fn, Rest)];
 expr_map(Fn, [Any | Rest]) ->
@@ -56,9 +56,9 @@ merge_pointer(Any) ->
 	Any.
 
 -spec stmt_to_str(e_stmt()) -> string().
-stmt_to_str(#e_if_stmt{condi = Cond, then = Then, 'else' = Else}) ->
+stmt_to_str(#e_if_stmt{'cond' = Cond, then = Then, 'else' = Else}) ->
 	io_lib:format("if ~s then ~s else ~s end", [stmt_to_str(Cond), lists:map(fun stmt_to_str/1, Then), lists:map(fun stmt_to_str/1, Else)]);
-stmt_to_str(#e_while_stmt{condi = Cond, stmts = Stmts}) ->
+stmt_to_str(#e_while_stmt{'cond' = Cond, stmts = Stmts}) ->
 	io_lib:format("while ~s do ~s end", [stmt_to_str(Cond), lists:map(fun stmt_to_str/1, Stmts)]);
 stmt_to_str(#e_return_stmt{expr = Expr}) ->
 	io_lib:format("return (~s)", [stmt_to_str(Expr)]);

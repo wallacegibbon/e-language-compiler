@@ -83,28 +83,30 @@ ret_instruction_of(_) ->
 	{jalr, {x, 0}, {x, 1}}.
 
 -spec stmt_to_ir(e_stmt(), context()) -> irs().
-stmt_to_ir(#e_if_stmt{condi = Condi, then = Then0, 'else' = Else0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
+stmt_to_ir(#e_if_stmt{'cond' = Cond, then = Then0, 'else' = Else0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
 	ThenLabel = generate_tag(ScopeTag, if_then, Loc),
 	ElseLabel = generate_tag(ScopeTag, if_else, Loc),
 	EndLabel = generate_tag(ScopeTag, if_end, Loc),
-	{CondiIRs, R_Bool, _} = expr_to_ir(Condi, Ctx#{condi_label => {ThenLabel, ElseLabel}}),
-	StartComment = comment('if', e_util:stmt_to_str(Condi), Loc),
+	{CondIRs, R_Bool, _} = expr_to_ir(Cond, Ctx#{condi_label => {ThenLabel, ElseLabel}}),
+	%% The branch/jump must be following CondIRs since it relys on the result register of CondIRs.
+	CondWithJmp = [CondIRs, 'br!_reg'(R_Bool, ElseLabel)],
+	StartComment = comment('if', e_util:stmt_to_str(Cond), Loc),
 	EndComment = comment('if', "end", Loc),
 	Then1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Then0),
 	Else1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Else0),
 	Then2 = [{label, {align, 1}, ThenLabel}, Then1, {j, EndLabel}],
 	Else2 = [{label, {align, 1}, ElseLabel}, Else1, {label, {align, 1}, EndLabel}],
-	[StartComment, CondiIRs, 'br!_reg'(R_Bool, ElseLabel), Then2, Else2, EndComment];
-stmt_to_ir(#e_while_stmt{condi = Condi, stmts = Stmts0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
+	[StartComment, CondWithJmp, Then2, Else2, EndComment];
+stmt_to_ir(#e_while_stmt{'cond' = Cond, stmts = Stmts0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
 	StartLabel = generate_tag(ScopeTag, while_start, Loc),
 	BodyLabel = generate_tag(ScopeTag, while_body, Loc),
 	EndLabel = generate_tag(ScopeTag, while_end, Loc),
-	{CondiIRs, R_Bool, _} = expr_to_ir(Condi, Ctx#{condi_label => {BodyLabel, EndLabel}}),
-	StartComment = comment(while, e_util:stmt_to_str(Condi), Loc),
+	{CondIRs, R_Bool, _} = expr_to_ir(Cond, Ctx#{condi_label => {BodyLabel, EndLabel}}),
+	StartComment = comment(while, e_util:stmt_to_str(Cond), Loc),
 	EndComment = comment(while, "end", Loc),
 	RawBody = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
 	Body = [{label, {align, 1}, BodyLabel}, RawBody, {j, StartLabel}, {label, {align, 1}, EndLabel}],
-	[StartComment, {label, {align, 1}, StartLabel}, CondiIRs, 'br!_reg'(R_Bool, EndLabel), Body, EndComment];
+	[StartComment, {label, {align, 1}, StartLabel}, CondIRs, 'br!_reg'(R_Bool, EndLabel), Body, EndComment];
 stmt_to_ir(#e_return_stmt{expr = Expr}, #{scope_tag := ScopeTag} = Ctx) ->
 	{ExprIRs, R, _} = expr_to_ir(Expr, Ctx),
 	%% We use stack to pass result
