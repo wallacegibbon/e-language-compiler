@@ -16,11 +16,14 @@ riscv64-unknown-elf-objdump -D $asm_file.elf \
 	> $asm_file.dump
 
 fetch_machine_code() {
-	sed -n 's/^\s*[0-9a-fA-F]*:\s*\([0-9a-f]\+\).*/\1/p' $1 > $1.1
+	sed -n 's/^\s*[0-9a-fA-F]*:\s*\([0-9a-f]\+\).*/\1/p' $1
 }
 
-fetch_machine_code $asm_file.dump
-fetch_machine_code $detail_file
+## Drop interrupt vector table in detail file
+sed -z 's/.*\n\(\s\+__init:.*\)/\1/' $detail_file > $detail_file.0
+
+fetch_machine_code $detail_file.0 > $detail_file.1
+fetch_machine_code $asm_file.dump > $asm_file.dump.1
 
 echo Comparing result...
 diff $detail_file.1 $asm_file.dump.1

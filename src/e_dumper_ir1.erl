@@ -328,6 +328,9 @@ write_asm([{comment, Content} | Rest], IO_Dev) ->
 write_asm([{Tag, Name} | Rest], IO_Dev) when Tag =:= fn; Tag =:= label ->
 	io:format(IO_Dev, "~s:~n", [Name]),
 	write_asm(Rest, IO_Dev);
+write_asm([{Tag, Op1, Op2, Op3} | Rest], IO_Dev) when Tag =:= csrrw; Tag =:= csrrs; Tag =:= csrrc ->
+	io:format(IO_Dev, "\t~s\t~s, ~s, ~s~n", [Tag, op_tag_str(Op1), op_tag_str(Op3), op_tag_str(Op2)]),
+	write_asm(Rest, IO_Dev);
 write_asm([{Tag, Op1, Op2, Op3} | Rest], IO_Dev) ->
 	io:format(IO_Dev, "\t~s\t~s, ~s, ~s~n", [Tag, op_tag_str(Op1), op_tag_str(Op2), op_tag_str(Op3)]),
 	write_asm(Rest, IO_Dev);
