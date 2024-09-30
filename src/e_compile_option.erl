@@ -35,6 +35,8 @@ option_for_ch32v307() ->
 	#{
 	isr_vector_pos => 0,
 	isr_vector_size => 416,
+	%isr_vector_pos => 16,
+	%isr_vector_size => 256,
 	init_code_pos => 0,
 	ram_start_pos => 16#20000000,
 	ram_end_pos => 16#20010000,

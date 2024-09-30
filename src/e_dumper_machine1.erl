@@ -9,27 +9,28 @@
 	}.
 
 -spec generate_code([tuple()], string(), #{non_neg_integer() => atom()}, e_compile_option:option()) -> ok.
-generate_code(IRs, OutputFile, InterruptMap, #{wordsize := WordSize, isr_vector_size := ISR_Size} = Options) ->
+generate_code(IRs, OutputFile, InterruptMap, #{wordsize := WordSize, isr_vector_pos := ISR_Pos, isr_vector_size := ISR_Size} = Options) ->
 	StartPos = e_compile_option:code_start_pos(Options),
 	ScanContext = #{label_map => #{}, offset_map => #{}, wordsize => WordSize},
 	{Instrs, #{label_map := LabelMap, offset_map := OffsetMap}} = scan_address(IRs, StartPos, [], ScanContext),
 	Instructions0 = lists:map(fun encode_instr/1, replace_address(Instrs, LabelMap)),
 	{ok, DefaultISRAddr} = maps:find('__default_isr', LabelMap),
-	VectorTable = generate_isr_vector_table(WordSize, ISR_Size, WordSize, [], DefaultISRAddr, InterruptMap, LabelMap),
+	VectorTable = generate_isr_vector_table(WordSize, ISR_Pos, ISR_Size, WordSize, [], DefaultISRAddr, InterruptMap, LabelMap),
 	Instructions1 = lists:reverse(VectorTable, Instructions0),
 	{ok, StartAddress} = maps:find('__init', LabelMap),
-	Instructions = [{word, <<StartAddress:32/little>>, 0} | Instructions1],
+	%% The first instruction should be jumping to `__init`.
+	Instructions = [encode_instr({{j, StartAddress}, 0}) | Instructions1],
 	Fn1 = fun(IO_Dev) -> write_binary(Instructions, 0, IO_Dev) end,
 	e_util:file_write(OutputFile, Fn1),
 	Fn2 = fun(IO_Dev) -> write_detail(Instructions, 0, OffsetMap, IO_Dev) end,
 	e_util:file_write(OutputFile ++ ".detail", Fn2),
 	ok.
 
-generate_isr_vector_table(N, Size, WordSize, R, Default, InterruptMap, LabelMap) when N < Size ->
+generate_isr_vector_table(N, Pos, Size, WordSize, R, Default, InterruptMap, LabelMap) when N < Size ->
 	ISR_Addr = get_isr_address(N div WordSize, Default, InterruptMap, LabelMap),
-	NewItem = {word, <<ISR_Addr:32/little>>, N},
-	generate_isr_vector_table(N + WordSize, Size, WordSize, [NewItem | R], Default, InterruptMap, LabelMap);
-generate_isr_vector_table(Size, Size, _, R, _, _, _) ->
+	NewItem = {word, <<ISR_Addr:32/little>>, N + Pos},
+	generate_isr_vector_table(N + WordSize, Pos, Size, WordSize, [NewItem | R], Default, InterruptMap, LabelMap);
+generate_isr_vector_table(Size, _, Size, _, R, _, _, _) ->
 	R.
 
 get_isr_address(InterruptID, DefaultISRAddr, InterruptMap, LabelMap) ->
