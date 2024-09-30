@@ -118,6 +118,9 @@ encode_instr({{srai, {x, N1}, {x, N2}, A} = I, Offset}) ->
 encode_instr({{Tag, {x, N1}, {x, N2}, A} = I, Offset}) when ?IS_IMMEDI_CALC(Tag) ->
 	Code = (A bsl 20) bor (N2 bsl 15) bor (f3code_of(Tag) bsl 12) bor (N1 bsl 7) bor 2#0010011,
 	{I, <<Code:32/little>>, Offset};
+encode_instr({{Tag, {x, N1}, {x, N2}, CSR} = I, Offset}) when Tag =:= csrrw; Tag =:= csrrs; Tag =:= csrrc ->
+	Code = (CSR bsl 20) bor (N2 bsl 15) bor (f3code_of(Tag) bsl 12) bor (N1 bsl 7) bor 2#1110011,
+	{I, <<Code:32/little>>, Offset};
 encode_instr({{Tag, {x, N1}, {x, N2}, {x, N3}} = I, Offset}) when ?IS_NORMAL_CALC(Tag) ->
 	Rs = (N3 bsl 20) bor (N2 bsl 15) bor (N1 bsl 7),
 	Code = Rs bor (f7code_of(Tag) bsl 25) bor (f3code_of(Tag) bsl 12) bor 2#0110011,
@@ -205,7 +208,10 @@ f3code_of(sra)		-> 2#101;
 f3code_of(mul)		-> 2#000;
 f3code_of(mulh)		-> 2#001;
 f3code_of('div')	-> 2#100;
-f3code_of('rem')	-> 2#110.
+f3code_of('rem')	-> 2#110;
+f3code_of('csrrw')	-> 2#001;
+f3code_of('csrrs')	-> 2#010;
+f3code_of('csrrc')	-> 2#011.
 
 f7code_of(sub)		-> 2#0100000;
 f7code_of(sra)		-> 2#0100000;
