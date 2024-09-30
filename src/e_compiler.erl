@@ -26,25 +26,31 @@ compile_to_e(InputFilename, OutputFilename) ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [InputFilename, Line, Col, ErrorInfo]))
 	end.
 
--spec compile_to_ir1(string(), string()) -> ok.
+-spec compile_to_ir1(string(), string()) -> #{non_neg_integer() => atom()}.
 compile_to_ir1(InputFilename, OutputFilename) ->
 	Options = e_compile_option:default(),
 	#{ram_start_pos := StartPos, ram_end_pos := EndPos} = Options,
 	try
-		{AST, #e_vars{size = Size, shifted_size = N}, InitCode} = parse_and_compile(InputFilename, Options),
-		e_dumper_ir1:generate_code(AST, InitCode, StartPos, EndPos - Size + N, OutputFilename, Options)
+		{AST, GlobalVars, InitCode} = parse_and_compile(InputFilename, Options),
+		#e_vars{size = Size, shifted_size = N} = GlobalVars,
+		e_dumper_ir1:generate_code(AST, InitCode, StartPos, EndPos - Size + N, OutputFilename, Options),
+		fetch_interrupt_vector_table(AST)
 	catch
 		{{Line, Col}, ErrorInfo} ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [InputFilename, Line, Col, ErrorInfo]))
 	end.
 
+fetch_interrupt_vector_table(AST) ->
+	Fns = lists:filter(fun(#e_function{interrupt = N}) when is_integer(N) -> true; (_) -> false end, AST),
+	maps:from_list(lists:map(fun(#e_function{name = Name, interrupt = N}) -> {N, Name} end, Fns)).
+
 -spec compile_to_machine1(string(), string()) -> ok.
 compile_to_machine1(InputFilename, OutputFilename) ->
 	IR1Filename = OutputFilename ++ ".ir1",
 	try
-		compile_to_ir1(InputFilename, IR1Filename),
+		InterruptMap = compile_to_ir1(InputFilename, IR1Filename),
 		{ok, IRs} = file:consult(IR1Filename),
-		e_dumper_machine1:generate_code(IRs, OutputFilename, e_compile_option:default())
+		e_dumper_machine1:generate_code(IRs, OutputFilename, InterruptMap, e_compile_option:default())
 	catch
 		{{Line, Col}, ErrorInfo} ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [InputFilename, Line, Col, ErrorInfo]))

@@ -11,10 +11,19 @@ fn fn1()
 	flag -= v;
 end
 
-interrupt
-fn fn2()
-	v: word = 2;
-	flag += v;
+interrupt(1)
+fn isr1()
+	flag += 1;
+end
+
+interrupt(2)
+fn isr2()
+	flag += 2;
+end
+
+interrupt(3)
+fn isr3()
+	flag += 3;
 end
 
 fn fn3(

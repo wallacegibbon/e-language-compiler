@@ -15,7 +15,7 @@
 	}.
 
 -spec check_types_in_ast(e_ast(), interface_context()) -> ok.
-check_types_in_ast([#e_function{name = Name, param_names = [_ | _], interrupt = true, loc = Loc} | _], _) ->
+check_types_in_ast([#e_function{name = Name, param_names = [_ | _], interrupt = N, loc = Loc} | _], _) when is_integer(N) ->
 	e_util:ethrow(Loc, "interrupt function \"~s\" should not have parameter(s)", [Name]);
 check_types_in_ast([#e_function{type = FnType} = Fn | Rest], {GlobalVars, FnTypeMap, StructMap} = Ctx) ->
 	#e_function{vars = LocalVars, param_names = ParamNames, stmts = Stmts} = Fn,

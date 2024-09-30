@@ -95,8 +95,8 @@ e_struct_def -> struct identifier e_vardefs 'end' :
 	#e_struct_raw{name = token_value('$2'), fields = '$3', loc = token_loc('$2')}.
 
 %% function definition
-e_function_def -> interrupt e_function_def :
-	'$2'#e_function_raw{interrupt = true}.
+e_function_def -> interrupt '(' integer ')' e_function_def :
+	'$5'#e_function_raw{interrupt = token_value('$3')}.
 e_function_def -> 'fn' identifier '(' e_vardefs ')' ':' e_type_anno e_function_stmts 'end' :
 	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = '$7', stmts = '$8', loc = token_loc('$2')}.
 e_function_def -> 'fn' identifier '(' ')' ':' e_type_anno e_function_stmts 'end' :

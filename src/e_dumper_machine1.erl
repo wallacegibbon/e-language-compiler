@@ -1,5 +1,5 @@
 -module(e_dumper_machine1).
--export([generate_code/3]).
+-export([generate_code/4]).
 
 -type scan_context() ::
 	#{
@@ -8,18 +8,37 @@
 	wordsize	=> non_neg_integer()
 	}.
 
--spec generate_code([tuple()], string(), e_compile_option:option()) -> ok.
-generate_code(IRs, OutputFile, #{wordsize := WordSize} = Options) ->
+-spec generate_code([tuple()], string(), #{non_neg_integer() => atom()}, e_compile_option:option()) -> ok.
+generate_code(IRs, OutputFile, InterruptMap, #{wordsize := WordSize, isr_vector_size := ISR_Size} = Options) ->
 	StartPos = e_compile_option:code_start_pos(Options),
 	ScanContext = #{label_map => #{}, offset_map => #{}, wordsize => WordSize},
 	{Instrs, #{label_map := LabelMap, offset_map := OffsetMap}} = scan_address(IRs, StartPos, [], ScanContext),
-	%io:format(">> LabelMap:~p~n>> OffsetMap:~p~n", [LabelMap, OffsetMap]),
-	Encoded = lists:map(fun encode_instr/1, replace_address(Instrs, LabelMap)),
-	Fn1 = fun(IO_Dev) -> write_binary(Encoded, StartPos, IO_Dev) end,
+	Instructions0 = lists:map(fun encode_instr/1, replace_address(Instrs, LabelMap)),
+	{ok, DefaultISRAddr} = maps:find('__default_isr', LabelMap),
+	VectorTable = generate_isr_vector_table(WordSize, ISR_Size, WordSize, [], DefaultISRAddr, InterruptMap, LabelMap),
+	Instructions1 = lists:reverse(VectorTable, Instructions0),
+	{ok, StartAddress} = maps:find('__init', LabelMap),
+	Instructions = [{word, <<StartAddress:32/little>>, 0} | Instructions1],
+	Fn1 = fun(IO_Dev) -> write_binary(Instructions, 0, IO_Dev) end,
 	e_util:file_write(OutputFile, Fn1),
-	Fn2 = fun(IO_Dev) -> write_detail(Encoded, StartPos, OffsetMap, IO_Dev) end,
+	Fn2 = fun(IO_Dev) -> write_detail(Instructions, 0, OffsetMap, IO_Dev) end,
 	e_util:file_write(OutputFile ++ ".detail", Fn2),
 	ok.
+
+generate_isr_vector_table(N, Size, WordSize, R, Default, InterruptMap, LabelMap) when N < Size ->
+	ISR_Addr = get_isr_address(N div WordSize, Default, InterruptMap, LabelMap),
+	NewItem = {word, <<ISR_Addr:32/little>>, N},
+	generate_isr_vector_table(N + WordSize, Size, WordSize, [NewItem | R], Default, InterruptMap, LabelMap);
+generate_isr_vector_table(Size, Size, _, R, _, _, _) ->
+	R.
+
+get_isr_address(InterruptID, DefaultISRAddr, InterruptMap, LabelMap) ->
+	case maps:find(InterruptID, InterruptMap) of
+		{ok, Label} ->
+			maps:get(Label, LabelMap);
+		_ ->
+			DefaultISRAddr
+	end.
 
 -spec scan_address([tuple()], non_neg_integer(), [tuple()], scan_context()) -> {R, scan_context()} when R :: [tuple()].
 scan_address([{label, {align, N}, Name} | Rest], Offset, Result, #{label_map := LabelMap, offset_map := OffsetMap} = Ctx) ->
@@ -124,19 +143,22 @@ encode_instr(Any) ->
 	Any.
 
 write_detail([{{string, Content, Length}, _, Loc} | Rest], Loc, OffsetMap, IO_Dev) ->
-	io:format(IO_Dev, "~8.16.0B:\t\t\t\t\"~s\\0\"~n", [Loc, e_util:fix_special_chars(Content)]),
+	io:format(IO_Dev, "~8.16.0b:\t\t\t\t\"~s\\0\"~n", [Loc, e_util:fix_special_chars(Content)]),
 	write_detail(Rest, Loc + Length + 1, OffsetMap, IO_Dev);
+write_detail([{word, Raw, Loc} | Rest], Loc, OffsetMap, IO_Dev) ->
+	io:format(IO_Dev, "~8.16.0b:\t~s~n", [Loc, fmt_code(Raw)]),
+	write_detail(Rest, Loc + byte_size(Raw), OffsetMap, IO_Dev);
 write_detail([{Instr, Raw, Loc} | Rest], Loc, OffsetMap, IO_Dev) ->
 	case maps:find(Loc, OffsetMap) of
 		{ok, Labels} ->
-			lists:foreach(fun(L) -> io:format(IO_Dev, "\t~s:~n", [L]) end, Labels);
+			lists:foreach(fun(L) -> io:format(IO_Dev, "\t\t\t\t~s:~n", [L]) end, Labels);
 		_ ->
 			ok
 	end,
-	io:format(IO_Dev, "~8.16.0B:\t~s\t\t~w~n", [Loc, fmt_code(Raw), Instr]),
+	io:format(IO_Dev, "~8.16.0b:\t~s\t\t~w~n", [Loc, fmt_code(Raw), Instr]),
 	write_detail(Rest, Loc + byte_size(Raw), OffsetMap, IO_Dev);
 write_detail([{_, _, Loc} | _] = Data, N, OffsetMap, IO_Dev) when Loc > N ->
-	io:format(IO_Dev, "\t\t\t\t\t.byte 0~n", []),
+	io:format(IO_Dev, "~8.16.0b:\t      00~n", [N]),
 	write_detail(Data, N + 1, OffsetMap, IO_Dev);
 write_detail([], _, _, _) ->
 	ok.

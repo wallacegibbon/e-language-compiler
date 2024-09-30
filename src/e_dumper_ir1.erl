@@ -37,8 +37,9 @@ generate_code(AST, InitCode, SP, GP, OutputFile, #{wordsize := WordSize, entry_f
 	InitRegIRs = [smart_li({x, 2}, SP), smart_li({x, 3}, GP)],
 	InitVarIRs = [lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init'}) end, InitCode)],
 	InitJump = stmt_to_ir(?CALL(#e_varref{name = Entry}, []), Ctx#{scope_tag := '__init'}),
+	DefaultISR = [{label, {align, 1}, '__default_isr'}, {j, '__default_isr'}],
 	JumpSelf = [{label, {align, 1}, '__end'}, {j, '__end'}],
-	InitIRs = [InitRegIRs, InitVarIRs, InitJump, JumpSelf],
+	InitIRs = [{label, {align, 1}, '__init'}, InitRegIRs, InitVarIRs, InitJump, JumpSelf, DefaultISR],
 	IRs = ast_to_ir(AST, Ctx),
 	%StrTable = lists:map(fun({T, S, L}) -> [{label, {align, WordSize}, T}, {string, S, L}] end, string_collect_dump(Pid)),
 	StrTable = lists:map(fun({T, S, L}) -> [{label, {align, 1}, T}, {string, S, L}] end, string_collect_dump(Pid)),
@@ -75,15 +76,15 @@ ast_to_ir([_ | Rest], Ctx) ->
 ast_to_ir([], _) ->
 	[].
 
-interrupt_related_code(#e_function{interrupt = true}, Regs, Ctx) ->
-	reg_save_restore(Regs, Ctx);
-interrupt_related_code(_, _, _) ->
-	{[], []}.
+interrupt_related_code(#e_function{interrupt = none}, _, _) ->
+	{[], []};
+interrupt_related_code(_, Regs, Ctx) ->
+	reg_save_restore(Regs, Ctx).
 
-ret_instruction_of(#e_function{interrupt = true}) ->
-	{mret};
+ret_instruction_of(#e_function{interrupt = none}) ->
+	{jalr, {x, 0}, {x, 1}};
 ret_instruction_of(_) ->
-	{jalr, {x, 0}, {x, 1}}.
+	{mret}.
 
 -spec stmt_to_ir(e_stmt(), context()) -> irs().
 stmt_to_ir(#e_if_stmt{'cond' = Cond, then = Then0, 'else' = Else0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
