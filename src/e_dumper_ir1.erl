@@ -1,5 +1,5 @@
 -module(e_dumper_ir1).
--export([generate_code/5]).
+-export([generate_code/6]).
 -include("e_record_definition.hrl").
 
 %% According the calling convention of RISC-V: RA is X1, SP is X2, GP is X3, FP is X8. X5-X7 is T0-T2.
@@ -29,12 +29,12 @@
 	N >= -2048 andalso N < 2048
 	)).
 
--spec generate_code(e_ast(), e_ast(), non_neg_integer(), string(), e_compile_option:option()) -> ok.
-generate_code(AST, InitCode, GlobalPointer, OutputFile, #{wordsize := WordSize, entry_function := Entry, ram_start_pos := RAM_Start}) ->
+-spec generate_code(e_ast(), e_ast(), non_neg_integer(), non_neg_integer(), string(), e_compile_option:option()) -> ok.
+generate_code(AST, InitCode, SP, GP, OutputFile, #{wordsize := WordSize, entry_function := Entry}) ->
 	Pid = spawn_link(fun() -> string_collect_loop([]) end),
 	Regs = tmp_regs(),
 	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid},
-	InitRegIRs = [smart_li({x, 3}, GlobalPointer), smart_li({x, 2}, RAM_Start)],
+	InitRegIRs = [smart_li({x, 2}, SP), smart_li({x, 3}, GP)],
 	InitVarIRs = [lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init'}) end, InitCode)],
 	InitJump = stmt_to_ir(?CALL(#e_varref{name = Entry}, []), Ctx#{scope_tag := '__init'}),
 	JumpSelf = [{label, {align, 1}, '__end'}, {j, '__end'}],

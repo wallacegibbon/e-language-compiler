@@ -29,11 +29,10 @@ compile_to_e(InputFilename, OutputFilename) ->
 -spec compile_to_ir1(string(), string()) -> ok.
 compile_to_ir1(InputFilename, OutputFilename) ->
 	Options = e_compile_option:default(),
-	#{ram_end_pos := EndPos} = Options,
+	#{ram_start_pos := StartPos, ram_end_pos := EndPos} = Options,
 	try
-		{AST, #e_vars{shifted_size = Size}, InitCode} = parse_and_compile(InputFilename, Options),
-		GlobalPointer = EndPos - Size,
-		e_dumper_ir1:generate_code(AST, InitCode, GlobalPointer, OutputFilename, Options)
+		{AST, #e_vars{size = Size, shifted_size = N}, InitCode} = parse_and_compile(InputFilename, Options),
+		e_dumper_ir1:generate_code(AST, InitCode, StartPos, EndPos - Size + N, OutputFilename, Options)
 	catch
 		{{Line, Col}, ErrorInfo} ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [InputFilename, Line, Col, ErrorInfo]))
