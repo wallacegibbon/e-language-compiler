@@ -380,7 +380,13 @@ smart_addi(R, N, #{free_regs := [T | _]}) ->
 smart_li(R, N) when ?IS_SMALL_IMMEDI(N) ->
 	[{addi, R, {x, 0}, N}];
 smart_li(R, N) ->
-	{High, Low} = e_util:u_type_immedi(N),
+	li_big_num(R, e_util:u_type_immedi(N)).
+
+li_big_num(R, {0, Low}) ->
+	[{addi, R, {0, 0}, Low}];
+li_big_num(R, {High, 0}) ->
+	[{lui, R, High}];
+li_big_num(R, {High, Low}) ->
 	[{lui, R, High}, {addi, R, R, Low}].
 
 mv(R1, R2) ->

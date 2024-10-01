@@ -71,11 +71,21 @@ parse_and_compile(Filename, CompileOptions) ->
 
 -spec parse_file(string()) -> e_ast_raw().
 parse_file(Filename) ->
+	Tokens = scan_file(Filename),
+	case e_parser:parse(Tokens) of
+		{ok, AST} ->
+			AST;
+		{error, {Loc, _, ErrorInfo}} ->
+			throw({Loc, ErrorInfo})
+	end.
+
+-spec scan_file(string()) -> [token()].
+scan_file(Filename) ->
 	case file:read_file(Filename) of
 		{ok, RawContent} ->
-			parse_tokens(scan_raw_content(RawContent));
+			scan_raw_content(RawContent);
 		{error, enoent} ->
-			throw(e_util:fmt("file \"~s\"not found", [Filename]));
+			throw(e_util:fmt("file ~s is not found", [Filename]));
 		{error, Reason} ->
 			throw(Reason)
 	end.
@@ -89,14 +99,5 @@ scan_raw_content(RawContent) ->
 			throw({Loc, Info});
 		Error->
 			throw(Error)
-	end.
-
--spec parse_tokens([token()]) -> e_ast_raw().
-parse_tokens(Tokens) ->
-	case e_parser:parse(e_preprocessor:process(Tokens)) of
-		{ok, AST} ->
-			AST;
-		{error, {Loc, _, ErrorInfo}} ->
-			throw({Loc, ErrorInfo})
 	end.
 
