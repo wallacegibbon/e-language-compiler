@@ -75,6 +75,8 @@ default_value_of(#e_basic_type{class = integer, p_depth = 0}, Loc) ->
 default_value_of(#e_basic_type{class = float, p_depth = 0}, Loc) ->
 	?F(0.0, Loc);
 default_value_of(#e_basic_type{p_depth = PDepth}, Loc) when PDepth > 0 ->
+	?I(0, Loc);
+default_value_of(#e_fn_type{}, Loc) ->
 	?I(0, Loc).
 
 array_init_to_ops(Target, [E | Rest], Cnt, Loc, NewCode, {_, WordSize} = Ctx) ->

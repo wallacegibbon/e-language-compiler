@@ -3,7 +3,7 @@ Nonterminals
 e_root_stmts e_root_stmt e_struct_def e_function_def e_vardefs e_vardef e_args
 e_function_stmts e_function_stmt e_if_stmt e_else_stmt e_while_stmt e_label
 e_expr e_call_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr e_assign_expr e_not_expr e_bnot_expr
-e_typeof_type e_type_annos e_type_anno e_op19 e_op30 e_op29 e_op28 e_op27 e_op26 e_op25 e_op2_with_assignment
+e_typeof_type e_type_annos e_type_anno e_calc1 e_calc2 e_bitwise e_cmp e_bool_op e_op2_with_assignment
 e_pointer_depth e_atomic_literal_values e_reserved
 e_array_init_expr e_array_init_elements e_struct_init_expr e_struct_init_fields e_struct_init_assignment
 
@@ -133,6 +133,8 @@ e_array_init_expr -> '{' '}' :
 
 e_array_init_elements -> e_expr ',' e_array_init_elements :
 	['$1' | '$3'].
+e_array_init_elements -> e_expr ',' :
+	['$1'].
 e_array_init_elements -> e_expr :
 	['$1'].
 
@@ -144,41 +146,13 @@ e_struct_init_expr -> identifier '{' '}' :
 
 e_struct_init_fields -> e_struct_init_assignment ',' e_struct_init_fields :
 	['$1' | '$3'].
+e_struct_init_fields -> e_struct_init_assignment ',' :
+	['$1'].
 e_struct_init_fields -> e_struct_init_assignment :
 	['$1'].
 
 e_struct_init_assignment -> identifier '=' e_expr :
 	#e_op{tag = '=', data = [#e_varref{name = token_value('$1'), loc = token_loc('$1')}, '$3'], loc = token_loc('$2')}.
-
-%% sizeof
-e_sizeof_expr -> sizeof '(' e_type_anno ')' :
-	#e_op{tag = {sizeof, '$3'}, loc = token_loc('$1')}.
-
-%% alignof
-e_alignof_expr -> alignof '(' e_type_anno ')' :
-	#e_op{tag = {alignof, '$3'}, loc = token_loc('$1')}.
-
-%% not
-e_not_expr -> 'not' '(' e_expr ')' :
-	#e_op{tag = 'not', data = ['$3'], loc = token_loc('$1')}.
-
-%% bnot
-e_bnot_expr -> 'bnot' '(' e_expr ')' :
-	#e_op{tag = 'bnot', data = ['$3'], loc = token_loc('$1')}.
-
-%% function invocation
-e_call_expr -> e_call_expr '(' e_args ')' :
-	#e_op{tag = {call, '$1'}, data = '$3', loc = token_loc('$2')}.
-e_call_expr -> e_call_expr '(' ')' :
-	#e_op{tag = {call, '$1'}, data = [], loc = token_loc('$2')}.
-e_call_expr -> identifier '(' e_args ')' :
-	#e_op{tag = {call, #e_varref{name = token_value('$1'), loc = token_loc('$1')}}, data = '$3', loc = token_loc('$2')}.
-e_call_expr -> identifier '(' ')' :
-	#e_op{tag = {call, #e_varref{name = token_value('$1'), loc = token_loc('$1')}}, loc = token_loc('$2')}.
-e_call_expr -> '(' e_expr ')' '(' e_args ')' :
-	#e_op{tag = {call, '$2'}, data = '$5', loc = token_loc('$4')}.
-e_call_expr -> '(' e_expr ')' '(' ')' :
-	#e_op{tag = {call, '$2'}, data = [], loc = token_loc('$4')}.
 
 Unary 100 e_assign_expr.
 e_assign_expr -> e_expr e_op2_with_assignment e_expr :
@@ -186,9 +160,9 @@ e_assign_expr -> e_expr e_op2_with_assignment e_expr :
 e_assign_expr -> e_expr '=' e_expr :
 	#e_op{tag = '=', data = ['$1', '$3'], loc = token_loc('$2')}.
 
-e_op2_with_assignment -> e_op29 '=' : '$1'.
-e_op2_with_assignment -> e_op28 '=' : '$1'.
-e_op2_with_assignment -> e_op27 '=' : '$1'.
+e_op2_with_assignment -> e_calc1 '=' : '$1'.
+e_op2_with_assignment -> e_calc2 '=' : '$1'.
+e_op2_with_assignment -> e_bitwise '=' : '$1'.
 
 e_args -> e_expr ',' e_args : ['$1' | '$3'].
 e_args -> e_expr ',' : ['$1'].
@@ -212,30 +186,48 @@ e_function_stmt -> e_label : '$1'.
 e_label -> '@' '@' identifier :
 	#e_label{name = token_value('$3'), loc = token_loc('$3')}.
 
+%% sizeof
+e_sizeof_expr -> sizeof '(' e_type_anno ')' :
+	#e_op{tag = {sizeof, '$3'}, loc = token_loc('$1')}.
+%% alignof
+e_alignof_expr -> alignof '(' e_type_anno ')' :
+	#e_op{tag = {alignof, '$3'}, loc = token_loc('$1')}.
+%% not
+e_not_expr -> 'not' '(' e_expr ')' :
+	#e_op{tag = 'not', data = ['$3'], loc = token_loc('$1')}.
+%% bnot
+e_bnot_expr -> 'bnot' '(' e_expr ')' :
+	#e_op{tag = 'bnot', data = ['$3'], loc = token_loc('$1')}.
+
+%% function invocation
+e_call_expr -> e_expr '(' e_args ')' :
+	#e_op{tag = {call, '$1'}, data = '$3', loc = token_loc('$2')}.
+e_call_expr -> e_expr '(' ')' :
+	#e_op{tag = {call, '$1'}, data = [], loc = token_loc('$2')}.
+
 e_expr -> e_reserved :
 	return_error(token_loc('$1'), e_util:fmt("~s is reserved", [token_symbol('$1')])).
-e_expr -> e_expr e_op30 e_expr :
+e_expr -> e_expr '.' identifier :
+	#e_op{tag = token_symbol('$2'), data = ['$1', #e_varref{name = token_value('$3'), loc = token_loc('$3')}], loc = token_loc('$2')}.
+e_expr -> e_expr '^' :
+	%% The memory size `0` is an invalid value, replace it later.
+	#e_op{tag = token_symbol('$2'), data = ['$1', #e_integer{value = 0, loc = token_loc('$2')}], loc = token_loc('$2')}.
+e_expr -> e_expr '@' :
+	#e_op{tag = token_symbol('$2'), data = ['$1'], loc = token_loc('$2')}.
+e_expr -> e_expr e_calc1 e_expr :
 	#e_op{tag = token_symbol('$2'), data = ['$1', '$3'], loc = token_loc('$2')}.
-e_expr -> e_expr e_op29 e_expr :
+e_expr -> e_expr e_calc2 e_expr :
 	#e_op{tag = token_symbol('$2'), data = ['$1', '$3'], loc = token_loc('$2')}.
-e_expr -> e_expr e_op28 e_expr :
+e_expr -> e_expr e_bitwise e_expr :
 	#e_op{tag = token_symbol('$2'), data = ['$1', '$3'], loc = token_loc('$2')}.
-e_expr -> e_expr e_op27 e_expr :
+e_expr -> e_expr e_cmp e_expr :
 	#e_op{tag = token_symbol('$2'), data = ['$1', '$3'], loc = token_loc('$2')}.
-e_expr -> e_expr e_op26 e_expr :
+e_expr -> e_expr e_bool_op e_expr :
 	#e_op{tag = token_symbol('$2'), data = ['$1', '$3'], loc = token_loc('$2')}.
-e_expr -> e_expr e_op25 e_expr :
-	#e_op{tag = token_symbol('$2'), data = ['$1', '$3'], loc = token_loc('$2')}.
-e_expr -> e_expr e_op19 :
-	Data =
-		case token_symbol('$2') =:= '^' of
-			%% The memory size `0` is an invalid value, replace it later.
-			true -> ['$1', #e_integer{value = 0, loc = token_loc('$2')}];
-			_ -> ['$1']
-		end,
-	#e_op{tag = token_symbol('$2'), data = Data, loc = token_loc('$2')}.
 e_expr -> identifier :
 	#e_varref{name = token_value('$1'), loc = token_loc('$1')}.
+e_expr -> e_expr as '(' e_type_anno ')' :
+	#e_type_convert{expr = '$1', type = '$4', loc = token_loc('$2')}.
 e_expr -> e_pre_minus_plus_expr : '$1'.
 e_expr -> e_array_init_expr : '$1'.
 e_expr -> e_struct_init_expr : '$1'.
@@ -247,11 +239,6 @@ e_expr -> e_alignof_expr : '$1'.
 e_expr -> e_not_expr : '$1'.
 e_expr -> e_bnot_expr : '$1'.
 e_expr -> '(' e_expr ')' : '$2'.
-e_expr -> e_expr as '(' e_type_anno ')' :
-	#e_type_convert{expr = '$1', type = '$4', loc = token_loc('$2')}.
-
-%% `as` should have high precedence. (Only lower than `.`)
-Left 990 as.
 
 e_reserved -> ';' : '$1'.
 e_reserved -> new : '$1'.
@@ -261,6 +248,11 @@ e_reserved -> for : '$1'.
 e_reserved -> break : '$1'.
 e_reserved -> continue : '$1'.
 
+Unary 1000 '('.
+Left 1000 '.'.
+Unary 900 '^'.
+Unary 900 '@'.
+
 %% the precedence of 'e_pre_minus_plus_expr' needs to be higher than "operator +/-"
 Unary 300 e_pre_minus_plus_expr.
 e_pre_minus_plus_expr -> '-' e_expr :
@@ -268,40 +260,33 @@ e_pre_minus_plus_expr -> '-' e_expr :
 e_pre_minus_plus_expr -> '+' e_expr :
 	#e_op{tag = token_symbol('$1'), data = ['$2'], loc = token_loc('$1')}.
 
-Unary 900 e_op19.
-e_op19 -> '^' : '$1'.
-e_op19 -> '@' : '$1'.
+Left 290 e_calc1.
+e_calc1 -> '*' : '$1'.
+e_calc1 -> '/' : '$1'.
+e_calc1 -> 'rem' : '$1'.
 
-Left 1000 e_op30.
-e_op30 -> '.' : '$1'.
+Left 280 e_calc2.
+e_calc2 -> '+' : '$1'.
+e_calc2 -> '-' : '$1'.
 
-Left 290 e_op29.
-e_op29 -> '*' : '$1'.
-e_op29 -> '/' : '$1'.
-e_op29 -> 'rem' : '$1'.
+Left 270 e_bitwise.
+e_bitwise -> 'bsl' : '$1'.
+e_bitwise -> 'bsr' : '$1'.
+e_bitwise -> 'band' : '$1'.
+e_bitwise -> 'bor' : '$1'.
+e_bitwise -> 'bxor' : '$1'.
 
-Left 280 e_op28.
-e_op28 -> '+' : '$1'.
-e_op28 -> '-' : '$1'.
+Nonassoc 260 e_cmp.
+e_cmp -> '==' : '$1'.
+e_cmp -> '!=' : '$1'.
+e_cmp -> '>=' : '$1'.
+e_cmp -> '<=' : '$1'.
+e_cmp -> '>' : '$1'.
+e_cmp -> '<' : '$1'.
 
-Left 270 e_op27.
-e_op27 -> 'bsl' : '$1'.
-e_op27 -> 'bsr' : '$1'.
-e_op27 -> 'band' : '$1'.
-e_op27 -> 'bor' : '$1'.
-e_op27 -> 'bxor' : '$1'.
-
-Nonassoc 260 e_op26.
-e_op26 -> '==' : '$1'.
-e_op26 -> '!=' : '$1'.
-e_op26 -> '>=' : '$1'.
-e_op26 -> '<=' : '$1'.
-e_op26 -> '>' : '$1'.
-e_op26 -> '<' : '$1'.
-
-Left 250 e_op25.
-e_op25 -> 'and' : '$1'.
-e_op25 -> 'or' : '$1'.
+Left 250 e_bool_op.
+e_bool_op -> 'and' : '$1'.
+e_bool_op -> 'or' : '$1'.
 
 
 Erlang code.
@@ -317,6 +302,6 @@ token_symbol({Sym, _}) -> Sym.
 
 token_loc(T) -> element(2, T).
 
-replace_tag({_, Loc, Val}, NewTag) -> {NewTag, Loc, Val};
-replace_tag({_, Loc}, NewTag) -> {NewTag, Loc}.
+replace_tag({_, Loc, Val}, NewTag)	-> {NewTag, Loc, Val};
+replace_tag({_, Loc}, NewTag)		-> {NewTag, Loc}.
 

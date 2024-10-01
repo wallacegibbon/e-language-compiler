@@ -4,6 +4,7 @@
 
 -spec compile_from_raw_ast(e_ast(), e_compile_option:option()) -> {e_ast(), #e_vars{}, e_ast()}.
 compile_from_raw_ast(AST, #{wordsize := WordSize, entry_function := Entry}) ->
+	%io:format("AST before any operation: ~p~n", [AST]),
 	{GlobalVars00, AST00, InitCode00} = e_var:fetch_vars(AST),
 
 	{FnTypeMap00, StructMap00} = e_util:make_function_and_struct_map_from_ast(AST00),

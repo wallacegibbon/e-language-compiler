@@ -156,6 +156,7 @@ expr_to_ir(?CALL(Fn, Args), Ctx) ->
 	%% The calling related steps
 	{FnLoad, R, Ctx1} = expr_to_ir(Fn, Ctx),
 	{ArgPrepare, N} = args_to_stack(Args, 0, [], Ctx1),
+	%% TODO: return value should be in the caller's frame
 	RetLoad = [{comment, "load ret"}, {lw, R, {{x, 2}, 0}}],
 	StackRestore = [{comment, "drop args"}, smart_addi({x, 2}, -N, Ctx1)],
 	Call = [FnLoad, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, R}, RetLoad, StackRestore],
@@ -291,7 +292,7 @@ reg_save_restore(Regs, #{wordsize := WordSize} = Ctx) ->
 	StackShrink = [{comment, "shrink stack"}, smart_addi({x, 2}, -TotalSize, Ctx)],
 	Save = e_util:list_map(fun(R, I) -> {sw, R, {{x, 2}, I * WordSize - TotalSize}} end, Regs),
 	Restore = e_util:list_map(fun(R, I) -> {lw, R, {{x, 2}, I * WordSize - TotalSize}} end, Regs),
-	Enter = [{comment, io_lib:format("regs to save: ~w", [Regs])}, StackGrow, Save],
+	Enter = [StackGrow, {comment, io_lib:format("regs to save: ~w", [Regs])}, Save],
 	Leave = [{comment, io_lib:format("regs to restore: ~w", [Regs])}, Restore, StackShrink],
 	{Enter, Leave}.
 
