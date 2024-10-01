@@ -32,8 +32,8 @@ compile_to_ir1(InputFilename, OutputFilename) ->
 	#{ram_start_pos := StartPos, ram_end_pos := EndPos} = Options,
 	try
 		{AST, GlobalVars, InitCode} = parse_and_compile(InputFilename, Options),
-		#e_vars{size = Size, shifted_size = N} = GlobalVars,
-		e_dumper_ir1:generate_code(AST, InitCode, StartPos, EndPos - Size + N, OutputFilename, Options),
+		#e_vars{shifted_size = Size} = GlobalVars,
+		e_dumper_ir1:generate_code(AST, InitCode, StartPos, EndPos - Size, OutputFilename, Options),
 		fetch_interrupt_vector_table(AST)
 	catch
 		{{Line, Col}, ErrorInfo} ->
@@ -75,7 +75,7 @@ parse_file(Filename) ->
 		{ok, RawContent} ->
 			parse_tokens(scan_raw_content(RawContent));
 		{error, enoent} ->
-			throw(io_lib:format("file \"~s\"not found", [Filename]));
+			throw(e_util:fmt("file \"~s\"not found", [Filename]));
 		{error, Reason} ->
 			throw(Reason)
 	end.

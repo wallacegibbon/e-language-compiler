@@ -16,6 +16,8 @@
 	%% `cond_label` is for generating logic operator (and, or, not) related code.
 	cond_label		=> {atom(), atom()},
 	scope_tag		=> atom(),
+	epilogue_tag		=> atom(),
+	ret_offset		=> non_neg_integer(),
 	wordsize		=> pos_integer()
 	}.
 
@@ -33,7 +35,7 @@
 generate_code(AST, InitCode, SP, GP, OutputFile, #{wordsize := WordSize, entry_function := Entry, isr_vector_pos := InterruptVec}) ->
 	Pid = spawn_link(fun() -> string_collect_loop([]) end),
 	Regs = tmp_regs(),
-	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid},
+	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid, epilogue_tag => none, ret_offset => -WordSize},
 	InitRegs = [smart_li({x, 2}, SP), smart_li({x, 3}, GP)],
 	InitVars = [lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init'}) end, InitCode)],
 	[T | _] = Regs,
@@ -54,21 +56,21 @@ generate_code(AST, InitCode, SP, GP, OutputFile, #{wordsize := WordSize, entry_f
 -type irs() :: [tuple() | irs()].
 
 -spec ast_to_ir(e_ast(), context()) -> irs().
-ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{shifted_size = Size0}} = Fn | Rest], Ctx) ->
+ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{size = Size0, shifted_size = Size1}} = Fn | Rest], Ctx) ->
 	#{wordsize := WordSize, free_regs := Regs} = Ctx,
-	Ctx1 = Ctx#{scope_tag => Name},
 	%% When there are no local variables, there should still be one word for returning value.
-	Size1 = erlang:max(e_util:fill_unit_pessi(Size0, WordSize), WordSize),
+	Size2 = erlang:max(e_util:fill_unit_pessi(Size1, WordSize), WordSize),
 	%% The extra `2` words are for `frame pointer`({x, 8}) and `returning address`({x, 1}).
-	FrameSize = Size1 + WordSize * 2,
+	FrameSize = Size2 + WordSize * 2,
 	SaveFpRa = [{sw, {x, 8}, {{x, 2}, -WordSize * 2}}, {sw, {x, 1}, {{x, 2}, -WordSize}}],
 	RestoreFpRa = [{lw, {x, 8}, {{x, 2}, -WordSize * 2}}, {lw, {x, 1}, {{x, 2}, -WordSize}}],
-	RegSave = [smart_addi({x, 2}, FrameSize, Ctx1), SaveFpRa, mv({x, 8}, {x, 2}), smart_addi({x, 8}, -FrameSize, Ctx1)],
-	{I1, I2} = interrupt_related_code(Fn, Regs, Ctx1),
-	RegRestore = [RestoreFpRa, smart_addi({x, 2}, -FrameSize, Ctx1)],
-	EndLabel = {label, {align, 1}, generate_tag(Name, epilogue)},
+	RegSave = [smart_addi({x, 2}, FrameSize, Ctx), SaveFpRa, mv({x, 8}, {x, 2}), smart_addi({x, 8}, -FrameSize, Ctx)],
+	{I1, I2} = interrupt_related_code(Fn, Regs, Ctx),
+	RegRestore = [RestoreFpRa, smart_addi({x, 2}, -FrameSize, Ctx)],
+	EpilogueTag = generate_tag(Name, epilogue),
 	Prologue = [RegSave, I1, {comment, "prologue end"}],
-	Epilogue = [EndLabel, I2, RegRestore, ret_instruction_of(Fn)],
+	Epilogue = [{label, {align, 1}, EpilogueTag}, I2, RegRestore, ret_instruction_of(Fn)],
+	Ctx1 = Ctx#{scope_tag := Name, epilogue_tag := EpilogueTag, ret_offset := Size1 - Size0 - WordSize},
 	Body = lists:map(fun(S) -> stmt_to_ir(S, Ctx1) end, Stmts),
 	%% The result should be flattened before calling `fix_irs/1`.
 	FinalIRs = lists:flatten([{fn, Name}, Prologue, Body, Epilogue | ast_to_ir(Rest, Ctx)]),
@@ -113,10 +115,10 @@ stmt_to_ir(#e_while_stmt{'cond' = Cond, stmts = Stmts0, loc = Loc}, #{scope_tag 
 	RawBody = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
 	Body = [{label, {align, 1}, BodyLabel}, RawBody, {j, StartLabel}, {label, {align, 1}, EndLabel}],
 	[StartComment, {label, {align, 1}, StartLabel}, CondIRs, 'br!_reg'(R_Bool, EndLabel), Body, EndComment];
-stmt_to_ir(#e_return_stmt{expr = Expr}, #{scope_tag := ScopeTag} = Ctx) ->
+stmt_to_ir(#e_return_stmt{expr = Expr}, #{epilogue_tag := EpilogueTag, ret_offset := Offset} = Ctx) ->
 	{ExprIRs, R, _} = expr_to_ir(Expr, Ctx),
 	%% We use stack to pass result
-	[ExprIRs, {comment, "prepare return value"}, {sw, R, {{x, 8}, 0}}, {j, generate_tag(ScopeTag, epilogue)}];
+	[ExprIRs, {comment, "prepare return value"}, {sw, R, {{x, 8}, Offset}}, {j, EpilogueTag}];
 stmt_to_ir(#e_goto_stmt{label = Label}, #{scope_tag := ScopeTag}) ->
 	[{j, generate_tag(ScopeTag, Label)}];
 stmt_to_ir(#e_label{name = Label}, #{scope_tag := ScopeTag}) ->
@@ -151,15 +153,15 @@ expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
 	{[IRs, {ld_tag(V), T, {R, 0}}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 expr_to_ir(?CALL(Fn, Args), Ctx) ->
 	%% register preparing and restoring steps
-	#{free_regs := FreeRegs, tmp_regs := TmpRegs} = Ctx,
+	#{free_regs := FreeRegs, tmp_regs := TmpRegs, wordsize := WordSize} = Ctx,
 	{BeforeCall, AfterCall} = reg_save_restore(TmpRegs -- FreeRegs, Ctx),
 	%% The calling related steps
 	{FnLoad, R, Ctx1} = expr_to_ir(Fn, Ctx),
+	PreserveRet = [{comment, "preserve space for ret"}, {addi, {x, 2}, {x, 2}, WordSize}],
 	{ArgPrepare, N} = args_to_stack(Args, 0, [], Ctx1),
-	%% TODO: return value should be in the caller's frame
-	RetLoad = [{comment, "load ret"}, {lw, R, {{x, 2}, 0}}],
 	StackRestore = [{comment, "drop args"}, smart_addi({x, 2}, -N, Ctx1)],
-	Call = [FnLoad, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, R}, RetLoad, StackRestore],
+	RetLoad = [{comment, "load ret"}, {lw, R, {{x, 2}, -WordSize}}, {addi, {x, 2}, {x, 2}, -WordSize}],
+	Call = [FnLoad, PreserveRet, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, R}, StackRestore, RetLoad],
 	{[{comment, "call start"}, BeforeCall, Call, AfterCall, {comment, "call end"}], R, Ctx1};
 %% RISC-V do not have immediate version `sub` instruction, convert `-` to `+` to make use of `addi` later.
 expr_to_ir(?OP2('-', Expr, ?I(N)) = OP, Ctx) ->
