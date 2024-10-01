@@ -8,7 +8,7 @@
 -spec compile_to_c(string(), string()) -> ok.
 compile_to_c(InputFilename, OutputFilename) ->
 	try
-		{AST, Vars, InitCode} = parse_and_compile(InputFilename, e_compile_option:default()),
+		{Vars, AST, InitCode} = parse_and_compile(InputFilename, e_compile_option:default()),
 		e_dumper_c:generate_code(AST, Vars, InitCode, OutputFilename)
 	catch
 		{{Line, Col}, ErrorInfo} ->
@@ -19,7 +19,7 @@ compile_to_c(InputFilename, OutputFilename) ->
 -spec compile_to_e(string(), string()) -> ok.
 compile_to_e(InputFilename, OutputFilename) ->
 	try
-		{AST, _, InitCode} = parse_and_compile(InputFilename, e_compile_option:default()),
+		{_, AST, InitCode} = parse_and_compile(InputFilename, e_compile_option:default()),
 		e_dumper_e:generate_code(AST, InitCode, OutputFilename)
 	catch
 		{{Line, Col}, ErrorInfo} ->
@@ -31,7 +31,7 @@ compile_to_ir1(InputFilename, OutputFilename) ->
 	Options = e_compile_option:default(),
 	#{ram_start_pos := StartPos, ram_end_pos := EndPos} = Options,
 	try
-		{AST, GlobalVars, InitCode} = parse_and_compile(InputFilename, Options),
+		{GlobalVars, AST, InitCode} = parse_and_compile(InputFilename, Options),
 		#e_vars{shifted_size = Size} = GlobalVars,
 		e_dumper_ir1:generate_code(AST, InitCode, StartPos, EndPos - Size, OutputFilename, Options),
 		fetch_interrupt_vector_table(AST)
@@ -56,7 +56,7 @@ compile_to_machine1(InputFilename, OutputFilename) ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [InputFilename, Line, Col, ErrorInfo]))
 	end.
 
--spec compile_to_ast(string()) -> {e_ast(), #e_vars{}, e_ast()}.
+-spec compile_to_ast(string()) -> {#e_vars{}, e_ast(), e_ast()}.
 compile_to_ast(Filename) ->
 	try
 		parse_and_compile(Filename, e_compile_option:default())
@@ -65,7 +65,7 @@ compile_to_ast(Filename) ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
 	end.
 
--spec parse_and_compile(string(), e_compile_option:option()) -> {e_ast_raw(), #e_vars{}, e_ast()}.
+-spec parse_and_compile(string(), e_compile_option:option()) -> {#e_vars{}, e_ast(), e_ast()}.
 parse_and_compile(Filename, CompileOptions) ->
 	e_ast_compiler:compile_from_raw_ast(parse_file(Filename), CompileOptions).
 

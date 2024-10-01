@@ -2,7 +2,7 @@
 -export([compile_from_raw_ast/2]).
 -include("e_record_definition.hrl").
 
--spec compile_from_raw_ast(e_ast(), e_compile_option:option()) -> {e_ast(), #e_vars{}, e_ast()}.
+-spec compile_from_raw_ast(e_ast_raw(), e_compile_option:option()) -> {#e_vars{}, e_ast(), e_ast()}.
 compile_from_raw_ast(AST, #{wordsize := WordSize, entry_function := Entry}) ->
 	%io:format("AST before any operation: ~p~n", [AST]),
 	{GlobalVars00, AST00, InitCode00} = e_var:fetch_vars(AST),
@@ -67,7 +67,7 @@ compile_from_raw_ast(AST, #{wordsize := WordSize, entry_function := Entry}) ->
 	io:format("PHASE: varref to offset (INIT CODE)...~n"),
 	InitCode80 = e_varref:varref_to_offset_in_stmts(InitCode70, {GlobalVars20, FnTypeMap00}),
 
-	{AST80, GlobalVars20, InitCode80}.
+	{GlobalVars20, AST80, InitCode80}.
 
 ensure_function_exist(FnName, FnTypeMap) ->
 	case maps:find(FnName, FnTypeMap) of
