@@ -1,5 +1,5 @@
 -module(e_struct).
--export([check_struct_recursion_in_map/1, eliminate_dot_in_ast/3, eliminate_dot_in_stmts/3]).
+-export([check_struct_recursion_in_map/1, eliminate_dot_in_ast/2, eliminate_dot_in_stmts/2]).
 -include("e_record_definition.hrl").
 
 -spec check_struct_recursion_in_map(#{atom() => #e_struct{}}) -> ok.
@@ -56,30 +56,24 @@ contain_struct(#e_array_type{elem_type = BaseType}, StructMap) ->
 contain_struct(_, _) ->
 	no.
 
--type interface_context() :: {#{atom() => #e_fn_type{}}, #{atom() => #e_struct{}}}.
-
--spec eliminate_dot_in_ast(e_ast(), #e_vars{}, interface_context()) -> e_ast().
-eliminate_dot_in_ast([#e_function{stmts = Stmts0} = Fn | Rest], GlobalVars, {FnTypeMap, StructMap} = Ctx) ->
-	Vars = e_util:merge_vars(GlobalVars, Fn#e_function.vars, ignore_tag),
-	Stmts1 = eliminate_dot_in_stmts_inner(Stmts0, {Vars, FnTypeMap, StructMap, #e_basic_type{}}),
-	[Fn#e_function{stmts = Stmts1} | eliminate_dot_in_ast(Rest, GlobalVars, Ctx)];
-eliminate_dot_in_ast([Any | Rest], GlobalVars, Ctx) ->
-	[Any | eliminate_dot_in_ast(Rest, GlobalVars, Ctx)];
-eliminate_dot_in_ast([], _, _) ->
+-spec eliminate_dot_in_ast(e_ast(), e_compile_context:context()) -> e_ast().
+eliminate_dot_in_ast([#e_function{vars = LocalVars, stmts = Stmts0} = Fn | Rest], #{vars := GlobalVars} = Ctx) ->
+	Vars = e_util:merge_vars(GlobalVars, LocalVars, ignore_tag),
+	Stmts1 = eliminate_dot_in_stmts(Stmts0, Ctx#{vars := Vars}),
+	[Fn#e_function{stmts = Stmts1} | eliminate_dot_in_ast(Rest, Ctx)];
+eliminate_dot_in_ast([Any | Rest], Ctx) ->
+	[Any | eliminate_dot_in_ast(Rest, Ctx)];
+eliminate_dot_in_ast([], _) ->
 	[].
 
--spec eliminate_dot_in_stmts([e_stmt()], #e_vars{}, interface_context()) -> [e_stmt()].
-eliminate_dot_in_stmts(Stmts, Vars, {FnTypeMap, StructMap}) ->
-	eliminate_dot_in_stmts_inner(Stmts, {Vars, FnTypeMap, StructMap, #e_basic_type{}}).
-
--spec eliminate_dot_in_stmts_inner([e_stmt()], e_type:context()) -> [e_stmt()].
-eliminate_dot_in_stmts_inner(Stmts0, Ctx) ->
+-spec eliminate_dot_in_stmts([e_stmt()], e_compile_context:context()) -> [e_stmt()].
+eliminate_dot_in_stmts(Stmts0, Ctx) ->
 	Stmts1 = e_util:expr_map(fun(E) -> eliminate_dot(E, Ctx) end, Stmts0),
 	e_util:eliminate_pointer(Stmts1).
 
 %% `a.b` will be converted to `(a@ + OFFSET_OF_b)^`.
--spec eliminate_dot(e_expr(), e_type:context()) -> e_expr().
-eliminate_dot(?OP2('.', O, #e_varref{name = FieldName}, Loc), {_, _, StructMap, _} = Ctx) ->
+-spec eliminate_dot(e_expr(), e_compile_context:context()) -> e_expr().
+eliminate_dot(?OP2('.', O, #e_varref{name = FieldName}, Loc), #{struct_map := StructMap} = Ctx) ->
 	#e_basic_type{class = struct, tag = Name, p_depth = 0} = e_type:type_of_node(O, Ctx),
 	{ok, #e_struct{fields = #e_vars{offset_map = FieldOffsetMap}}} = maps:find(Name, StructMap),
 	{ok, {Offset, Size}} = maps:find(FieldName, FieldOffsetMap),

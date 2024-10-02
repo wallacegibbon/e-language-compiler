@@ -3,9 +3,9 @@
 
 -type scan_context() ::
 	#{
-	label_map	=> #{atom() => non_neg_integer()},
-	offset_map	=> #{non_neg_integer() => [atom()]},
-	wordsize	=> non_neg_integer()
+	label_map		:= #{atom() => non_neg_integer()},
+	offset_map		:= #{non_neg_integer() => [atom()]},
+	wordsize		:= non_neg_integer()
 	}.
 
 -spec generate_code([tuple()], string(), #{non_neg_integer() => atom()}, e_compile_option:option()) -> ok.

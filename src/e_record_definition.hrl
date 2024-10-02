@@ -1,3 +1,6 @@
+-ifndef(E_RECORD_DEFINITION_HRL).
+-define(E_RECORD_DEFINITION_HRL, 1).
+
 -type location() :: {non_neg_integer(), non_neg_integer()}.
 
 %% There are 3 kinds of data types in E language: `basic type`, `array type` and `function type`.
@@ -91,7 +94,7 @@
 	loc = {0, 0} :: location(),
 	name :: atom(),
 	fields = #e_vars{} :: #e_vars{},
-	default_value_map = #{} :: #{atom() => e_expr()}
+	default_value_map = #{} :: #{atom() := e_expr()}
 	}).
 
 -record(e_struct_init_raw_expr,
@@ -105,7 +108,7 @@
 	{
 	loc = {0, 0} :: location(),
 	name :: atom(),
-	field_value_map = #{} :: #{atom() => e_expr()}
+	field_value_map = #{} :: #{atom() := e_expr()}
 	}).
 
 -record(e_array_init_expr,
@@ -232,4 +235,6 @@
 	(
 	Tag =:= '>' orelse Tag =:= '<' orelse Tag =:= '==' orelse Tag =:= '!=' orelse Tag =:= '>=' orelse Tag =:= '<='
 	)).
+
+-endif.
 

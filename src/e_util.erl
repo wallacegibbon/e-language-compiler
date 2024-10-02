@@ -302,7 +302,7 @@ map_find_multi(Key, [Map| RestMaps]) ->
 map_find_multi(_, []) ->
 	notfound.
 
--spec file_write(string(), fun((file:io_device()) -> R)) -> R when R :: ok.
+-spec file_write(string(), fun((file:io_device()) -> R)) -> R when R :: any().
 file_write(Filename, Handle) ->
 	{ok, IO_Dev} = file:open(Filename, [write]),
 	try

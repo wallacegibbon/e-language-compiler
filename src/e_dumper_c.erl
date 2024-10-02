@@ -2,15 +2,13 @@
 %% In the early stage of the E language compiler, code got compiled to C language.
 %% As the compiler grows, we will compile E language code to machine code directly.
 -module(e_dumper_c).
--export([generate_code/4]).
+-export([generate_code/5]).
 -include("e_record_definition.hrl").
 
--type context() :: {#{atom() := #e_fn_type{}}, #{atom() => #e_struct{}}, #e_vars{}}.
-
--spec generate_code(e_ast(), #e_vars{}, [e_stmt()], string()) -> ok.
-generate_code(AST, #e_vars{type_map = GlobalVarMap} = GlobalVars, InitCode, OutputFile) ->
+-spec generate_code(e_ast(), [e_stmt()], #e_vars{}, non_neg_integer(), string()) -> ok.
+generate_code(AST, InitCode, #e_vars{type_map = GlobalVarMap} = GlobalVars, WordSize, OutputFile) ->
 	{FnTypeMap, StructMap} = e_util:make_function_and_struct_map_from_ast(AST),
-	Ctx = {FnTypeMap, StructMap, GlobalVars},
+	Ctx = #{fn_map => FnTypeMap, struct_map => StructMap, vars => GlobalVars, wordsize => WordSize},
 	AST2 = lists:map(fun(A) -> fix_function_for_c(A, Ctx) end, AST),
 	InitCode2 = fix_exprs_for_c(InitCode, Ctx),
 	%% struct definition have to be before function declarations
@@ -21,20 +19,20 @@ generate_code(AST, #e_vars{type_map = GlobalVarMap} = GlobalVars, InitCode, Outp
 	Code = lists:join("\n\n", [common_c_code(), StructStmts, VarStmts, FnDeclars, FnStmts]),
 	ok = file:write_file(OutputFile, Code).
 
--spec fix_function_for_c(e_ast_elem(), context()) -> e_ast_elem().
-fix_function_for_c(#e_function{stmts = Stmts, vars = LocalVars} = Fn, {FnTypeMap, StructMap, GlobalVars}) ->
+-spec fix_function_for_c(e_ast_elem(), e_compile_context:context()) -> e_ast_elem().
+fix_function_for_c(#e_function{stmts = Stmts, vars = LocalVars} = Fn, #{vars := GlobalVars} = Ctx) ->
 	Vars = e_util:merge_vars(GlobalVars, LocalVars, ignore_tag),
-	Fn#e_function{stmts = fix_exprs_for_c(Stmts, {FnTypeMap, StructMap, Vars})};
+	Fn#e_function{stmts = fix_exprs_for_c(Stmts, Ctx#{vars := Vars})};
 fix_function_for_c(Any, _) ->
 	Any.
 
--spec fix_exprs_for_c([e_stmt()], context()) -> [e_stmt()].
+-spec fix_exprs_for_c([e_stmt()], e_compile_context:context()) -> [e_stmt()].
 fix_exprs_for_c(Stmts, Ctx) ->
 	e_util:expr_map(fun(E) -> fix_expr_for_c(E, Ctx) end, Stmts).
 
--spec fix_expr_for_c(e_expr(), context()) -> e_expr().
-fix_expr_for_c(?OP1('@', Operand, Loc) = E, {FnTypeMap, StructMap, Vars} = Ctx) ->
-	case e_type:type_of_node(Operand, {Vars, FnTypeMap, StructMap, #e_basic_type{}}) of
+-spec fix_expr_for_c(e_expr(), e_compile_context:context()) -> e_expr().
+fix_expr_for_c(?OP1('@', Operand, Loc) = E, Ctx) ->
+	case e_type:type_of_node(Operand, Ctx) of
 		#e_array_type{} ->
 			?OP2('.', fix_expr_for_c(Operand, Ctx), #e_varref{name = value, loc = Loc});
 		_ ->

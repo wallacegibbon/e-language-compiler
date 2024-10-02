@@ -1,15 +1,12 @@
 -module(e_size).
 -export([expand_kw_in_ast/2, expand_kw_in_stmts/2, fill_offsets_in_ast/2, fill_offsets_in_vars/2]).
 -export([size_of/2, align_of/2]).
--export_type([context/0]).
 -include("e_record_definition.hrl").
 -ifdef(EUNIT).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--type context() :: {StructMap :: #{atom() => #e_struct{}}, WordSize :: non_neg_integer()}.
-
--spec expand_kw_in_ast(e_ast(), context()) -> e_ast().
+-spec expand_kw_in_ast(e_ast(), e_compile_context:context()) -> e_ast().
 expand_kw_in_ast([#e_function{stmts = Stmts} = Fn | Rest], Ctx) ->
 	[Fn#e_function{stmts = expand_kw_in_stmts(Stmts, Ctx)} | expand_kw_in_ast(Rest, Ctx)];
 expand_kw_in_ast([#e_struct{default_value_map = FieldDefaults} = S | Rest], Ctx) ->
@@ -17,11 +14,11 @@ expand_kw_in_ast([#e_struct{default_value_map = FieldDefaults} = S | Rest], Ctx)
 expand_kw_in_ast([], _) ->
 	[].
 
--spec expand_kw_in_stmts([e_stmt()], context()) -> [e_stmt()].
+-spec expand_kw_in_stmts([e_stmt()], e_compile_context:context()) -> [e_stmt()].
 expand_kw_in_stmts(Stmts, Ctx) ->
 	e_util:expr_map(fun(E) -> expand_kw(E, Ctx) end, Stmts).
 
--spec expand_kw(e_expr(), context()) -> e_expr().
+-spec expand_kw(e_expr(), e_compile_context:context()) -> e_expr().
 expand_kw(#e_op{tag = {sizeof, T}, loc = Loc}, Ctx) ->
 	?I(size_of(T, Ctx), Loc);
 expand_kw(#e_op{tag = {alignof, T}, loc = Loc}, Ctx) ->
@@ -42,87 +39,89 @@ expand_kw(Any, _) ->
 expand_kw_in_map(Map, Ctx) ->
 	maps:map(fun(_, V1) -> expand_kw(V1, Ctx) end, Map).
 
--spec fill_offsets_in_ast(e_ast(), context()) -> e_ast().
+-spec fill_offsets_in_ast(e_ast(), e_compile_context:context()) -> e_ast().
 fill_offsets_in_ast([#e_function{vars = Old, param_names = ParamNames} = Fn | Rest], Ctx) ->
 	Vars0 = fill_offsets_in_vars(Old, Ctx),
 	Vars1 = shift_offset_params(Vars0, ParamNames),
 	[Fn#e_function{vars = Vars1} | fill_offsets_in_ast(Rest, Ctx)];
-fill_offsets_in_ast([#e_struct{name = Name, fields = Old} = S | Rest], {StructMap, WordSize} = Ctx) ->
+fill_offsets_in_ast([#e_struct{name = Name, fields = Old} = S | Rest], #{struct_map := StructMap} = Ctx) ->
 	FilledS = S#e_struct{fields = fill_offsets_in_vars(Old, Ctx)},
 	%% StructMap in Ctx got updated to avoid some duplicated calculations.
-	[FilledS | fill_offsets_in_ast(Rest, {StructMap#{Name := FilledS}, WordSize})];
+	[FilledS | fill_offsets_in_ast(Rest, Ctx#{struct_map := StructMap#{Name := FilledS}})];
 fill_offsets_in_ast([Any | Rest], Ctx) ->
 	[Any | fill_offsets_in_ast(Rest, Ctx)];
 fill_offsets_in_ast([], _) ->
 	[].
 
--spec fill_offsets_in_vars(#e_vars{}, context()) -> #e_vars{}.
+-spec fill_offsets_in_vars(#e_vars{}, e_compile_context:context()) -> #e_vars{}.
 fill_offsets_in_vars(#e_vars{} = Vars, Ctx) ->
-	{Size, Align, OffsetMap} = size_and_offsets_of_vars(Vars, Ctx),
+	#{size := Size, align := Align, offset_map := OffsetMap} = size_and_offsets_of_vars(Vars, Ctx),
 	Vars#e_vars{offset_map = OffsetMap, size = Size, align = Align}.
 
--spec size_of_struct(#e_struct{}, context()) -> non_neg_integer().
+-spec size_of_struct(#e_struct{}, e_compile_context:context()) -> non_neg_integer().
 size_of_struct(#e_struct{fields = #e_vars{size = Size}}, _) when Size > 0 ->
 	Size;
 size_of_struct(#e_struct{fields = Fields}, Ctx) ->
-	{Size, _, _} = size_and_offsets_of_vars(Fields, Ctx),
+	#{size := Size} = size_and_offsets_of_vars(Fields, Ctx),
 	Size.
 
--spec align_of_struct(#e_struct{}, context()) -> non_neg_integer().
+-spec align_of_struct(#e_struct{}, e_compile_context:context()) -> non_neg_integer().
 align_of_struct(#e_struct{fields = #e_vars{align = Align}}, _) when Align > 0 ->
 	Align;
 align_of_struct(#e_struct{fields = #e_vars{type_map = TypeMap}}, Ctx) ->
 	maps:fold(fun(_, Type, Align) -> erlang:max(align_of(Type, Ctx), Align) end, 0, TypeMap).
 
 
--type size_and_offsets_result() ::
-	{Size :: non_neg_integer(), Align :: non_neg_integer(), OffsetMap :: #{atom() => e_var_offset()}}.
+-type size_align_data() ::
+	#{
+	size			:= non_neg_integer(),
+	align			:= non_neg_integer(),
+	offset_map		:= #{atom() := e_var_offset()}
+	}.
 
--spec size_and_offsets_of_vars(#e_vars{}, context()) -> size_and_offsets_result().
+-spec size_and_offsets_of_vars(#e_vars{}, e_compile_context:context()) -> size_align_data().
 size_and_offsets_of_vars(#e_vars{names = Names, type_map = TypeMap}, Ctx) ->
 	TypeList = e_util:get_kvpair_by_keys(Names, TypeMap),
-	size_and_offsets(TypeList, {0, 1, #{}}, Ctx).
+	size_and_offsets(TypeList, #{size => 0, align => 1, offset_map => #{}}, Ctx).
 
--spec size_and_offsets([{atom(), e_type()}], In, context()) -> Out
-	when In :: size_and_offsets_result(), Out :: size_and_offsets_result().
-
-size_and_offsets([{Name, Type} | Rest], {CurrentOffset, MaxAlign, OffsetMap}, Ctx) ->
+-spec size_and_offsets([{atom(), e_type()}], size_align_data(), e_compile_context:context()) -> size_align_data().
+size_and_offsets([{Name, Type} | Rest], #{size := CurrentOffset, align := MaxAlign, offset_map := OffsetMap}, Ctx) ->
 	FieldAlign = align_of(Type, Ctx),
 	Offset = e_util:fill_unit_pessi(CurrentOffset, FieldAlign),
 	FieldSize = size_of(Type, Ctx),
 	OffsetMapNew = OffsetMap#{Name => {Offset, FieldSize}},
-	size_and_offsets(Rest, {Offset + FieldSize, erlang:max(MaxAlign, FieldAlign), OffsetMapNew}, Ctx);
-size_and_offsets([], {CurrentOffset, MaxAlign, OffsetMap}, _) ->
-	%% The size should be aligned to MaxAlign.
-	{e_util:fill_unit_pessi(CurrentOffset, MaxAlign), MaxAlign, OffsetMap}.
+	NextIn = #{size => Offset + FieldSize, align => erlang:max(MaxAlign, FieldAlign), offset_map => OffsetMapNew},
+	size_and_offsets(Rest, NextIn, Ctx);
+size_and_offsets([], #{size := CurrentOffset, align := MaxAlign} = Result, _) ->
+	Result#{size := e_util:fill_unit_pessi(CurrentOffset, MaxAlign)}.
 
 %% Usually, for 32-bit MCU, only 32-bit float is supported. For 64-bit CPU, 64-bit float is supported, too.
 %% So we can assume that size of float is same as sizeof word.
 
--spec size_of(e_type(), context()) -> non_neg_integer().
+-spec size_of(e_type(), e_compile_context:context()) -> non_neg_integer().
 size_of(#e_array_type{elem_type = T, length = Len}, Ctx) ->
 	size_of(T, Ctx) * Len;
-size_of(#e_basic_type{p_depth = N}, {_, WordSize}) when N > 0 ->
+size_of(#e_basic_type{p_depth = N}, #{wordsize := WordSize}) when N > 0 ->
 	WordSize;
-size_of(#e_basic_type{class = struct} = S, {StructMap, _} = Ctx) ->
+size_of(#e_basic_type{class = struct} = S, #{struct_map := StructMap} = Ctx) ->
 	size_of_struct(e_util:get_struct_from_type(S, StructMap), Ctx);
-size_of(#e_fn_type{}, {_, WordSize}) ->
+size_of(#e_fn_type{}, #{wordsize := WordSize}) ->
 	WordSize;
-size_of(#e_basic_type{class = float}, {_, WordSize}) ->
+size_of(#e_basic_type{class = float}, #{wordsize := WordSize}) ->
 	WordSize;
-size_of(#e_basic_type{class = integer, tag = word}, {_, WordSize}) ->
+size_of(#e_basic_type{class = integer, tag = word}, #{wordsize := WordSize}) ->
 	WordSize;
 size_of(#e_basic_type{class = integer, tag = byte}, _) ->
 	1;
 size_of(Any, _) ->
 	e_util:ethrow(element(2, Any), "invalid type \"~w\"", [Any]).
 
--spec align_of(e_type(), context()) -> non_neg_integer().
+-spec align_of(e_type(), e_compile_context:context()) -> non_neg_integer().
 align_of(#e_array_type{elem_type = T}, Ctx) ->
 	align_of(T, Ctx);
-align_of(#e_basic_type{p_depth = N}, {_, WordSize}) when N > 0 ->
+align_of(#e_basic_type{p_depth = N}, #{wordsize := WordSize}) when N > 0 ->
 	WordSize;
-align_of(#e_basic_type{class = struct} = S, {StructMap, _} = Ctx) ->
+align_of(#e_basic_type{class = struct} = S, #{struct_map := StructMap} = Ctx) ->
 	align_of_struct(e_util:get_struct_from_type(S, StructMap), Ctx);
 align_of(Type, Ctx) ->
 	size_of(Type, Ctx).

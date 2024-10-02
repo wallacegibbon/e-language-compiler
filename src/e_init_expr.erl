@@ -2,9 +2,7 @@
 -export([expand_in_ast/2, expand_in_stmts/2]).
 -include("e_record_definition.hrl").
 
--type context() :: {#{atom() => #e_struct{}}, non_neg_integer()}.
-
--spec expand_in_ast(e_ast(), context()) -> e_ast().
+-spec expand_in_ast(e_ast(), e_compile_context:context()) -> e_ast().
 expand_in_ast([#e_function{stmts = Stmts} = Fn | Rest], Ctx) ->
 	e_util:expr_map(fun check_position/1, Stmts),
 	[Fn#e_function{stmts = expand_in_stmts(Stmts, Ctx)} | expand_in_ast(Rest, Ctx)];
@@ -46,7 +44,7 @@ check_position(#e_array_init_expr{loc = Loc}) ->
 check_position(_) ->
 	ok.
 
-replace_init_ops(?OP2('=', Op1, #e_struct_init_expr{name = Name, loc = Loc, field_value_map = FieldValues}), {StructMap, _} = Ctx) ->
+replace_init_ops(?OP2('=', Op1, #e_struct_init_expr{name = Name, loc = Loc, field_value_map = FieldValues}), #{struct_map := StructMap} = Ctx) ->
 	Struct = e_util:get_struct_from_name(Name, StructMap, Loc),
 	#e_struct{fields = Fields, default_value_map = FieldDefaultMap} = Struct,
 	#e_vars{names = FieldNames, type_map = FieldTypeMap} = Fields,
@@ -79,7 +77,7 @@ default_value_of(#e_basic_type{p_depth = PDepth}, Loc) when PDepth > 0 ->
 default_value_of(#e_fn_type{}, Loc) ->
 	?I(0, Loc).
 
-array_init_to_ops(Target, [E | Rest], Cnt, Loc, NewCode, {_, WordSize} = Ctx) ->
+array_init_to_ops(Target, [E | Rest], Cnt, Loc, NewCode, #{wordsize := WordSize} = Ctx) ->
 	A = ?OP2('+', ?OP1('@', Target, Loc), ?I(Cnt * WordSize, Loc), Loc),
 	B = ?OP2('^', A, ?I(0, Loc), Loc),
 	Ops = replace_init_ops(?OP2('=', B, E, Loc), Ctx),

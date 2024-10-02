@@ -7,9 +7,11 @@
 %% Compiling to C is supported in the early stage of this compiler. This function is archived and not used anymore.
 -spec compile_to_c(string(), string()) -> ok.
 compile_to_c(InputFilename, OutputFilename) ->
+	Options = e_compile_option:default(),
+	#{wordsize := WordSize} = Options,
 	try
-		{Vars, AST, InitCode} = parse_and_compile(InputFilename, e_compile_option:default()),
-		e_dumper_c:generate_code(AST, Vars, InitCode, OutputFilename)
+		{Vars, AST, InitCode} = parse_and_compile(InputFilename, Options),
+		e_dumper_c:generate_code(AST, InitCode, Vars, WordSize, OutputFilename)
 	catch
 		{{Line, Col}, ErrorInfo} ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [InputFilename, Line, Col, ErrorInfo]))

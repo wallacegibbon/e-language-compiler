@@ -9,16 +9,16 @@
 -type context() ::
 	#{
 	%% `free_regs` will be a subset of `tmp_regs`. (And initialized as `tmp_regs`)
-	tmp_regs		=> [machine_reg()],
-	free_regs		=> [machine_reg()],
+	tmp_regs		:= [machine_reg()],
+	free_regs		:= [machine_reg()],
 	%% The string literals are collected by a separate process to avoid complex functions.
-	string_collector	=> pid(),
+	string_collector	:= pid(),
 	%% `cond_label` is for generating logic operator (and, or, not) related code.
-	cond_label		=> {atom(), atom()},
-	scope_tag		=> atom(),
-	epilogue_tag		=> atom(),
-	ret_offset		=> non_neg_integer(),
-	wordsize		=> pos_integer()
+	cond_label		:= {atom(), atom()},
+	scope_tag		:= atom(),
+	epilogue_tag		:= atom(),
+	ret_offset		:= non_neg_integer(),
+	wordsize		:= pos_integer()
 	}.
 
 -define(IS_SPECIAL_REG(Tag),
@@ -35,7 +35,7 @@
 generate_code(AST, InitCode, SP, GP, OutputFile, #{wordsize := WordSize, entry_function := Entry, isr_vector_pos := InterruptVec}) ->
 	Pid = spawn_link(fun() -> string_collect_loop([]) end),
 	Regs = tmp_regs(),
-	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid, epilogue_tag => none, ret_offset => -WordSize},
+	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid, epilogue_tag => none, ret_offset => -WordSize, cond_label => {none, none}},
 	InitRegs = [smart_li({x, 2}, SP), smart_li({x, 3}, GP)],
 	InitVars = [lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init'}) end, InitCode)],
 	[T | _] = Regs,
@@ -53,7 +53,7 @@ generate_code(AST, InitCode, SP, GP, OutputFile, #{wordsize := WordSize, entry_f
 	e_util:file_write(OutputFile ++ ".asm", Fn2),
 	ok.
 
--type irs() :: [tuple() | irs()].
+-type irs() :: list(tuple() | irs()).
 
 -spec ast_to_ir(e_ast(), context()) -> irs().
 ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{size = Size0, shifted_size = Size1}} = Fn | Rest], Ctx) ->
@@ -86,9 +86,9 @@ interrupt_related_code(_, Regs, Ctx) ->
 	reg_save_restore(Regs, Ctx).
 
 ret_instruction_of(#e_function{interrupt = none}) ->
-	{jalr, {x, 0}, {x, 1}};
+	[{jalr, {x, 0}, {x, 1}}];
 ret_instruction_of(_) ->
-	{mret}.
+	[{mret}].
 
 -spec stmt_to_ir(e_stmt(), context()) -> irs().
 stmt_to_ir(#e_if_stmt{'cond' = Cond, then = Then0, 'else' = Else0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
@@ -134,7 +134,7 @@ generate_tag(ScopeTag, Tag) ->
 	list_to_atom(e_util:fmt("~s_~s", [ScopeTag, Tag])).
 
 comment(Tag, Info, {Line, Col}) ->
-	{comment, io_lib:format("[~s@~w:~w] ~s", [Tag, Line, Col, Info])}.
+	[{comment, io_lib:format("[~s@~w:~w] ~s", [Tag, Line, Col, Info])}].
 
 -spec expr_to_ir(e_expr(), context()) -> {irs(), machine_reg(), context()}.
 expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{} = Var, ?I(N)), ?I(V)), Right), Ctx) when ?IS_SMALL_IMMEDI(N) ->
@@ -232,11 +232,13 @@ expr_to_ir(#e_varref{name = Name}, #{free_regs := [R | RestRegs]} = Ctx) ->
 expr_to_ir(Any, _) ->
 	e_util:ethrow(element(2, Any), "IR1: unsupported expr \"~w\"", [Any]).
 
+-spec op3_to_ir(atom(), e_expr(), e_expr(), context()) -> {irs(), machine_reg(), context()}.
 op3_to_ir(Tag, Left, Right, Ctx) ->
 	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
 	{IRs2, R2, #{free_regs := [T | RestRegs]}} = expr_to_ir(Right, Ctx1),
 	{[IRs1, IRs2, {Tag, T, R1, R2}], T, Ctx#{free_regs := recycle_tmpreg([R2, R1], RestRegs)}}.
 
+-spec fix_irs(irs()) -> irs().
 fix_irs([{Tag, Rd, R1, R2}, {'br!', Rd, DestTag} | Rest]) ->
 	fix_irs([{reverse_cmp_tag(Tag), Rd, R1, R2}, {br, Rd, DestTag} | Rest]);
 fix_irs([{Tag, Rd, R1, R2}, {br, Rd, DestTag} | Rest]) ->
@@ -280,6 +282,7 @@ string_collect_dump(Pid) ->
 			Collected
 	end.
 
+-spec recycle_tmpreg([machine_reg()], [machine_reg()]) -> [machine_reg()].
 recycle_tmpreg([R | Regs], RegBank) when ?IS_SPECIAL_REG(R) ->
 	recycle_tmpreg(Regs, RegBank);
 recycle_tmpreg([R | Regs], RegBank) ->
@@ -288,6 +291,7 @@ recycle_tmpreg([], RegBank) ->
 	RegBank.
 
 %% There are limited number of regs, which means immediate number is small enough for single `lw`/`sw`.
+-spec reg_save_restore([machine_reg()], context()) -> {irs(), irs()}.
 reg_save_restore(Regs, #{wordsize := WordSize} = Ctx) ->
 	TotalSize = length(Regs) * WordSize,
 	StackGrow = [{comment, "grow stack"}, smart_addi({x, 2}, TotalSize, Ctx)],
@@ -298,6 +302,7 @@ reg_save_restore(Regs, #{wordsize := WordSize} = Ctx) ->
 	Leave = [{comment, io_lib:format("regs to restore: ~w", [Regs])}, Restore, StackShrink],
 	{Enter, Leave}.
 
+-spec args_to_stack(irs(), non_neg_integer(), irs(), context()) -> {irs(), non_neg_integer()}.
 args_to_stack([Arg | Rest], N, Result, #{wordsize := WordSize} = Ctx) ->
 	{IRs, R, _} = expr_to_ir(Arg, Ctx),
 	PushIRs = [IRs, {addi, {x, 2}, {x, 2}, WordSize}, {sw, R, {{x, 2}, -WordSize}}],
@@ -361,12 +366,13 @@ write_asm([{Tag} | Rest], IO_Dev) ->
 write_asm([], _) ->
 	ok.
 
+-spec op_tag_str(integer() | machine_reg() | atom()) -> string().
 op_tag_str(N) when is_integer(N) ->
 	integer_to_list(N);
 op_tag_str({x, N}) ->
 	"x" ++ integer_to_list(N);
 op_tag_str(Label) when is_atom(Label) ->
-	Label.
+	atom_to_list(Label).
 
 %% Be careful! `smart_addi/3` will change the source register.
 smart_addi(_, 0, _) ->
@@ -390,7 +396,7 @@ li_big_num(R, {High, Low}) ->
 	[{lui, R, High}, {addi, R, R, Low}].
 
 mv(R1, R2) ->
-	{addi, R1, R2, 0}.
+	[{addi, R1, R2, 0}].
 
 %% {x, 0} means there are not branching to generate. (already generated in previous IRs)
 'br!_reg'({x, 0}, _)	-> [];

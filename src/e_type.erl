@@ -1,91 +1,67 @@
 -module(e_type).
 -export([check_types_in_ast/2, check_type_in_stmts/2, type_of_node/2, inc_pointer_depth/2, dec_pointer_depth/2]).
 -export([replace_typeof_in_ast/2, replace_typeof_in_stmts/2, replace_typeof_in_vars/2]).
--export_type([interface_context/0, context/0]).
 -include("e_record_definition.hrl").
 -ifdef(EUNIT).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--type interface_context() ::
-	{
-	GlobalVars :: #e_vars{},
-	FnTypeMap :: #{atom() := #e_fn_type{}},
-	StructMap :: #{atom() => #e_struct{}}
-	}.
-
--spec check_types_in_ast(e_ast(), interface_context()) -> ok.
+-spec check_types_in_ast(e_ast(), e_compile_context:context()) -> ok.
 check_types_in_ast([#e_function{name = Name, param_names = [_ | _], interrupt = N, loc = Loc} | _], _) when is_integer(N) ->
 	e_util:ethrow(Loc, "interrupt function \"~s\" should not have parameter(s)", [Name]);
-check_types_in_ast([#e_function{type = FnType} = Fn | Rest], {GlobalVars, FnTypeMap, StructMap} = Ctx) ->
+check_types_in_ast([#e_function{type = FnType} = Fn | Rest], #{vars := GlobalVars} = Ctx) ->
 	#e_function{vars = LocalVars, param_names = ParamNames, stmts = Stmts} = Fn,
 	#e_vars{type_map = TypeMap} = LocalVars,
-	Vars = e_util:merge_vars(GlobalVars, LocalVars, ignore_tag),
-	Ctx1 = {Vars, FnTypeMap, StructMap, FnType#e_fn_type.ret},
+	Ctx1 = Ctx#{vars := e_util:merge_vars(GlobalVars, LocalVars, ignore_tag)},
 	maps:foreach(fun(_, T) -> check_type(T, Ctx1) end, TypeMap),
 	maps:foreach(fun(_, T) -> check_parameter_type(T) end, maps:with(ParamNames, TypeMap)),
+	%% TODO: check the type of returning value of the function
 	check_ret_type(FnType#e_fn_type.ret),
-	%% The `#e_fn_type.ret` is used to check the operand of `return` statement.
-	%% TODO: when user did not write `return` statement, checks are missed.
 	check_type(FnType#e_fn_type.ret, Ctx1),
 	type_of_nodes(Stmts, Ctx1),
 	check_types_in_ast(Rest, Ctx);
-check_types_in_ast([#e_struct{name = Name} = S | Rest], {GlobalVars, FnTypeMap, StructMap} = Ctx) ->
+check_types_in_ast([#e_struct{name = Name} = S | Rest], Ctx) ->
 	#e_struct{fields = #e_vars{type_map = FieldTypeMap}, default_value_map = ValMap} = S,
-	Ctx1 = {GlobalVars, FnTypeMap, StructMap, #e_basic_type{}},
-	maps:foreach(fun(_, T) -> check_type(T, Ctx1) end, FieldTypeMap),
+	maps:foreach(fun(_, T) -> check_type(T, Ctx) end, FieldTypeMap),
 	%% check the default values for fields
-	check_types_in_struct_fields(FieldTypeMap, ValMap, Name, Ctx1),
+	check_types_in_struct_fields(FieldTypeMap, ValMap, Name, Ctx),
 	check_types_in_ast(Rest, Ctx);
 check_types_in_ast([_ | Rest], Ctx) ->
 	check_types_in_ast(Rest, Ctx);
 check_types_in_ast([], _) ->
 	ok.
 
--spec check_type_in_stmts([e_stmt()], interface_context()) -> ok.
-check_type_in_stmts(Stmts, {GlobalVars, FnTypeMap, StructMap}) ->
-	type_of_nodes(Stmts, {GlobalVars, FnTypeMap, StructMap, #e_basic_type{}}),
+-spec check_type_in_stmts([e_stmt()], e_compile_context:context()) -> ok.
+check_type_in_stmts(Stmts, Ctx) ->
+	type_of_nodes(Stmts, Ctx),
 	ok.
 
 %% The `typeof` keyword will make the compiler complex without many benifits. So we drop it.
 %% Implementing `typeof` is easy. But avoiding the recursive definition problem will make the code complex.
 %% (e.g. `fn a(): typeof(a)`, `b: {typeof(b), 10}`, etc.)
--spec replace_typeof_in_ast(e_ast(), interface_context()) -> e_ast().
-replace_typeof_in_ast([#e_function{} = Fn | Rest], {GlobalVars, FnTypeMap, StructMap} = Ctx) ->
-	#e_function{vars = LocalVars, stmts = Stmts, type = FnType} = Fn,
-	Vars = e_util:merge_vars(GlobalVars, LocalVars, ignore_tag),
-	Ctx1 = {Vars, FnTypeMap, StructMap, FnType#e_fn_type.ret},
-	Fn1 = Fn#e_function{vars = replace_typeof_in_vars(LocalVars, Ctx), type = replace_typeof_in_type(FnType, Ctx1), stmts = replace_typeof_in_stmts(Stmts, Ctx)},
+-spec replace_typeof_in_ast(e_ast(), e_compile_context:context()) -> e_ast().
+replace_typeof_in_ast([#e_function{vars = LocalVars, stmts = Stmts, type = FnType} = Fn | Rest], #{vars := GlobalVars} = Ctx) ->
+	Ctx1 = Ctx#{vars := e_util:merge_vars(GlobalVars, LocalVars, ignore_tag)},
+	Fn1 = Fn#e_function{vars = replace_typeof_in_vars(LocalVars, Ctx1), type = replace_typeof_in_type(FnType, Ctx1), stmts = replace_typeof_in_stmts(Stmts, Ctx1)},
 	[Fn1 | replace_typeof_in_ast(Rest, Ctx)];
-replace_typeof_in_ast([#e_struct{} = S | Rest], {GlobalVars, FnTypeMap, StructMap} = Ctx) ->
+replace_typeof_in_ast([#e_struct{} = S | Rest], Ctx) ->
 	#e_struct{fields = Fields, default_value_map = DefaultValueMap} = S,
-	Ctx1 = {GlobalVars, FnTypeMap, StructMap, #e_basic_type{}},
-	S1 = S#e_struct{fields = replace_typeof_in_vars(Fields, Ctx), default_value_map = maps:map(fun(_, V) -> replace_typeof(V, Ctx1) end, DefaultValueMap)},
+	S1 = S#e_struct{fields = replace_typeof_in_vars(Fields, Ctx), default_value_map = maps:map(fun(_, V) -> replace_typeof(V, Ctx) end, DefaultValueMap)},
 	[S1 | replace_typeof_in_ast(Rest, Ctx)];
 replace_typeof_in_ast([Any | Rest], Ctx) ->
 	[Any | replace_typeof_in_ast(Rest, Ctx)];
 replace_typeof_in_ast([], _) ->
 	[].
 
--spec replace_typeof_in_stmts([e_stmt()], interface_context()) -> [e_stmt()].
-replace_typeof_in_stmts(Stmts, {GlobalVars, FnTypeMap, StructMap}) ->
-	Ctx = {GlobalVars, FnTypeMap, StructMap, #e_basic_type{}},
+-spec replace_typeof_in_stmts([e_stmt()], e_compile_context:context()) -> [e_stmt()].
+replace_typeof_in_stmts(Stmts, Ctx) ->
 	e_util:expr_map(fun(E) -> replace_typeof(E, Ctx) end, Stmts).
 
--spec replace_typeof_in_vars(#e_vars{}, interface_context()) -> #e_vars{}.
-replace_typeof_in_vars(#e_vars{type_map = TypeMap} = Vars, {GlobalVars, FnTypeMap, StructMap}) ->
-	Ctx = {GlobalVars, FnTypeMap, StructMap, #e_basic_type{}},
+-spec replace_typeof_in_vars(#e_vars{}, e_compile_context:context()) -> #e_vars{}.
+replace_typeof_in_vars(#e_vars{type_map = TypeMap} = Vars, Ctx) ->
 	Vars#e_vars{type_map = maps:map(fun(_, T) -> replace_typeof_in_type(T, Ctx) end, TypeMap)}.
 
--type context() ::
-	{
-	GlobalVars :: #e_vars{},
-	FnTypeMap :: #{atom() := #e_fn_type{}},
-	StructMap :: #{atom() => #e_struct{}},
-	ReturnType :: e_type()
-	}.
-
--spec replace_typeof(e_expr(), context()) -> e_expr().
+-spec replace_typeof(e_expr(), e_compile_context:context()) -> e_expr().
 replace_typeof(#e_type_convert{type = #e_typeof{expr = Expr}} = E, Ctx) ->
 	E#e_type_convert{type = type_of_node(Expr, Ctx)};
 replace_typeof(?CALL(Callee, Args) = E, Ctx) ->
@@ -102,7 +78,7 @@ replace_typeof(Any, _) ->
 	Any.
 
 %% `typeof` can appear in another type like array `{typeof(a), 10}` or convert expressions like `a as typeof(b)`.
--spec replace_typeof_in_type(e_type(), context()) -> e_type().
+-spec replace_typeof_in_type(e_type(), e_compile_context:context()) -> e_type().
 replace_typeof_in_type(#e_array_type{elem_type = ElemType} = Type, Ctx) ->
 	Type#e_array_type{elem_type = replace_typeof_in_type(ElemType, Ctx)};
 replace_typeof_in_type(#e_fn_type{params = Params, ret = Ret} = Type, Ctx) ->
@@ -112,12 +88,12 @@ replace_typeof_in_type(#e_basic_type{} = Type, _) ->
 replace_typeof_in_type(#e_typeof{expr = Expr}, Ctx) ->
 	replace_typeof_in_type(type_of_node(Expr, Ctx), Ctx).
 
--spec type_of_nodes([e_stmt()], context()) -> [e_type()].
+-spec type_of_nodes([e_stmt()], e_compile_context:context()) -> [e_type()].
 type_of_nodes(Stmts, Ctx) ->
 	lists:map(fun(Expr) -> type_of_node(Expr, Ctx) end, Stmts).
 
--spec type_of_node(e_stmt(), context()) -> e_type().
-type_of_node(?OP2('=', ?OP2('.', Op11, Op12, DotLoc), Op2, Loc), {_, _, StructMap, _} = Ctx) ->
+-spec type_of_node(e_stmt(), e_compile_context:context()) -> e_type().
+type_of_node(?OP2('=', ?OP2('.', Op11, Op12, DotLoc), Op2, Loc), #{struct_map := StructMap} = Ctx) ->
 	Op1Type = type_of_struct_field(type_of_node(Op11, Ctx), Op12, StructMap, DotLoc),
 	Op1TypeFixed = check_type(Op1Type, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
@@ -132,7 +108,7 @@ type_of_node(?OP2('=', #e_varref{} = Op1, Op2, Loc), Ctx) ->
 	compare_expect_left(Op1Type, Op2Type, Loc);
 type_of_node(?OP2('=', Any, _, Loc), _) ->
 	e_util:ethrow(Loc, "invalid left value (~s)", [e_util:stmt_to_str(Any)]);
-type_of_node(?OP2('.', Op1, Op2, Loc), {_, _, StructMap, _} = Ctx) ->
+type_of_node(?OP2('.', Op1, Op2, Loc), #{struct_map := StructMap} = Ctx) ->
 	T1 = type_of_struct_field(type_of_node(Op1, Ctx), Op2, StructMap, Loc),
 	check_type(T1, Ctx);
 type_of_node(?OP2('+', Op1, Op2, Loc), Ctx) ->
@@ -234,7 +210,7 @@ type_of_node(?OP1('not', Operand, Loc), Ctx) ->
 	end;
 type_of_node(?OP1(_, Operand), Ctx) ->
 	type_of_node(Operand, Ctx);
-type_of_node(#e_varref{name = Name, loc = Loc}, {#e_vars{type_map = TypeMap}, FnTypeMap, _, _} = Ctx) ->
+type_of_node(#e_varref{name = Name, loc = Loc}, #{vars := #e_vars{type_map = TypeMap}, fn_map := FnTypeMap} = Ctx) ->
 	case e_util:map_find_multi(Name, [TypeMap, FnTypeMap]) of
 		{ok, Type} ->
 			%% The `loc` of the found type should be updated to the `loc` of the `e_varref`.
@@ -250,7 +226,7 @@ type_of_node(#e_array_init_expr{elements = Elements, loc = Loc}, Ctx) ->
 		false ->
 			e_util:ethrow(Loc, "array init type conflict: {~s}", [join_types_to_str(ElementTypes)])
 	end;
-type_of_node(#e_struct_init_expr{} = S, {_, _, StructMap, _} = Ctx) ->
+type_of_node(#e_struct_init_expr{} = S, #{struct_map := StructMap} = Ctx) ->
 	#e_struct_init_expr{name = Name, field_value_map = ValMap, loc = Loc} = S,
 	case maps:find(Name, StructMap) of
 		{ok, #e_struct{fields = #e_vars{type_map = FieldTypeMap}}} ->
@@ -287,14 +263,9 @@ type_of_node(#e_while_stmt{'cond' = Cond, stmts = Stmts, loc = Loc}, Ctx) ->
 	type_of_node(Cond, Ctx),
 	type_of_nodes(Stmts, Ctx),
 	e_util:void_type(Loc);
-type_of_node(#e_return_stmt{expr = Expr, loc = Loc}, {_, _, _, FnRetType} = Ctx) ->
-	RealRet = type_of_node(Expr, Ctx),
-	case compare_type(RealRet, FnRetType) of
-		true ->
-			RealRet;
-		false ->
-			e_util:ethrow(Loc, type_error_of('.vs.', FnRetType, RealRet))
-	end;
+type_of_node(#e_return_stmt{expr = Expr}, Ctx) ->
+	%% Return type will be checked outside since we need to deal with the situation when `return` is missing.
+	type_of_node(Expr, Ctx);
 type_of_node(#e_goto_stmt{loc = Loc}, _) ->
 	e_util:void_type(Loc);
 type_of_node(#e_label{loc = Loc}, _) ->
@@ -352,11 +323,11 @@ dec_pointer_depth(#e_basic_type{p_depth = N} = T, _) when N > 0 ->
 dec_pointer_depth(T, Loc) ->
 	e_util:ethrow(Loc, "'^' on type ~s is invalid", [type_to_str(T)]).
 
--spec check_types_in_struct_fields(#{atom() => e_type()}, #{atom() := e_expr()}, atom(), context()) -> ok.
+-spec check_types_in_struct_fields(#{atom() => e_type()}, #{atom() := e_expr()}, atom(), e_compile_context:context()) -> ok.
 check_types_in_struct_fields(FieldTypeMap, ValMap, StructName, Ctx) ->
 	maps:foreach(fun(N, Val) -> check_struct_field(FieldTypeMap, N, Val, StructName, Ctx) end, ValMap).
 
--spec check_struct_field(#{atom() => e_type()}, atom(), e_expr(), atom(), context()) -> ok.
+-spec check_struct_field(#{atom() => e_type()}, atom(), e_expr(), atom(), e_compile_context:context()) -> ok.
 check_struct_field(FieldTypeMap, FieldName, Val, StructName, Ctx) ->
 	Loc = element(2, Val),
 	ExpectedType = get_field_type(FieldName, FieldTypeMap, StructName, Loc),
@@ -525,8 +496,8 @@ type_error_of(Tag, TypeofOp1, TypeofOp2) ->
 	e_util:fmt("type error: <~s> ~s <~s>", [type_to_str(TypeofOp1), Tag, type_to_str(TypeofOp2)]).
 
 %% check type, ensure that all struct used by type exists.
--spec check_type(e_type(), context()) -> e_type().
-check_type(#e_basic_type{class = struct} = Type, {_, _, StructMap, _}) ->
+-spec check_type(e_type(), e_compile_context:context()) -> e_type().
+check_type(#e_basic_type{class = struct} = Type, #{struct_map := StructMap}) ->
 	#e_struct{} = e_util:get_struct_from_type(Type, StructMap),
 	Type;
 check_type(#e_basic_type{} = Type, _) ->
