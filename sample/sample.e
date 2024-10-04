@@ -100,7 +100,7 @@ fn init_users(users: User^; size: word)
 	end
 end
 
-fn init_user(user: User^; id: word; desc: byte^)
+fn init_user(user: User^; id: word; desc: byte^): void
 	if id < 1 then
 		user^.id = 1;
 		user^.id = user^.id + 1;

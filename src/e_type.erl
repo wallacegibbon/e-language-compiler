@@ -569,7 +569,9 @@ check_ret_type(RetType, [_ | Rest], Loc, Scope, Ctx) ->
 check_ret_type(#e_basic_type{class = void}, [], _, _, _) ->
 	ok;
 check_ret_type(RetType, [], Loc, top, Ctx) ->
-	check_ret_type(RetType, [#e_return_stmt{expr = none, loc = Loc}], Loc, top, Ctx).
+	check_ret_type(RetType, [#e_return_stmt{expr = none, loc = Loc}], Loc, top, Ctx);
+check_ret_type(_, [], _, _, _) ->
+	ok.
 
 -spec join_types_to_str([e_type()]) -> string().
 join_types_to_str(Types) ->
@@ -579,7 +581,7 @@ join_types_to_str(Types) ->
 type_to_str(#e_typeof{expr = Expr}) ->
 	e_util:fmt("typeof(~s)", [e_util:stmt_to_str(Expr)]);
 type_to_str(#e_fn_type{params = Params, ret = RetType}) ->
-	e_util:fmt("fun (~s): ~s", [join_types_to_str(Params), type_to_str(RetType)]);
+	e_util:fmt("fn(~s): ~s", [join_types_to_str(Params), type_to_str(RetType)]);
 type_to_str(#e_array_type{elem_type = Type, length = N}) ->
 	e_util:fmt("{~s, ~w}", [type_to_str(Type), N]);
 type_to_str(#e_struct_init_expr{name = Name}) ->

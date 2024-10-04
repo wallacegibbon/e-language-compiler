@@ -39,10 +39,14 @@ e_root_stmt -> e_vardef ';' : '$1'.
 e_type_annos -> e_type_anno ';' e_type_annos : ['$1' | '$3'].
 e_type_annos -> e_type_anno : ['$1'].
 
+e_type_anno -> 'fn' '(' e_type_annos ')' ':' void_type :
+	#e_fn_type{params = '$3', ret = e_util:void_type(token_loc('$6')), loc = token_loc('$1')}.
 e_type_anno -> 'fn' '(' e_type_annos ')' ':' e_type_anno :
 	#e_fn_type{params = '$3', ret = '$6', loc = token_loc('$1')}.
 e_type_anno -> 'fn' '(' e_type_annos ')' :
 	#e_fn_type{params = '$3', ret = e_util:void_type(token_loc('$4')), loc = token_loc('$1')}.
+e_type_anno -> 'fn' '(' ')' ':' void_type :
+	#e_fn_type{params = [], ret = e_util:void_type(token_loc('$5')), loc = token_loc('$1')}.
 e_type_anno -> 'fn' '(' ')' ':' e_type_anno :
 	#e_fn_type{params = [], ret = '$5', loc = token_loc('$1')}.
 e_type_anno -> 'fn' '(' ')' :
@@ -65,12 +69,10 @@ e_type_anno -> identifier :
 	#e_basic_type{class = struct, p_depth = 0, tag = token_value('$1'), loc = token_loc('$1')}.
 e_type_anno -> any_type e_pointer_depth :
 	#e_basic_type{class = any, p_depth = '$2', tag = any, loc = token_loc('$1')}.
+e_type_anno -> any_type :
+	return_error(token_loc('$1'), "type \"any\" is only allowed as pointer").
 e_type_anno -> e_typeof_type :
 	'$1'.
-e_type_anno -> any_type :
-	return_error(token_loc('$1'), "type \"any\" is not allowed here").
-e_type_anno -> void_type :
-	return_error(token_loc('$1'), "type \"void\" is not allowed here").
 
 %% pointer depth
 e_pointer_depth -> '^' e_pointer_depth : '$2' + 1.
@@ -97,12 +99,17 @@ e_struct_def -> struct identifier e_vardefs 'end' :
 %% function definition
 e_function_def -> interrupt '(' integer ')' e_function_def :
 	'$5'#e_function_raw{interrupt = token_value('$3')}.
+
+e_function_def -> 'fn' identifier '(' e_vardefs ')' ':' void_type e_function_stmts 'end' :
+	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = e_util:void_type(token_loc('$7')), stmts = '$8', loc = token_loc('$2')}.
 e_function_def -> 'fn' identifier '(' e_vardefs ')' ':' e_type_anno e_function_stmts 'end' :
 	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = '$7', stmts = '$8', loc = token_loc('$2')}.
-e_function_def -> 'fn' identifier '(' ')' ':' e_type_anno e_function_stmts 'end' :
-	#e_function_raw{name = token_value('$2'), params = [], ret_type = '$6', stmts = '$7', loc = token_loc('$2')}.
 e_function_def -> 'fn' identifier '(' e_vardefs ')' e_function_stmts 'end' :
 	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = e_util:void_type(token_loc('$5')), stmts = '$6', loc = token_loc('$2')}.
+e_function_def -> 'fn' identifier '(' ')' ':' void_type e_function_stmts 'end' :
+	#e_function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_loc('$6')), stmts = '$7', loc = token_loc('$2')}.
+e_function_def -> 'fn' identifier '(' ')' ':' e_type_anno e_function_stmts 'end' :
+	#e_function_raw{name = token_value('$2'), params = [], ret_type = '$6', stmts = '$7', loc = token_loc('$2')}.
 e_function_def -> 'fn' identifier '(' ')' e_function_stmts 'end' :
 	#e_function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_loc('$4')), stmts = '$5', loc = token_loc('$2')}.
 
@@ -301,7 +308,7 @@ Erlang code.
 -include("e_record_definition.hrl").
 
 str_to_int_tokens({string, Loc, Str}) ->
-	lists:map(fun (Char) -> #e_integer{value = Char, loc = Loc} end, Str).
+	lists:map(fun(Char) -> #e_integer{value = Char, loc = Loc} end, Str).
 
 token_value({_, _, Val}) -> Val.
 

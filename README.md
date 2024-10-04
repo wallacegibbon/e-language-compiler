@@ -169,9 +169,9 @@ while (test()) {
 ## Function Pointer
 
 ```
-my_fn1: fn (): fn (): fn () = another_fn1;
+my_fn1: fn(): fn(): fn() = another_fn1;
 
-my_fn2: fn (byte^; word): fn (byte^; byte^): fn (word; word): byte^ = another_fn2;
+my_fn2: fn(byte^; word): fn(byte^; byte^): fn(word; word): byte^ = another_fn2;
 
 ```
 
