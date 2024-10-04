@@ -1,5 +1,5 @@
 -module(e_type).
--export([check_types_in_ast/2, check_type_in_stmts/2, type_of_node/2, inc_pointer_depth/2, dec_pointer_depth/2]).
+-export([check_types_in_ast/2, check_type_in_stmts/2, type_of_node/2, inc_pointer_depth/3]).
 -export([replace_typeof_in_ast/2, replace_typeof_in_stmts/2, replace_typeof_in_vars/2]).
 -include("e_record_definition.hrl").
 -ifdef(EUNIT).
@@ -97,15 +97,15 @@ type_of_node(?OP2('=', ?OP2('.', Op11, Op12, DotLoc), Op2, Loc), #{struct_map :=
 	Op1Type = type_of_struct_field(type_of_node(Op11, Ctx), Op12, StructMap, DotLoc),
 	Op1TypeFixed = check_type(Op1Type, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
-	compare_expect_left(Op1TypeFixed, Op2Type, Loc);
+	compare_expect_left(Op1TypeFixed, Op2Type, Loc, Ctx);
 type_of_node(?OP2('=', ?OP2('^', SubOp, _), Op2, Loc), Ctx) ->
-	Op1Type = dec_pointer_depth(type_of_node(SubOp, Ctx), Loc),
+	Op1Type = inc_pointer_depth(type_of_node(SubOp, Ctx), -1, Loc),
 	Op2Type = type_of_node(Op2, Ctx),
-	compare_expect_left(Op1Type, Op2Type, Loc);
+	compare_expect_left(Op1Type, Op2Type, Loc, Ctx);
 type_of_node(?OP2('=', #e_varref{} = Op1, Op2, Loc), Ctx) ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
-	compare_expect_left(Op1Type, Op2Type, Loc);
+	compare_expect_left(Op1Type, Op2Type, Loc, Ctx);
 type_of_node(?OP2('=', Any, _, Loc), _) ->
 	e_util:ethrow(Loc, "invalid left value (~s)", [e_util:stmt_to_str(Any)]);
 type_of_node(?OP2('.', Op1, Op2, Loc), #{struct_map := StructMap} = Ctx) ->
@@ -141,7 +141,7 @@ type_of_node(?OP2('-', Op1, Op2, Loc), Ctx) ->
 type_of_node(?OP2('^', Operand, _, Loc), Ctx) ->
 	case type_of_node(Operand, Ctx) of
 		#e_basic_type{} = T ->
-			dec_pointer_depth(T, Loc);
+			inc_pointer_depth(T, -1, Loc);
 		_ ->
 			e_util:ethrow(Loc, "invalid \"^\" on operand ~s", [e_util:stmt_to_str(Operand)])
 	end;
@@ -158,7 +158,7 @@ type_of_node(?CALL(FunExpr, Args, Loc), Ctx) ->
 	ArgTypes = type_of_nodes(Args, Ctx),
 	case type_of_node(FunExpr, Ctx) of
 		#e_fn_type{params = FnParamTypes, ret = FnRetType} ->
-			case compare_types(ArgTypes, FnParamTypes) of
+			case compare_types(ArgTypes, FnParamTypes, Ctx) of
 				true ->
 					FnRetType;
 				false ->
@@ -196,7 +196,7 @@ type_of_node(?OP2(Tag, Op1, Op2, Loc), Ctx) ->
 			e_util:ethrow(Loc, type_error_of(Tag, Op1Type, Op2Type))
 	end;
 type_of_node(?OP1('@', Operand, Loc), Ctx) ->
-	inc_pointer_depth(type_of_node(Operand, Ctx), Loc);
+	inc_pointer_depth(type_of_node(Operand, Ctx), 1, Loc);
 type_of_node(#e_op{tag = {sizeof, _}, loc = Loc}, _) ->
 	#e_basic_type{class = integer, tag = word, loc = Loc};
 type_of_node(#e_op{tag = {alignof, _}, loc = Loc}, _) ->
@@ -296,9 +296,9 @@ type_compatible(#e_basic_type{p_depth = N1}, #e_basic_type{p_depth = N2}) when N
 type_compatible(_, _) ->
 	false.
 
--spec compare_expect_left(e_type(), e_type(), location()) -> e_type().
-compare_expect_left(Type1, Type2, Loc) ->
-	case compare_type(Type1, Type2) of
+-spec compare_expect_left(e_type(), e_type(), location(), e_compile_context:context()) -> e_type().
+compare_expect_left(Type1, Type2, Loc, Ctx) ->
+	case compare_type(Type1, Type2, Ctx) of
 		true ->
 			Type1;
 		false ->
@@ -309,19 +309,13 @@ compare_expect_left(Type1, Type2, Loc) ->
 arguments_error_info(FnParamTypes, ArgsTypes) ->
 	e_util:fmt("args should be (~s), not (~s)", [join_types_to_str(FnParamTypes), join_types_to_str(ArgsTypes)]).
 
--spec inc_pointer_depth(e_type(), location()) -> e_type().
-inc_pointer_depth(#e_basic_type{p_depth = N} = T, _) ->
-	T#e_basic_type{p_depth = N + 1};
-inc_pointer_depth(#e_array_type{elem_type = #e_basic_type{} = T}, Loc) ->
-	inc_pointer_depth(T, Loc);
-inc_pointer_depth(T, Loc) ->
-	e_util:ethrow(Loc, "'@' on type ~s is invalid", [type_to_str(T)]).
-
--spec dec_pointer_depth(e_type(), location()) -> e_type().
-dec_pointer_depth(#e_basic_type{p_depth = N} = T, _) when N > 0 ->
-	T#e_basic_type{p_depth = N - 1};
-dec_pointer_depth(T, Loc) ->
-	e_util:ethrow(Loc, "'^' on type ~s is invalid", [type_to_str(T)]).
+-spec inc_pointer_depth(e_type(), integer(), location()) -> e_type().
+inc_pointer_depth(#e_basic_type{p_depth = P} = T, N, _) when P + N >= 0 ->
+	T#e_basic_type{p_depth = P + N};
+inc_pointer_depth(#e_array_type{elem_type = #e_basic_type{} = T}, N, Loc) ->
+	inc_pointer_depth(T, N, Loc);
+inc_pointer_depth(T, N, Loc) ->
+	e_util:ethrow(Loc, "increase pointer depth by ~w on type <~s> is invalid", [N, type_to_str(T)]).
 
 -spec check_types_in_struct_fields(#{atom() => e_type()}, #{atom() := e_expr()}, atom(), e_compile_context:context()) -> ok.
 check_types_in_struct_fields(FieldTypeMap, ValMap, StructName, Ctx) ->
@@ -334,7 +328,7 @@ check_struct_field(FieldTypeMap, FieldName, Val, StructName, Ctx) ->
 	%% there may be `typeof` inside `ExpectedType`, call `check_type` to resolve `typeof`.
 	ExpectedTypeFixed = check_type(ExpectedType, Ctx),
 	GivenType = type_of_node(Val, Ctx),
-	case compare_type(ExpectedTypeFixed, GivenType) of
+	case compare_type(ExpectedTypeFixed, GivenType, Ctx) of
 		true ->
 			ok;
 		false ->
@@ -378,30 +372,43 @@ get_field_type(FieldName, FieldTypeMap, StructName, Loc) ->
 			e_util:ethrow(Loc, "~s.~s does not exist", [StructName, FieldName])
 	end.
 
--spec compare_types([e_type()], [e_type()]) -> boolean().
-compare_types([T1 | Types1], [T2 | Types2]) ->
-	case compare_type(T1, T2) of
+-spec compare_types([e_type()], [e_type()], e_compile_context:context()) -> boolean().
+compare_types([T1 | Types1], [T2 | Types2], Ctx) ->
+	case compare_type(T1, T2, Ctx) of
 		true ->
-			compare_types(Types1, Types2);
+			compare_types(Types1, Types2, Ctx);
 		false ->
 			false
 	end;
-compare_types([], []) ->
+compare_types([], [], _) ->
 	true;
-compare_types(_, _) ->
+compare_types(_, _, _) ->
 	false.
 
--spec compare_type(e_type(), e_type()) -> boolean().
-compare_type(#e_fn_type{params = P1, ret = R1}, #e_fn_type{params = P2, ret = R2}) ->
-	compare_types(P1, P2) and compare_type(R1, R2);
-compare_type(#e_array_type{elem_type = E1, length = L1}, #e_array_type{elem_type = E2, length = L2}) ->
-	compare_type(E1, E2) and (L1 =:= L2);
-compare_type(#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{class = integer, p_depth = 0}) ->
+-spec compare_type(e_type(), e_type(), e_compile_context:context()) -> boolean().
+compare_type(T1, T2, Ctx) ->
+	compare_type_simple(T1, T2, Ctx) orelse compare_type_simple(T2, T1, Ctx).
+
+-spec compare_type_simple(e_type(), e_type(), e_compile_context:context()) -> boolean().
+compare_type_simple(#e_fn_type{params = P1, ret = R1}, #e_fn_type{params = P2, ret = R2}, Ctx) ->
+	compare_types(P1, P2, Ctx) and compare_type_simple(R1, R2, Ctx);
+compare_type_simple(#e_array_type{elem_type = E1, length = L1}, #e_array_type{elem_type = E2, length = L2}, Ctx) ->
+	compare_type_simple(E1, E2, Ctx) and (L1 =:= L2);
+compare_type_simple(#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{class = integer, p_depth = 0}, _) ->
 	true;
-compare_type(#e_basic_type{class = C, tag = T, p_depth = P}, #e_basic_type{class = C, tag = T, p_depth = P}) ->
+compare_type_simple(#e_basic_type{class = C, tag = T, p_depth = P}, #e_basic_type{class = C, tag = T, p_depth = P}, _) ->
 	true;
-compare_type(_, _) ->
+compare_type_simple(#e_basic_type{class = struct, tag = Tag, p_depth = N, loc = Loc}, T2, #{struct_map := StructMap} = Ctx) ->
+	{ok, #e_struct{fields = #e_vars{names = [First | _], type_map = TypeMap}}} = maps:find(Tag, StructMap),
+	case maps:find(First, TypeMap) of
+		{ok, #e_basic_type{} = T1Sub} ->
+			compare_type_simple(inc_pointer_depth(T1Sub, N, Loc), T2, Ctx);
+		_ ->
+			false
+	end;
+compare_type_simple(_, _, _) ->
 	false.
+
 
 -type number_check_result() :: {true, e_type()} | false.
 -type number_check_fn() :: fun((e_type(), e_type()) -> number_check_result()).

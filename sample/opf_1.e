@@ -1,17 +1,18 @@
 struct Light
-	on: fn(any^): word;
-	off: fn(any^): word;
-	toggle: fn(any^): word;
+	on		: fn(Light^^): word;
+	off		: fn(Light^^): word;
+	toggle		: fn(Light^^): word;
 end
 
 struct IIC_LED
-	interface: Light^;
-	port: word;
-	address: byte;
+	interface	: Light^;
+	port		: word;
+	address		: byte;
 end
 
 iic_led_interface: Light = Light{
-	toggle = IIC_LED_toggle as (any^) as (fn(any^): word),
+	%toggle = IIC_LED_toggle as (fn(Light^^): word),
+	toggle = IIC_LED_toggle,
 };
 
 fn IIC_LED_init(self: IIC_LED^; address: byte)
@@ -24,7 +25,8 @@ fn IIC_LED_toggle(self: IIC_LED^): word
 end
 
 fn my_app(light: Light^^)
-	light^^.toggle(light as (any^));
+	%light^^.toggle(light as (Light^^));
+	light^^.toggle(light);
 end
 
 fake_status: byte = 0;
@@ -35,7 +37,12 @@ end
 
 fn main()
 	my_led: IIC_LED;
+	tmp: word;
+
 	IIC_LED_init(my_led@, 0x10);
-	my_app(my_led@ as (Light^^));
+	%my_app(my_led@ as (Light^^));
+	my_app(my_led@);
+
+	%my_app(tmp@);
 end
 

@@ -18,7 +18,7 @@ fix_pointer_size_in_stmts(Stmts0, Ctx) ->
 
 -spec fix_pointer_size(e_expr(), e_compile_context:context()) -> e_expr().
 fix_pointer_size(?OP2('^', O, ?I(0), Loc) = Op, Ctx) ->
-	T = e_type:dec_pointer_depth(e_type:type_of_node(O, Ctx), Loc),
+	T = e_type:inc_pointer_depth(e_type:type_of_node(O, Ctx), -1, Loc),
 	Op?OP2('^', O, ?I(e_size:size_of(T, Ctx), Loc));
 fix_pointer_size(?CALL(Callee, Args) = Op, Ctx) ->
 	Op?CALL(fix_pointer_size(Callee, Ctx), lists:map(fun(E) -> fix_pointer_size(E, Ctx) end, Args));
