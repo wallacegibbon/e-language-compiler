@@ -1,7 +1,7 @@
 Nonterminals
 
 e_root_stmts e_root_stmt e_struct_def e_function_def e_vardefs e_vardef e_args
-e_function_stmts e_function_stmt e_if_stmt e_else_stmt e_while_stmt e_label
+e_function_stmts e_function_stmt e_if_stmt e_else_stmt e_while_stmt e_return_stmt e_label
 e_expr e_call_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr e_assign_expr e_not_expr e_bnot_expr
 e_typeof_type e_type_annos e_type_anno e_calc1 e_calc2 e_bitwise e_cmp e_bool_op e_op2_with_assignment
 e_pointer_depth e_atomic_literal_values e_reserved
@@ -121,6 +121,13 @@ e_else_stmt -> 'else' e_function_stmts 'end' :
 e_else_stmt -> 'end' :
 	[].
 
+e_return_stmt -> return e_expr :
+	#e_return_stmt{expr = '$2', loc = token_loc('$1')}.
+e_return_stmt -> return :
+	#e_return_stmt{expr = 'none', loc = token_loc('$1')}.
+
+Unary 1 return.
+
 %% e_array_init_expr and e_struct_init_expr contains similar pattern '{' '}'.
 %% make the precedence of e_array_init_expr higher than e_struct_init_expr
 Unary 2100 e_array_init_expr.
@@ -180,7 +187,7 @@ e_function_stmt -> e_vardef ';' : '$1'.
 e_function_stmt -> e_if_stmt : '$1'.
 e_function_stmt -> e_while_stmt : '$1'.
 e_function_stmt -> goto identifier ';' : #e_goto_stmt{label = token_value('$2'), loc = token_loc('$1')}.
-e_function_stmt -> return e_expr ';' : #e_return_stmt{expr = '$2', loc = token_loc('$1')}.
+e_function_stmt -> e_return_stmt ';' : '$1'.
 e_function_stmt -> e_label : '$1'.
 
 e_label -> '@' '@' identifier :

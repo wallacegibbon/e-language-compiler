@@ -115,6 +115,8 @@ stmt_to_ir(#e_while_stmt{'cond' = Cond, stmts = Stmts0, loc = Loc}, #{scope_tag 
 	RawBody = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
 	Body = [{label, {align, 1}, BodyLabel}, RawBody, {j, StartLabel}, {label, {align, 1}, EndLabel}],
 	[StartComment, {label, {align, 1}, StartLabel}, CondIRs, 'br!_reg'(R_Bool, EndLabel), Body, EndComment];
+stmt_to_ir(#e_return_stmt{expr = none}, #{epilogue_tag := EpilogueTag}) ->
+	[{comment, "return"}, {j, EpilogueTag}];
 stmt_to_ir(#e_return_stmt{expr = Expr}, #{epilogue_tag := EpilogueTag, ret_offset := Offset} = Ctx) ->
 	{ExprIRs, R, _} = expr_to_ir(Expr, Ctx),
 	%% We use stack to pass result

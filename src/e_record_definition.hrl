@@ -48,7 +48,7 @@
 	loc = {0, 0} :: location(),
 	name :: atom(),
 	type :: e_type(),
-	init_value = none :: e_expr() | none
+	init_value = none :: none | e_expr()
 	}).
 
 -record(e_varref,
@@ -160,7 +160,7 @@
 -record(e_return_stmt,
 	{
 	loc = {0, 0} :: location(),
-	expr :: e_expr()
+	expr = none :: none | e_expr()
 	}).
 
 -record(e_while_stmt,

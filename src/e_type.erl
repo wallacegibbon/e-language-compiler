@@ -9,15 +9,15 @@
 -spec check_types_in_ast(e_ast(), e_compile_context:context()) -> ok.
 check_types_in_ast([#e_function{name = Name, param_names = [_ | _], interrupt = N, loc = Loc} | _], _) when is_integer(N) ->
 	e_util:ethrow(Loc, "interrupt function \"~s\" should not have parameter(s)", [Name]);
-check_types_in_ast([#e_function{type = FnType} = Fn | Rest], #{vars := GlobalVars} = Ctx) ->
+check_types_in_ast([#e_function{type = FnType, loc = Loc} = Fn | Rest], #{vars := GlobalVars} = Ctx) ->
 	#e_function{vars = LocalVars, param_names = ParamNames, stmts = Stmts} = Fn,
 	#e_vars{type_map = TypeMap} = LocalVars,
 	Ctx1 = Ctx#{vars := e_util:merge_vars(GlobalVars, LocalVars, ignore_tag)},
 	maps:foreach(fun(_, T) -> check_type(T, Ctx1) end, TypeMap),
-	maps:foreach(fun(_, T) -> check_parameter_type(T) end, maps:with(ParamNames, TypeMap)),
+	maps:foreach(fun(_, T) -> shrink_param_type(T) end, maps:with(ParamNames, TypeMap)),
+	shrink_ret_type(FnType#e_fn_type.ret),
 	%% TODO: check the type of returning value of the function
-	check_ret_type(FnType#e_fn_type.ret),
-	check_type(FnType#e_fn_type.ret, Ctx1),
+	check_ret_type(FnType#e_fn_type.ret, Stmts, Loc, top, Ctx1),
 	type_of_nodes(Stmts, Ctx1),
 	check_types_in_ast(Rest, Ctx);
 check_types_in_ast([#e_struct{name = Name} = S | Rest], Ctx) ->
@@ -262,6 +262,8 @@ type_of_node(#e_while_stmt{'cond' = Cond, stmts = Stmts, loc = Loc}, Ctx) ->
 	end,
 	type_of_node(Cond, Ctx),
 	type_of_nodes(Stmts, Ctx),
+	e_util:void_type(Loc);
+type_of_node(#e_return_stmt{expr = none, loc = Loc}, _) ->
 	e_util:void_type(Loc);
 type_of_node(#e_return_stmt{expr = Expr}, Ctx) ->
 	%% Return type will be checked outside since we need to deal with the situation when `return` is missing.
@@ -521,23 +523,54 @@ check_type(#e_fn_type{params = Params, ret = RetType} = Type, Ctx) ->
 check_type(#e_typeof{expr = Expr}, Ctx) ->
 	check_type(type_of_node(Expr, Ctx), Ctx).
 
--spec check_parameter_type(e_type()) -> boolean().
-check_parameter_type(#e_basic_type{p_depth = N}) when N > 0 ->
+-spec shrink_param_type(e_type()) -> boolean().
+shrink_param_type(#e_basic_type{p_depth = N}) when N > 0 ->
 	true;
-check_parameter_type(#e_basic_type{class = C}) when C =:= integer; C =:= float ->
+shrink_param_type(#e_basic_type{class = C}) when C =:= integer; C =:= float ->
 	true;
-check_parameter_type(T) ->
+shrink_param_type(T) ->
 	e_util:ethrow(element(2, T), "invalid parameter type here").
 
--spec check_ret_type(e_type()) ->boolean().
-check_ret_type(#e_basic_type{p_depth = N}) when N > 0 ->
+-spec shrink_ret_type(e_type()) ->boolean().
+shrink_ret_type(#e_basic_type{p_depth = N}) when N > 0 ->
 	true;
-check_ret_type(#e_basic_type{class = C}) when C =:= integer; C =:= float; C =:= void ->
+shrink_ret_type(#e_basic_type{class = C}) when C =:= integer; C =:= float; C =:= void ->
 	true;
-check_ret_type(#e_fn_type{}) ->
+shrink_ret_type(#e_fn_type{}) ->
 	true;
-check_ret_type(T) ->
+shrink_ret_type(T) ->
 	e_util:ethrow(element(2, T), "invalid returning type here").
+
+-spec check_ret_type(e_type(), [e_stmt()], location(), top | inner, e_compile_context:context()) -> ok.
+check_ret_type(RetType, [#e_return_stmt{loc = Loc} = Expr], _, _, Ctx) ->
+	RetTrueType = type_of_node(Expr, Ctx),
+	case compare_type(RetType, RetTrueType, Ctx) of
+		true ->
+			ok;
+		false ->
+			e_util:ethrow(Loc, "return type declared: ~s, inferred ~s", [type_to_str(RetType), type_to_str(RetTrueType)])
+	end;
+check_ret_type(RetType, [#e_return_stmt{expr = Expr} | Rest], Loc, Scope, Ctx) ->
+	RetTrueType = type_of_node(Expr, Ctx),
+	case compare_type(RetType, RetTrueType, Ctx) of
+		true ->
+			check_ret_type(RetType, Rest, Loc, Scope, Ctx);
+		false ->
+			e_util:ethrow(Loc, "return type declared: ~s, inferred ~s", [type_to_str(RetType), type_to_str(RetTrueType)])
+	end;
+check_ret_type(RetType, [#e_if_stmt{then = Then, 'else' = Else} | Rest], Loc, Scope, Ctx) ->
+	check_ret_type(RetType, Then, Loc, inner, Ctx),
+	check_ret_type(RetType, Else, Loc, inner, Ctx),
+	check_ret_type(RetType, Rest, Loc, Scope, Ctx);
+check_ret_type(RetType, [#e_while_stmt{stmts = Body} | Rest], Loc, Scope, Ctx) ->
+	check_ret_type(RetType, Body, Loc, inner, Ctx),
+	check_ret_type(RetType, Rest, Loc, Scope, Ctx);
+check_ret_type(RetType, [_ | Rest], Loc, Scope, Ctx) ->
+	check_ret_type(RetType, Rest, Loc, Scope, Ctx);
+check_ret_type(#e_basic_type{class = void}, [], _, _, _) ->
+	ok;
+check_ret_type(RetType, [], Loc, top, Ctx) ->
+	check_ret_type(RetType, [#e_return_stmt{expr = none, loc = Loc}], Loc, top, Ctx).
 
 -spec join_types_to_str([e_type()]) -> string().
 join_types_to_str(Types) ->
