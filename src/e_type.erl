@@ -16,7 +16,6 @@ check_types_in_ast([#e_function{type = FnType, loc = Loc} = Fn | Rest], #{vars :
 	maps:foreach(fun(_, T) -> check_type(T, Ctx1) end, TypeMap),
 	maps:foreach(fun(_, T) -> shrink_param_type(T) end, maps:with(ParamNames, TypeMap)),
 	shrink_ret_type(FnType#e_fn_type.ret),
-	%% TODO: check the type of returning value of the function
 	check_ret_type(FnType#e_fn_type.ret, Stmts, Loc, top, Ctx1),
 	type_of_nodes(Stmts, Ctx1),
 	check_types_in_ast(Rest, Ctx);
