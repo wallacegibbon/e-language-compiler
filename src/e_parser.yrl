@@ -106,12 +106,28 @@ e_function_def -> 'fn' identifier '(' e_vardefs ')' ':' e_type_anno e_function_s
 	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = '$7', stmts = '$8', loc = token_loc('$2')}.
 e_function_def -> 'fn' identifier '(' e_vardefs ')' e_function_stmts 'end' :
 	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = e_util:void_type(token_loc('$5')), stmts = '$6', loc = token_loc('$2')}.
+
 e_function_def -> 'fn' identifier '(' ')' ':' void_type e_function_stmts 'end' :
 	#e_function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_loc('$6')), stmts = '$7', loc = token_loc('$2')}.
 e_function_def -> 'fn' identifier '(' ')' ':' e_type_anno e_function_stmts 'end' :
 	#e_function_raw{name = token_value('$2'), params = [], ret_type = '$6', stmts = '$7', loc = token_loc('$2')}.
 e_function_def -> 'fn' identifier '(' ')' e_function_stmts 'end' :
 	#e_function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_loc('$4')), stmts = '$5', loc = token_loc('$2')}.
+
+%% function definition with empty body
+e_function_def -> 'fn' identifier '(' e_vardefs ')' ':' void_type 'end' :
+	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = e_util:void_type(token_loc('$7')), stmts = [], loc = token_loc('$2')}.
+e_function_def -> 'fn' identifier '(' e_vardefs ')' ':' e_type_anno 'end' :
+	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = '$7', stmts = [], loc = token_loc('$2')}.
+e_function_def -> 'fn' identifier '(' e_vardefs ')' 'end' :
+	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = e_util:void_type(token_loc('$5')), stmts = [], loc = token_loc('$2')}.
+
+e_function_def -> 'fn' identifier '(' ')' ':' void_type 'end' :
+	#e_function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_loc('$6')), stmts = [], loc = token_loc('$2')}.
+e_function_def -> 'fn' identifier '(' ')' ':' e_type_anno 'end' :
+	#e_function_raw{name = token_value('$2'), params = [], ret_type = '$6', stmts = [], loc = token_loc('$2')}.
+e_function_def -> 'fn' identifier '(' ')' 'end' :
+	#e_function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_loc('$4')), stmts = [], loc = token_loc('$2')}.
 
 %% while
 e_while_stmt -> while e_expr do e_function_stmts 'end' :
