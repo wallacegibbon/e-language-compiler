@@ -139,16 +139,16 @@ comment(Tag, Info, {Line, Col}) ->
 	[{comment, io_lib:format("[~s@~w:~w] ~s", [Tag, Line, Col, Info])}].
 
 -spec expr_to_ir(e_expr(), context()) -> {irs(), machine_reg(), context()}.
-expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', #e_varref{} = Var, ?I(N)), ?I(V)), Right), Ctx) when ?IS_SMALL_IMMEDI(N) ->
+expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', Expr, ?I(N)), ?I(V)), Right), Ctx) when ?IS_SMALL_IMMEDI(N) ->
 	{RightIRs, R1, Ctx1} = expr_to_ir(Right, Ctx),
-	{VarrefIRs, R2, Ctx2} = expr_to_ir(Var, Ctx1),
+	{VarrefIRs, R2, Ctx2} = expr_to_ir(Expr, Ctx1),
 	{[RightIRs, VarrefIRs, {st_tag(V), R1, {R2, N}}], R1, Ctx2};
 expr_to_ir(?OP2('=', ?OP2('^', Expr, ?I(V)), Right), Ctx) ->
 	{RightIRs, R1, Ctx1} = expr_to_ir(Right, Ctx),
 	{LeftIRs, R2, Ctx2} = expr_to_ir(Expr, Ctx1),
 	{[RightIRs, LeftIRs, {st_tag(V), R1, {R2, 0}}], R1, Ctx2};
-expr_to_ir(?OP2('^', ?OP2('+', #e_varref{} = Var, ?I(N)), ?I(V)), Ctx) when ?IS_SMALL_IMMEDI(N) ->
-	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Var, Ctx),
+expr_to_ir(?OP2('^', ?OP2('+', Expr, ?I(N)), ?I(V)), Ctx) when ?IS_SMALL_IMMEDI(N) ->
+	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
 	{[IRs, {ld_tag(V), T, {R, N}}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
 	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
