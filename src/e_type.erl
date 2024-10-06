@@ -551,7 +551,7 @@ check_ret_type(RetType, [#e_return_stmt{loc = Loc} = Expr], _, _, Ctx) ->
 		false ->
 			e_util:ethrow(Loc, "return type declared: ~s, inferred ~s", [type_to_str(RetType), type_to_str(RetTrueType)])
 	end;
-check_ret_type(RetType, [#e_return_stmt{expr = Expr} | Rest], Loc, Scope, Ctx) ->
+check_ret_type(RetType, [#e_return_stmt{loc = Loc} = Expr | Rest], _, Scope, Ctx) ->
 	RetTrueType = type_of_node(Expr, Ctx),
 	case compare_type(RetType, RetTrueType, Ctx) of
 		true ->

@@ -12,7 +12,7 @@ CharEscapedChar = ({CommonEscapedChar}|\\')
 BinaryDigit = [01]
 OctalDigit = [0-7]
 DecimalDigit = [0-9]
-HexDigit = [0-9a-f]
+HexDigit = [0-9a-fA-F]
 CommentStart = %
 
 Rules.
