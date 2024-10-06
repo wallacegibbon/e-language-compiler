@@ -134,16 +134,15 @@ e_else_stmt -> 'else' e_function_stmts 'end' :
 e_else_stmt -> 'end' :
 	[].
 
+Nonassoc 100 e_array_init_expr.
+Nonassoc 100 e_struct_init_expr.
+Nonassoc 100 return.
+
 e_return_stmt -> return e_expr :
 	#e_return_stmt{expr = '$2', loc = token_loc('$1')}.
 e_return_stmt -> return :
 	#e_return_stmt{expr = 'none', loc = token_loc('$1')}.
 
-Unary 1 return.
-
-%% e_array_init_expr and e_struct_init_expr contains similar pattern '{' '}'.
-%% make the precedence of e_array_init_expr higher than e_struct_init_expr
-Unary 2100 e_array_init_expr.
 e_array_init_expr -> '{' e_array_init_elements '}' :
 	#e_array_init_expr{elements = '$2', loc = token_loc('$1')}.
 e_array_init_expr -> '{' string '}' :
@@ -158,7 +157,6 @@ e_array_init_elements -> e_expr ',' :
 e_array_init_elements -> e_expr :
 	['$1'].
 
-Unary 2000 e_struct_init_expr.
 e_struct_init_expr -> identifier '{' e_struct_init_fields '}' :
 	#e_struct_init_raw_expr{name = token_value('$1'), fields = '$3', loc = token_loc('$1')}.
 e_struct_init_expr -> identifier '{' '}' :
@@ -174,7 +172,7 @@ e_struct_init_fields -> e_struct_init_assignment :
 e_struct_init_assignment -> identifier '=' e_expr :
 	#e_op{tag = '=', data = [#e_varref{name = token_value('$1'), loc = token_loc('$1')}, '$3'], loc = token_loc('$2')}.
 
-Unary 100 e_assign_expr.
+Nonassoc 1 e_assign_expr.
 e_assign_expr -> e_expr e_op2_with_assignment e_expr :
 	#e_op{tag = '=', data = ['$1', #e_op{tag = token_symbol('$2'), data = ['$1', '$3'], loc = token_loc('$2')}], loc = token_loc('$2')}.
 e_assign_expr -> e_expr '=' e_expr :
