@@ -14,6 +14,7 @@ compile_from_raw_ast(AST, #{wordsize := WordSize, entry_function := Entry}) ->
 	e_struct:check_struct_recursion_in_map(StructMap00),
 
 	%io:format("AST before type checking: ~p~n", [AST00]),
+	%io:format("InitCode before type checking: ~p~n", [InitCode00]),
 
 	Ctx00 = #{vars => GlobalVars00, fn_map => FnTypeMap00, struct_map => StructMap00, wordsize => WordSize},
 

@@ -217,6 +217,8 @@ type_of_node(#e_varref{name = Name, loc = Loc}, #{vars := #e_vars{type_map = Typ
 		notfound ->
 			e_util:ethrow(Loc, "variable ~s is undefined", [Name])
 	end;
+type_of_node(#e_array_init_expr{elements = [?OP2('=', _, _, Loc) | _]}, _) ->
+	e_util:ethrow(Loc, "invalid syntax for array init expression");
 type_of_node(#e_array_init_expr{elements = Elements, loc = Loc}, Ctx) ->
 	ElementTypes = type_of_nodes(Elements, Ctx),
 	case are_same_type(ElementTypes) of
