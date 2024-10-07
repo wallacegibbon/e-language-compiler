@@ -42,7 +42,7 @@ fn LED_on(self: LED^)
 end
 
 fn LED_off(self: LED^)
-	GPIO_set_state(self^.port, self^.pin, 1);
+	GPIO_set_state(self^.port, self^.pin, bnot(0));
 end
 
 fn LED_toggle(self: LED^; state: word^): word
@@ -63,11 +63,20 @@ fn toggle_light(light: LightInterface^^; r: word^)
 	light^^.toggle(light, r);
 end
 
+fn on_light(light: LightInterface^^)
+	light^^.on(light);
+end
+
+fn off_light(light: LightInterface^^)
+	light^^.off(light);
+end
+
 struct AppState
 	lights			: {LightInterface^^, 4};
 	leds			: {LED, 4}; %% The inner data
 	light_nums		: word;
 	delay			: word;
+	selected		: word;
 end
 
 fn AppState_init(self: AppState^)
@@ -76,33 +85,69 @@ fn AppState_init(self: AppState^)
 
 	self^.light_nums = 4;
 	self^.delay = 1;
+	self^.selected = 0;
+
 	while i < self^.light_nums do
 		led = self^.leds@ + (i * sizeof(LED));
 		LED_init(led, gpio_d, i);
 		(self^.lights@ + (i * sizeof(word)))^ = led;
 		i += 1;
 	end
-
-	toggle_light((self^.lights@ + (0 * sizeof(word)))^, i@);
-	toggle_light((self^.lights@ + (2 * sizeof(word)))^, i@);
 end
 
-fn AppState_adjust_speed(self: AppState^)
-	delay_new: word = self^.delay + 2;
-	if delay_new > 5 then
-		self^.delay = 1;
-	else
-		self^.delay = delay_new;
+fn AppState_all_off(self: AppState^)
+	i: word = 0;
+	while i < self^.light_nums do
+		off_light((self^.lights@ + (i * sizeof(word)))^);
+		i += 1;
 	end
 end
 
-fn AppState_loop(self: AppState^)
+fn AppState_all_bright(self: AppState^)
 	i: word = 0;
-	tmp: word;
-
 	while i < self^.light_nums do
-		toggle_light((self^.lights@ + (i * sizeof(word)))^, tmp@);
+		on_light((self^.lights@ + (i * sizeof(word)))^);
 		i += 1;
+	end
+end
+
+fn AppState_switch_selected(self: AppState^)
+	if self^.selected == 0 then
+		self^.selected = 1;
+	else
+		self^.selected = 0;
+	end
+end
+
+fn AppState_adjust_speed(self: AppState^)
+	if self^.delay == 1 then
+		self^.delay = 5;
+	else
+		self^.delay = 1;
+	end
+end
+
+fn AppState_toggle_pair1(self: AppState^)
+	tmp: word;
+	toggle_light((self^.lights@ + (0 * sizeof(word)))^, tmp@);
+	toggle_light((self^.lights@ + (1 * sizeof(word)))^, tmp@);
+	off_light((self^.lights@ + (2 * sizeof(word)))^);
+	off_light((self^.lights@ + (3 * sizeof(word)))^);
+end
+
+fn AppState_toggle_pair2(self: AppState^)
+	tmp: word;
+	toggle_light((self^.lights@ + (2 * sizeof(word)))^, tmp@);
+	toggle_light((self^.lights@ + (3 * sizeof(word)))^, tmp@);
+	off_light((self^.lights@ + (0 * sizeof(word)))^);
+	off_light((self^.lights@ + (1 * sizeof(word)))^);
+end
+
+fn AppState_loop_once(self: AppState^)
+	if self^.selected == 0 then
+		AppState_toggle_pair1(self);
+	else
+		AppState_toggle_pair2(self);
 	end
 end
 
@@ -114,7 +159,7 @@ fn main(a1: word)
 	AppState_init(global_state@);
 
 	while 1 == 1 do
-		AppState_loop(global_state@);
+		AppState_loop_once(global_state@);
 		delay(global_state.delay);
 	end
 end
@@ -122,7 +167,7 @@ end
 fn delay(count: word)
 	tmp: word;
 	while count > 0 do
-		tmp = 100000;
+		tmp = 50000;
 		while tmp > 0 do
 			tmp -= 1;
 		end
@@ -198,22 +243,31 @@ fn system_init()
 	%% RCC_APB1PCENR, enable clock for TIM2
 	(0x4002101C as (word^))^ = 0b1;
 
-	%% Set PD0~3 as Push-Pull output, PD4 as Input (Pull up).
-	gpio_d^.CFG_L = 0x44481111;
+	%% Set PD0~3 as Push-Pull output, PD4 as floating input.
+	gpio_d^.CFG_L = 0x44483333;
 	gpio_d^.BSH = 0b11111;
 
 	%% EXTI_FTENR, enable falling edge detecting for EXTI4
 	exti4^.FTEN = 0b10000;
+	exti4^.RTEN = 0b0;
 	%% Enable EXTI4.
 	exti4^.INTEN = 0b10000;
-
-	tim2^.CTL1;
 
 	%% AFIO_EXTICR2, Connect EXTI4 to PD4.
 	(0x4001000C as (word^))^ = 0b0011;
 
+	tim2^.ATRL = 8000;
+	tim2^.PSC = 9; % 10ms
+	tim2^.PSC = 19; % 20ms
+	tim2^.DMAINTEN = 0b1;
+	%tim2^.CTL1 = 0b10000001;
+	%tim2^.CTL1 = 0b10001001;
+	tim2^.CTL1 = 0b0;
+
 	%% PFIC_IENR1, enable the interrupt for EXTI4(id: 26).
 	(0xE000E100 as (word^))^ = 1 bsl 26;
+	%% PFIC_IENR2, enable the interrupt for TIM2(id: 44). (44 - 32 -> 12)
+	(0xE000E104 as (word^))^ = 1 bsl 12;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -221,20 +275,26 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 interrupt(26)
 fn exit4_isr()
-	%% EXTI_INTFR, clear interrupt flag.
+	%% Clear interrupt flag.
 	exti4^.INTF = 0b10000;
-	%% TODO: comment this, speed adjusting should be done in timer ISR.
-	AppState_adjust_speed(global_state@);
+
+	%% Restart the timer, Single pulse mode, Auto reload.
+	tim2^.CTL1 = 0;
+	tim2^.CNT = 0;
+	tim2^.CTL1 = 0b10001001;
 end
 
 interrupt(44)
 fn tim2_isr()
+	%% Clear interrupt flag
+	tim2^.INTF = 0b0;
+	tim2^.CNT = 0;
+
 	if (gpio_d^.IN band 0b10000) != 0 then
-		goto finish;
+		return;
 	end
 
-	AppState_adjust_speed(global_state@);
-@@finish
-	%% clear interrupt flag
+	AppState_switch_selected(global_state@);
+	%AppState_adjust_speed(global_state@);
 end
 
