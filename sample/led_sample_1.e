@@ -1,3 +1,4 @@
+%% vim:ft=elang:ts=8:sw=8:sts=8:noet
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Application related struct definition
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -31,7 +32,7 @@ fn LED_init(self: LED^; port: GPIO^; pin: word): word
 	self^.light_interface = LED_light_interface@;
 	self^.port = port;
 	self^.pin = pin;
-	self^.current_state = 0;
+	self^.current_state = bnot(0);
 	self^.toggle_count = 0;
 	return 0;
 end
@@ -62,46 +63,59 @@ fn toggle_light(light: LightInterface^^; r: word^)
 	light^^.toggle(light, r);
 end
 
-fn my_loop(leds: LED^)
+struct AppState
+	lights			: {LightInterface^^, 4};
+	leds			: {LED, 4}; %% The inner data
+	light_nums		: word;
+	delay			: word;
+end
+
+fn AppState_init(self: AppState^)
+	led: LED^;
+	i: word = 0;
+
+	self^.light_nums = 4;
+	self^.delay = 1;
+	while i < self^.light_nums do
+		led = self^.leds@ + (i * sizeof(LED));
+		LED_init(led, gpio_d, i);
+		(self^.lights@ + (i * sizeof(word)))^ = led;
+		i += 1;
+	end
+
+	toggle_light((self^.lights@ + (0 * sizeof(word)))^, i@);
+	toggle_light((self^.lights@ + (2 * sizeof(word)))^, i@);
+end
+
+fn AppState_adjust_speed(self: AppState^)
+	delay_new: word = self^.delay + 2;
+	if delay_new > 5 then
+		self^.delay = 1;
+	else
+		self^.delay = delay_new;
+	end
+end
+
+fn AppState_loop(self: AppState^)
 	i: word = 0;
 	tmp: word;
 
-	while i < 4 do
-		toggle_light(leds + (i * sizeof(LED)), tmp@);
+	while i < self^.light_nums do
+		toggle_light((self^.lights@ + (i * sizeof(word)))^, tmp@);
 		i += 1;
 	end
 end
 
-fn all_bright(leds: LED^)
-	i: word = 0;
-	tmp: word;
-
-	while i < 4 do
-		LED_on(leds + (i * sizeof(LED)));
-		i += 1;
-	end
-end
-
-global_delay: word = 5;
+%% Make the app state global for easier debugging.
+global_state: AppState = AppState{};
 
 fn main(a1: word)
-	leds: {LED, 4};
-	i: word;
-
 	system_init();
-
-	i = 0;
-	while i < 4 do
-		LED_init(leds@ + (i * sizeof(LED)), 0x40011400 as (GPIO^), i);
-		i += 1;
-	end
-
-	toggle_light(leds@ + (0 * sizeof(LED)), i@);
-	toggle_light(leds@ + (2 * sizeof(LED)), i@);
+	AppState_init(global_state@);
 
 	while 1 == 1 do
-		my_loop(leds@);
-		delay(global_delay);
+		AppState_loop(global_state@);
+		delay(global_state.delay);
 	end
 end
 
@@ -120,59 +134,107 @@ end
 %% MCU related struct definition
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 struct GPIO
-	CFG_L			: word;
-	CFG_H			: word;
-	IN			: word;
-	OUT			: word;
-	BSHR			: word;
-	BCR			: word;
-	LOCK			: word;
+	CFG_L			: word; %% Port configuration register low
+	CFG_H			: word; %% Port configuration register high
+	IN			: word; %% Port input data register
+	OUT			: word; %% Port output data register
+	BSH			: word; %% Port set/reset register
+	BC			: word; %% Port reset register
+	LOCK			: word; %% Port configuration lock register
 end
 
+struct EXTI
+	INTEN			: word; %% Interrupt enable register
+	EVEN			: word; %% Event enable register
+	RTEN			: word; %% Rising edge trigger enable register
+	FTEN			: word; %% Falling edge trigger enable register
+	SWIEV			: word; %% Software interrupt event register
+	INTF			: word; %% Interrupt flag register
+end
+
+struct GPTM
+	CTL1			: word; %% Control register1
+	CTL2			: word; %% Control register2
+	SMCFG			: word; %% Slave mode configuration register
+	DMAINTEN		: word; %% DMA/interrupt enable register
+	INTF			: word; %% Interrupt flag register
+	SWEVG			: word; %% Event generation register
+	CHCTL1			: word; %% Compare/Capture control register1
+	CHCTL2			: word; %% Compare/Capture control register2
+	CCEN			: word; %% compare/capture enable register
+	CNT			: word; %% Counter
+	PSC			: word; %% Prescaler
+	ATRL			: word; %% Auto-reload register
+	CH1CV			: word; %% Compare/Capture register1
+	CH2CV			: word; %% Compare/Capture register2
+	CH3CV			: word; %% Compare/Capture register3
+	CH4CV			: word; %% Compare/Capture register4
+	DMACFG			: word; %% DMA configuration register
+	DMAAD			: word; %% DMA address register in continuous mode
+	AUX			: word; %% Dual-edge capture register
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Global variables for register banks
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+gpio_d		: GPIO^ = 0x40011400 as (GPIO^);
+exti4		: EXTI^ = 0x40010400 as (EXTI^);
+tim2		: GPTM^ = 0x40000000 as (GPTM^);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% MCU related functions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 fn GPIO_set_state(port: GPIO^; pin: word; state: word)
 	if state == 0 then
-		port^.BCR = 1 bsl pin;
+		port^.BC = 1 bsl pin;
 	else
-		port^.BSHR = 1 bsl pin;
+		port^.BSH = 1 bsl pin;
 	end
 end
 
 fn system_init()
 	%% RCC_APB2PCENR, enable clock for PD and AFIO
-	%(0x40021018 as (word^))^ = 1 bsl 5;
-	(0x40021018 as (word^))^ = 0x21;
+	(0x40021018 as (word^))^ = 0b00100001;
+	%% RCC_APB1PCENR, enable clock for TIM2
+	(0x4002101C as (word^))^ = 0b1;
 
-	%% EXTI_INTENR, enable EXTI4.
-	(0x40010400 as (word^))^ = 1 bsl 4;
+	%% Set PD0~3 as Push-Pull output, PD4 as Input (Pull up).
+	gpio_d^.CFG_L = 0x44481111;
+	gpio_d^.BSH = 0b11111;
+
 	%% EXTI_FTENR, enable falling edge detecting for EXTI4
-	(0x4001040C as (word^))^ = 1 bsl 4;
+	exti4^.FTEN = 0b10000;
+	%% Enable EXTI4.
+	exti4^.INTEN = 0b10000;
+
+	tim2^.CTL1;
 
 	%% AFIO_EXTICR2, Connect EXTI4 to PD4.
-	(0x4001000C as (word^))^ = 0x0003;
-
-	port: GPIO^ = 0x40011400 as (GPIO^);
-	%% Set PD0~3 as Push-Pull output, PD4 as Input (Pull up).
-	port^.CFG_L = 0x44481111;
-	port^.BSHR = 1 bsl 4;
+	(0x4001000C as (word^))^ = 0b0011;
 
 	%% PFIC_IENR1, enable the interrupt for EXTI4(id: 26).
 	(0xE000E100 as (word^))^ = 1 bsl 26;
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ISRs
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 interrupt(26)
-fn button_handler()
-	%% check whether exti4 is the source
-	if ((0x40010414 as (word^))^ band (1 bsl 4)) == 0 then
+fn exit4_isr()
+	%% EXTI_INTFR, clear interrupt flag.
+	exti4^.INTF = 0b10000;
+	%% TODO: comment this, speed adjusting should be done in timer ISR.
+	AppState_adjust_speed(global_state@);
+end
+
+interrupt(44)
+fn tim2_isr()
+	if (gpio_d^.IN band 0b10000) != 0 then
 		goto finish;
 	end
-	if global_delay == 5 then
-		global_delay = 1;
-	else
-		global_delay = 5;
-	end
 
+	AppState_adjust_speed(global_state@);
 @@finish
-	%% EXTI_INTFR, clear interrupt flag.
-	(0x40010414 as (word^))^ = 1 bsl 4;
+	%% clear interrupt flag
 end
 

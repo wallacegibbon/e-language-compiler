@@ -37,7 +37,7 @@ generate_code(AST, InitCode, SP, GP, OutputFile, #{wordsize := WordSize, entry_f
 	Regs = tmp_regs(),
 	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid, epilogue_tag => none, ret_offset => -WordSize, cond_label => {none, none}},
 	InitRegs = [smart_li({x, 2}, SP), smart_li({x, 3}, GP)],
-	InitVars = [lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init'}) end, InitCode)],
+	InitVars = lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init'}) end, InitCode),
 	[T | _] = Regs,
 	%% Initialize interrupt vector address by writting `mtvec`(CSR 0x305).
 	SetInterruptVector = [smart_li(T, InterruptVec), {ori, T, T, 3}, {csrrw, {x, 0}, T, 16#305}],

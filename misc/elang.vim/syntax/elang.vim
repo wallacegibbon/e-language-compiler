@@ -3,6 +3,8 @@ syn region e_char		start=/'/ end=/'/ contains=e_char_modifier
 syn match e_char_modifier	"\\(n|r|t|)"
 syn match e_integer		"\<\d\+\([Ee]\d\+\)\?\>"
 syn match e_integer		"\<0x\x\+\>"
+syn match e_integer		"\<0o[0-7]\+\>"
+syn match e_integer		"\<0b[01]\+\>"
 syn match e_float		"\<\d\+\.\d*\([Ee][-+]\d\+\)\?\>"
 syn match e_float		"\<\.\d\+\([Ee][-+]\d\+\)\?\>"
 syn match e_float		"\<\d\+[Ee][-+]\d\+\>"

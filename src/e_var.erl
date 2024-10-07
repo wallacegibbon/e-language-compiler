@@ -94,6 +94,8 @@ fetch_vars([#e_struct_raw{name = Name, fields = RawFields, loc = Loc} | Rest], A
 	%% struct can have default value
 	Ctx1 = fetch_vars_state_new(),
 	{Fields, [], StructInitCode} = fetch_vars(RawFields, [], Ctx1#{tag := none, mode := initcode}),
+	%% Default value for struct can caused some bugs which I don't have time to fix.
+	e_util:assert(StructInitCode =:= [], {Loc, "default value for struct is not supported yet"}),
 	FieldInitMap = struct_init_to_map(StructInitCode, #{}),
 	S = #e_struct{name = Name, fields = Fields, default_value_map = FieldInitMap, loc = Loc},
 	fetch_vars(Rest, [S | AST], Ctx);

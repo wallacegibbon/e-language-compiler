@@ -2,9 +2,14 @@
 
 We can using OpenOCD to load and debug the generated bin file.
 
+Download bin file to the target machine:
+```sh
+openocd.exe -f wch-riscv.cfg -c "program C:/Users/wallace/Downloads/a.bin verify reset exit"
+```
+
 Start OpenOCD server:
 ```sh
-/c/MounRiver/MounRiver_Studio/toolchain/OpenOCD/bin/openocd.exe -f C:/MounRiver/MounRiver_Studio/toolchain/OpenOCD/bin/wch-riscv.cfg
+openocd.exe -f wch-riscv.cfg
 ```
 
 Then use `telnet` to connect to OpenOCD server to run load and debug commands:
