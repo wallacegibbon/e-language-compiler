@@ -5,7 +5,7 @@
 The `E Language` is like a simplified `C language` with fewer concepts and more reasonable syntax. It is designed to be:
 1. `E`xplicit on pointer operations.
 2. `E`asy to learn and implement.
-3. Designed for `E`mbedded systems and friendly to `E`lectronic hobbyists.
+3. Designed for `E`mbedded systems and `E`lectronic hobbyists.
 
 Here are some comparisons of basic operations of C language and E language:
 
@@ -194,6 +194,23 @@ The `26` indicates the interrupt ID which can be found in the chip documentation
 When writting C code, users usually need to read/write assembly files and linkers files to make ISR work.
 We don't need those things in E language, we can write ISRs as long as we have the chip document.
 This is one of the features that make E language friendly to electronic hobbyists.
+
+
+## The `void` Type
+
+In C language, there is a type called `void` which is used for 2 purpose:
+1. For function definition, `void` indicates the function do not have parameters or return value;
+2. For pointers, `void*` stands for a pointer who can point to any type.
+
+> The logic of C language is: When you dereferncing `void*`, you will got a `void` type who can not be part of an expression, so some usage bugs can be found by this design. This is not the best design since many C programmers do not understand this logic, they just remembered the rule.
+
+In E language, there is no `void` type exposed to users.
+
+For function definitions, we do not use `void`. When we define functions without parameters or return value, we just left them out.
+
+For pointers, we use `any` instead. `any^` in E language is same as `void*` in C language.
+
+> In C language, you can just left out parameters for historical reasons: no parameter and void have different meanings. You always need a `void` to make you code robust.
 
 
 # The Compiler
