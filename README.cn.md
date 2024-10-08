@@ -177,6 +177,19 @@ char * (*(*(*my_fn2)(char *, int))(char *, char *))(int, int) = another_fn2;
 ```
 
 
+# 编译器
+
+本编译器将E语言源码直接编译为RISC-V（32位rv32im）机器码。
+后续可能会支持其他指令集/架构。
+
+目前尚不支持命令行接口，需要从Erlang Shell里直接调用编译器进行编译：
+
+使用实例：
+```erlang
+e_compiler:compile_to_machine1("./sample/led_sample_1.e", "/tmp/a.bin").
+```
+
+
 # 编辑器支持
 
 本项目带有一个简单的Vim插件，在项目目录运行下面的命令可以进行安装：

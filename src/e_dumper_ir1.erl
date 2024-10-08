@@ -48,10 +48,11 @@ generate_code(AST, InitCode, SP, GP, OutputFile, #{wordsize := WordSize, entry_f
 	DefaultISR = [{label, {align, 1}, '__default_isr'}, {j, '__default_isr'}],
 	InitIRs = [{label, {align, 1}, '__init'}, InitRegs, InitVars, InitInterrupt, SetInterruptVector, InitJump, EndJump, DefaultISR],
 	IRs = ast_to_ir(AST, Ctx),
-	StrTable = lists:map(fun({L, S, Len}) -> [{label, {align, 1}, L}, {string, S, Len}] end, string_collect_dump(Pid)),
-	Fn1 = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"}, InitIRs, IRs, StrTable], IO_Dev) end,
+	StrTable = string_collect_dump(Pid),
+	StrIRs = lists:map(fun({L, S, Len}) -> [{label, {align, 1}, L}, {string, S, Len}] end, StrTable),
+	Fn1 = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"}, InitIRs, IRs, StrIRs], IO_Dev) end,
 	e_util:file_write(OutputFile, Fn1),
-	Fn2 = fun(IO_Dev) -> write_asm([{comment, "For GNU assembler"}, InitIRs, IRs, StrTable], IO_Dev) end,
+	Fn2 = fun(IO_Dev) -> write_asm([{comment, "For GNU assembler"}, InitIRs, IRs, StrIRs], IO_Dev) end,
 	e_util:file_write(OutputFile ++ ".asm", Fn2),
 	ok.
 

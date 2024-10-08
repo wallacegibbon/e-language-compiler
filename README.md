@@ -182,6 +182,19 @@ char * (*(*(*my_fn2)(char *, int))(char *, char *))(int, int) = another_fn2;
 ```
 
 
+# The Compiler
+
+The compiler compiles E language source file to RISC-V (32bit rv32im) machine code directly.
+Other architectures may be supported in the future.
+
+Command line interface is not supported yet, you need to call the compiler from erlang shell.
+
+e.g.
+```erlang
+e_compiler:compile_to_machine1("./sample/led_sample_1.e", "/tmp/a.bin").
+```
+
+
 # Editor Support
 
 A simple Vim plugin is inside this project. Install it by copying it to the certain directory:
