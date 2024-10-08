@@ -213,6 +213,32 @@ For pointers, we use `any` instead. `any^` in E language is same as `void*` in C
 > In C language, you can just left out parameters for historical reasons: no parameter and void have different meanings. You always need a `void` to make you code robust.
 
 
+## Boolean Expression
+
+In C language, any expression can act as a boolean expression, which have resulted in many many wrong code.
+
+People always write wrong code like this:
+```c
+	if (a = b) {
+		//...
+	}
+```
+
+In E language, there are only 6 boolean expression: `>`, `>=`, `<`, `<=`, `!=`, `==`.
+
+So the following code will refused by the compiler:
+```text
+	if a = b then
+		%...
+	end
+```
+
+Compile error:
+```text
+./sample/led_sample_1.e:115:9: invalid boolean expression for if
+```
+
+
 # The Compiler
 
 The compiler compiles E language source file to RISC-V (32bit rv32im) machine code directly.
@@ -233,5 +259,10 @@ A simple Vim plugin is inside this project. Install it by copying it to the cert
 ```sh
 mkdir -p ~/.vim/pack/my/start/
 cp -r ./misc/elang.vim/ ~/.vim/pack/my/start/
+```
+
+Then add this to your `~/.vimrc`:
+```vim
+autocmd BufRead,BufNewFile *.e setlocal filetype=elang
 ```
 

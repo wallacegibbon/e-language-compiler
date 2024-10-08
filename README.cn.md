@@ -207,6 +207,32 @@ end
 > 在C语言中，你不能直接省略参数，因为一些历史原因，C语言中省略参数和写上“void”，含义并不相同。
 
 
+## 布尔表达式
+
+在C语言中，任何表达式都是布尔表达式，这个特性造成了非常非常多的错误代码。
+
+人们很容易写出下面这样的错误代码：
+```c
+	if (a = b) {
+		//...
+	}
+```
+
+在E语言中，只有6中布尔表达式：`>`, `>=`, `<`, `<=`, `!=`, `==`.
+
+所以下面的代码，会被编译器拒绝：
+```text
+	if a = b then
+		%...
+	end
+```
+
+编译报错：
+```text
+./sample/led_sample_1.e:115:9: invalid boolean expression for if
+```
+
+
 # 编译器
 
 本编译器将E语言源码直接编译为RISC-V（32位rv32im）机器码。
@@ -227,5 +253,10 @@ e_compiler:compile_to_machine1("./sample/led_sample_1.e", "/tmp/a.bin").
 ```sh
 mkdir -p ~/.vim/pack/my/start/
 cp -r ./misc/elang.vim/ ~/.vim/pack/my/start/
+```
+
+然后在你的“~/.vimrc”里面，加入下面的内容：
+```vim
+autocmd BufRead,BufNewFile *.e setlocal filetype=elang
 ```
 
