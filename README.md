@@ -2,12 +2,12 @@
 
 [中文](./README.cn.md)
 
-The E language is like a simplified C language with fewer concepts and more reasonable syntax. It is designed to be:
-1. **E**xplicit on pointer operations.
-2. **E**asy to learn and implement.
-3. Suitable for **E**mbedded systems and friendly to **E**lectronic hobbyists.
+The `E Language` is like a simplified `C language` with fewer concepts and more reasonable syntax. It is designed to be:
+1. `**E**`xplicit on pointer operations.
+2. `**E**`asy to learn and implement.
+3. Designed for `**E**`mbedded systems and friendly to `**E**`lectronic hobbyists.
 
-Here are some comparisons of C language and E language:
+Here are some comparisons of basic operations of C language and E language:
 
 ## Basic Operations
 
@@ -29,8 +29,10 @@ Here are some comparisons of C language and E language:
 
 > In C language, `p[2]` is the same as `*(p + 2 * sizeof(*p))`, which is a waste. In E language, `p + 2` doesn't mean `p + 2 * N` like C language, it is just `p + 2`, while `p[2]` is the same as `p[2]` in C language.
 
+
 ## Array And Struct
 
+In E language:
 ```
 arr: {word, 3} = {1, 2, 3};
 
@@ -44,6 +46,7 @@ b: Blah = Blah{id = 1, name = "hello"};
 c: {Blah, 2} = {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}};
 ```
 
+In C language:
 ```c
 int arr[3] = {1, 2, 3};
 
@@ -56,17 +59,6 @@ struct Blah b = {1, "hello"};
 
 struct Blah c[2] = {{1, "a"}, {2, "b"}};
 ```
-
-The `struct` in E language support default value. You can write:
-
-```
-struct Blah
-	id: word = 1;
-	name: byte^ = "default_name_string";
-end
-```
-
-> In `E` langauge, fields in struct have the same form as variables. (In C language, they only have similar forms, not the same)
 
 
 ## Union
@@ -181,6 +173,27 @@ void (*(*(*my_fn1)())())() = another_fn1;
 
 char * (*(*(*my_fn2)(char *, int))(char *, char *))(int, int) = another_fn2;
 ```
+
+
+## Interrupt
+
+For embedded systems, interrupt subroutine is important, to define an ISR:
+
+```
+interrupt(26)
+fn exti_isr()
+	%% Clear interrupt flag.
+	exti4^.INTF = 0b10000;
+
+	%...
+end
+```
+
+The `26` indicates the interrupt ID which can be found in the chip documentation.
+
+When writting C code, users usually need to read/write assembly files and linkers files to make ISR work.
+We don't need those things in E language, we can write ISRs as long as we have the chip document.
+This is one of the features that make E language friendly to electronic hobbyists.
 
 
 # The Compiler

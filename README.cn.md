@@ -3,11 +3,12 @@
 [English](./README.md)
 
 “E语言”是一个简化版的“C语言”，它有着更少的概念，更合理的语法，它的设计理念是：
-1. 指针操作更“显式”（**E**xplicit）
-2. 容易使用和实现（**E**asy）
-3. 适合嵌入式系统（**E**mbedded systems），适合电子爱好者（**E**lectronic hobbyists）
+1. 指针操作更“显式”（`**E**`xplicit）
+2. 容易使用和实现（`**E**`asy）
+3. 专注嵌入式系统（`**E**`mbedded systems），适合电子爱好者（`**E**`lectronic hobbyists）
 
-以下是C语言和E语言的一些对比：
+
+以下是C语言和E语言在基本操作上的一些对比：
 
 ## 基本操作
 
@@ -27,10 +28,12 @@
 | ((struct Blah \*) p)-\>f1   | p as (Blah^)^.f1            |
 | sizeof(struct Blah \*)      | sizeof(Blah^)               |
 
-> 在C语言中，数组操作和指针操作完全等价，即`p[2]`完全等价于`*(p + 2 * sizeof(*p))`，语义上是一种浪费。在E语言中，`p + 2` 不像C语言中表示 `p + 2 * N`，而是单纯表达 `p + 2`，而`p[2]`则等同于C语言中的`p[2]`，方便了使用。
+> 在C语言中，数组访问和指针操作完全等价，即`p[2]`完全等价于`*(p + 2 * sizeof(*p))`，语义上是一种浪费。在E语言中，`p + 2` 不像C语言中表示 `p + 2 * N`，而是单纯表达 `p + 2`，而`p[2]`则等同于C语言中的`p[2]`，方便了使用。
+
 
 ## 数组和结构体
 
+E语言：
 ```
 arr: {word, 3} = {1, 2, 3};
 
@@ -44,6 +47,7 @@ b: Blah = Blah{id = 1, name = "hello"};
 c: {Blah, 2} = {Blah{id = 1, name = "a"}, Blah{id = 2, name = "b"}};
 ```
 
+C语言：
 ```c
 int32_t arr[3] = {1, 2, 3};
 
@@ -56,17 +60,6 @@ struct Blah b = {1, "hello"};
 
 struct Blah c[2] = {{1, "a"}, {2, "b"}};
 ```
-
-E语言的结构体字段的声明，可以包含默认值，你可以这样写：
-
-```
-struct Blah
-	id: word = 1;
-	name: byte^ = "default_name_string";
-end
-```
-
-> 在E语言中，结构体的字段，和变量定义有着完全相同的写法。（在C语言中，它们的写法只是相似并不相同）
 
 
 ## 联合体
@@ -176,6 +169,26 @@ void (*(*(*my_fn1)())())() = another_fn1;
 
 char * (*(*(*my_fn2)(char *, int))(char *, char *))(int, int) = another_fn2;
 ```
+
+
+## 中断
+
+对于嵌入式系统，中断处理非常重要和基础，在E语言里，要定义一个ISR，只需要直接写：
+
+```
+interrupt(26)
+fn exti_isr()
+	%% Clear interrupt flag.
+	exti4^.INTF = 0b10000;
+
+	%...
+end
+```
+
+这里的`26`表示的是中断的ID，这个ID可以直接在芯片手册中查找到。
+
+用C语言的时候，用户往往需要写汇编代码和链接脚本来配合ISR，比较麻烦，E语言省去了这层麻烦。
+只需要芯片手册，就能轻松编写中断相关的代码，这是E语言对电子爱好者友好的特性之一。
 
 
 # 编译器
