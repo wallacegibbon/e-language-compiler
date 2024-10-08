@@ -3,9 +3,9 @@
 [中文](./README.cn.md)
 
 The `E Language` is like a simplified `C language` with fewer concepts and more reasonable syntax. It is designed to be:
-1. `**E**`xplicit on pointer operations.
-2. `**E**`asy to learn and implement.
-3. Designed for `**E**`mbedded systems and friendly to `**E**`lectronic hobbyists.
+1. `E`xplicit on pointer operations.
+2. `E`asy to learn and implement.
+3. Designed for `E`mbedded systems and friendly to `E`lectronic hobbyists.
 
 Here are some comparisons of basic operations of C language and E language:
 

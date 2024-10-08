@@ -3,9 +3,9 @@
 [English](./README.md)
 
 “E语言”是一个简化版的“C语言”，它有着更少的概念，更合理的语法，它的设计理念是：
-1. 指针操作更“显式”（`**E**`xplicit）
-2. 容易使用和实现（`**E**`asy）
-3. 专注嵌入式系统（`**E**`mbedded systems），适合电子爱好者（`**E**`lectronic hobbyists）
+1. 指针操作更“显式”（`E`xplicit）
+2. 容易使用和实现（`E`asy）
+3. 专注嵌入式系统（`E`mbedded systems），适合电子爱好者（`E`lectronic hobbyists）
 
 
 以下是C语言和E语言在基本操作上的一些对比：
