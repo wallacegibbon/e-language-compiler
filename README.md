@@ -33,7 +33,7 @@ Here are some comparisons of basic operations of C language and E language:
 ## Array And Struct
 
 In E language:
-```
+```text
 arr: {word, 3} = {1, 2, 3};
 
 struct Blah
@@ -83,7 +83,7 @@ printf("%x\n", a.value.buf[2]);
 
 In E language (and also in C language), you can use pointer manipulation to achieve this:
 
-```
+```text
 struct A
 	tag: byte;
 	value: word;
@@ -106,7 +106,7 @@ To keep things minimum, E language do not support `enum`, either.
 
 ## Function Definition
 
-```
+```text
 fn main(argc: word, argv: byte^^): word
 	return 0;
 end
@@ -122,7 +122,7 @@ int main(int argc, char **argv)
 
 ## Condition
 
-```
+```text
 if fn1(fn2(val1)) >= fn3(val2) then
 	fn4();
 elif val3 > 100 then
@@ -146,7 +146,7 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 ## Loop
 
 
-```
+```text
 while test() do
 	do_something();
 end
@@ -161,7 +161,7 @@ while (test()) {
 
 ## Function Pointer
 
-```
+```text
 my_fn1: fn(): fn(): fn() = another_fn1;
 
 my_fn2: fn(byte^; word): fn(byte^; byte^): fn(word; word): byte^ = another_fn2;
@@ -179,7 +179,7 @@ char * (*(*(*my_fn2)(char *, int))(char *, char *))(int, int) = another_fn2;
 
 For embedded systems, interrupt subroutine is important, to define an ISR:
 
-```
+```text
 interrupt(26)
 fn exti_isr()
 	%% Clear interrupt flag.

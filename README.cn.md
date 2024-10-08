@@ -34,7 +34,7 @@
 ## 数组和结构体
 
 E语言：
-```
+```text
 arr: {word, 3} = {1, 2, 3};
 
 struct Blah
@@ -82,7 +82,7 @@ printf("%x\n", a.value.buf[2]);
 
 在E语言中（或者C语言中），你可以通过下列指针操作取代联合体：
 
-```
+```text
 struct A
 	tag: byte;
 	value: word;
@@ -103,7 +103,7 @@ printf("%x\n", (a.value@ + 2) as (byte^)^);
 
 ## 函数定义
 
-```
+```text
 fn main(argc: word; argv: byte^^): word
 	return 0;
 end
@@ -119,7 +119,7 @@ int main(int argc, char **argv)
 
 ## 分支
 
-```
+```text
 if fn1(fn2(val1)) >= fn3(val2) then
 	fn4();
 elif val3 > 100 then
@@ -142,7 +142,7 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 
 ## 循环
 
-```
+```text
 while test() do
 	do_something();
 end
@@ -157,7 +157,7 @@ while (test()) {
 
 ## 函数指针
 
-```
+```text
 my_fn1: fn(): fn(): fn() = another_fn1;
 
 my_fn2: fn(byte^; word): fn(byte^; byte^): fn(word; word): byte^ = another_fn2;
@@ -175,7 +175,7 @@ char * (*(*(*my_fn2)(char *, int))(char *, char *))(int, int) = another_fn2;
 
 对于嵌入式系统，中断处理非常重要和基础，在E语言里，要定义一个ISR，只需要直接写：
 
-```
+```text
 interrupt(26)
 fn exti_isr()
 	%% Clear interrupt flag.
