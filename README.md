@@ -16,8 +16,9 @@ Here are some comparisons of C language and E language:
 | &p                          | p@                          |
 | \*p                         | p^                          |
 | \*\*\*p                     | p^^^                        |
-| &p[3]                       | p + 3 * N                   |
-| p[3]                        | (p + 3 * N)^                |
+| &p[3]                       | p[3]@                       |
+| p[3]                        | p[3]                        |
+| (char\*)p + 1               | p + 1                       |
 | p.m                         | p.m                         |
 | (\*p).m                     | p^.m                        |
 | p-\>m                       | p^.m                        |
@@ -26,7 +27,7 @@ Here are some comparisons of C language and E language:
 | ((struct Blah \*) p)-\>f1   | p as (Blah^)^.f1            |
 | sizeof(struct Blah \*)      | sizeof(Blah^)               |
 
-> To achieve the 1st goal (explicit on pointer operations), `p + 1` does NOT mean `p + 1 * N` like C language. We need to write `p + 1 * N` explicitly.
+> In C language, `p[2]` is the same as `*(p + 2 * sizeof(*p))`, which is a waste. In E language, `p + 2` doesn't mean `p + 2 * N` like C language, it is just `p + 2`, while `p[2]` is the same as `p[2]` in C language.
 
 ## Array And Struct
 
@@ -97,7 +98,7 @@ struct A
 end
 
 a: A = A{tag = 1, value = 0x12345678};
-printf("%x\n", (a.value@ + 2)^);
+printf("%x\n", (a.value@ + 2) as (byte^)^);
 %> 34
 ```
 

@@ -65,6 +65,8 @@ replace_typeof(#e_type_convert{type = #e_typeof{expr = Expr}} = E, Ctx) ->
 	E#e_type_convert{type = type_of_node(Expr, Ctx)};
 replace_typeof(?CALL(Callee, Args) = E, Ctx) ->
 	E?CALL(replace_typeof(Callee, Ctx), lists:map(fun(V) -> replace_typeof(V, Ctx) end, Args));
+replace_typeof(?AREF(Arr, Index) = E, Ctx) ->
+	E?AREF(replace_typeof(Arr, Ctx), replace_typeof(Index, Ctx));
 replace_typeof(#e_op{tag = {sizeof, Type}} = E, Ctx) ->
 	E#e_op{tag = {sizeof, replace_typeof_in_type(Type, Ctx)}};
 replace_typeof(#e_op{tag = {alignof, Type}} = E, Ctx) ->
@@ -99,6 +101,10 @@ type_of_node(?OP2('=', ?OP2('.', Op11, Op12, DotLoc), Op2, Loc), #{struct_map :=
 	compare_expect_left(Op1TypeFixed, Op2Type, Loc, Ctx);
 type_of_node(?OP2('=', ?OP2('^', SubOp, _), Op2, Loc), Ctx) ->
 	Op1Type = inc_pointer_depth(type_of_node(SubOp, Ctx), -1, Loc),
+	Op2Type = type_of_node(Op2, Ctx),
+	compare_expect_left(Op1Type, Op2Type, Loc, Ctx);
+type_of_node(?OP2('=', ?AREF(Arr, _), Op2, Loc), Ctx) ->
+	Op1Type = inc_pointer_depth(type_of_node(Arr, Ctx), -1, Loc),
 	Op2Type = type_of_node(Op2, Ctx),
 	compare_expect_left(Op1Type, Op2Type, Loc, Ctx);
 type_of_node(?OP2('=', #e_varref{} = Op1, Op2, Loc), Ctx) ->
@@ -165,6 +171,17 @@ type_of_node(?CALL(FunExpr, Args, Loc), Ctx) ->
 			end;
 		T ->
 			e_util:ethrow(Loc, "invalid function type: ~s", [type_to_str(T)])
+	end;
+type_of_node(?AREF(ArrExpr, Index, Loc), Ctx) ->
+	ArrType = type_of_node(ArrExpr, Ctx),
+	IndexType = type_of_node(Index, Ctx),
+	case {ArrType, IndexType} of
+		{#e_basic_type{p_depth = N}, #e_basic_type{class = integer, p_depth = 0}} when N > 0 ->
+			inc_pointer_depth(ArrType, -1, Loc);
+		{#e_basic_type{p_depth = N}, _} when N > 0 ->
+			e_util:ethrow(Loc, "invalid index type: ~s", [type_to_str(IndexType)]);
+		_ ->
+			e_util:ethrow(Loc, "\"[]\" on wrong type: ~s", [type_to_str(ArrType)])
 	end;
 %% Boolean operator accepts booleans and returns a boolean.
 type_of_node(?OP2(Tag, Op1, Op2, Loc), Ctx) when ?IS_LOGIC(Tag) ->

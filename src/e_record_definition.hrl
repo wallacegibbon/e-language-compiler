@@ -124,7 +124,7 @@
 	type :: e_type()
 	}).
 
--type e_op_tag() :: '*' | '/' | '+' | '-' | '@' | '^' | 'rem' | 'and' | 'or' | 'band' | 'bor' | 'bxor' | 'bsl' | 'bsr' | '~' | '!' | '.' | '=' | '>' | '<' | '>=' | '<=' | '!=' | '==' | {call, e_expr()} | {sizeof, e_type()} | {alignof, e_type()}.
+-type e_op_tag() :: '*' | '/' | '+' | '-' | '@' | '^' | 'rem' | 'and' | 'or' | 'band' | 'bor' | 'bxor' | 'bsl' | 'bsr' | '~' | '!' | '.' | '=' | '>' | '<' | '>=' | '<=' | '!=' | '==' | {call, e_expr()} | {aref, e_expr()} | {sizeof, e_type()} | {alignof, e_type()}.
 
 -record(e_op,
 	{
@@ -209,6 +209,8 @@
 -define(OP1(Tag, O), #e_op{tag = Tag, data = [O]}).
 -define(CALL(Fn, ARGS, Loc), #e_op{tag = {call, Fn}, data = ARGS, loc = Loc}).
 -define(CALL(Fn, ARGS), #e_op{tag = {call, Fn}, data = ARGS}).
+-define(AREF(P, Index, Loc), #e_op{tag = {aref, P}, data = [Index], loc = Loc}).
+-define(AREF(P, Index), #e_op{tag = {aref, P}, data = [Index]}).
 
 -define(I(V, Loc), #e_integer{value = V, loc = Loc}).
 -define(I(V), #e_integer{value = V}).

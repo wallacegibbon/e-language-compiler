@@ -24,12 +24,20 @@ compile_from_raw_ast(AST, #{wordsize := WordSize, entry_function := Entry}) ->
 	io:format("PHASE: type checking (INIT CODE)...~n"),
 	e_type:check_type_in_stmts(InitCode00, Ctx00),
 
+	%% transform all `a[b]` into `(a + b * sizeof(a^))^`
+	io:format("PHASE: array ref transform (AST)...~n"),
+	AST02 = e_array:transform_aref_in_ast(AST00, Ctx00),
+	io:format("PHASE: array ref transform (INIT CODE)...~n"),
+	InitCode02 = e_array:transform_aref_in_stmts(InitCode00, Ctx00),
+	{_, StructMap02} = e_util:make_function_and_struct_map_from_ast(AST02),
+	Ctx02 = Ctx00#{struct_map := StructMap02},
+
 	%% Fill offset of variables and struct fields.
 	io:format("PHASE: size filling (AST)...~n"),
-	AST10 = e_size:fill_offsets_in_ast(AST00, Ctx00),
+	AST10 = e_size:fill_offsets_in_ast(AST02, Ctx02),
 	%% Struct info is updated, so StructMap needs to be updated, too.
 	{_, StructMap10} = e_util:make_function_and_struct_map_from_ast(AST10),
-	Ctx10 = Ctx00#{struct_map := StructMap10},
+	Ctx10 = Ctx02#{struct_map := StructMap10},
 
 	io:format("PHASE: size filling (GLOBAL VARS)...~n"),
 	GlobalVars10 = e_size:fill_offsets_in_vars(GlobalVars00, Ctx10),
@@ -41,7 +49,7 @@ compile_from_raw_ast(AST, #{wordsize := WordSize, entry_function := Entry}) ->
 	AST20 = e_size:expand_kw_in_ast(AST10, Ctx11),
 	%% Initializing code for global variables are not in main ast, do not forget them.
 	io:format("PHASE: keyword expanding (INIT CODE)...~n"),
-	InitCode20 = e_size:expand_kw_in_stmts(InitCode00, Ctx11),
+	InitCode20 = e_size:expand_kw_in_stmts(InitCode02, Ctx11),
 	%% sizeof expressions are expanded, so StructMap needs to be updated
 	{_, StructMap20} = e_util:make_function_and_struct_map_from_ast(AST20),
 	Ctx20 = Ctx11#{struct_map := StructMap20},

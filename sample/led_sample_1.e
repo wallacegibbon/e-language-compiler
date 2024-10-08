@@ -88,9 +88,9 @@ fn AppState_init(self: AppState^)
 	self^.selected = 0;
 
 	while i < self^.light_nums do
-		led = self^.leds@ + (i * sizeof(LED));
+		led = self^.leds@[i]@;
 		LED_init(led, gpio_d, i);
-		(self^.lights@ + (i * sizeof(word)))^ = led;
+		self^.lights@[i] = led;
 		i += 1;
 	end
 end
@@ -98,7 +98,7 @@ end
 fn AppState_all_off(self: AppState^)
 	i: word = 0;
 	while i < self^.light_nums do
-		off_light((self^.lights@ + (i * sizeof(word)))^);
+		off_light(self^.lights@[i]);
 		i += 1;
 	end
 end
@@ -106,7 +106,7 @@ end
 fn AppState_all_bright(self: AppState^)
 	i: word = 0;
 	while i < self^.light_nums do
-		on_light((self^.lights@ + (i * sizeof(word)))^);
+		on_light(self^.lights@[i]);
 		i += 1;
 	end
 end
@@ -129,18 +129,18 @@ end
 
 fn AppState_toggle_pair1(self: AppState^)
 	tmp: word;
-	toggle_light((self^.lights@ + (0 * sizeof(word)))^, tmp@);
-	toggle_light((self^.lights@ + (1 * sizeof(word)))^, tmp@);
-	off_light((self^.lights@ + (2 * sizeof(word)))^);
-	off_light((self^.lights@ + (3 * sizeof(word)))^);
+	toggle_light(self^.lights@[0], tmp@);
+	toggle_light(self^.lights@[1], tmp@);
+	off_light(self^.lights@[2]);
+	off_light(self^.lights@[3]);
 end
 
 fn AppState_toggle_pair2(self: AppState^)
 	tmp: word;
-	toggle_light((self^.lights@ + (2 * sizeof(word)))^, tmp@);
-	toggle_light((self^.lights@ + (3 * sizeof(word)))^, tmp@);
-	off_light((self^.lights@ + (0 * sizeof(word)))^);
-	off_light((self^.lights@ + (1 * sizeof(word)))^);
+	toggle_light(self^.lights@[2], tmp@);
+	toggle_light(self^.lights@[3], tmp@);
+	off_light(self^.lights@[0]);
+	off_light(self^.lights@[1]);
 end
 
 fn AppState_loop_once(self: AppState^)

@@ -2,7 +2,7 @@ Nonterminals
 
 e_root_stmts e_root_stmt e_struct_def e_function_def e_vardefs e_vardef e_args
 e_function_stmts e_function_stmt e_if_stmt e_else_stmt e_while_stmt e_return_stmt e_label
-e_expr e_call_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr e_assign_expr e_not_expr e_bnot_expr
+e_expr e_call_expr e_array_ref_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr e_assign_expr e_not_expr e_bnot_expr
 e_typeof_type e_type_annos e_type_anno e_calc1 e_calc2 e_bitwise e_cmp e_bool_op e_op2_with_assignment
 e_pointer_depth e_atomic_literal_values e_reserved
 e_array_init_expr e_array_init_elements e_struct_init_expr e_struct_init_fields e_struct_init_assignment
@@ -12,7 +12,7 @@ e_array_init_expr e_array_init_elements e_struct_init_expr e_struct_init_fields 
 Terminals
 
 %% operators
-';' ':' ',' '=' '{' '}' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '!=' '==' '>=' '<='
+';' ':' ',' '=' '{' '}' '[' ']' '(' ')' '<' '>' '+' '-' '*' '/' '^' '@' '.' '!=' '==' '>=' '<='
 
 %% keywords
 struct 'end' 'fn' 'rem' 'and' 'or' 'not' 'band' 'bor' 'bnot' 'bxor' 'bsl' 'bsr'
@@ -223,6 +223,10 @@ e_call_expr -> e_expr '(' e_args ')' :
 e_call_expr -> e_expr '(' ')' :
 	#e_op{tag = {call, '$1'}, data = [], loc = token_loc('$2')}.
 
+%% array reference
+e_array_ref_expr -> e_expr '[' e_expr ']' :
+	#e_op{tag = {aref, '$1'}, data = ['$3'], loc = token_loc('$2')}.
+
 e_expr -> e_reserved :
 	return_error(token_loc('$1'), e_util:fmt("~s is reserved", [token_symbol('$1')])).
 e_expr -> e_expr '.' identifier :
@@ -251,6 +255,7 @@ e_expr -> e_array_init_expr : '$1'.
 e_expr -> e_struct_init_expr : '$1'.
 e_expr -> e_atomic_literal_values : '$1'.
 e_expr -> e_call_expr : '$1'.
+e_expr -> e_array_ref_expr : '$1'.
 e_expr -> e_assign_expr : '$1'.
 e_expr -> e_sizeof_expr : '$1'.
 e_expr -> e_alignof_expr : '$1'.
@@ -267,6 +272,7 @@ e_reserved -> break : '$1'.
 e_reserved -> continue : '$1'.
 
 Unary 1000 '('.
+Unary 1000 '['.
 Left 1000 '.'.
 Unary 900 '^'.
 Unary 900 '@'.
