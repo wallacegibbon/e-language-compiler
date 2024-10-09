@@ -23,12 +23,12 @@ init_jump_pos(#{init_jump_pos := Jp, isr_vector_pos := Vp}) when Jp > Vp ->
 init_jump_pos(#{init_jump_pos := Jp}) ->
 	Jp.
 
-code_start_pos(#{isr_vector_pos := Vp, isr_vector_size := Vs, code_start_pos := Cp}) when Vp =< Cp, Vp + Vs > Cp ->
-	throw(e_util:fmt("compile option error: isr vector (~w-~w) overlapped code start (~w)", [Vp, Vp + Vs, Cp]));
-code_start_pos(#{isr_vector_pos := Vp, code_start_pos := Cp}) when Vp > Cp ->
-	throw("compile option error: code before isr vector is not supported yet");
 code_start_pos(#{code_start_pos := Cp}) when Cp rem 4 =/= 0 ->
 	throw(e_util:fmt("compile option error: code start (~w) is not 4-byte aligned", [Cp]));
+code_start_pos(#{isr_vector_pos := Vp, code_start_pos := Cp}) when Vp > Cp ->
+	throw("compile option error: code before isr vector is not supported yet");
+code_start_pos(#{isr_vector_pos := Vp, isr_vector_size := Vs, code_start_pos := Cp}) when Vp =< Cp, Vp + Vs > Cp ->
+	throw(e_util:fmt("compile option error: isr vector (~w-~w) overlapped code start (~w)", [Vp, Vp + Vs, Cp]));
 code_start_pos(#{code_start_pos := Cp}) ->
 	Cp.
 
