@@ -22,9 +22,9 @@ generate_code(IRs, OutputFile, InterruptMap, Options) ->
 	{ok, StartAddress} = maps:find('__init', LabelMap),
 	%% The first instruction should be jumping to `__init`.
 	Instructions = [encode_instr({{j, StartAddress - InitJumpPos}, InitJumpPos}) | Instructions1],
-	Fn1 = fun(IO_Dev) -> write_binary(Instructions, 0, IO_Dev) end,
+	Fn1 = fun(IO_Dev) -> write_binary(Instructions, InitJumpPos, IO_Dev) end,
 	e_util:file_write(OutputFile, Fn1),
-	Fn2 = fun(IO_Dev) -> write_detail(Instructions, 0, OffsetMap, IO_Dev) end,
+	Fn2 = fun(IO_Dev) -> write_detail(Instructions, InitJumpPos, OffsetMap, IO_Dev) end,
 	e_util:file_write(OutputFile ++ ".detail", Fn2),
 	ok.
 
