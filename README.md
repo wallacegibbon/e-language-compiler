@@ -81,7 +81,7 @@ printf("%x\n", a.value.buf[2]);
 //> 34
 ```
 
-In E language (and also in C language), you can use pointer manipulation to achieve this:
+In E language (and also in C language), we can use pointer manipulation to achieve this:
 
 ```text
 struct A
@@ -202,7 +202,7 @@ In C language, there is a type called `void` which is used for 2 purpose:
 1. For function definition, `void` indicates the function do not have parameters or return value;
 2. For pointers, `void*` stands for a pointer who can point to any type.
 
-> The logic of C language is: When you dereferncing `void*`, you will got a `void` type who can not be part of an expression, so some usage bugs can be found by this design. This is not the best design since many C programmers do not understand this logic, they just remembered the rule.
+> The logic of C language is: When we dereferncing `void*`, we will got a `void` type who can not be part of an expression, so some usage bugs can be found by this design. This is not the best design since many C programmers do not understand this logic, they just remembered the rule.
 
 In E language, there is no `void` type exposed to users.
 
@@ -210,7 +210,7 @@ For function definitions, we do not use `void`. When we define functions without
 
 For pointers, we use `any` instead. `any^` in E language is same as `void*` in C language.
 
-> In C language, you can just left out parameters for historical reasons: no parameter and void have different meanings. You always need a `void` to make you code robust.
+> In C language, we can not just left out parameters for historical reasons: no parameter and void have different meanings. We always need a `void` to make our code robust.
 
 
 ## Boolean Expression
@@ -239,12 +239,25 @@ Compile error:
 ```
 
 
+## Bitwise Operations
+
+Since we use `^` as pointer operator (`^` looks like a pointer), we can not follow the C style. (C use `^` as xor)
+
+Instead, E language choose the Erlang style for bit operations.
+
+E language defined keywords `band`, `bor`, `bnot`, `bxor` for bitwise logic operations, which is just like `&`, `|`, `~`, `^` in C language.
+
+And `bsl`, `bsr` for shift operations, which is just like `<<`, `>>` in C language.
+
+Bitwise and shift operations are important, but they are not as common as pointer operations, this is the main reason E language choose `^` as pointer operator.
+
+
 # The Compiler
 
 The compiler compiles E language source file to RISC-V (32bit rv32im) machine code directly.
 Other architectures may be supported in the future.
 
-Command line interface is not supported yet, you need to call the compiler from erlang shell.
+Command line interface is not supported yet, we need to call the compiler from erlang shell.
 
 e.g.
 ```erlang
@@ -261,7 +274,7 @@ mkdir -p ~/.vim/pack/my/start/
 cp -r ./misc/elang.vim/ ~/.vim/pack/my/start/
 ```
 
-Then add this to your `~/.vimrc`:
+Then add the following configurations to `~/.vimrc`:
 ```vim
 autocmd BufRead,BufNewFile *.e setlocal filetype=elang
 ```

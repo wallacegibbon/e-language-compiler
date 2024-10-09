@@ -256,8 +256,9 @@ fn system_init()
 	%% AFIO_EXTICR2, Connect EXTI4 to PD4.
 	(0x4001000C as (word^))^ = 0b0011;
 
+	%% We use the internal 8MHz as system clock.
 	tim2^.ATRL = 8000;
-	tim2^.PSC = 9; % 10ms
+	%tim2^.PSC = 9; % 10ms
 	tim2^.PSC = 19; % 20ms
 	tim2^.DMAINTEN = 0b1;
 	%tim2^.CTL1 = 0b10000001;
