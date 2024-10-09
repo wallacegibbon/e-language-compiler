@@ -21,7 +21,7 @@ transform_aref_in_stmts(Stmts0, Ctx) ->
 -spec transform_aref(e_expr(), e_compile_context:context()) -> e_expr().
 transform_aref(?AREF(Arr, Index, Loc), Ctx) ->
 	ArrType = e_type:type_of_node(Arr, Ctx),
-	Sizeof = #e_op{tag = {sizeof, e_type:inc_pointer_depth(ArrType, -1, Ctx)}, loc = Loc},
+	Sizeof = #e_op{tag = {sizeof, e_type:inc_pointer_depth(ArrType, -1, Loc)}, loc = Loc},
 	?OP2('^', ?OP2('+', Arr, ?OP2('*', Index, Sizeof, Loc), Loc), ?I(0));
 transform_aref(?CALL(Callee, Args) = Op, Ctx) ->
 	Op?CALL(transform_aref(Callee, Ctx), lists:map(fun(E) -> transform_aref(E, Ctx) end, Args));

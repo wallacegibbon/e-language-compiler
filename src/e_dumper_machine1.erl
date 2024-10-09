@@ -9,17 +9,19 @@
 	}.
 
 -spec generate_code([tuple()], string(), #{non_neg_integer() => atom()}, e_compile_option:option()) -> ok.
-generate_code(IRs, OutputFile, InterruptMap, #{wordsize := WordSize, isr_vector_pos := ISR_Pos, isr_vector_size := ISR_Size} = Options) ->
-	StartPos = e_compile_option:code_start_pos(Options),
+generate_code(IRs, OutputFile, InterruptMap, Options) ->
+	#{wordsize := WordSize, isr_vector_pos := ISR_Pos, isr_vector_size := ISR_Size} = Options,
+	InitJumpPos = e_compile_option:init_jump_pos(Options),
+	CodePos = e_compile_option:code_start_pos(Options),
 	ScanContext = #{label_map => #{}, offset_map => #{}, wordsize => WordSize},
-	{Instrs, #{label_map := LabelMap, offset_map := OffsetMap}} = scan_address(IRs, StartPos, [], ScanContext),
+	{Instrs, #{label_map := LabelMap, offset_map := OffsetMap}} = scan_address(IRs, CodePos, [], ScanContext),
 	Instructions0 = lists:map(fun encode_instr/1, replace_address(Instrs, LabelMap)),
 	{ok, DefaultISRAddr} = maps:find('__default_isr', LabelMap),
 	VectorTable = generate_isr_vector_table(WordSize, ISR_Pos, ISR_Size, WordSize, [], DefaultISRAddr, InterruptMap, LabelMap),
 	Instructions1 = lists:reverse(VectorTable, Instructions0),
 	{ok, StartAddress} = maps:find('__init', LabelMap),
 	%% The first instruction should be jumping to `__init`.
-	Instructions = [encode_instr({{j, StartAddress}, 0}) | Instructions1],
+	Instructions = [encode_instr({{j, StartAddress}, InitJumpPos}) | Instructions1],
 	Fn1 = fun(IO_Dev) -> write_binary(Instructions, 0, IO_Dev) end,
 	e_util:file_write(OutputFile, Fn1),
 	Fn2 = fun(IO_Dev) -> write_detail(Instructions, 0, OffsetMap, IO_Dev) end,

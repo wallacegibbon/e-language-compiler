@@ -1,4 +1,6 @@
 %% vim:ft=elang:ts=8:sw=8:sts=8:noet
+%% This program is designed for CH32V3xx. You need to change the code if you run it on CH32V1xx or CH32V2xx.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Application related struct definition
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
