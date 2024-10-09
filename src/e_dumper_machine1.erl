@@ -67,19 +67,26 @@ scan_address([], _, Result, Ctx) ->
 
 replace_address([{{Br, R1, R2, Label}, Offset} | Rest], LabelMap) when ?IS_BR_INSTR(Br) ->
 	{ok, Address} = maps:find(Label, LabelMap),
-	[{{Br, R1, R2, Address - Offset}, Offset} | replace_address(Rest, LabelMap)];
+	RelativeOffset = Address - Offset,
+	if
+		RelativeOffset > 4095 orelse RelativeOffset < -4096 ->
+			throw({instruction_error, Br, {out_of_range, RelativeOffset}});
+		true ->
+			[{{Br, R1, R2, RelativeOffset}, Offset} | replace_address(Rest, LabelMap)]
+	end;
+replace_address([{{j, Label}, Offset} | Rest], LabelMap) ->
+	{ok, Address} = maps:find(Label, LabelMap),
+	RelativeOffset = Address - Offset,
+	if
+		RelativeOffset > 16#7FFFF orelse RelativeOffset < -16#80000 ->
+			throw({instruction_error, j, {out_of_range, RelativeOffset}});
+		true ->
+			[{{j, RelativeOffset}, Offset} | replace_address(Rest, LabelMap)]
+	end;
 replace_address([{{la, R, Label}, Offset} | Rest], LabelMap) ->
 	{ok, Address} = maps:find(Label, LabelMap),
 	{High, Low} = e_util:u_type_immedi(Address - Offset),
 	[{{auipc, R, High}, Offset}, {{addi, R, R, Low}, Offset + 4} | replace_address(Rest, LabelMap)];
-replace_address([{{j, Label}, Offset} | Rest], LabelMap) ->
-	{ok, Address} = maps:find(Label, LabelMap),
-	if
-		Address > 16#7FFFF orelse Address < -16#80000 ->
-			throw({instruction_error, j, {out_of_range, Address}});
-		true ->
-			[{{j, Address - Offset}, Offset} | replace_address(Rest, LabelMap)]
-	end;
 replace_address([Any | Rest], LabelMap) ->
 	[Any | replace_address(Rest, LabelMap)];
 replace_address([], _) ->
