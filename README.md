@@ -259,7 +259,7 @@ Other architectures may be supported in the future.
 
 To call the compiler, we can call the command line tool `ec`:
 ```sh
-./ec -i ./sample/led_sample_1.e -o /tmp/a.bin --v-pos 0 --v-size 416 --i-pos 416 --init-jump-pos 0
+ec -i ./sample/led_sample_1.e -o /tmp/a.bin --v-pos 0 --v-size 416 --i-pos 416 --init-jump-pos 0
 ```
 
 If you are an Erlang user, you can also call the compiler from erlang shell:

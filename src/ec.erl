@@ -13,14 +13,14 @@ arguments =>
 	#{name => code_pos, long => "-i-pos", type => {integer, [{min, 0}]}},
 	#{name => data_pos, long => "-d-pos", type => {integer, [{min, 0}]}},
 	#{name => data_size, long => "-d-size", type => {integer, [{min, 0}]}},
-	#{name => entry_function, long => "-entry", type => atom},
+	#{name => entry_function, long => "-entry"},
 	#{name => wordsize, long => "-wordsize", type => {integer, [{min, 1}]}}
 ],
 
 handler =>
 fun
 Handler(#{input_file := InputFile, output_file := OutputFile} = Options) ->
-	PureOptions = maps:without([input_file, output_file], Options),
+	PureOptions = fix_options(maps:without([input_file, output_file], Options)),
 	try
 		e_compiler:compile_to_machine1(InputFile, OutputFile, PureOptions)
 	catch
@@ -32,6 +32,11 @@ Handler(#{input_file := InputFile} = Options) ->
 	Handler(Options#{output_file => InputFile ++ ".bin"})
 end
 }.
+
+fix_options(#{entry_function := Entry} = Options) ->
+	Options#{entry_function := list_to_atom(Entry)};
+fix_options(Options) ->
+	Options.
 
 main(Args) ->
 	argparse:run(Args, cli(), #{progname => ec}).

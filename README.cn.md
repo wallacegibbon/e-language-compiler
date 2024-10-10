@@ -253,7 +253,7 @@ E语言定义了关键字 “band”，“bor”，“bnot”，“bxor”来进
 
 要使用E语言编译器，我们可以用命令行工具`ec`：
 ```sh
-./ec -i ./sample/led_sample_1.e -o /tmp/a.bin --v-pos 0 --v-size 416 --i-pos 416 --init-jump-pos 0
+ec -i ./sample/led_sample_1.e -o /tmp/a.bin --v-pos 0 --v-size 416 --i-pos 416 --init-jump-pos 0
 ```
 
 如果你是一名Erlang用户，你也可以从Erlang Shell里直接调用编译器进行编译：
