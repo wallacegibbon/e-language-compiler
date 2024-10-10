@@ -18,8 +18,8 @@ generate_code(IRs, OutputFile, InterruptMap, Options) ->
 	ISR_skip = isr_vector_skip(Options),
 	VectorTable = generate_isr_vector_table(ISR_skip, ISR_Pos, ISR_Size, WordSize, [], DefaultISRAddr, InterruptMap, LabelMap),
 	Instructions1 = lists:reverse(VectorTable, Instructions0),
-	{ok, StartAddress} = maps:find('__init', LabelMap),
-	{InitJumpIRs, BinStartPos} = generate_init_jump(StartAddress, Options),
+	{ok, InitAddress} = maps:find('__init', LabelMap),
+	{InitJumpIRs, BinStartPos} = generate_init_jump(InitAddress, Options),
 	Instructions = InitJumpIRs ++ Instructions1,
 	Fn1 = fun(IO_Dev) -> write_binary(Instructions, BinStartPos, IO_Dev) end,
 	e_util:file_write(OutputFile, Fn1),
@@ -28,10 +28,12 @@ generate_code(IRs, OutputFile, InterruptMap, Options) ->
 	ok.
 
 -spec generate_init_jump(non_neg_integer(), e_compile_option:option()) -> {[tuple()], non_neg_integer()}.
-generate_init_jump(StartAddress, #{init_jump_pos := InitJumpPos}) ->
-	{[encode_instr({{j, StartAddress - InitJumpPos}, InitJumpPos})], InitJumpPos};
-generate_init_jump(StartAddress, #{isr_vector_pos := ISR_Pos}) ->
-	{[], ISR_Pos}.
+generate_init_jump(InitAddress, #{init_jump_pos := InitJumpPos}) ->
+	{[encode_instr({{j, InitAddress - InitJumpPos}, InitJumpPos})], InitJumpPos};
+generate_init_jump(_, #{isr_vector_pos := ISR_Pos}) when ISR_Pos > 0 ->
+	{[], ISR_Pos};
+generate_init_jump(_, #{code_pos := CodePos}) ->
+	{[], CodePos}.
 
 %% On some platforms, we skip the first 4-byte (reserved to an init jump instruction) on isr vector generating.
 %% This is just a dirty workaround.
