@@ -177,7 +177,7 @@ write_detail([{word, Raw, Loc} | Rest], Loc, OffsetMap, IO_Dev) ->
 write_detail([{Instr, Raw, Loc} | Rest], Loc, OffsetMap, IO_Dev) ->
 	case maps:find(Loc, OffsetMap) of
 		{ok, Labels} ->
-			lists:foreach(fun(L) -> io:format(IO_Dev, "\t\t\t\t~s:~n", [L]) end, Labels);
+			lists:foreach(fun(L) -> io:format(IO_Dev, "\t\t\t\t~s:~n", [L]) end, lists:reverse(Labels));
 		_ ->
 			ok
 	end,
