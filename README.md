@@ -16,8 +16,9 @@ Here are some comparisons of basic operations of C language and E language:
 | &p                          | p@                          |
 | \*p                         | p^                          |
 | \*\*\*p                     | p^^^                        |
-| &p[3]                       | p[3]@                       |
 | p[3]                        | p[3]                        |
+| &p[3]                       | p[3]@                       |
+| p + 3                       | p[3]@                       |
 | (char\*)p + 1               | p + 1                       |
 | p.m                         | p.m                         |
 | (\*p).m                     | p^.m                        |
