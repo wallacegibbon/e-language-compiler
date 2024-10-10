@@ -32,21 +32,17 @@
 	)).
 
 -spec generate_code(e_ast(), e_ast(), non_neg_integer(), non_neg_integer(), string(), e_compile_option:option()) -> ok.
-generate_code(AST, InitCode, SP, GP, OutputFile, #{wordsize := WordSize, entry_function := Entry, isr_vector_pos := InterruptVec}) ->
+generate_code(AST, InitCode, SP, GP, OutputFile, #{wordsize := WordSize, entry_function := Entry} = Options) ->
 	Pid = spawn_link(fun() -> string_collect_loop([]) end),
 	Regs = tmp_regs(),
 	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid, epilogue_tag => none, ret_offset => -WordSize, cond_label => {none, none}},
 	InitRegs = [smart_li({x, 2}, SP), smart_li({x, 3}, GP)],
 	InitVars = lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init'}) end, InitCode),
-	[T | _] = Regs,
-	%% Initialize interrupt vector address by writting `mtvec`(CSR 0x305).
-	SetInterruptVector = [smart_li(T, InterruptVec), {ori, T, T, 3}, {csrrw, {x, 0}, T, 16#305}],
-	%% Initialize MIE and MPIE in `mstatus`(CSR 0x300).
-	InitInterrupt = [smart_li(T, 16#88), {csrrw, {x, 0}, T, 16#300}],
 	InitJump = stmt_to_ir(?CALL(#e_varref{name = Entry}, []), Ctx#{scope_tag := '__init'}),
 	EndJump = [{label, {align, 1}, '__end'}, {j, '__end'}],
 	DefaultISR = [{label, {align, 1}, '__default_isr'}, {j, '__default_isr'}],
-	InitIRs = [{label, {align, 1}, '__init'}, InitRegs, InitVars, InitInterrupt, SetInterruptVector, InitJump, EndJump, DefaultISR],
+	InterruptIRs = generate_interrupt_irs(Ctx, Options),
+	InitIRs = [{label, {align, 1}, '__init'}, InitRegs, InitVars, InterruptIRs, InitJump, EndJump, DefaultISR],
 	IRs = ast_to_ir(AST, Ctx),
 	StrTable = string_collect_dump(Pid),
 	StrIRs = lists:map(fun({L, S, Len}) -> [{label, {align, 1}, L}, {string, S, Len}] end, StrTable),
@@ -55,6 +51,16 @@ generate_code(AST, InitCode, SP, GP, OutputFile, #{wordsize := WordSize, entry_f
 	Fn2 = fun(IO_Dev) -> write_asm([{comment, "For GNU assembler"}, InitIRs, IRs, StrIRs], IO_Dev) end,
 	e_util:file_write(OutputFile ++ ".asm", Fn2),
 	ok.
+
+generate_interrupt_irs(#{free_regs := [T | _]}, #{isr_vector_pos := Pos, isr_vector_size := Size}) when Size > 0 ->
+	%% Initialize interrupt vector address by writting `mtvec`(CSR 0x305).
+	SetInterruptVector = [smart_li(T, Pos), {ori, T, T, 3}, {csrrw, {x, 0}, T, 16#305}],
+	%% Initialize MIE and MPIE in `mstatus`(CSR 0x300).
+	InitInterrupt = [smart_li(T, 16#88), {csrrw, {x, 0}, T, 16#300}],
+	InitInterrupt ++ SetInterruptVector;
+generate_interrupt_irs(_, _) ->
+	[].
+
 
 -type irs() :: list(tuple() | irs()).
 
