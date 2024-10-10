@@ -27,6 +27,7 @@ generate_code(IRs, OutputFile, InterruptMap, Options) ->
 	e_util:file_write(OutputFile ++ ".detail", Fn2),
 	ok.
 
+%% Generate instruction for init jump (to __init), and return the start position for bin code generating.
 -spec generate_init_jump(non_neg_integer(), e_compile_option:option()) -> {[tuple()], non_neg_integer()}.
 generate_init_jump(InitAddress, #{init_jump_pos := InitJumpPos}) ->
 	{[encode_instr({{j, InitAddress - InitJumpPos}, InitJumpPos})], InitJumpPos};

@@ -38,8 +38,8 @@ generate_code(AST, InitCode, SP, GP, OutputFile, #{wordsize := WordSize, entry_f
 	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid, epilogue_tag => none, ret_offset => -WordSize, cond_label => {none, none}},
 	InitVars0 = lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init_vars'}) end, InitCode),
 	InitVars = [{label, {align, 1}, '__init_vars'} | InitVars0],
-	InitJump0 = stmt_to_ir(?CALL(#e_varref{name = Entry}, []), Ctx#{scope_tag := '__init_jump'}),
-	InitJump = [{label, {align, 1}, '__init_jump'} | InitJump0],
+	EntryJump0 = stmt_to_ir(?CALL(#e_varref{name = Entry}, []), Ctx#{scope_tag := '__entry_jump'}),
+	EntryJump = [{label, {align, 1}, '__entry_jump'} | EntryJump0],
 	EndJump = [{label, {align, 1}, '__end'}, {j, '__end'}],
 	DefaultISR = [{label, {align, 1}, '__default_isr'}, {j, '__default_isr'}],
 	%% Init `sp` and `gp`. This should be before InitVars.
@@ -48,7 +48,7 @@ generate_code(AST, InitCode, SP, GP, OutputFile, #{wordsize := WordSize, entry_f
 	InitSystemIRs2 = [{label, {align, 1}, '__init_system2'}, generate_interrupt_irs(Ctx, Options)],
 	InitLabel = {label, {align, 1}, '__init'},
 	%% Code in InitVars may from different modules.
-	InitIRs = [InitLabel, InitSystemIRs1, InitVars, InitSystemIRs2, InitJump, EndJump, DefaultISR],
+	InitIRs = [InitLabel, InitSystemIRs1, InitVars, InitSystemIRs2, EntryJump, EndJump, DefaultISR],
 	IRs = ast_to_ir(AST, Ctx),
 	StrTable = string_collect_dump(Pid),
 	StrIRs = lists:map(fun({L, S, Len}) -> [{label, {align, 1}, L}, {string, S, Len}] end, StrTable),
