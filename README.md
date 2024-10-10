@@ -11,24 +11,24 @@ Here are some comparisons of basic operations of C language and E language:
 
 ## Basic Operations
 
-|          C language         |         E language          |
-|-----------------------------|-----------------------------|
-| &p                          | p@                          |
-| \*p                         | p^                          |
-| \*\*\*p                     | p^^^                        |
-| p[3]                        | p[3]                        |
-| &p[3]                       | p[3]@                       |
-| p + 3                       | p[3]@                       |
-| (char\*)p + 1               | p + 1                       |
-| p.m                         | p.m                         |
-| (\*p).m                     | p^.m                        |
-| p-\>m                       | p^.m                        |
-| char \*p                    | p: byte^                    |
-| void \*\*p                  | p: any^^                    |
-| ((struct Blah \*) p)-\>f1   | p as (Blah^)^.f1            |
-| sizeof(struct Blah \*)      | sizeof(Blah^)               |
+|            C language           |           E language            |
+|---------------------------------|---------------------------------|
+| &**p**                          | **p**@                          |
+| \***p**                         | **p**^                          |
+| \*\*\***p**                     | **p**^^^                        |
+| **p**[3]                        | **p**[3]                        |
+| &**p**[3]                       | **p**[3]@                       |
+| **p** + 3                       | **p**[3]@                       |
+| (char\*)**p** + 1               | **p** + 1                       |
+| **p**.m                         | **p**.m                         |
+| (\***p**).m                     | **p**^.m                        |
+| **p**-\>m                       | **p**^.m                        |
+| char \***p**                    | **p**: byte^                    |
+| void \*\***p**                  | **p**: any^^                    |
+| ((struct Blah \*) **p**)-\>f1   | **p** as (Blah^)^.f1            |
 
-> In C language, `p[2]` is the same as `*(p + 2 * sizeof(*p))`, which is a waste. In E language, `p + 2` doesn't mean `p + 2 * N` like C language, it is just `p + 2`, while `p[2]` is the same as `p[2]` in C language.
+> In C language, `p[2]` is the same as `*(p + 2 * sizeof(*p))`, which is a waste.
+> In E language, `p + 2` doesn't mean `p + 2 * N` like C language, it is just `p + 2`, while `p[2]` is the same as `p[2]` in C language.
 
 
 ## Array And Struct
