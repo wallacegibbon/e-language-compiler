@@ -257,11 +257,14 @@ Bitwise and shift operations are important, but they are not as common as pointe
 The compiler compiles E language source file to RISC-V (32bit rv32im) machine code directly.
 Other architectures may be supported in the future.
 
-Command line interface is not supported yet, we need to call the compiler from erlang shell.
+To call the compiler, we can call the command line tool `ec`:
+```sh
+./ec -i ./sample/led_sample_1.e -o /tmp/a.bin --v-pos 0 --v-size 416 --i-pos 416 --init-jump-pos 0
+```
 
-e.g.
+If you are an Erlang user, you can also call the compiler from erlang shell:
 ```erlang
-e_compiler:compile_to_machine1("./sample/led_sample_1.e", "/tmp/a.bin").
+e_compiler:compile_to_machine1("./sample/led_sample_1.e", "/tmp/a.bin", #{...}).
 ```
 
 

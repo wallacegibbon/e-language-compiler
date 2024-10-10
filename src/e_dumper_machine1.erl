@@ -10,8 +10,7 @@
 
 -spec generate_code([tuple()], string(), #{non_neg_integer() => atom()}, e_compile_option:option()) -> ok.
 generate_code(IRs, OutputFile, InterruptMap, Options) ->
-	#{wordsize := WordSize, isr_vector_pos := ISR_Pos, isr_vector_size := ISR_Size} = Options,
-	CodePos = e_compile_option:code_start_pos(Options),
+	#{wordsize := WordSize, code_pos := CodePos, isr_vector_pos := ISR_Pos, isr_vector_size := ISR_Size} = Options,
 	ScanContext = #{label_map => #{}, offset_map => #{}, wordsize => WordSize},
 	{Instrs, #{label_map := LabelMap, offset_map := OffsetMap}} = scan_address(IRs, CodePos, [], ScanContext),
 	Instructions0 = lists:map(fun encode_instr/1, replace_address(Instrs, LabelMap)),
@@ -29,18 +28,16 @@ generate_code(IRs, OutputFile, InterruptMap, Options) ->
 	ok.
 
 -spec generate_init_jump(non_neg_integer(), e_compile_option:option()) -> {[tuple()], non_neg_integer()}.
-generate_init_jump(StartAddress, #{isr_vector_pos := ISR_Pos} = Options) ->
-	case e_compile_option:init_jump_pos(Options) of
-		{ok, InitJumpPos} ->
-			{[encode_instr({{j, StartAddress - InitJumpPos}, InitJumpPos})], InitJumpPos};
-		none ->
-			{[], ISR_Pos}
-	end.
+generate_init_jump(StartAddress, #{init_jump_pos := InitJumpPos}) ->
+	{[encode_instr({{j, StartAddress - InitJumpPos}, InitJumpPos})], InitJumpPos};
+generate_init_jump(StartAddress, #{isr_vector_pos := ISR_Pos}) ->
+	{[], ISR_Pos}.
 
 %% On some platforms, we skip the first 4-byte (reserved to an init jump instruction) on isr vector generating.
+%% This is just a dirty workaround.
 -spec isr_vector_skip(e_compile_option:option()) -> non_neg_integer().
-isr_vector_skip(#{init_jump_exist := false})	-> 0;
-isr_vector_skip(#{init_jump_exist := true})	-> 4.
+isr_vector_skip(#{init_jump_pos := _})	-> 4;
+isr_vector_skip(_)			-> 0.
 
 generate_isr_vector_table(N, Pos, Size, WordSize, R, Default, InterruptMap, LabelMap) when N < Size ->
 	ISR_Addr = get_isr_address(N div WordSize, Default, InterruptMap, LabelMap),

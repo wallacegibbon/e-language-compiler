@@ -1,13 +1,13 @@
 -module(e_compiler).
--export([compile_to_ast/1, compile_to_machine1/2, compile_to_ir1/2, compile_to_c/2, compile_to_e/2]).
+-export([main/1, compile_to_machine1/3, compile_to_ir1/3, compile_to_e/3, compile_to_c/3, compile_to_ast/2]).
 -include("e_record_definition.hrl").
 
 -type token() :: {atom(), location(), _} | {atom(), location()}.
 
 %% Compiling to C is supported in the early stage of this compiler. This function is archived and not used anymore.
--spec compile_to_c(string(), string()) -> ok.
-compile_to_c(InputFilename, OutputFilename) ->
-	Options = e_compile_option:default(),
+-spec compile_to_c(string(), string(), e_compile_option:option()) -> ok.
+compile_to_c(InputFilename, OutputFilename, UserOptions) ->
+	Options = e_compile_option:combine(UserOptions),
 	#{wordsize := WordSize} = Options,
 	try
 		{Vars, AST, InitCode} = parse_and_compile(InputFilename, Options),
@@ -18,24 +18,38 @@ compile_to_c(InputFilename, OutputFilename) ->
 	end.
 
 %% Compiling to E (with invalid syntax). This function is for debug, just like `compile_to_c/2`.
--spec compile_to_e(string(), string()) -> ok.
-compile_to_e(InputFilename, OutputFilename) ->
+-spec compile_to_e(string(), string(), e_compile_option:option()) -> ok.
+compile_to_e(InputFilename, OutputFilename, UserOptions) ->
+	Options = e_compile_option:combine(UserOptions),
 	try
-		{_, AST, InitCode} = parse_and_compile(InputFilename, e_compile_option:default()),
+		{_, AST, InitCode} = parse_and_compile(InputFilename, Options),
 		e_dumper_e:generate_code(AST, InitCode, OutputFilename)
 	catch
 		{{Line, Col}, ErrorInfo} ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [InputFilename, Line, Col, ErrorInfo]))
 	end.
 
--spec compile_to_ir1(string(), string()) -> #{non_neg_integer() => atom()}.
-compile_to_ir1(InputFilename, OutputFilename) ->
-	Options = e_compile_option:default(),
-	#{ram_start_pos := StartPos, ram_end_pos := EndPos} = Options,
+-spec compile_to_machine1(string(), string(), e_compile_option:option()) -> ok.
+compile_to_machine1(InputFilename, OutputFilename, UserOptions) ->
+	Options = e_compile_option:combine(UserOptions),
+	IR1Filename = OutputFilename ++ ".ir1",
+	try
+		InterruptMap = compile_to_ir1(InputFilename, IR1Filename, Options),
+		{ok, IRs} = file:consult(IR1Filename),
+		e_dumper_machine1:generate_code(IRs, OutputFilename, InterruptMap, Options)
+	catch
+		{{Line, Col}, ErrorInfo} ->
+			throw(e_util:fmt("~s:~w:~w: ~s~n", [InputFilename, Line, Col, ErrorInfo]))
+	end.
+
+-spec compile_to_ir1(string(), string(), e_compile_option:option()) -> #{non_neg_integer() => atom()}.
+compile_to_ir1(InputFilename, OutputFilename, Options) ->
+	#{data_pos := DataPos, data_size := DataSize} = Options,
 	try
 		{GlobalVars, AST, InitCode} = parse_and_compile(InputFilename, Options),
 		#e_vars{shifted_size = Size} = GlobalVars,
-		e_dumper_ir1:generate_code(AST, InitCode, StartPos, EndPos - Size, OutputFilename, Options),
+		GP = DataPos + DataSize - Size,
+		e_dumper_ir1:generate_code(AST, InitCode, DataPos, GP, OutputFilename, Options),
 		fetch_interrupt_vector_table(AST)
 	catch
 		{{Line, Col}, ErrorInfo} ->
@@ -46,22 +60,11 @@ fetch_interrupt_vector_table(AST) ->
 	Fns = lists:filter(fun(#e_function{interrupt = N}) when is_integer(N) -> true; (_) -> false end, AST),
 	maps:from_list(lists:map(fun(#e_function{name = Name, interrupt = N}) -> {N, Name} end, Fns)).
 
--spec compile_to_machine1(string(), string()) -> ok.
-compile_to_machine1(InputFilename, OutputFilename) ->
-	IR1Filename = OutputFilename ++ ".ir1",
+-spec compile_to_ast(string(), e_compile_option:option()) -> {#e_vars{}, e_ast(), e_ast()}.
+compile_to_ast(Filename, UserOptions) ->
+	Options = e_compile_option:combine(UserOptions),
 	try
-		InterruptMap = compile_to_ir1(InputFilename, IR1Filename),
-		{ok, IRs} = file:consult(IR1Filename),
-		e_dumper_machine1:generate_code(IRs, OutputFilename, InterruptMap, e_compile_option:default())
-	catch
-		{{Line, Col}, ErrorInfo} ->
-			throw(e_util:fmt("~s:~w:~w: ~s~n", [InputFilename, Line, Col, ErrorInfo]))
-	end.
-
--spec compile_to_ast(string()) -> {#e_vars{}, e_ast(), e_ast()}.
-compile_to_ast(Filename) ->
-	try
-		parse_and_compile(Filename, e_compile_option:default())
+		parse_and_compile(Filename, Options)
 	catch
 		{{Line, Col}, ErrorInfo} ->
 			throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
@@ -102,4 +105,8 @@ scan_raw_content(RawContent) ->
 		Error->
 			throw(Error)
 	end.
+
+%% for escript generating
+main(_) ->
+	io:format("call ec:main/1 instead~n").
 

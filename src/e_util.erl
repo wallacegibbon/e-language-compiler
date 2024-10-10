@@ -115,7 +115,7 @@ ethrow(Loc, FmtStr) ->
 	ethrow(Loc, FmtStr, []).
 
 -spec ethrow(location(), string(), [any()]) -> no_return().
-%-define(NO_DEBUG, 1).
+-define(NO_DEBUG, 1).
 -ifndef(NO_DEBUG).
 ethrow(Loc, FmtStr, Args) ->
 	try
