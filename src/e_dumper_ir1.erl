@@ -6,8 +6,8 @@
 
 -type context() ::
 	#{
-	%% `free_regs` will be a subset of `tmp_regs`. (And initialized as `tmp_regs`)
 	tmp_regs		:= [machine_reg()],
+	%% `free_regs` will be a subset of `tmp_regs`. (And initialized as `tmp_regs`)
 	free_regs		:= [machine_reg()],
 	%% The string literals are collected by a separate process to avoid complex functions.
 	string_collector	:= pid(),
@@ -30,7 +30,7 @@ generate_code({{InitCode, AST}, Vars}, OutputFile, Options) ->
 	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid, epilogue_tag => none, ret_offset => -WordSize, cond_label => {none, none}},
 	InitVars0 = lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init_vars'}) end, InitCode),
 	InitVars = [{label, {align, 1}, '__init_vars'} | InitVars0],
-	InterruptMap = fetch_interrupt_vector_table(AST),
+	InterruptMap = collect_interrupt_map(AST, []),
 	VectorIRs = isr_vector_irs([], isr_vector_skip(Options), ISR_Size, WordSize, InterruptMap),
 	CodeIRs = ast_to_ir(AST, Ctx),
 	StrList = string_collect_dump(Pid),
@@ -40,9 +40,17 @@ generate_code({{InitCode, AST}, Vars}, OutputFile, Options) ->
 	e_util:file_write(OutputFile ++ ".asm", fun(IO) -> write_asm(IRs, IO) end),
 	ok.
 
-fetch_interrupt_vector_table(AST) ->
-	Fns = lists:filter(fun(#e_function{interrupt = N}) when is_integer(N) -> true; (_) -> false end, AST),
-	maps:from_list(lists:map(fun(#e_function{name = Name, interrupt = N}) -> {N, Name} end, Fns)).
+collect_interrupt_map([#e_function{name = Name, interrupt = N, loc = Loc} | Rest], Result) when is_integer(N) ->
+	case lists:keyfind(N, 1, Result) of
+		{N, Prev} ->
+			e_util:ethrow(Loc, "interrupt number ~w is taken by <~s>", [N, Prev]);
+		_ ->
+			collect_interrupt_map(Rest, [{N, Name} | Result])
+	end;
+collect_interrupt_map([_ | Rest], Result) ->
+	collect_interrupt_map(Rest, Result);
+collect_interrupt_map([], Result) ->
+	maps:from_list(Result).
 
 %% It's safe to use temporary register like {x, 5} in init code.
 init_code(SP, GP, #{entry_function := Entry} = Options) ->
