@@ -256,12 +256,12 @@ E语言定义了关键字 “band”，“bor”，“bnot”，“bxor”来进
 
 举例，为CH32V307编译：
 ```sh
-ec -i ./sample/led_sample_1.e -o /tmp/a.bin --v-pos 0 --v-size 416 --i-pos 416 --init-jump-pos 0
+ec -i ./sample/ch32v307.e ./sample/led_sample_1.e -o /tmp/a.bin --v-pos 0 --v-size 416 --i-pos 416 --init-jump-pos 0
 ```
 
 如果你是一名Erlang用户，你也可以从Erlang Shell里直接调用编译器进行编译：
 ```erlang
-e_compiler:compile_to_machine1("./sample/led_sample_1.e", "/tmp/a.bin", #{...}).
+e_compiler:compile_to_machine1(["./sample/ch32v307.e", "./sample/led_sample_1.e"], "/tmp/a.bin", #{...}).
 ```
 
 

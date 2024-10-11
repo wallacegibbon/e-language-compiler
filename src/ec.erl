@@ -5,7 +5,7 @@ cli() -> #{
 
 arguments =>
 [
-	#{name => input_file, short => $i, long => "-input-file", required => true},
+	#{name => input_file, short => $i, long => "-input-file", nargs => list, required => true},
 	#{name => output_file, short => $o, long => "-output-file"},
 	#{name => init_jump_pos, long => "-init-jump-pos", type => {integer, [{min, 0}]}},
 	#{name => isr_vector_pos, long => "-v-pos", type => {integer, [{min, 0}]}},

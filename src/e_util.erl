@@ -304,10 +304,10 @@ map_find_multi(_, []) ->
 
 -spec file_write(string(), fun((file:io_device()) -> ok)) -> ok.
 file_write(Filename, Handle) ->
-	{ok, IO_Dev} = file:open(Filename, [write]),
+	{ok, IO} = file:open(Filename, [write]),
 	try
-		Handle(IO_Dev)
+		Handle(IO)
 	after
-		ok = file:close(IO_Dev)
+		ok = file:close(IO)
 	end.
 

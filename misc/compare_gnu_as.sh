@@ -7,7 +7,7 @@ if test $# -ne 1; then
 fi
 
 detail_file=$1.detail
-asm_file=$1.ir1.asm
+asm_file=$1.asm
 
 riscv64-unknown-elf-as $asm_file -o $asm_file.o
 riscv64-unknown-elf-ld $asm_file.o -o $asm_file.elf

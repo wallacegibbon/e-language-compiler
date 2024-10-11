@@ -1,12 +1,12 @@
 -module(e_dumper_e).
--export([generate_code/3]).
+-export([generate_code/2]).
 -include("e_record_definition.hrl").
 
--spec generate_code(e_ast(), e_ast(), string()) -> ok.
-generate_code(AST, InitCode, OutputFile) ->
+-spec generate_code(e_ast_compiler:ast_compile_result(), string()) -> ok.
+generate_code({{InitCode, AST}, _}, OutputFile) ->
 	ok = file:write_file(OutputFile, ast_to_str(AST, InitCode)).
 
--spec ast_to_str(e_ast(), [e_stmt()]) -> iolist().
+-spec ast_to_str(e_ast(), e_ast()) -> iolist().
 ast_to_str([#e_function{name = main, stmts = Stmts} | Rest], InitCode) ->
 	Body = string:join(lists:map(fun e_util:stmt_to_str/1, Stmts), "\n\t"),
 	Init = string:join(lists:map(fun e_util:stmt_to_str/1, InitCode), "\n\t"),

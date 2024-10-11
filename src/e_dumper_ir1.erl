@@ -1,10 +1,8 @@
 -module(e_dumper_ir1).
--export([generate_code/6]).
+-export([generate_code/3]).
+-compile([{nowarn_unused_function, [{write_asm, 2}, {op_tag_str, 1}]}]).
 -include("e_record_definition.hrl").
-
-%% According the calling convention of RISC-V: RA is X1, SP is X2, GP is X3, FP is X8. X5-X7 is T0-T2.
-%% We use A0-A4 as T3-T7 since we pass arguments and result through stack and `Ax` are caller saved just like `Tx`.
--type machine_reg() :: {x, non_neg_integer()}.
+-include("e_riscv.hrl").
 
 -type context() ::
 	#{
@@ -21,67 +19,88 @@
 	wordsize		:= pos_integer()
 	}.
 
--define(IS_SPECIAL_REG(Tag),
-	(
-	Tag =:= {x, 8} orelse Tag =:= {x, 3} orelse Tag =:= {x, 2} orelse Tag =:= {x, 1} orelse Tag =:= {x, 0}
-	)).
-
--define(IS_SMALL_IMMEDI(N),
-	(
-	N >= -2048 andalso N < 2048
-	)).
-
--spec generate_code(e_ast(), e_ast(), non_neg_integer(), non_neg_integer(), string(), e_compile_option:option()) -> ok.
-generate_code(AST, InitCode, SP, GP, OutputFile, #{wordsize := WordSize, entry_function := Entry} = Options) ->
+-spec generate_code(e_ast_compiler:ast_compile_result(), string(), e_compile_option:option()) -> ok.
+generate_code({{InitCode, AST}, Vars}, OutputFile, Options) ->
+	#{wordsize := WordSize, isr_vector_size := ISR_Size, data_pos := DataPos, data_size := DataSize} = Options,
+	#e_vars{shifted_size = ShiftedSize} = Vars,
+	GP = DataPos + DataSize - ShiftedSize,
+	{Init1, Init2} = init_code(DataPos, GP, Options),
 	Pid = spawn_link(fun() -> string_collect_loop([]) end),
-	Regs = tmp_regs(),
+	Regs = e_riscv_ir:tmp_regs(),
 	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid, epilogue_tag => none, ret_offset => -WordSize, cond_label => {none, none}},
 	InitVars0 = lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init_vars'}) end, InitCode),
 	InitVars = [{label, {align, 1}, '__init_vars'} | InitVars0],
-	EntryJump0 = stmt_to_ir(?CALL(#e_varref{name = Entry}, []), Ctx#{scope_tag := '__entry_jump'}),
-	EntryJump = [{label, {align, 1}, '__entry_jump'} | EntryJump0],
+	InterruptMap = fetch_interrupt_vector_table(AST),
+	VectorIRs = isr_vector_irs([], isr_vector_skip(Options), ISR_Size, WordSize, InterruptMap),
+	CodeIRs = ast_to_ir(AST, Ctx),
+	StrList = string_collect_dump(Pid),
+	StrIRs = lists:map(fun({L, S, Len}) -> [{label, {align, 1}, L}, {string, S, Len}] end, StrList),
+	IRs = lists:flatten([init_jump(Options), VectorIRs, Init1, InitVars, Init2, CodeIRs, StrIRs]),
+	e_util:file_write(OutputFile ++ ".ir1", fun(IO) -> write_irs(IRs, IO) end),
+	e_util:file_write(OutputFile ++ ".asm", fun(IO) -> write_asm(IRs, IO) end),
+	ok.
+
+fetch_interrupt_vector_table(AST) ->
+	Fns = lists:filter(fun(#e_function{interrupt = N}) when is_integer(N) -> true; (_) -> false end, AST),
+	maps:from_list(lists:map(fun(#e_function{name = Name, interrupt = N}) -> {N, Name} end, Fns)).
+
+%% It's safe to use temporary register like {x, 5} in init code.
+init_code(SP, GP, #{entry_function := Entry} = Options) ->
+	%% It's safe to use x5 register in init code.
+	EntryJump = [{label, {align, 1}, '__entry_jump'}, {la, {x, 5}, Entry}, {jalr, {x, 1}, {x, 5}}],
 	EndJump = [{label, {align, 1}, '__end'}, {j, '__end'}],
 	DefaultISR = [{label, {align, 1}, '__default_isr'}, {j, '__default_isr'}],
 	%% Init `sp` and `gp`. This should be before InitVars.
-	InitSystemIRs1 = [{label, {align, 1}, '__init_system1'}, smart_li({x, 2}, SP), smart_li({x, 3}, GP)],
+	InitSystemIRs1 = [{label, {align, 1}, '__init_system1'}, e_riscv_ir:smart_li({x, 2}, SP), e_riscv_ir:smart_li({x, 3}, GP)],
 	%% Set interrupt vector base address, enable interrupt.
-	InitSystemIRs2 = [{label, {align, 1}, '__init_system2'}, generate_interrupt_irs(Ctx, Options)],
-	InitLabel = {label, {align, 1}, '__init'},
-	%% Code in InitVars may from different modules.
-	InitIRs = [InitLabel, InitSystemIRs1, InitVars, InitSystemIRs2, EntryJump, EndJump, DefaultISR],
-	IRs = ast_to_ir(AST, Ctx),
-	StrTable = string_collect_dump(Pid),
-	StrIRs = lists:map(fun({L, S, Len}) -> [{label, {align, 1}, L}, {string, S, Len}] end, StrTable),
-	Fn1 = fun(IO_Dev) -> write_irs([{comment, "vim:ft=erlang"}, InitIRs, IRs, StrIRs], IO_Dev) end,
-	e_util:file_write(OutputFile, Fn1),
-	Fn2 = fun(IO_Dev) -> write_asm([{comment, "For GNU assembler"}, InitIRs, IRs, StrIRs], IO_Dev) end,
-	e_util:file_write(OutputFile ++ ".asm", Fn2),
-	ok.
+	InitSystemIRs2 = [{label, {align, 1}, '__init_system2'}, interrupt_init_irs({x, 5}, Options)],
+	Init1 = [{label, {align, 1}, '__init'}, InitSystemIRs1],
+	Init2 = [InitSystemIRs2, EntryJump, EndJump, DefaultISR],
+	{Init1, Init2}.
 
-generate_interrupt_irs(#{free_regs := [T | _]}, #{isr_vector_pos := Pos, isr_vector_size := Size}) when Size > 0 ->
+-spec interrupt_init_irs(machine_reg(), e_compile_option:option()) -> flatten_irs().
+interrupt_init_irs(T, #{isr_vector_pos := Pos, isr_vector_size := Size}) when Size > 0 ->
 	%% Initialize interrupt vector address by writting `mtvec`(CSR 0x305).
-	SetInterruptVector = [smart_li(T, Pos), {ori, T, T, 3}, {csrrw, {x, 0}, T, 16#305}],
+	SetInterruptVector = [e_riscv_ir:smart_li(T, Pos), {ori, T, T, 3}, {csrrw, {x, 0}, T, 16#305}],
 	%% Initialize MIE and MPIE in `mstatus`(CSR 0x300).
-	InitInterrupt = [smart_li(T, 16#88), {csrrw, {x, 0}, T, 16#300}],
-	InitInterrupt ++ SetInterruptVector;
-generate_interrupt_irs(_, _) ->
+	InitInterrupt = [e_riscv_ir:smart_li(T, 16#88), {csrrw, {x, 0}, T, 16#300}],
+	lists:flatten([InitInterrupt | SetInterruptVector]);
+interrupt_init_irs(_, _) ->
 	[].
 
+%% Generate instruction for init jump (to __init), and return the start position for bin code generating.
+-spec init_jump(e_compile_option:option()) -> irs().
+init_jump(#{init_jump_pos := InitJumpPos}) ->
+	[{start_address, InitJumpPos}, {j, '__init'}];
+init_jump(#{isr_vector_pos := ISR_Pos}) when ISR_Pos > 0 ->
+	[{start_address, ISR_Pos}];
+init_jump(#{code_pos := CodePos}) ->
+	[{start_address, CodePos}].
 
--type irs() :: list(tuple() | irs()).
+%% On some platforms, we skip the first 4-byte (reserved to an init jump instruction) on isr vector generating.
+%% This is just a dirty workaround.
+-spec isr_vector_skip(e_compile_option:option()) -> non_neg_integer().
+isr_vector_skip(#{init_jump_pos := _})	-> 4;
+isr_vector_skip(_)			-> 0.
+
+isr_vector_irs(R, N, Size, WordSize, InterruptMap) when N < Size ->
+	ISR_Label = maps:get(N div WordSize, InterruptMap, '__default_isr'),
+	isr_vector_irs([{code, ISR_Label} | R], N + WordSize, Size, WordSize, InterruptMap);
+isr_vector_irs(R, Size, Size, _, _) ->
+	lists:reverse(R).
 
 -spec ast_to_ir(e_ast(), context()) -> irs().
 ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{size = Size0, shifted_size = Size1}} = Fn | Rest], Ctx) ->
-	#{wordsize := WordSize, free_regs := Regs} = Ctx,
+	#{wordsize := WordSize, free_regs := [T | _] = Regs} = Ctx,
 	%% When there are no local variables, there should still be one word for returning value.
 	Size2 = erlang:max(e_util:fill_unit_pessi(Size1, WordSize), WordSize),
 	%% The extra `2` words are for `frame pointer`({x, 8}) and `returning address`({x, 1}).
 	FrameSize = Size2 + WordSize * 2,
 	SaveFpRa = [{sw, {x, 8}, {{x, 2}, -WordSize * 2}}, {sw, {x, 1}, {{x, 2}, -WordSize}}],
 	RestoreFpRa = [{lw, {x, 8}, {{x, 2}, -WordSize * 2}}, {lw, {x, 1}, {{x, 2}, -WordSize}}],
-	RegSave = [smart_addi({x, 2}, FrameSize, Ctx), SaveFpRa, mv({x, 8}, {x, 2}), smart_addi({x, 8}, -FrameSize, Ctx)],
+	RegSave = [e_riscv_ir:smart_addi({x, 2}, FrameSize, T), SaveFpRa, e_riscv_ir:mv({x, 8}, {x, 2}), e_riscv_ir:smart_addi({x, 8}, -FrameSize, T)],
 	{I1, I2} = interrupt_related_code(Fn, Regs, Ctx),
-	RegRestore = [RestoreFpRa, smart_addi({x, 2}, -FrameSize, Ctx)],
+	RegRestore = [RestoreFpRa, e_riscv_ir:smart_addi({x, 2}, -FrameSize, T)],
 	EpilogueTag = generate_tag(Name, epilogue),
 	Prologue = [RegSave, I1, {comment, "prologue end"}],
 	Epilogue = [{label, {align, 1}, EpilogueTag}, I2, RegRestore, ret_instruction_of(Fn)],
@@ -144,14 +163,14 @@ stmt_to_ir(Stmt, Ctx) ->
 	{Exprs, _, _} = expr_to_ir(Stmt, Ctx),
 	Exprs.
 
-generate_tag(ScopeTag, Tag, {Line, Column}) ->
+generate_tag(ScopeTag, Tag, {_, Line, Column}) ->
 	list_to_atom(e_util:fmt("~s_~s_~w_~w", [ScopeTag, Tag, Line, Column])).
 
 generate_tag(ScopeTag, Tag) ->
 	list_to_atom(e_util:fmt("~s_~s", [ScopeTag, Tag])).
 
-comment(Tag, Info, {Line, Col}) ->
-	[{comment, io_lib:format("[~s@~w:~w] ~s", [Tag, Line, Col, Info])}].
+comment(Tag, Info, {Filename, Line, Col}) ->
+	[{comment, io_lib:format("[~s@~s:~w:~w] ~s", [Tag, Filename, Line, Col, Info])}].
 
 -spec expr_to_ir(e_expr(), context()) -> {irs(), machine_reg(), context()}.
 expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', Expr, ?I(N)), ?I(V)), Right), Ctx) when ?IS_SMALL_IMMEDI(N) ->
@@ -176,7 +195,8 @@ expr_to_ir(?CALL(Fn, Args), Ctx) ->
 	{FnLoad, R, Ctx1} = expr_to_ir(Fn, Ctx),
 	PreserveRet = [{comment, "preserve space for ret"}, {addi, {x, 2}, {x, 2}, WordSize}],
 	{ArgPrepare, N} = args_to_stack(Args, 0, [], Ctx1),
-	StackRestore = [{comment, "drop args"}, smart_addi({x, 2}, -N, Ctx1)],
+	#{free_regs := [T | _]} = Ctx1,
+	StackRestore = [{comment, "drop args"}, e_riscv_ir:smart_addi({x, 2}, -N, T)],
 	RetLoad = [{comment, "load ret"}, {lw, R, {{x, 2}, -WordSize}}, {addi, {x, 2}, {x, 2}, -WordSize}],
 	Call = [FnLoad, PreserveRet, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, R}, StackRestore, RetLoad],
 	{[{comment, "call start"}, BeforeCall, Call, AfterCall, {comment, "call end"}], R, Ctx1};
@@ -196,12 +216,12 @@ expr_to_ir(?OP2(Tag, _, ?I(N), Loc), #{wordsize := 8}) when (Tag =:= 'bsl' orels
 	e_util:ethrow(Loc, "shift number `~w` is out of range.", [N]);
 expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when Tag =:= 'bsl' orelse Tag =:= 'bsr' ->
 	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
-	{[IRs, {to_op_immedi(Tag), T, R, N}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
+	{[IRs, {e_riscv_ir:to_op_immedi(Tag), T, R, N}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when ?IS_IMMID_ARITH(Tag), ?IS_SMALL_IMMEDI(N) ->
 	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
-	{[IRs, {to_op_immedi(Tag), T, R, N}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
+	{[IRs, {e_riscv_ir:to_op_immedi(Tag), T, R, N}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
-	op3_to_ir(to_op_normal(Tag), Left, Right, Ctx);
+	op3_to_ir(e_riscv_ir:to_op_normal(Tag), Left, Right, Ctx);
 %% The tags for comparing operations are not translated here, it will be merged with the pseudo `br` or `br!`.
 expr_to_ir(?OP2('<=', Left, Right) = Op, Ctx) ->
 	expr_to_ir(Op?OP2('>=', Right, Left), Ctx);
@@ -239,7 +259,7 @@ expr_to_ir(#e_string{value = String, loc = Loc}, #{free_regs := [R | RestRegs], 
 expr_to_ir(?I(0), Ctx) ->
 	{[], {x, 0}, Ctx};
 expr_to_ir(?I(N), #{free_regs := [R | RestRegs]} = Ctx) ->
-	{smart_li(R, N), R, Ctx#{free_regs := RestRegs}};
+	{e_riscv_ir:smart_li(R, N), R, Ctx#{free_regs := RestRegs}};
 expr_to_ir(#e_varref{name = fp}, Ctx) ->
 	{[], {x, 8}, Ctx};
 expr_to_ir(#e_varref{name = gp}, Ctx) ->
@@ -259,7 +279,7 @@ op3_to_ir(Tag, Left, Right, Ctx) ->
 fix_irs([{Tag, Rd, R1, R2}, {'br!', Rd, DestTag} | Rest]) ->
 	fix_irs([{reverse_cmp_tag(Tag), Rd, R1, R2}, {br, Rd, DestTag} | Rest]);
 fix_irs([{Tag, Rd, R1, R2}, {br, Rd, DestTag} | Rest]) ->
-	[{to_cmp_op(Tag), R1, R2, DestTag} | fix_irs(Rest)];
+	[{e_riscv_ir:to_cmp_op(Tag), R1, R2, DestTag} | fix_irs(Rest)];
 %% Continuous and duplicated jump instructions (to the same address) without any labels in between are useless.
 fix_irs([{j, Label} = I, {j, Label} | Rest]) ->
 	fix_irs([I | Rest]);
@@ -309,10 +329,10 @@ recycle_tmpreg([], RegBank) ->
 
 %% There are limited number of regs, which means immediate number is small enough for single `lw`/`sw`.
 -spec reg_save_restore([machine_reg()], context()) -> {irs(), irs()}.
-reg_save_restore(Regs, #{wordsize := WordSize} = Ctx) ->
+reg_save_restore(Regs, #{wordsize := WordSize, free_regs := [T | _]}) ->
 	TotalSize = length(Regs) * WordSize,
-	StackGrow = [{comment, "grow stack"}, smart_addi({x, 2}, TotalSize, Ctx)],
-	StackShrink = [{comment, "shrink stack"}, smart_addi({x, 2}, -TotalSize, Ctx)],
+	StackGrow = [{comment, "grow stack"}, e_riscv_ir:smart_addi({x, 2}, TotalSize, T)],
+	StackShrink = [{comment, "shrink stack"}, e_riscv_ir:smart_addi({x, 2}, -TotalSize, T)],
 	Save = e_util:list_map(fun(R, I) -> {sw, R, {{x, 2}, I * WordSize - TotalSize}} end, Regs),
 	Restore = e_util:list_map(fun(R, I) -> {lw, R, {{x, 2}, I * WordSize - TotalSize}} end, Regs),
 	Enter = [StackGrow, {comment, io_lib:format("regs to save: ~w", [Regs])}, Save],
@@ -328,58 +348,61 @@ args_to_stack([], N, Result, _) ->
 	{lists:reverse(Result), N}.
 
 -spec write_irs(irs(), file:io_device()) -> ok.
-write_irs([IRs | Rest], IO_Dev) when is_list(IRs) ->
-	write_irs(IRs, IO_Dev),
-	write_irs(Rest, IO_Dev);
-write_irs([{comment, Content} | Rest], IO_Dev) ->
-	io:format(IO_Dev, "\t%% ~s~n", [Content]),
-	write_irs(Rest, IO_Dev);
-write_irs([{Tag, _} = IR | Rest], IO_Dev) when Tag =:= fn; Tag =:= label ->
-	io:format(IO_Dev, "~w.~n", [IR]),
-	write_irs(Rest, IO_Dev);
-write_irs([IR | Rest], IO_Dev) ->
-	io:format(IO_Dev, "\t~w.~n", [IR]),
-	write_irs(Rest, IO_Dev);
+write_irs([IRs | Rest], IO) when is_list(IRs) ->
+	write_irs(IRs, IO),
+	write_irs(Rest, IO);
+write_irs([{comment, Content} | Rest], IO) ->
+	io:format(IO, "\t%% ~s~n", [Content]),
+	write_irs(Rest, IO);
+write_irs([{Tag, _} = IR | Rest], IO) when Tag =:= fn; Tag =:= label ->
+	io:format(IO, "~w.~n", [IR]),
+	write_irs(Rest, IO);
+write_irs([IR | Rest], IO) ->
+	io:format(IO, "\t~w.~n", [IR]),
+	write_irs(Rest, IO);
 write_irs([], _) ->
 	ok.
 
 -spec write_asm(irs(), file:io_device()) -> ok.
-write_asm([IRs | Rest], IO_Dev) when is_list(IRs) ->
-	write_asm(IRs, IO_Dev),
-	write_asm(Rest, IO_Dev);
-write_asm([{comment, Content} | Rest], IO_Dev) ->
-	io:format(IO_Dev, "\t## ~s~n", [Content]),
-	write_asm(Rest, IO_Dev);
-write_asm([{Tag, Name} | Rest], IO_Dev) when Tag =:= fn; Tag =:= label ->
-	io:format(IO_Dev, "~s:~n", [Name]),
-	write_asm(Rest, IO_Dev);
-write_asm([{Tag, Op1, Op2, Op3} | Rest], IO_Dev) when Tag =:= csrrw; Tag =:= csrrs; Tag =:= csrrc ->
-	io:format(IO_Dev, "\t~s\t~s, ~s, ~s~n", [Tag, op_tag_str(Op1), op_tag_str(Op3), op_tag_str(Op2)]),
-	write_asm(Rest, IO_Dev);
-write_asm([{Tag, Op1, Op2, Op3} | Rest], IO_Dev) ->
-	io:format(IO_Dev, "\t~s\t~s, ~s, ~s~n", [Tag, op_tag_str(Op1), op_tag_str(Op2), op_tag_str(Op3)]),
-	write_asm(Rest, IO_Dev);
-write_asm([{Tag, Op1, {{x, _} = Op2, N}} | Rest], IO_Dev) ->
-	io:format(IO_Dev, "\t~s\t~s, ~w(~s)~n", [Tag, op_tag_str(Op1), N, op_tag_str(Op2)]),
-	write_asm(Rest, IO_Dev);
-write_asm([{label, {align, 1}, Name} | Rest], IO_Dev) ->
-	io:format(IO_Dev, "~s:\t~n", [Name]),
-	write_asm(Rest, IO_Dev);
-write_asm([{label, {align, N}, Name} | Rest], IO_Dev) ->
-	io:format(IO_Dev, "\t.balign ~w~n~s:~n", [N, Name]),
-	write_asm(Rest, IO_Dev);
-write_asm([{string, Content, _} | Rest], IO_Dev) ->
-	io:format(IO_Dev, "\t.string\t\"~ts\"~n", [e_util:fix_special_chars(Content)]),
-	write_asm(Rest, IO_Dev);
-write_asm([{Tag, Op1, Op2} | Rest], IO_Dev) ->
-	io:format(IO_Dev, "\t~s\t~s, ~s~n", [Tag, op_tag_str(Op1), op_tag_str(Op2)]),
-	write_asm(Rest, IO_Dev);
-write_asm([{Tag, Op1} | Rest], IO_Dev) ->
-	io:format(IO_Dev, "\t~s\t~s~n", [Tag, op_tag_str(Op1)]),
-	write_asm(Rest, IO_Dev);
-write_asm([{Tag} | Rest], IO_Dev) ->
-	io:format(IO_Dev, "\t~s~n", [Tag]),
-	write_asm(Rest, IO_Dev);
+write_asm([IRs | Rest], IO) when is_list(IRs) ->
+	write_asm(IRs, IO),
+	write_asm(Rest, IO);
+write_asm([{start_address, Address} | Rest], IO) ->
+	io:format(IO, "\t.org ~w~n", [Address]),
+	write_asm(Rest, IO);
+write_asm([{comment, Content} | Rest], IO) ->
+	io:format(IO, "\t## ~s~n", [Content]),
+	write_asm(Rest, IO);
+write_asm([{Tag, Name} | Rest], IO) when Tag =:= fn; Tag =:= label ->
+	io:format(IO, "~s:~n", [Name]),
+	write_asm(Rest, IO);
+write_asm([{Tag, Op1, Op2, Op3} | Rest], IO) when Tag =:= csrrw; Tag =:= csrrs; Tag =:= csrrc ->
+	io:format(IO, "\t~s\t~s, ~s, ~s~n", [Tag, op_tag_str(Op1), op_tag_str(Op3), op_tag_str(Op2)]),
+	write_asm(Rest, IO);
+write_asm([{Tag, Op1, Op2, Op3} | Rest], IO) ->
+	io:format(IO, "\t~s\t~s, ~s, ~s~n", [Tag, op_tag_str(Op1), op_tag_str(Op2), op_tag_str(Op3)]),
+	write_asm(Rest, IO);
+write_asm([{Tag, Op1, {{x, _} = Op2, N}} | Rest], IO) ->
+	io:format(IO, "\t~s\t~s, ~w(~s)~n", [Tag, op_tag_str(Op1), N, op_tag_str(Op2)]),
+	write_asm(Rest, IO);
+write_asm([{label, {align, 1}, Name} | Rest], IO) ->
+	io:format(IO, "~s:\t~n", [Name]),
+	write_asm(Rest, IO);
+write_asm([{label, {align, N}, Name} | Rest], IO) ->
+	io:format(IO, "\t.balign ~w~n~s:~n", [N, Name]),
+	write_asm(Rest, IO);
+write_asm([{string, Content, _} | Rest], IO) ->
+	io:format(IO, "\t.string\t\"~ts\"~n", [e_util:fix_special_chars(Content)]),
+	write_asm(Rest, IO);
+write_asm([{Tag, Op1, Op2} | Rest], IO) ->
+	io:format(IO, "\t~s\t~s, ~s~n", [Tag, op_tag_str(Op1), op_tag_str(Op2)]),
+	write_asm(Rest, IO);
+write_asm([{Tag, Op1} | Rest], IO) ->
+	io:format(IO, "\t~s\t~s~n", [Tag, op_tag_str(Op1)]),
+	write_asm(Rest, IO);
+write_asm([{Tag} | Rest], IO) ->
+	io:format(IO, "\t~s~n", [Tag]),
+	write_asm(Rest, IO);
 write_asm([], _) ->
 	ok.
 
@@ -390,30 +413,6 @@ op_tag_str({x, N}) ->
 	"x" ++ integer_to_list(N);
 op_tag_str(Label) when is_atom(Label) ->
 	atom_to_list(Label).
-
-%% Be careful! `smart_addi/3` will change the source register.
-smart_addi(_, 0, _) ->
-	[];
-smart_addi(R, N, _) when ?IS_SMALL_IMMEDI(N) ->
-	[{addi, R, R, N}];
-smart_addi(R, N, #{free_regs := [T | _]}) ->
-	[smart_li(T, N), {add, R, R, T}].
-
-%% Be careful! `smart_li/2` will change the source register.
-smart_li(R, N) when ?IS_SMALL_IMMEDI(N) ->
-	[{addi, R, {x, 0}, N}];
-smart_li(R, N) ->
-	li_big_num(R, e_util:u_type_immedi(N)).
-
-li_big_num(R, {0, Low}) ->
-	[{addi, R, {0, 0}, Low}];
-li_big_num(R, {High, 0}) ->
-	[{lui, R, High}];
-li_big_num(R, {High, Low}) ->
-	[{lui, R, High}, {addi, R, R, Low}].
-
-mv(R1, R2) ->
-	[{addi, R1, R2, 0}].
 
 %% {x, 0} means there are not branching to generate. (already generated in previous IRs)
 'br!_reg'({x, 0}, _)	-> [];
@@ -427,39 +426,10 @@ st_tag(_) -> sw.
 ld_tag(1) -> lb;
 ld_tag(_) -> lw.
 
-%% We don't need many registers with current allocation algorithm.
-%% Most RISC machine can provide 8 free registers.
--spec tmp_regs() -> [machine_reg()].
-tmp_regs() ->
-	[{x, 5}, {x, 6}, {x, 7}, {x, 10}, {x, 11}, {x, 12}, {x, 13}, {x, 14}].
-
 reverse_cmp_tag('==')	-> '!=';
 reverse_cmp_tag('!=')	-> '==';
 reverse_cmp_tag('>=')	-> '<';
 reverse_cmp_tag('<=')	-> '>';
 reverse_cmp_tag('>')	-> '<=';
 reverse_cmp_tag('<')	-> '>='.
-
-to_op_normal('+')	->  add;
-to_op_normal('-')	->  sub;
-to_op_normal('*')	->  mul;
-to_op_normal('/')	-> 'div';
-to_op_normal('rem')	-> 'rem';
-to_op_normal('band')	-> 'and';
-to_op_normal('bor')	-> 'or';
-to_op_normal('bxor')	-> 'xor';
-to_op_normal('bsl')	->  sll;
-to_op_normal('bsr')	->  sra.
-
-to_op_immedi('+')	-> addi;
-to_op_immedi('band')	-> andi;
-to_op_immedi('bor')	-> ori;
-to_op_immedi('bxor')	-> xori;
-to_op_immedi('bsl')	-> slli;
-to_op_immedi('bsr')	-> srai.
-
-to_cmp_op('==')		-> beq;
-to_cmp_op('!=')		-> bne;
-to_cmp_op('>=')		-> bge;
-to_cmp_op('<')		-> blt.
 

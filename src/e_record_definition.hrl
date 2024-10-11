@@ -1,12 +1,12 @@
 -ifndef(E_RECORD_DEFINITION_HRL).
 -define(E_RECORD_DEFINITION_HRL, 1).
 
--type location() :: {non_neg_integer(), non_neg_integer()}.
+-type location() :: {Filename :: string(), Row :: non_neg_integer(), Column :: non_neg_integer()}.
 
 %% There are 3 kinds of data types in E language: `basic type`, `array type` and `function type`.
 -record(e_basic_type,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	p_depth = 0 :: non_neg_integer(),
 	class = void :: struct | integer | float | boolean | void | any,
 	%% tag can be primitive tag like `byte`, `word` for `integer`, or struct name for `struct`
@@ -16,21 +16,21 @@
 
 -record(e_array_type,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	elem_type :: e_type(),
 	length :: non_neg_integer()
 	}).
 
 -record(e_fn_type,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	params = [] :: [e_type()],
 	ret :: e_type()
 	}).
 
 -record(e_typeof,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	expr :: e_expr()
 	}).
 
@@ -38,14 +38,14 @@
 
 -record(e_label,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	name :: atom()
 	}).
 
 %% Variable definition. Will be used on both variable definition and struct field definition.
 -record(e_vardef,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	name :: atom(),
 	type :: e_type(),
 	init_value = none :: none | e_expr()
@@ -53,7 +53,7 @@
 
 -record(e_varref,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	name :: atom()
 	}).
 
@@ -79,7 +79,7 @@
 
 -record(e_function,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	name :: atom(),
 	%% `vars` contains both parameters and variables.
 	vars = #e_vars{} :: #e_vars{},
@@ -91,7 +91,7 @@
 
 -record(e_struct,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	name :: atom(),
 	fields = #e_vars{} :: #e_vars{},
 	default_value_map = #{} :: #{atom() := e_expr()}
@@ -99,27 +99,27 @@
 
 -record(e_struct_init_raw_expr,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	name :: atom(),
 	fields = [] :: [e_expr()]
 	}).
 
 -record(e_struct_init_expr,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	name :: atom(),
 	field_value_map = #{} :: #{atom() := e_expr()}
 	}).
 
 -record(e_array_init_expr,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	elements = [] :: [e_expr()]
 	}).
 
 -record(e_type_convert,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	expr :: e_expr(),
 	type :: e_type()
 	}).
@@ -128,51 +128,51 @@
 
 -record(e_op,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	tag :: e_op_tag(),
 	data = [] :: [e_expr()]
 	}).
 
 -record(e_integer,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	value :: integer()
 	}).
 
 -record(e_float,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	value :: float()
 	}).
 
 -record(e_string,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	value :: string()
 	}).
 
 -record(e_goto_stmt,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	label :: atom()
 	}).
 
 -record(e_return_stmt,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	expr = none :: none | e_expr()
 	}).
 
 -record(e_while_stmt,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	'cond' :: e_expr(),
 	stmts = [] :: [e_stmt()]
 	}).
 
 -record(e_if_stmt,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	'cond' :: e_expr(),
 	then = [] :: [e_stmt()],
 	'else' = [] :: [e_stmt()]
@@ -180,14 +180,14 @@
 
 -record(e_struct_raw,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	name :: atom(),
 	fields = [] :: [e_stmt()]
 	}).
 
 -record(e_function_raw,
 	{
-	loc = {0, 0} :: location(),
+	loc = {"", 0, 0} :: location(),
 	name :: atom(),
 	params = [] :: [e_stmt()],
 	ret_type :: e_type(),

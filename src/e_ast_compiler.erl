@@ -1,11 +1,14 @@
 -module(e_ast_compiler).
 -export([compile_from_raw_ast/2]).
+-export_type([ast_compile_result/0]).
 -include("e_record_definition.hrl").
 
 %-define(FMT, io:format).
 -define(FMT, (fun(_, _) -> ok end)).
 
--spec compile_from_raw_ast(e_ast_raw(), e_compile_option:option()) -> {#e_vars{}, e_ast(), e_ast()}.
+-type ast_compile_result() :: {{e_ast(), e_ast()}, #e_vars{}}.
+
+-spec compile_from_raw_ast(e_ast_raw(), e_compile_option:option()) -> ast_compile_result().
 compile_from_raw_ast(AST, #{wordsize := WordSize, entry_function := Entry}) ->
 	%?FMT("AST before any operation: ~p~n", [AST]),
 	{GlobalVars00, AST00, InitCode00} = e_var:fetch_vars(AST),
@@ -84,7 +87,7 @@ compile_from_raw_ast(AST, #{wordsize := WordSize, entry_function := Entry}) ->
 	InitCode80 = e_varref:varref_to_offset_in_stmts(InitCode70, Ctx20),
 
 	#{vars := GlobalVars} = Ctx20,
-	{GlobalVars, AST80, InitCode80}.
+	{{InitCode80, AST80}, GlobalVars}.
 
 ensure_function_exist(FnName, FnTypeMap) ->
 	case maps:find(FnName, FnTypeMap) of

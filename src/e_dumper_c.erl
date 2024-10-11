@@ -2,11 +2,11 @@
 %% In the early stage of the E language compiler, code got compiled to C language.
 %% As the compiler grows, we will compile E language code to machine code directly.
 -module(e_dumper_c).
--export([generate_code/5]).
+-export([generate_code/3]).
 -include("e_record_definition.hrl").
 
--spec generate_code(e_ast(), [e_stmt()], #e_vars{}, non_neg_integer(), string()) -> ok.
-generate_code(AST, InitCode, #e_vars{type_map = GlobalVarMap} = GlobalVars, WordSize, OutputFile) ->
+-spec generate_code(e_ast_compiler:ast_compile_result(), non_neg_integer(), string()) -> ok.
+generate_code({{InitCode, AST}, #e_vars{type_map = GlobalVarMap} = GlobalVars}, WordSize, OutputFile) ->
 	{FnTypeMap, StructMap} = e_util:make_function_and_struct_map_from_ast(AST),
 	Ctx = #{fn_map => FnTypeMap, struct_map => StructMap, vars => GlobalVars, wordsize => WordSize},
 	AST2 = lists:map(fun(A) -> fix_function_for_c(A, Ctx) end, AST),
