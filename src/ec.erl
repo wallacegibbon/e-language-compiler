@@ -22,7 +22,7 @@ fun
 Handler(#{input_file := InputFile, output_file := OutputFile} = Options) ->
 	PureOptions = fix_options(maps:without([input_file, output_file], Options)),
 	try
-		e_compiler:compile_to_machine1(InputFile, OutputFile, PureOptions)
+		e_compiler:compile_to_machine1(InputFile, OutputFile, e_compile_option:combine(PureOptions))
 	catch
 		throw:Error ->
 			io:format(standard_error, "**ERROR: ~s~n", [Error]),

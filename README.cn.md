@@ -252,7 +252,9 @@ E语言定义了关键字 “band”，“bor”，“bnot”，“bxor”来进
 本编译器将E语言源码直接编译为RISC-V（32位rv32im）机器码。
 后续可能会支持其他指令集/架构。
 
-要使用E语言编译器，我们可以用命令行工具`ec`：
+要使用E语言编译器，我们可以用命令行工具`ec`。
+
+举例，为CH32V307编译：
 ```sh
 ec -i ./sample/led_sample_1.e -o /tmp/a.bin --v-pos 0 --v-size 416 --i-pos 416 --init-jump-pos 0
 ```

@@ -6,8 +6,7 @@
 
 %% Compiling to C is supported in the early stage of this compiler. This function is archived and not used anymore.
 -spec compile_to_c(string(), string(), e_compile_option:option()) -> ok.
-compile_to_c(InputFilename, OutputFilename, UserOptions) ->
-	Options = e_compile_option:combine(UserOptions),
+compile_to_c(InputFilename, OutputFilename, Options) ->
 	#{wordsize := WordSize} = Options,
 	try
 		{Vars, AST, InitCode} = parse_and_compile(InputFilename, Options),
@@ -19,8 +18,7 @@ compile_to_c(InputFilename, OutputFilename, UserOptions) ->
 
 %% Compiling to E (with invalid syntax). This function is for debug, just like `compile_to_c/2`.
 -spec compile_to_e(string(), string(), e_compile_option:option()) -> ok.
-compile_to_e(InputFilename, OutputFilename, UserOptions) ->
-	Options = e_compile_option:combine(UserOptions),
+compile_to_e(InputFilename, OutputFilename, Options) ->
 	try
 		{_, AST, InitCode} = parse_and_compile(InputFilename, Options),
 		e_dumper_e:generate_code(AST, InitCode, OutputFilename)
@@ -30,8 +28,7 @@ compile_to_e(InputFilename, OutputFilename, UserOptions) ->
 	end.
 
 -spec compile_to_machine1(string(), string(), e_compile_option:option()) -> ok.
-compile_to_machine1(InputFilename, OutputFilename, UserOptions) ->
-	Options = e_compile_option:combine(UserOptions),
+compile_to_machine1(InputFilename, OutputFilename, Options) ->
 	IR1Filename = OutputFilename ++ ".ir1",
 	try
 		InterruptMap = compile_to_ir1(InputFilename, IR1Filename, Options),
@@ -61,8 +58,7 @@ fetch_interrupt_vector_table(AST) ->
 	maps:from_list(lists:map(fun(#e_function{name = Name, interrupt = N}) -> {N, Name} end, Fns)).
 
 -spec compile_to_ast(string(), e_compile_option:option()) -> {#e_vars{}, e_ast(), e_ast()}.
-compile_to_ast(Filename, UserOptions) ->
-	Options = e_compile_option:combine(UserOptions),
+compile_to_ast(Filename, Options) ->
 	try
 		parse_and_compile(Filename, Options)
 	catch

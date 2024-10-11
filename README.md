@@ -258,7 +258,9 @@ Bitwise and shift operations are important, but they are not as common as pointe
 The compiler compiles E language source file to RISC-V (32bit rv32im) machine code directly.
 Other architectures may be supported in the future.
 
-To call the compiler, we can call the command line tool `ec`:
+To call the compiler, we can call the command line tool `ec`.
+
+An example for CH32V307:
 ```sh
 ec -i ./sample/led_sample_1.e -o /tmp/a.bin --v-pos 0 --v-size 416 --i-pos 416 --init-jump-pos 0
 ```
