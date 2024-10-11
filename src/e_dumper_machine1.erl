@@ -17,7 +17,7 @@ generate_code(IRs, OutputFile, #{wordsize := WordSize}) ->
 	#{label_map := LabelMap, offset_map := OffsetMap, start_address := StartAddress} = ResultCtx,
 	Instructions = lists:map(fun encode_instr/1, replace_address(Instrs, LabelMap)),
 	e_util:file_write(OutputFile, fun(IO) -> write_binary(Instructions, StartAddress, IO) end),
-	e_util:file_write(OutputFile ++ ".detail", fun(IO) -> write_detail(Instructions, StartAddress, OffsetMap, IO) end),
+	e_util:file_write(OutputFile ++ ".detail.txt", fun(IO) -> write_detail(Instructions, StartAddress, OffsetMap, IO) end),
 	ok.
 
 -spec scan_address([tuple()], non_neg_integer(), [tuple()], scan_context()) -> {[tuple()], scan_context()}.
@@ -45,7 +45,7 @@ scan_address([], _, Result, Ctx) ->
 check_label_conflict(Name, LabelMap) ->
 	case maps:find(Name, LabelMap) of
 		{ok, _} ->
-			e_util:ethrow({0, 0}, "Name conflict on label \"~s\" during linking", [Name]);
+			e_util:ethrow({"", 0, 0}, "Name conflict on label \"~s\"", [Name]);
 		_ ->
 			ok
 	end.

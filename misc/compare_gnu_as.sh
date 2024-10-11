@@ -6,7 +6,7 @@ if test $# -ne 1; then
 	exit 1
 fi
 
-detail_file=$1.detail
+detail_file=$1.detail.txt
 asm_file=$1.asm
 
 riscv64-unknown-elf-as $asm_file -o $asm_file.o

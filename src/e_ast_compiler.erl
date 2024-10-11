@@ -94,6 +94,6 @@ ensure_function_exist(FnName, FnTypeMap) ->
 		{ok, _} ->
 			ok;
 		_ ->
-			e_util:ethrow({0, 0}, "entry function \"~s\" is not defined", [FnName])
+			e_util:ethrow({"", 0, 0}, "entry function \"~s\" is not defined", [FnName])
 	end.
 

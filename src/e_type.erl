@@ -374,7 +374,7 @@ are_same_type(_) ->
 
 -spec are_same_type_ignore_pos(e_type(), e_type()) -> boolean().
 are_same_type_ignore_pos(T1, T2) ->
-	setelement(2, T1, {0, 0}) =:= setelement(2, T2, {0, 0}).
+	setelement(2, T1, {"", 0, 0}) =:= setelement(2, T2, {"", 0, 0}).
 
 -spec type_of_struct_field(e_type(), #e_varref{}, #{atom() => #e_struct{}}, location()) -> e_type().
 type_of_struct_field(#e_basic_type{class = struct, tag = Name, p_depth = 0} = S, #e_varref{name = FieldName}, StructMap, Loc) ->

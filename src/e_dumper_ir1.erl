@@ -72,7 +72,7 @@ interrupt_init_irs(_, _) ->
 -spec init_jump(e_compile_option:option()) -> irs().
 init_jump(#{init_jump_pos := InitJumpPos}) ->
 	[{start_address, InitJumpPos}, {j, '__init'}];
-init_jump(#{isr_vector_pos := ISR_Pos}) when ISR_Pos > 0 ->
+init_jump(#{isr_vector_pos := ISR_Pos, isr_vector_size := Size}) when Size > 0 ->
 	[{start_address, ISR_Pos}];
 init_jump(#{code_pos := CodePos}) ->
 	[{start_address, CodePos}].
@@ -369,6 +369,12 @@ write_asm([IRs | Rest], IO) when is_list(IRs) ->
 	write_asm(Rest, IO);
 write_asm([{start_address, Address} | Rest], IO) ->
 	io:format(IO, "\t.org ~w~n", [Address]),
+	write_asm(Rest, IO);
+write_asm([{code, Label} | Rest], IO) when is_atom(Label) ->
+	io:format(IO, "\t.word ~s~n", [Label]),
+	write_asm(Rest, IO);
+write_asm([{code, Number} | Rest], IO) when is_integer(Number) ->
+	io:format(IO, "\t.word ~w~n", [Number]),
 	write_asm(Rest, IO);
 write_asm([{comment, Content} | Rest], IO) ->
 	io:format(IO, "\t## ~s~n", [Content]),
