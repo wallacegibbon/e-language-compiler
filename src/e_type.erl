@@ -195,8 +195,8 @@ type_of_node(?OP2(Tag, Op1, Op2, Loc), Ctx) when ?IS_LOGIC(Tag) ->
 type_of_node(?OP2(Tag, Op1, Op2, Loc), Ctx) when ?IS_COMPARE(Tag) ->
 	Op1Type = type_of_node(Op1, Ctx),
 	Op2Type = type_of_node(Op2, Ctx),
-	case are_integers(Op1Type, Op2Type) of
-		{true, _} ->
+	case are_same_type_ignore_pos(Op1Type, Op2Type) of
+		true ->
 			#e_basic_type{class = boolean, loc = Loc};
 		false ->
 			e_util:ethrow(Loc, type_error_of(Tag, Op1Type, Op2Type))
