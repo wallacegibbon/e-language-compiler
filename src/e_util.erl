@@ -2,9 +2,9 @@
 -export([make_function_and_struct_map_from_ast/1, expr_map/2, eliminate_pointer/1, stmt_to_str/1, merge_vars/3]).
 -export([names_of_var_defs/1, names_of_var_refs/1, get_struct_from_type/2, get_struct_from_name/3, void_type/1]).
 -export([fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, fix_special_chars/1]).
--export([fmt/2, ethrow/3, ethrow/2, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2, map_find_multi/2]).
+-export([fmt/2, ethrow/3, ethrow/2, exit_info/3, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2]).
 -export([u_type_immedi/1, j_type_immedi/1, s_type_immedi/1, b_type_immedi/1]).
--export([list_map/2, file_write/2]).
+-export([list_map/2, map_find_multi/2, file_write/2]).
 -include("e_record_definition.hrl").
 -ifdef(EUNIT).
 -include_lib("eunit/include/eunit.hrl").
@@ -129,6 +129,11 @@ ethrow(Loc, FmtStr, Args) ->
 ethrow(Loc, FmtStr, Args) ->
 	throw({Loc, fmt(FmtStr, Args)}).
 -endif.
+
+-spec exit_info(integer(), string(), list(term())) -> no_return().
+exit_info(Code, FmtStr, Args) ->
+	io:format(standard_error, FmtStr, Args),
+	erlang:halt(Code).
 
 -spec get_values_by_keys([atom()], #{atom() => any()}) -> [any()].
 get_values_by_keys(Fields, Map) ->
