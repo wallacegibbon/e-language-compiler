@@ -84,6 +84,26 @@ struct AppState
 	selected		: word;
 end
 
+struct AppIter
+	app			: AppState^;
+	cursor			: word;
+end
+
+fn AppIter_init(self: AppIter^; app: AppState^)
+	self^.app = app;
+	self^.cursor = 0;
+end
+
+fn AppIter_next(self: AppIter^; light: LightInterface^^^; index: word^): word
+	if self^.cursor >= self^.app^.light_nums then
+		return 1;
+	end
+	light^ = self^.app^.lights@[self^.cursor];
+	index^ = self^.cursor;
+	self^.cursor += 1;
+	return 0;
+end
+
 fn AppState_init(self: AppState^)
 	led: LED^;
 	i: word = 0;
@@ -93,26 +113,38 @@ fn AppState_init(self: AppState^)
 	self^.selected = 0;
 
 	while i < self^.light_nums do
-		led = self^.leds@[i]@;
-		LED_init(led, gpio_d, i);
-		self^.lights@[i] = led;
+		self^.lights@[i] = self^.leds@[i]@;
 		i += 1;
+	end
+
+	iter: AppIter;
+	AppIter_init(iter@, self);
+
+	light: LightInterface^^;
+	while AppIter_next(iter@, light@, i@) == 0 do
+		LED_init(light, gpio_d, i);
 	end
 end
 
 fn AppState_all_off(self: AppState^)
-	i: word = 0;
-	while i < self^.light_nums do
-		off_light(self^.lights@[i]);
-		i += 1;
+	iter: AppIter;
+	AppIter_init(iter@, self);
+
+	light: LightInterface^^;
+	i: word;
+	while AppIter_next(iter@, light@, i@) == 0 do
+		off_light(light);
 	end
 end
 
 fn AppState_all_bright(self: AppState^)
-	i: word = 0;
-	while i < self^.light_nums do
-		on_light(self^.lights@[i]);
-		i += 1;
+	iter: AppIter;
+	AppIter_init(iter@, self);
+
+	light: LightInterface^^;
+	i: word;
+	while AppIter_next(iter@, light@, i@) == 0 do
+		on_light(light);
 	end
 end
 
@@ -172,7 +204,7 @@ end
 fn delay(count: word)
 	tmp: word;
 	while count > 0 do
-		tmp = 50000;
+		tmp = 80000;
 		while tmp > 0 do
 			tmp -= 1;
 		end
