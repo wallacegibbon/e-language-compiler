@@ -15,7 +15,7 @@
 	cond_label		:= {atom(), atom()},
 	scope_tag		:= atom(),
 	epilogue_tag		:= atom(),
-	ret_offset		:= non_neg_integer(),
+	ret_offset		:= neg_integer(),
 	wordsize		:= pos_integer()
 	}.
 

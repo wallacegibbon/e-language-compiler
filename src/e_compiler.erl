@@ -5,7 +5,7 @@
 
 -type token() :: {atom(), location(), _} | {atom(), location()}.
 
--spec compile_to_ir1([string()], string(), e_compile_option:option()) -> #{non_neg_integer() => atom()}.
+-spec compile_to_ir1([string()], string(), e_compile_option:option()) -> ok.
 compile_to_ir1(InputFiles, OutputFilename, Options) when is_list(hd(InputFiles)) ->
 	try
 		e_dumper_ir1:generate_code(parse_and_compile_files(InputFiles, Options), OutputFilename, Options)

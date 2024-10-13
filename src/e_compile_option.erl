@@ -4,7 +4,7 @@
 
 -type option() ::
 	#{
-	init_jump_pos		=> non_neg_integer(),
+	ivec_init_jump		=> boolean(),
 	ivec_pos		=> non_neg_integer(),
 	ivec_size		=> non_neg_integer(),
 	code_pos		=> non_neg_integer(),
