@@ -5,17 +5,18 @@ arguments() ->
 	[
 	#{name => input_file, short => $i, long => "-input-file", nargs => list, required => true},
 	#{name => output_file, short => $o, long => "-output-file"},
-	#{name => init_jump_pos, long => "-init-jump-pos", type => {integer, [{min, 0}]}},
-	#{name => isr_vector_pos, long => "-v-pos", type => {integer, [{min, 0}]}},
-	#{name => isr_vector_size, long => "-v-size", type => {integer, [{min, 0}]}},
-	#{name => code_pos, long => "-i-pos", type => {integer, [{min, 0}]}},
+	#{name => ivec_init_jump, long => "-ivec-init-jump", type => boolean},
+	#{name => ivec_pos, long => "-v-pos", type => {integer, [{min, 0}]}},
+	#{name => ivec_size, long => "-v-size", type => {integer, [{min, 0}]}},
+	#{name => code_pos, long => "-c-pos", type => {integer, [{min, 0}]}},
 	#{name => data_pos, long => "-d-pos", type => {integer, [{min, 0}]}},
 	#{name => data_size, long => "-d-size", type => {integer, [{min, 0}]}},
 	#{name => entry_function, long => "-entry"},
-	#{name => wordsize, long => "-wordsize", type => {integer, [{min, 1}]}}
+	#{name => wordsize, long => "-wordsize", type => {integer, [4, 8]}}
 	].
 
 handler(#{input_file := InputFile, output_file := OutputFile} = Options) ->
+	%io:format("Compile option: ~p~n", [Options]),
 	PureOptions = fix_options(maps:without([input_file, output_file], Options)),
 	try
 		e_compiler:compile_to_machine1(InputFile, OutputFile, e_compile_option:combine(PureOptions))
@@ -41,12 +42,12 @@ cli() ->
 help_of(input_file) ->
 	"E language source file(s) to compile.";
 help_of(output_file) ->
-	"Output file (xx.bin) to generate.";
-help_of(init_jump_pos) ->
-	"Memory position for init jump.";
-help_of(isr_vector_pos) ->
+	"Filename for output file(s).";
+help_of(ivec_init_jump) ->
+	"Jump as the first element of interrupt vector table.";
+help_of(ivec_pos) ->
 	"Position for interrupt vector table.";
-help_of(isr_vector_size) ->
+help_of(ivec_size) ->
 	"Size of the interrupt vector table.";
 help_of(code_pos) ->
 	"Position for user code.";

@@ -17,8 +17,9 @@ compile_to_ir1(InputFiles, OutputFilename, Options) when is_list(hd(InputFiles))
 -spec compile_to_machine1([string()], string(), e_compile_option:option()) -> ok.
 compile_to_machine1(InputFiles, OutputFilename, Options) when is_list(hd(InputFiles)) ->
 	compile_to_ir1(InputFiles, OutputFilename, Options),
-	{ok, IRs} = file:consult(OutputFilename ++ ".ir1"),
-	e_dumper_machine1:generate_code(IRs, OutputFilename, Options).
+	{ok, CodeIRs} = file:consult(OutputFilename ++ ".code.ir1"),
+	{ok, IVecIRs} = file:consult(OutputFilename ++ ".ivec.ir1"),
+	e_dumper_machine1:generate_code(CodeIRs, IVecIRs, OutputFilename, Options).
 
 %% Compiling to C is supported in the early stage of this compiler. This function is archived and not used anymore.
 -spec compile_to_c([string()], string(), e_compile_option:option()) -> ok.

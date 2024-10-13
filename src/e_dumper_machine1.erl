@@ -1,5 +1,5 @@
 -module(e_dumper_machine1).
--export([generate_code/3]).
+-export([generate_code/4]).
 -include("e_riscv.hrl").
 
 -type scan_context() ::
@@ -10,14 +10,23 @@
 	wordsize		:= non_neg_integer()
 	}.
 
--spec generate_code(flatten_irs(), string(), e_compile_option:option()) -> ok.
-generate_code(IRs, OutputFile, #{wordsize := WordSize}) ->
+-spec generate_code(flatten_irs(), flatten_irs(), string(), e_compile_option:option()) -> ok.
+generate_code(CodeIRs, IVecIRs, OutputFile, #{wordsize := WordSize}) ->
 	ScanContext = #{label_map => #{}, offset_map => #{}, start_address => 0, wordsize => WordSize},
-	{Instrs, ResultCtx} = scan_address(IRs, 0, [], ScanContext),
-	#{label_map := LabelMap, offset_map := OffsetMap, start_address := StartAddress} = ResultCtx,
-	Instructions = lists:map(fun encode_instr/1, replace_address(Instrs, LabelMap)),
-	e_util:file_write(OutputFile, fun(IO) -> write_binary(Instructions, StartAddress, IO) end),
-	e_util:file_write(OutputFile ++ ".detail.txt", fun(IO) -> write_detail(Instructions, StartAddress, OffsetMap, IO) end),
+	%% User Code
+	{CodeWithPos, CodeCtx} = scan_address(CodeIRs, 0, [], ScanContext),
+	#{label_map := LabelMap, offset_map := OffsetMap, start_address := CodeStartAddress} = CodeCtx,
+	Code = lists:map(fun encode_instr/1, replace_address(CodeWithPos, LabelMap)),
+	%% Interrupt Vector
+	{IVecWithPos, IVecCtx} = scan_address(IVecIRs, 0, [], ScanContext),
+	IVec = lists:map(fun encode_instr/1, replace_address(IVecWithPos, LabelMap)),
+	#{start_address := IVecStartAddress} = IVecCtx,
+	%% Write bin files
+	e_util:file_write(OutputFile ++ ".code.bin", fun(IO) -> write_binary(Code, CodeStartAddress, IO) end),
+	e_util:file_write(OutputFile ++ ".ivec.bin", fun(IO) -> write_binary(IVec, IVecStartAddress, IO) end),
+	%% Write detail files
+	e_util:file_write(OutputFile ++ ".code.detail.txt", fun(IO) -> write_detail(Code, CodeStartAddress, OffsetMap, IO) end),
+	e_util:file_write(OutputFile ++ ".ivec.detail.txt", fun(IO) -> write_detail(IVec, IVecStartAddress, OffsetMap, IO) end),
 	ok.
 
 -spec scan_address([tuple()], non_neg_integer(), [tuple()], scan_context()) -> {[tuple()], scan_context()}.

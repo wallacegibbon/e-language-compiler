@@ -1,10 +1,12 @@
+# For CH32Vxxx MCU
+
 ## Load and Run
 
 We can using OpenOCD to load and debug the generated bin file.
 
 Download bin file to the target machine:
 ```sh
-openocd.exe -f wch-riscv.cfg -c "program C:/Users/wallace/Downloads/a.bin verify reset exit"
+openocd.exe -f wch-riscv.cfg -c "program a.code.bin 0x00000000 program a.ivec.bin 0x0000FC00 verify reset exit"
 ```
 
 Start OpenOCD server:
@@ -19,7 +21,7 @@ telnet localhost 4444
 
 Load binary file to target:
 ```text
-program path/to/a.bin 0x00000000 reset
+program path/to/a.code.bin 0x00000000 program a.ivec.bin 0x0000FC00 reset
 ```
 
 Step one instruction:

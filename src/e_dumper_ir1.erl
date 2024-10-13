@@ -21,22 +21,23 @@
 
 -spec generate_code(e_ast_compiler:ast_compile_result(), string(), e_compile_option:option()) -> ok.
 generate_code({{InitCode, AST}, Vars}, OutputFile, Options) ->
-	#{wordsize := WordSize, isr_vector_size := ISR_Size, data_pos := DataPos, data_size := DataSize} = Options,
+	#{wordsize := WordSize, data_pos := DPos, data_size := DSize, code_pos := CPos} = Options,
 	#e_vars{shifted_size = ShiftedSize} = Vars,
-	GP = DataPos + DataSize - ShiftedSize,
-	{Init1, Init2} = init_code(DataPos, GP, Options),
+	GP = DPos + DSize - ShiftedSize,
+	{Init1, Init2} = init_code(DPos, GP, Options),
 	Pid = spawn_link(fun() -> string_collect_loop([]) end),
 	Regs = e_riscv_ir:tmp_regs(),
 	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid, epilogue_tag => none, ret_offset => -WordSize, cond_label => {none, none}},
 	InitVars0 = lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init_vars'}) end, InitCode),
 	InitVars = [{label, {align, 1}, '__init_vars'} | InitVars0],
 	InterruptMap = collect_interrupt_map(AST, []),
-	VectorIRs = isr_vector_irs([], isr_vector_skip(Options), ISR_Size, WordSize, InterruptMap),
 	CodeIRs = ast_to_ir(AST, Ctx),
 	StrList = string_collect_dump(Pid),
 	StrIRs = lists:map(fun({L, S, Len}) -> [{label, {align, 1}, L}, {string, S, Len}] end, StrList),
-	IRs = lists:flatten([init_jump(Options), VectorIRs, Init1, InitVars, Init2, CodeIRs, StrIRs]),
-	e_util:file_write(OutputFile ++ ".ir1", fun(IO) -> write_irs(IRs, IO) end),
+	IRs = lists:flatten([{start_address, CPos}, Init1, InitVars, Init2, CodeIRs, StrIRs]),
+	IVecIRs = ivec_irs([], 0, InterruptMap, Options),
+	e_util:file_write(OutputFile ++ ".code.ir1", fun(IO) -> write_irs(IRs, IO) end),
+	e_util:file_write(OutputFile ++ ".ivec.ir1", fun(IO) -> write_irs(IVecIRs, IO) end),
 	e_util:file_write(OutputFile ++ ".asm", fun(IO) -> write_asm(IRs, IO) end),
 	ok.
 
@@ -67,7 +68,7 @@ init_code(SP, GP, #{entry_function := Entry} = Options) ->
 	{Init1, Init2}.
 
 -spec interrupt_init_irs(machine_reg(), e_compile_option:option()) -> flatten_irs().
-interrupt_init_irs(T, #{isr_vector_pos := Pos, isr_vector_size := Size}) when Size > 0 ->
+interrupt_init_irs(T, #{ivec_pos := Pos, ivec_size := Size}) when Size > 0 ->
 	%% Initialize interrupt vector address by writting `mtvec`(CSR 0x305).
 	SetInterruptVector = [e_riscv_ir:smart_li(T, Pos), {ori, T, T, 3}, {csrrw, {x, 0}, T, 16#305}],
 	%% Initialize MIE and MPIE in `mstatus`(CSR 0x300).
@@ -76,25 +77,15 @@ interrupt_init_irs(T, #{isr_vector_pos := Pos, isr_vector_size := Size}) when Si
 interrupt_init_irs(_, _) ->
 	[].
 
-%% Generate instruction for init jump (to __init), and return the start position for bin code generating.
--spec init_jump(e_compile_option:option()) -> irs().
-init_jump(#{init_jump_pos := InitJumpPos}) ->
-	[{start_address, InitJumpPos}, {j, '__init'}];
-init_jump(#{isr_vector_pos := ISR_Pos, isr_vector_size := Size}) when Size > 0 ->
-	[{start_address, ISR_Pos}];
-init_jump(#{code_pos := CodePos}) ->
-	[{start_address, CodePos}].
-
-%% On some platforms, we skip the first 4-byte (reserved to an init jump instruction) on isr vector generating.
-%% This is just a dirty workaround.
--spec isr_vector_skip(e_compile_option:option()) -> non_neg_integer().
-isr_vector_skip(#{init_jump_pos := _})	-> 4;
-isr_vector_skip(_)			-> 0.
-
-isr_vector_irs(R, N, Size, WordSize, InterruptMap) when N < Size ->
+%% On some platforms, the first 4-byte in interrupt vector is empty, and usually used for init jump.
+ivec_irs([], 0, InterruptMap, #{ivec_pos := Pos, ivec_init_jump := true, wordsize := WordSize} = Options) ->
+	ivec_irs([{j, '__init'}, {start_address, Pos}], WordSize, InterruptMap, Options);
+ivec_irs([], 0, InterruptMap, #{ivec_pos := Pos, wordsize := WordSize} = Options) ->
+	ivec_irs([{start_address, Pos}], WordSize, InterruptMap, Options);
+ivec_irs(R, N, InterruptMap, #{ivec_size := Size, wordsize := WordSize} = Options) when N < Size ->
 	ISR_Label = maps:get(N div WordSize, InterruptMap, '__default_isr'),
-	isr_vector_irs([{code, ISR_Label} | R], N + WordSize, Size, WordSize, InterruptMap);
-isr_vector_irs(R, Size, Size, _, _) ->
+	ivec_irs([{code, ISR_Label} | R], N + WordSize, InterruptMap, Options);
+ivec_irs(R, Size, _, #{ivec_size := Size}) ->
 	lists:reverse(R).
 
 -spec ast_to_ir(e_ast(), context()) -> irs().

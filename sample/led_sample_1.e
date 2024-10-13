@@ -110,7 +110,7 @@ fn AppState_init(self: AppState^)
 
 	self^.light_nums = 4;
 	self^.delay = 1;
-	self^.selected = 0;
+	self^.selected = 1;
 
 	while i < self^.light_nums do
 		self^.lights@[i] = self^.leds@[i]@;
@@ -258,8 +258,8 @@ fn system_init()
 	(0x4002101C as (word^))^ = 0b1;
 
 	%% Set PD0~3 as Push-Pull output, PD4 as floating input.
-	gpio_d^.CFG_L = 0x44483333;
 	gpio_d^.BSH = 0b11111;
+	gpio_d^.CFG_L = 0x44483333;
 
 	%% EXTI_FTENR, enable falling edge detecting for EXTI4
 	exti4^.FTEN = 0b10000;
