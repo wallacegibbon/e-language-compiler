@@ -418,7 +418,7 @@ compare_type_simple(#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{c
 	true;
 compare_type_simple(#e_basic_type{class = C, tag = T, p_depth = P}, #e_basic_type{class = C, tag = T, p_depth = P}, _) ->
 	true;
-compare_type_simple(#e_basic_type{class = struct, tag = Tag, p_depth = N, loc = Loc}, T2, #{struct_map := StructMap} = Ctx) ->
+compare_type_simple(#e_basic_type{class = struct, tag = Tag, p_depth = N, loc = Loc}, T2, #{struct_map := StructMap} = Ctx) when N > 0 ->
 	{ok, #e_struct{fields = #e_vars{names = [First | _], type_map = TypeMap}}} = maps:find(Tag, StructMap),
 	case maps:find(First, TypeMap) of
 		{ok, #e_basic_type{class = struct} = T1Sub} ->
