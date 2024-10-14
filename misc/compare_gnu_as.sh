@@ -26,7 +26,8 @@ fetch_machine_code $detail_file.0 > $detail_file.1
 fetch_machine_code $asm_file.dump > $asm_file.dump.1
 
 echo Comparing result...
-diff $detail_file.1 $asm_file.dump.1
+## If there are something the detail_file has while asm_file.dump.1 don't have, it's an error.
+diff $detail_file.1 $asm_file.dump.1 | grep '^[^>]'
 echo Done.
 
 rm $detail_file.* $asm_file.*

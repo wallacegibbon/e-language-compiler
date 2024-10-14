@@ -5,7 +5,7 @@ arguments() ->
 	[
 	#{name => input_file, short => $i, long => "-input-file", nargs => list, required => true},
 	#{name => output_file, short => $o, long => "-output-file"},
-	#{name => ivec_init_jump, long => "-ivec-init-jump", type => boolean},
+	#{name => ivec_init_jump, long => "-v-init-jump", type => boolean},
 	#{name => ivec_pos, long => "-v-pos", type => {integer, [{min, 0}]}},
 	#{name => ivec_size, long => "-v-size", type => {integer, [{min, 0}]}},
 	#{name => code_pos, long => "-c-pos", type => {integer, [{min, 0}]}},

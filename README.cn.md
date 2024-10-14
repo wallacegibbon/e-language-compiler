@@ -256,7 +256,7 @@ E语言定义了关键字 “band”，“bor”，“bnot”，“bxor”来进
 
 举例，为CH32V307编译：
 ```sh
-ec -i ./sample/ch32v307.e ./sample/led_sample_1.e -o /tmp/a --v-pos 0 --v-size 416 --c-pos 416 --ivec-init-jump
+ec -i ./sample/ch32v307.e ./sample/led_sample_1.e -o /tmp/a --v-pos 0 --v-size 416 --c-pos 416 --v-init-jump
 ```
 
 我们会得到两个bin文件：`a.code.bin`（代码）和`a.ivec.bin`（中断向量表）。
