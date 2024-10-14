@@ -2,7 +2,7 @@
 
 set -e
 if test $# -ne 1; then
-	echo Usage: $0 xxx.bin >&2
+	echo Usage: $0 xxx.code >&2
 	exit 1
 fi
 

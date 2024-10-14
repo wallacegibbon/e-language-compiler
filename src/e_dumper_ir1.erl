@@ -38,7 +38,7 @@ generate_code({{InitCode, AST}, Vars}, OutputFile, Options) ->
 	IVecIRs = ivec_irs([], 0, InterruptMap, Options),
 	e_util:file_write(OutputFile ++ ".code.ir1", fun(IO) -> write_irs(IRs, IO) end),
 	e_util:file_write(OutputFile ++ ".ivec.ir1", fun(IO) -> write_irs(IVecIRs, IO) end),
-	e_util:file_write(OutputFile ++ ".asm", fun(IO) -> write_asm(IRs, IO) end),
+	e_util:file_write(OutputFile ++ ".code.asm", fun(IO) -> write_asm(IRs, IO) end),
 	ok.
 
 collect_interrupt_map([#e_function{name = Name, interrupt = N, loc = Loc} | Rest], Result) when is_integer(N) ->
