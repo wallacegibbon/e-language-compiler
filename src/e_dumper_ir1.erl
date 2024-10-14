@@ -80,8 +80,8 @@ interrupt_init_irs(_, _) ->
 %% On some platforms, the first 4-byte in interrupt vector is empty, and usually used for init jump.
 ivec_irs([], 0, InterruptMap, #{ivec_pos := Pos, ivec_init_jump := true, wordsize := WordSize} = Options) ->
 	ivec_irs([{j, '__init'}, {start_address, Pos}], WordSize, InterruptMap, Options);
-ivec_irs([], 0, InterruptMap, #{ivec_pos := Pos, wordsize := WordSize} = Options) ->
-	ivec_irs([{start_address, Pos}], WordSize, InterruptMap, Options);
+ivec_irs([], 0, InterruptMap, #{ivec_pos := Pos} = Options) ->
+	ivec_irs([{start_address, Pos}], 0, InterruptMap, Options);
 ivec_irs(R, N, InterruptMap, #{ivec_size := Size, wordsize := WordSize} = Options) when N < Size ->
 	ISR_Label = maps:get(N div WordSize, InterruptMap, '__default_isr'),
 	ivec_irs([{code, ISR_Label} | R], N + WordSize, InterruptMap, Options);
