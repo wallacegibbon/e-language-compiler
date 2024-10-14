@@ -255,8 +255,7 @@ Bitwise and shift operations are important, but they are not as common as pointe
 
 # The Compiler
 
-The compiler compiles E language source file to RISC-V (32bit rv32im) machine code directly.
-Other architectures may be supported in the future.
+The compiler compiles E language source file to RISC-V (32bit RV32I/RV32E) machine code directly.
 
 To call the compiler, we can call the command line tool `ec`.
 

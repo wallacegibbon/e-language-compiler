@@ -16,18 +16,19 @@
 	scope_tag		:= atom(),
 	epilogue_tag		:= atom(),
 	ret_offset		:= neg_integer(),
+	prefer_shift		:= boolean(),
 	wordsize		:= pos_integer()
 	}.
 
 -spec generate_code(e_ast_compiler:ast_compile_result(), string(), e_compile_option:option()) -> ok.
 generate_code({{InitCode, AST}, Vars}, OutputFile, Options) ->
-	#{wordsize := WordSize, data_pos := DPos, data_size := DSize, code_pos := CPos} = Options,
+	#{wordsize := WordSize, data_pos := DPos, data_size := DSize, code_pos := CPos, prefer_shift := PreferShift} = Options,
 	#e_vars{shifted_size = ShiftedSize} = Vars,
 	GP = DPos + DSize - ShiftedSize,
 	{Init1, Init2} = init_code(DPos, GP, Options),
 	Pid = spawn_link(fun() -> string_collect_loop([]) end),
 	Regs = e_riscv_ir:tmp_regs(),
-	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid, epilogue_tag => none, ret_offset => -WordSize, cond_label => {none, none}},
+	Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid, epilogue_tag => none, ret_offset => -WordSize, prefer_shift => PreferShift, cond_label => {none, none}},
 	InitVars0 = lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init_vars'}) end, InitCode),
 	InitVars = [{label, {align, 1}, '__init_vars'} | InitVars0],
 	InterruptMap = collect_interrupt_map(AST, []),
@@ -199,21 +200,31 @@ expr_to_ir(?CALL(Fn, Args), Ctx) ->
 	RetLoad = [{comment, "load ret"}, {lw, R, {{x, 2}, -WordSize}}, {addi, {x, 2}, {x, 2}, -WordSize}],
 	Call = [FnLoad, PreserveRet, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, R}, StackRestore, RetLoad],
 	{[{comment, "call start"}, BeforeCall, Call, AfterCall, {comment, "call end"}], R, Ctx1};
+expr_to_ir(?OP2('*', Expr, ?I(N)), #{prefer_shift := true} = Ctx) when N > 1 ->
+	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
+	Nums = lists:map(fun(A) -> erlang:trunc(math:log2(A)) end, e_util:dissociate_num(N, 1 bsl 32)),
+	ShiftIRs = assemble_shifts(Nums, R, T, Ctx#{free_regs := RestRegs}),
+	{[IRs, e_riscv_ir:mv(T, {x, 0}), ShiftIRs], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 %% RISC-V do not have immediate version `sub` instruction, convert `-` to `+` to make use of `addi` later.
 expr_to_ir(?OP2('-', Expr, ?I(N)) = OP, Ctx) ->
 	expr_to_ir(OP?OP2('+', Expr, ?I(-N)), Ctx);
-expr_to_ir(?OP2(Tag, Expr, ?I(0)), Ctx) when Tag =:= '+'; Tag =:= 'bor'; Tag =:= 'bxor'; Tag =:= 'bsl'; Tag =:= 'bsr' ->
+%% Some immediate related optimizations
+expr_to_ir(?OP2(Tag, Expr, ?I(0)), Ctx) when Tag =:= '+'; Tag =:= 'bor'; Tag =:= 'bxor'; ?IS_SHIFT(Tag) ->
+	expr_to_ir(Expr, Ctx);
+expr_to_ir(?OP2('*', _, ?I(0)), Ctx) ->
+	{[], {x, 0}, Ctx};
+expr_to_ir(?OP2('*', Expr, ?I(1)), Ctx) ->
 	expr_to_ir(Expr, Ctx);
 expr_to_ir(?OP2('band', Expr, ?I(-1)), Ctx) ->
 	expr_to_ir(Expr, Ctx);
 %% The immediate ranges for shifting instructions are different from other immediate ranges.
-expr_to_ir(?OP2(Tag, _, ?I(N), Loc), _) when (Tag =:= 'bsl' orelse Tag =:= 'bsr'), N < 0 ->
+expr_to_ir(?OP2(Tag, _, ?I(N), Loc), _) when ?IS_SHIFT(Tag), N < 0 ->
 	e_util:ethrow(Loc, "shift number can not be negative but `~w` was given.", [N]);
-expr_to_ir(?OP2(Tag, _, ?I(N), Loc), #{wordsize := 4}) when (Tag =:= 'bsl' orelse Tag =:= 'bsr'), N > 32 ->
+expr_to_ir(?OP2(Tag, _, ?I(N), Loc), #{wordsize := 4}) when ?IS_SHIFT(Tag), N > 32 ->
 	e_util:ethrow(Loc, "shift number `~w` is out of range.", [N]);
-expr_to_ir(?OP2(Tag, _, ?I(N), Loc), #{wordsize := 8}) when (Tag =:= 'bsl' orelse Tag =:= 'bsr'), N > 64 ->
+expr_to_ir(?OP2(Tag, _, ?I(N), Loc), #{wordsize := 8}) when ?IS_SHIFT(Tag), N > 64 ->
 	e_util:ethrow(Loc, "shift number `~w` is out of range.", [N]);
-expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when Tag =:= 'bsl' orelse Tag =:= 'bsr' ->
+expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when ?IS_SHIFT(Tag) ->
 	{IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
 	{[IRs, {e_riscv_ir:to_op_immedi(Tag), T, R, N}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when ?IS_IMMID_ARITH(Tag), ?IS_SMALL_IMMEDI(N) ->
@@ -273,6 +284,15 @@ op3_to_ir(Tag, Left, Right, Ctx) ->
 	{IRs1, R1, Ctx1} = expr_to_ir(Left, Ctx),
 	{IRs2, R2, #{free_regs := [T | RestRegs]}} = expr_to_ir(Right, Ctx1),
 	{[IRs1, IRs2, {Tag, T, R1, R2}], T, Ctx#{free_regs := recycle_tmpreg([R2, R1], RestRegs)}}.
+
+%% The result is stored back to T1.
+-spec assemble_shifts([non_neg_integer()], machine_reg(), machine_reg(), context()) -> irs().
+assemble_shifts([0 | RestNums], R, T1, Ctx) ->
+	[{add, T1, T1, R} | assemble_shifts(RestNums, R, T1, Ctx)];
+assemble_shifts([N | RestNums], R, T1, #{free_regs := [T2 | _]} = Ctx) ->
+	[e_riscv_ir:mv(T2, R), {slli, T2, T2, N}, {add, T1, T1, T2} | assemble_shifts(RestNums, R, T1, Ctx)];
+assemble_shifts([], _, _, _) ->
+	[].
 
 -spec fix_irs(irs()) -> irs().
 fix_irs([{Tag, Rd, R1, R2}, {'br!', Rd, DestTag} | Rest]) ->
@@ -422,22 +442,23 @@ op_tag_str({x, N}) ->
 op_tag_str(Label) when is_atom(Label) ->
 	atom_to_list(Label).
 
-%% {x, 0} means there are not branching to generate. (already generated in previous IRs)
-'br!_reg'({x, 0}, _)	-> [];
-'br!_reg'(R, Label)	-> [{'br!', R, Label}].
-
-br_reg({x, 0}, _)	-> [];
-br_reg(R, Label)	-> [{'br', R, Label}].
-
-st_tag(1) -> sb;
-st_tag(_) -> sw.
-ld_tag(1) -> lb;
-ld_tag(_) -> lw.
-
 reverse_cmp_tag('==')	-> '!=';
 reverse_cmp_tag('!=')	-> '==';
 reverse_cmp_tag('>=')	-> '<';
 reverse_cmp_tag('<=')	-> '>';
 reverse_cmp_tag('>')	-> '<=';
 reverse_cmp_tag('<')	-> '>='.
+
+%% {x, 0} means that there is not branching to generate. (already generated in previous IRs)
+'br!_reg'({x, 0}, _)	-> [];
+'br!_reg'(R, Label)	-> [{'br!', R, Label}].
+
+br_reg({x, 0}, _)	-> [];
+br_reg(R, Label)	-> [{'br', R, Label}].
+
+%% Unsigned data types are dropped by E language, so instructions like `lbu` are not used.
+st_tag(1)		-> sb;
+st_tag(_)		-> sw.
+ld_tag(1)		-> lb;
+ld_tag(_)		-> lw.
 

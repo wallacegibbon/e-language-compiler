@@ -228,6 +228,11 @@
 	Tag =:= '+' orelse Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor'
 	)).
 
+-define(IS_SHIFT(Tag),
+	(
+	Tag =:= 'bsl' orelse Tag =:= 'bsr'
+	)).
+
 -define(IS_LOGIC(Tag),
 	(
 	Tag =:= 'and' orelse Tag =:= 'or' orelse Tag =:= 'not'

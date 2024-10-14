@@ -3,7 +3,7 @@
 -export([names_of_var_defs/1, names_of_var_refs/1, get_struct_from_type/2, get_struct_from_name/3, void_type/1]).
 -export([fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, fix_special_chars/1]).
 -export([fmt/2, ethrow/3, ethrow/2, exit_info/3, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2]).
--export([u_type_immedi/1, j_type_immedi/1, s_type_immedi/1, b_type_immedi/1]).
+-export([u_type_immedi/1, j_type_immedi/1, s_type_immedi/1, b_type_immedi/1, dissociate_num/2]).
 -export([list_map/2, map_find_multi/2, file_write/2]).
 -include("e_record_definition.hrl").
 -ifdef(EUNIT).
@@ -243,6 +243,30 @@ s_type_immedi_test() ->
 
 b_type_immedi_test() ->
 	?assertEqual({2#0100110, 2#11101}, b_type_immedi(16#AABBCCDD)).
+
+-endif.
+
+-spec dissociate_num(non_neg_integer(), non_neg_integer()) -> [non_neg_integer()].
+dissociate_num(N, CompareNum) when CompareNum > 0, N >= CompareNum ->
+	[CompareNum | dissociate_num(N - CompareNum, CompareNum)];
+dissociate_num(N, CompareNum) when N < CompareNum ->
+	dissociate_num(N, CompareNum div 2);
+dissociate_num(0, _) ->
+	[].
+
+-ifdef(EUNIT).
+
+dissociate_num_test() ->
+	?assertEqual([16, 8, 1], dissociate_num(25, 128)),
+	?assertEqual([16, 8, 1], dissociate_num(25, 32)),
+	?assertEqual([16, 8, 1], dissociate_num(25, 16)),
+	?assertEqual([8, 8, 8, 1], dissociate_num(25, 8)),
+	?assertEqual([4, 4, 4, 4, 4, 4, 1], dissociate_num(25, 4)),
+	?assertEqual([4, 2, 1], dissociate_num(7, 4)),
+	?assertEqual([2, 2, 2, 1], dissociate_num(7, 2)),
+	?assertEqual([1, 1, 1, 1, 1, 1, 1], dissociate_num(7, 1)),
+	?assertException(error, function_clause, dissociate_num(7, 0)),
+	ok.
 
 -endif.
 
