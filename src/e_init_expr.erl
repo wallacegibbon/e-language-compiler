@@ -11,6 +11,7 @@ expand_in_ast([Any | Rest], Ctx) ->
 expand_in_ast([], _) ->
 	[].
 
+-spec expand_in_stmts([e_stmt()], e_compile_context:context()) -> [e_stmt()].
 expand_in_stmts(Stmts, Ctx) ->
 	expand(Stmts, [], Ctx).
 
@@ -30,6 +31,10 @@ check_position(?OP2('=', _, #e_struct_init_expr{})) ->
 	ok;
 check_position(?OP2('=', _, #e_array_init_expr{})) ->
 	ok;
+check_position(#e_struct_init_expr{loc = Loc}) ->
+	e_util:ethrow(Loc, "struct init expression is only allowed in assignments");
+check_position(#e_array_init_expr{loc = Loc}) ->
+	e_util:ethrow(Loc, "array init expression is only allowed in assignments");
 check_position(?CALL(Callee, Args)) ->
 	check_position(Callee),
 	lists:foreach(fun check_position/1, Args);
@@ -37,10 +42,6 @@ check_position(#e_op{data = Data}) ->
 	lists:foreach(fun check_position/1, Data);
 check_position(#e_type_convert{expr = Expr}) ->
 	check_position(Expr);
-check_position(#e_struct_init_expr{loc = Loc}) ->
-	e_util:ethrow(Loc, "struct init expression is only allowed in assignments");
-check_position(#e_array_init_expr{loc = Loc}) ->
-	e_util:ethrow(Loc, "array init expression is only allowed in assignments");
 check_position(_) ->
 	ok.
 
