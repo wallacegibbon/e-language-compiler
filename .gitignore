@@ -3,7 +3,6 @@ rebar.lock
 _*
 .eunit
 *.o
-*.c
 *.beam
 *.plt
 *.swp
