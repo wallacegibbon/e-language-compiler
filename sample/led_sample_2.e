@@ -1,6 +1,6 @@
 %% vim:ft=elang:ts=8:sw=8:sts=8:noet
-%% This program is designed for CH32V3xx. To compile it:
-%% ec -i ./sample/ch32v.e ./sample/led_sample_1.e -o /tmp/a --v-pos 0 --v-size 416 --c-pos 416 --v-init-jump
+%% This program is designed for CH32V0xx. To compile it:
+%% ec -i ./sample/ch32v.e ./sample/led_sample_2.e -o /tmp/a --v-pos 0 --v-size 156 --c-pos 156 --d-pos 536870912 --d-size 2048 --v-init-jump --prefer-shift
 
 unused_string1: byte^ = "this string is unused, just for testing linking.";
 unused_string2: byte^ = "this string is unused, either.";
@@ -78,8 +78,8 @@ fn off_light(light: LightInterface^^)
 end
 
 struct AppState
-	lights			: {LightInterface^^, 4};
-	leds			: {LED, 4}; %% The inner data
+	lights			: {LightInterface^^, 2};
+	leds			: {LED, 2}; %% The inner data
 	light_nums		: word;
 	delay			: word;
 	selected		: word;
@@ -109,7 +109,7 @@ fn AppState_init(self: AppState^)
 	led: LED^;
 	i: word = 0;
 
-	self^.light_nums = 4;
+	self^.light_nums = 2;
 	self^.delay = 1;
 	self^.selected = 1;
 
@@ -122,9 +122,8 @@ fn AppState_init(self: AppState^)
 	AppIter_init(iter@, self);
 
 	light: LightInterface^^;
-	while AppIter_next(iter@, light@, i@) == 0 do
-		LED_init(light, GPIOD, i);
-	end
+	LED_init(self^.lights@[0], GPIOD, 0);
+	LED_init(self^.lights@[1], GPIOD, 2);
 end
 
 fn AppState_all_off(self: AppState^)
@@ -168,17 +167,11 @@ end
 fn AppState_toggle_pair1(self: AppState^)
 	tmp: word;
 	toggle_light(self^.lights@[0], tmp@);
-	toggle_light(self^.lights@[1], tmp@);
-	off_light(self^.lights@[2]);
-	off_light(self^.lights@[3]);
 end
 
 fn AppState_toggle_pair2(self: AppState^)
 	tmp: word;
-	toggle_light(self^.lights@[2], tmp@);
-	toggle_light(self^.lights@[3], tmp@);
-	off_light(self^.lights@[0]);
-	off_light(self^.lights@[1]);
+	toggle_light(self^.lights@[1], tmp@);
 end
 
 fn AppState_loop_once(self: AppState^)
@@ -216,7 +209,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ISRs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-interrupt(26)
+interrupt(20)
 fn exit4_isr()
 	%% Clear interrupt flag.
 	EXTI^.INTF = 0b1_0000;
@@ -227,7 +220,7 @@ fn exit4_isr()
 	TIM2^.CTL1 = 0b1000_1001;
 end
 
-interrupt(44)
+interrupt(38)
 fn TIM2_isr()
 	%% Clear interrupt flag
 	TIM2^.INTF = 0b0;
