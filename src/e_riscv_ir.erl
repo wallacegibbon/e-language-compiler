@@ -3,12 +3,11 @@
 -include("e_riscv.hrl").
 
 %% We don't need many temporary registers with current allocation algorithm, 8 is more than enough.
-%% And by avoiding {x, N} (N > 15), our code can run on a RV32E machine who have only 16 registers.
+%% And by avoiding {x, 15~31}, our code can run on a RV32E machine who have only 16 registers.
 -spec tmp_regs() -> [machine_reg()].
 tmp_regs() ->
 	[{x, 5}, {x, 6}, {x, 7}, {x, 10}, {x, 11}, {x, 12}, {x, 13}, {x, 14}].
 
-%% CAUTION: `smart_addi/3` will change the source register. Do not use this funciton on special registers.
 -spec smart_addi(machine_reg(), integer(), machine_reg()) -> irs().
 smart_addi(_, 0, _) ->
 	[];
@@ -17,7 +16,6 @@ smart_addi(R, N, _) when ?IS_SMALL_IMMEDI(N) ->
 smart_addi(R, N, T) ->
 	[smart_li(T, N), {add, R, R, T}].
 
-%% CAUTION: `smart_li/2` will change the source register. Do not use this funciton on special registers.
 smart_li(R, N) when ?IS_SMALL_IMMEDI(N) ->
 	[{addi, R, {x, 0}, N}];
 smart_li(R, N) ->
