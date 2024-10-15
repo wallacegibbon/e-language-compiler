@@ -259,9 +259,14 @@ The compiler compiles E language source file to RISC-V (32bit RV32I/RV32E) machi
 
 To call the compiler, we can call the command line tool `ec`.
 
-An example for CH32V307:
+Example for CH32V307:
 ```sh
 ec -i ./sample/ch32v.e ./sample/led_sample_1.e -o /tmp/a --v-pos 0 --v-size 416 --c-pos 416 --v-init-jump
+```
+
+Example for CH32V003:
+```sh
+ec -i ./sample/ch32v.e ./sample/led_sample_2.e -o /tmp/a --v-pos 0 --v-size 156 --c-pos 156 --d-pos 0x2000_0000 --d-size 2K --v-init-jump --prefer-shift
 ```
 
 We will get 2 bin files: `a.code.bin` (our code) and `a.ivec.bin` (interrupt vector table).

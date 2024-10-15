@@ -253,9 +253,14 @@ E语言定义了关键字 “band”，“bor”，“bnot”，“bxor”来进
 
 要使用E语言编译器，我们可以用命令行工具`ec`。
 
-举例，为CH32V307编译：
+CH32V307示例：
 ```sh
 ec -i ./sample/ch32v.e ./sample/led_sample_1.e -o /tmp/a --v-pos 0 --v-size 416 --c-pos 416 --v-init-jump
+```
+
+CH32V003示例：
+```sh
+ec -i ./sample/ch32v.e ./sample/led_sample_2.e -o /tmp/a --v-pos 0 --v-size 156 --c-pos 156 --d-pos 0x2000_0000 --d-size 2K --v-init-jump --prefer-shift
 ```
 
 我们会得到两个bin文件：`a.code.bin`（代码）和`a.ivec.bin`（中断向量表）。

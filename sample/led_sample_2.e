@@ -1,6 +1,6 @@
 %% vim:ft=elang:ts=8:sw=8:sts=8:noet
 %% This program is designed for CH32V0xx. To compile it:
-%% ec -i ./sample/ch32v.e ./sample/led_sample_2.e -o /tmp/a --v-pos 0 --v-size 156 --c-pos 156 --d-pos 536870912 --d-size 2048 --v-init-jump --prefer-shift
+%% ec -i ./sample/ch32v.e ./sample/led_sample_2.e -o /tmp/a --v-pos 0 --v-size 156 --c-pos 156 --d-pos 0x2000_0000 --d-size 2K --v-init-jump --prefer-shift
 
 unused_string1: byte^ = "this string is unused, just for testing linking.";
 unused_string2: byte^ = "this string is unused, either.";
