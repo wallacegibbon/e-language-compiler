@@ -1,9 +1,3 @@
-unused_string3: byte^ = "this string is unused, just for testing linking.";
-blah: word = 1234;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% MCU related struct definition
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 struct GPIO
 	CFG_L			: word; %% Port configuration register low
 	CFG_H			: word; %% Port configuration register high
@@ -21,6 +15,30 @@ struct EXTI
 	FTEN			: word; %% Falling edge trigger enable register
 	SWIEV			: word; %% Software interrupt event register
 	INTF			: word; %% Interrupt flag register
+end
+
+struct ADTM
+	CTL1			: word; %% Control register1
+	CTL2			: word; %% Control register2
+	SMCFG			: word; %% Slave mode configuration register
+	DMAINTEN		: word; %% DMA/interrupt enable register
+	INTF			: word; %% Interrupt flag register
+	SWEVG			: word; %% Event generation register
+	CHCTL1			: word; %% Compare/Capture control register1
+	CHCTL2			: word; %% Compare/Capture control register2
+	CCEN			: word; %% compare/capture enable register
+	CNT			: word; %% Counter
+	PSC			: word; %% Prescaler
+	ATRL			: word; %% Auto-reload register
+	RPTC			: word; %% Repeat count register
+	CH1CV			: word; %% Compare/Capture register1
+	CH2CV			: word; %% Compare/Capture register2
+	CH3CV			: word; %% Compare/Capture register3
+	CH4CV			: word; %% Compare/Capture register4
+	BDT			: word; %% Break and deadband register
+	DMACFG			: word; %% DMA configuration register
+	DMAAD			: word; %% DMA address register in continuous mode
+	AUX			: word; %% Dual-edge capture register
 end
 
 struct GPTM
@@ -45,10 +63,11 @@ struct GPTM
 	AUX			: word; %% Dual-edge capture register
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Global variables for register banks
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-gpio_d		: GPIO^ = 0x40011400 as (GPIO^);
-exti4		: EXTI^ = 0x40010400 as (EXTI^);
-tim2		: GPTM^ = 0x40000000 as (GPTM^);
+GPIOD		: GPIO^ = 0x40011400 as (GPIO^);
+EXTI		: EXTI^ = 0x40010400 as (EXTI^);
+TIM1		: ADTM^ = 0x40012C00 as (ADTM^);
+TIM2		: GPTM^ = 0x40000000 as (GPTM^);
+TIM3		: GPTM^ = 0x40000400 as (GPTM^);
+TIM4		: GPTM^ = 0x40000800 as (GPTM^);
+TIM5		: GPTM^ = 0x40000C00 as (GPTM^);
 

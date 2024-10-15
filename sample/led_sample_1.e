@@ -122,7 +122,7 @@ fn AppState_init(self: AppState^)
 
 	light: LightInterface^^;
 	while AppIter_next(iter@, light@, i@) == 0 do
-		LED_init(light, gpio_d, i);
+		LED_init(light, GPIOD, i);
 	end
 end
 
@@ -218,21 +218,21 @@ end
 interrupt(26)
 fn exit4_isr()
 	%% Clear interrupt flag.
-	exti4^.INTF = 0b10000;
+	EXTI^.INTF = 0b10000;
 
 	%% Restart the timer, Single pulse mode, Auto reload.
-	tim2^.CTL1 = 0;
-	tim2^.CNT = 0;
-	tim2^.CTL1 = 0b10001001;
+	TIM2^.CTL1 = 0;
+	TIM2^.CNT = 0;
+	TIM2^.CTL1 = 0b10001001;
 end
 
 interrupt(44)
-fn tim2_isr()
+fn TIM2_isr()
 	%% Clear interrupt flag
-	tim2^.INTF = 0b0;
-	tim2^.CNT = 0;
+	TIM2^.INTF = 0b0;
+	TIM2^.CNT = 0;
 
-	if (gpio_d^.IN band 0b10000) != 0 then
+	if (GPIOD^.IN band 0b10000) != 0 then
 		return;
 	end
 
@@ -258,26 +258,26 @@ fn system_init()
 	(0x4002101C as (word^))^ = 0b1;
 
 	%% Set PD0~3 as Push-Pull output, PD4 as floating input.
-	gpio_d^.BSH = 0b11111;
-	gpio_d^.CFG_L = 0x44483333;
+	GPIOD^.BSH = 0b11111;
+	GPIOD^.CFG_L = 0x44483333;
 
 	%% EXTI_FTENR, enable falling edge detecting for EXTI4
-	exti4^.FTEN = 0b10000;
-	exti4^.RTEN = 0b0;
+	EXTI^.FTEN = 0b10000;
+	EXTI^.RTEN = 0b0;
 	%% Enable EXTI4.
-	exti4^.INTEN = 0b10000;
+	EXTI^.INTEN = 0b10000;
 
 	%% AFIO_EXTICR2, Connect EXTI4 to PD4.
 	(0x4001000C as (word^))^ = 0b0011;
 
 	%% We use the internal 8MHz as system clock.
-	tim2^.ATRL = 8000;
-	%tim2^.PSC = 9; % 10ms
-	tim2^.PSC = 19; % 20ms
-	tim2^.DMAINTEN = 0b1;
-	%tim2^.CTL1 = 0b10000001;
-	%tim2^.CTL1 = 0b10001001;
-	tim2^.CTL1 = 0b0;
+	TIM2^.ATRL = 8000;
+	%TIM2^.PSC = 9; % 10ms
+	TIM2^.PSC = 19; % 20ms
+	TIM2^.DMAINTEN = 0b1;
+	%TIM2^.CTL1 = 0b10000001;
+	%TIM2^.CTL1 = 0b10001001;
+	TIM2^.CTL1 = 0b0;
 
 	%% PFIC_IENR1, enable the interrupt for EXTI4(id: 26).
 	(0xE000E100 as (word^))^ = 1 bsl 26;
