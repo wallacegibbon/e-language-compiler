@@ -1,24 +1,23 @@
 syn region e_string		start=/"/ end=/"/ contains=e_char_modifier
 syn region e_char		start=/'/ end=/'/ contains=e_char_modifier
 syn match e_char_modifier	"\\(n|r|t|)"
-syn match e_integer		"\<\d\+\([Ee]\d\+\)\?\>"
+syn match e_label		"^\s*@\s*@\s*[A-Za-z0-9_]\+\>"
 syn match e_integer		"\<0x\x\+\>"
 syn match e_integer		"\<0o[0-7]\+\>"
 syn match e_integer		"\<0b[01]\+\>"
-syn match e_float		"\<\d\+\.\d*\([Ee][-+]\d\+\)\?\>"
-syn match e_float		"\<\.\d\+\([Ee][-+]\d\+\)\?\>"
-syn match e_float		"\<\d\+[Ee][-+]\d\+\>"
-syn match e_label		"^\s*@\s*@\s*[A-Za-z_]\+\>"
+syn match e_float		"\<\d\+\.\d*\([Ee][-+]\?\d\+\)\?\>"
+syn match e_float		"\<\.\d\+\([Ee][-+]\?\d\+\)\?\>"
+syn match e_float		"\<\d\+\([Ee]\d\+\)\?\>"
+syn match e_float		"\<\d\+[Ee][-+]\?\d\+\>"
 syn match e_comment		"%.*$"
 syn match e_identifier		"[[:alpha:]][[:alnum:]]*"
 syn match e_type_complex	/:\s*[[:alpha:]][[:alnum:]]*/ms=s+1
-syn match e_function		/[a-zA-Z0-9_]*\s*(/me=e-1
+syn match e_function		/[A-Za-z0-9_]*\s*(/me=e-1
 
 syn region e_pre		start="^\s*\zs\%(%:\|#\)\s*\%(if\|ifdef\|ifndef\|else\|elif\|endif\|define\|undef\|error\|warning\|include\)\>" skip="\\$" end="$" keepend contains=e_comment,e_string,e_char,e_integer,e_float
-syn match e_macro_ref		"?[A-Za-z_]\+\>"
+syn match e_macro_ref		"?[A-Za-z0-9_]\+\>"
 
-syn keyword e_keyword		fn end if then else elif while do goto sizeof alignof return as interrupt
-syn keyword e_struct		struct nextgroup=e_identifier
+syn keyword e_keyword		fn struct end if then else elif while do goto sizeof alignof return as interrupt
 syn keyword e_type		byte word float any void
 syn keyword e_operator		band bor bxor bnot and or not rem bsl bsr
 syn match e_operator		"==\|!=\|>=\|<=\|>\|<\|@\|\^\|+\|-\|*\|/\|="
