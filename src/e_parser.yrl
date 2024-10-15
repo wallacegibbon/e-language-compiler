@@ -39,6 +39,10 @@ e_root_stmt -> e_vardef ';' : '$1'.
 e_type_annos -> e_type_anno ';' e_type_annos : ['$1' | '$3'].
 e_type_annos -> e_type_anno : ['$1'].
 
+e_type_anno -> 'fn' '(' e_vardefs ')' ':' e_type_anno :
+	#e_fn_type{params = types_from_vardefs('$3'), ret = '$6', loc = token_loc('$1')}.
+e_type_anno -> 'fn' '(' e_vardefs ')' :
+	#e_fn_type{params = types_from_vardefs('$3'), ret = e_util:void_type(token_loc('$4')), loc = token_loc('$1')}.
 e_type_anno -> 'fn' '(' e_type_annos ')' ':' e_type_anno :
 	#e_fn_type{params = '$3', ret = '$6', loc = token_loc('$1')}.
 e_type_anno -> 'fn' '(' e_type_annos ')' :
@@ -319,6 +323,9 @@ Erlang code.
 
 str_to_int_tokens({string, Loc, Str}) ->
 	lists:map(fun(Char) -> #e_integer{value = Char, loc = Loc} end, Str).
+
+types_from_vardefs(VarDefs) ->
+	lists:map(fun(#e_vardef{type = Type}) -> Type end, VarDefs).
 
 token_value({_, _, Val}) -> Val.
 

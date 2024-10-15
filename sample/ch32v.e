@@ -63,11 +63,11 @@ struct GPTM
 	AUX			: word; %% Dual-edge capture register
 end
 
-GPIOD		: GPIO^ = 0x40011400 as (GPIO^);
-EXTI		: EXTI^ = 0x40010400 as (EXTI^);
-TIM1		: ADTM^ = 0x40012C00 as (ADTM^);
-TIM2		: GPTM^ = 0x40000000 as (GPTM^);
-TIM3		: GPTM^ = 0x40000400 as (GPTM^);
-TIM4		: GPTM^ = 0x40000800 as (GPTM^);
-TIM5		: GPTM^ = 0x40000C00 as (GPTM^);
+GPIOD		: GPIO^ = 0x4001_1400 as (GPIO^);
+EXTI		: EXTI^ = 0x4001_0400 as (EXTI^);
+TIM1		: ADTM^ = 0x4001_2C00 as (ADTM^);
+TIM2		: GPTM^ = 0x4000_0000 as (GPTM^);
+TIM3		: GPTM^ = 0x4000_0400 as (GPTM^);
+TIM4		: GPTM^ = 0x4000_0800 as (GPTM^);
+TIM5		: GPTM^ = 0x4000_0C00 as (GPTM^);
 

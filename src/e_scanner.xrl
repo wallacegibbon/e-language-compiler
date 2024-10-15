@@ -9,10 +9,10 @@ CharUnescapedChar = [^\'\\]
 CommonEscapedChar = \\\\|\\b|\\f|\\n|\\r|\\t|\\/
 StringEscapedChar = ({CommonEscapedChar}|\\")
 CharEscapedChar = ({CommonEscapedChar}|\\')
-BinaryDigit = [01]
-OctalDigit = [0-7]
-DecimalDigit = [0-9]
-HexDigit = [0-9a-fA-F]
+BinaryDigit = [01_]
+OctalDigit = [0-7_]
+DecimalDigit = [0-9_]
+HexDigit = [0-9A-Fa-f_]
 CommentStart = %
 
 Rules.
@@ -43,7 +43,7 @@ any : {token, {any_type, TokenLoc, any}}.
 Erlang code.
 
 str_to_int([$0, _ | Chars], Base) ->
-	list_to_integer(Chars, Base).
+	list_to_integer(lists:filter(fun(V) -> V =/= $_ end, Chars), Base).
 
 drop_quotes([_ | QuotedString]) ->
 	lists:droplast(QuotedString).

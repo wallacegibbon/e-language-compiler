@@ -606,5 +606,5 @@ type_to_str(#e_array_type{elem_type = Type, length = N}) ->
 type_to_str(#e_struct_init_expr{name = Name}) ->
 	atom_to_list(Name);
 type_to_str(#e_basic_type{tag = Tag, p_depth = N}) ->
-	e_util:fmt("(~s~s)", [Tag, lists:duplicate(N, "^")]).
+	e_util:fmt("~s~s", [Tag, lists:duplicate(N, "^")]).
 
