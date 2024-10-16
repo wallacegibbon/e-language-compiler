@@ -111,7 +111,7 @@ fn AppState_init(self: AppState^)
 
 	self^.light_nums = 2;
 	self^.delay = 1;
-	self^.selected = 1;
+	self^.selected = 0;
 
 	while i < self^.light_nums do
 		self^.lights@[i] = self^.leds@[i]@;
@@ -177,8 +177,10 @@ end
 fn AppState_loop_once(self: AppState^)
 	if self^.selected == 0 then
 		AppState_toggle_pair1(self);
+		off_light(self^.lights@[1]);
 	else
 		AppState_toggle_pair2(self);
+		off_light(self^.lights@[0]);
 	end
 end
 
@@ -252,8 +254,8 @@ fn system_init()
 	(0x4002_101C as (word^))^ = 0b1;
 
 	%% Set PD0~3 as Push-Pull output, PD4 as floating input.
-	GPIOD^.BSH = 0b1_1111;
-	GPIOD^.CFG_L = 0x4448_3333;
+	GPIOD^.BSH = 0b1_1101;
+	GPIOD^.CFG_L = 0x4448_3343;
 
 	%% EXTI_FTENR, enable falling edge detecting for EXTI4
 	EXTI^.FTEN = 0b1_0000;
@@ -262,7 +264,8 @@ fn system_init()
 	EXTI^.INTEN = 0b1_0000;
 
 	%% AFIO_EXTICR2, Connect EXTI4 to PD4.
-	(0x4001_000C as (word^))^ = 0b0011;
+	%(0x4001_000C as (word^))^ = 0b0011;
+	(0x4001_0008 as (word^))^ = 0b11_0000_0000;
 
 	%% We use the internal 8MHz as system clock.
 	TIM2^.ATRL = 8000;
@@ -273,9 +276,9 @@ fn system_init()
 	%TIM2^.CTL1 = 0b1000_1001;
 	TIM2^.CTL1 = 0b0;
 
-	%% PFIC_IENR1, enable the interrupt for EXTI4(id: 26).
-	(0xE000_E100 as (word^))^ = 1 bsl 26;
-	%% PFIC_IENR2, enable the interrupt for TIM2(id: 44). (44 - 32 -> 12)
-	(0xE000_E104 as (word^))^ = 1 bsl 12;
+	%% PFIC_IENR1, enable the interrupt for EXTI4(id: 20).
+	(0xE000_E100 as (word^))^ = 1 bsl 20;
+	%% PFIC_IENR2, enable the interrupt for TIM2(id: 38). (38 - 32 -> 6)
+	(0xE000_E104 as (word^))^ = 1 bsl 6;
 end
 
