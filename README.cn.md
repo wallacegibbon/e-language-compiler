@@ -255,7 +255,7 @@ E语言定义了关键字 “band”，“bor”，“bnot”，“bxor”来进
 
 CH32V307示例：
 ```sh
-ec -i ./sample/ch32v.e ./sample/led_sample_1.e -o /tmp/a --v-pos 0 --v-size 416 --c-pos 416 --v-init-jump
+ec -i ./sample/ch32v.e ./sample/led_sample_1.e -o /tmp/a --v-pos 0 --v-size 416 --c-pos 416 --d-pos 0x2000_0000 --d-size 64K --v-init-jump
 ```
 
 CH32V003示例：

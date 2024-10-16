@@ -23,7 +23,10 @@
 -spec generate_code(e_ast_compiler:ast_compile_result(), string(), e_compile_option:option()) -> ok.
 generate_code({{InitCode, AST}, Vars}, OutputFile, Options) ->
 	#{wordsize := WordSize, data_pos := DPos, data_size := DSize, code_pos := CPos, prefer_shift := PreferShift} = Options,
-	#e_vars{shifted_size = ShiftedSize} = Vars,
+	#e_vars{shifted_size = ShiftedSize, size = GlobalVarSize} = Vars,
+	%% Let's assume we need at least 128 bytes for stack.
+	MinDataSize = GlobalVarSize + 128,
+	e_util:assert(DSize >= MinDataSize, e_util:fmt("Data storage size (~w) is not enough. (~w needed)", [DSize, MinDataSize])),
 	GP = DPos + DSize - ShiftedSize,
 	{Init1, Init2} = init_code(DPos, GP, Options),
 	Pid = spawn_link(fun() -> string_collect_loop([]) end),
