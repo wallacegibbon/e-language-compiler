@@ -94,23 +94,14 @@ type_of_nodes(Stmts, Ctx) ->
 	lists:map(fun(Expr) -> type_of_node(Expr, Ctx) end, Stmts).
 
 -spec type_of_node(e_stmt(), e_compile_context:context()) -> e_type().
-type_of_node(?OP2('=', ?OP2('.', Op11, Op12, DotLoc), Op2, Loc), #{struct_map := StructMap} = Ctx) ->
-	Op1Type = type_of_struct_field(type_of_node(Op11, Ctx), Op12, StructMap, DotLoc),
-	Op1TypeFixed = check_type(Op1Type, Ctx),
-	Op2Type = type_of_node(Op2, Ctx),
-	compare_expect_left(Op1TypeFixed, Op2Type, Loc, Ctx);
-type_of_node(?OP2('=', ?OP2('^', SubOp, _), Op2, Loc), Ctx) ->
-	Op1Type = inc_pointer_depth(type_of_node(SubOp, Ctx), -1, Loc),
-	Op2Type = type_of_node(Op2, Ctx),
-	compare_expect_left(Op1Type, Op2Type, Loc, Ctx);
-type_of_node(?OP2('=', ?AREF(Arr, _), Op2, Loc), Ctx) ->
-	Op1Type = inc_pointer_depth(type_of_node(Arr, Ctx), -1, Loc),
-	Op2Type = type_of_node(Op2, Ctx),
-	compare_expect_left(Op1Type, Op2Type, Loc, Ctx);
+type_of_node(?OP2('=', ?OP2('.', _, _) = Op1, Op2, Loc), Ctx) ->
+	compare_expect_left(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
+type_of_node(?OP2('=', ?OP2('^', _, _) = Op1, Op2, Loc), Ctx) ->
+	compare_expect_left(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
+type_of_node(?OP2('=', ?AREF(_, _) = Op1, Op2, Loc), Ctx) ->
+	compare_expect_left(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
 type_of_node(?OP2('=', #e_varref{} = Op1, Op2, Loc), Ctx) ->
-	Op1Type = type_of_node(Op1, Ctx),
-	Op2Type = type_of_node(Op2, Ctx),
-	compare_expect_left(Op1Type, Op2Type, Loc, Ctx);
+	compare_expect_left(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
 type_of_node(?OP2('=', Any, _, Loc), _) ->
 	e_util:ethrow(Loc, "invalid left value (~s)", [e_util:stmt_to_str(Any)]);
 type_of_node(?OP2('.', Op1, Op2, Loc), #{struct_map := StructMap} = Ctx) ->
