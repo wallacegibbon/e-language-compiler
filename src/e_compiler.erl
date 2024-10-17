@@ -3,8 +3,6 @@
 -compile([{nowarn_unused_function, [{parse_and_compile, 2}]}]).
 -include("e_record_definition.hrl").
 
--type token() :: {atom(), location(), _} | {atom(), location()}.
-
 -spec compile_to_ir1([string()], string(), e_compile_option:option()) -> ok.
 compile_to_ir1(InputFiles, OutputFilename, Options) when is_list(hd(InputFiles)) ->
 	try
@@ -43,16 +41,18 @@ compile_to_e(InputFiles, OutputFilename, Options) ->
 
 -spec parse_and_compile_files([string()], e_compile_option:option()) -> e_ast_compiler:ast_compile_result().
 parse_and_compile_files(Files, Options) ->
-	RawAST = lists:concat(lists:map(fun(Filename) -> parse_file(Filename) end, Files)),
-	e_ast_compiler:compile_from_raw_ast(RawAST, Options).
+	Tokens0 = lists:concat(lists:map(fun(Filename) -> scan_file(Filename) end, Files)),
+	Tokens1 = e_preprocessor:preprocess(Tokens0),
+	e_ast_compiler:compile_from_raw_ast(parse_tokens(Tokens1), Options).
 
 -spec parse_and_compile(string(), e_compile_option:option()) -> e_ast_compiler:ast_compile_result().
 parse_and_compile(Filename, Options) ->
-	e_ast_compiler:compile_from_raw_ast(parse_file(Filename), Options).
+	Tokens0 = scan_file(Filename),
+	Tokens1 = e_preprocessor:preprocess(Tokens0),
+	e_ast_compiler:compile_from_raw_ast(parse_tokens(Tokens1), Options).
 
--spec parse_file(string()) -> e_ast_raw().
-parse_file(Filename) ->
-	Tokens = scan_file(Filename),
+-spec parse_tokens([token()]) -> e_ast_raw().
+parse_tokens(Tokens) ->
 	case e_parser:parse(Tokens) of
 		{ok, AST} ->
 			AST;
@@ -64,19 +64,15 @@ parse_file(Filename) ->
 scan_file(Filename) ->
 	case file:read_file(Filename) of
 		{ok, RawContent} ->
-			lists:map(fun(T) -> token_attach_filename(Filename, T) end, scan_raw_content(RawContent));
+			RawTokens = scan_raw_content(RawContent),
+			lists:map(fun(T) -> e_util:token_attach_filename(Filename, T) end, RawTokens);
 		{error, enoent} ->
 			throw(e_util:fmt("file ~s is not found", [Filename]));
 		{error, Reason} ->
 			throw(Reason)
 	end.
 
-token_attach_filename(Filename, {Tag, {Row, Column}}) ->
-	{Tag, {Filename, Row, Column}};
-token_attach_filename(Filename, {Tag, {Row, Column}, A}) ->
-	{Tag, {Filename, Row, Column}, A}.
-
--spec scan_raw_content(binary()) -> [token()].
+-spec scan_raw_content(binary()) -> [raw_token()].
 scan_raw_content(RawContent) ->
 	case e_scanner:string(unicode:characters_to_list(RawContent, utf8)) of
 		{ok, Tokens, _EndLoc} ->

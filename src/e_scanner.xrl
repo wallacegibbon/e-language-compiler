@@ -36,7 +36,8 @@ float : {token, {float_type, TokenLoc, list_to_atom(TokenChars)}}.
 void : {token, {void_type, TokenLoc, void}}.
 any : {token, {any_type, TokenLoc, any}}.
 {Identifier} : {token, {identifier, TokenLoc, list_to_atom(TokenChars)}}.
-[\s\r\t\v\f\n]* : skip_token.
+[\s\r\t\v\f]* : skip_token.
+\n : {token, {newline, TokenLoc}}.
 {CommentStart}[^\n]* : skip_token.
 . : {error, {TokenLoc, e_util:fmt("invalid char. (code list: ~w)", [TokenChars])}}.
 

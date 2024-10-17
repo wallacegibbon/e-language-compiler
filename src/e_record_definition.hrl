@@ -1,7 +1,11 @@
 -ifndef(E_RECORD_DEFINITION_HRL).
 -define(E_RECORD_DEFINITION_HRL, 1).
 
+-type raw_location() :: {Row :: non_neg_integer(), Column :: non_neg_integer()}.
+-type raw_token() :: {atom(), raw_location(), _} | {atom(), raw_location()}.
+
 -type location() :: {Filename :: string(), Row :: non_neg_integer(), Column :: non_neg_integer()}.
+-type token() :: {atom(), location(), _} | {atom(), location()}.
 
 %% There are 3 kinds of data types in E language: `basic type`, `array type` and `function type`.
 -record(e_basic_type,

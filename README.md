@@ -253,6 +253,26 @@ And `bsl`, `bsr` for shift operations, which is just like `<<`, `>>` in C langua
 Bitwise and shift operations are important, but they are not as common as pointer operations, this is the main reason E language choose `^` as pointer operator.
 
 
+## Macro
+
+A macro preprocessor is supported. Defining macro in E language is almost the same as in C language.
+
+```text
+#define	GPIOD			(0x4001_1400 as (GPIO^))
+```
+
+But parameters are not supported.
+
+Referencing a macro is different. We need a `?` mark before the macro name. (Just like how macro works in Erlang)
+
+```text
+?GPIOD^.BSH = 0b1_1101;
+```
+
+In C language, we can't tell whether a symbol is a macro or variable or function, which make code hard to understand.
+By introducing the `?` mark, we can always know it's a macro.
+
+
 # The Compiler
 
 The compiler compiles E language source file to RISC-V (32bit RV32I/RV32E) machine code directly.

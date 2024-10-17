@@ -4,7 +4,7 @@
 -export([fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, fix_special_chars/1]).
 -export([fmt/2, ethrow/3, ethrow/2, exit_info/3, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2]).
 -export([u_type_immedi/1, j_type_immedi/1, s_type_immedi/1, b_type_immedi/1, dissociate_num/2]).
--export([list_map/2, map_find_multi/2, file_write/2]).
+-export([list_map/2, map_find_multi/2, file_write/2, token_attach_filename/2]).
 -include("e_record_definition.hrl").
 -ifdef(EUNIT).
 -include_lib("eunit/include/eunit.hrl").
@@ -339,4 +339,10 @@ file_write(Filename, Handle) ->
 	after
 		ok = file:close(IO)
 	end.
+
+-spec token_attach_filename(string(), raw_token()) -> token().
+token_attach_filename(Filename, {Tag, {Row, Column}}) ->
+	{Tag, {Filename, Row, Column}};
+token_attach_filename(Filename, {Tag, {Row, Column}, A}) ->
+	{Tag, {Filename, Row, Column}, A}.
 
