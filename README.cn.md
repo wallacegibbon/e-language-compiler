@@ -55,7 +55,7 @@ int32_t arr[3] = {1, 2, 3};
 struct Blah {
 	int id;
 	char *name;
-}
+};
 
 struct Blah b = {1, "hello"};
 
