@@ -222,9 +222,9 @@ fn exit4_isr()
 	?EXTI^.INTF = 0b1_0000;
 
 	%% Restart the timer, Single pulse mode, Auto reload.
-	?TIM2^.CTL1 = 0;
+	?TIM2^.CTL@[0] = 0;
 	?TIM2^.CNT = 0;
-	?TIM2^.CTL1 = 0b1000_1001;
+	?TIM2^.CTL@[0] = 0b1000_1001;
 end
 
 interrupt(44)
@@ -253,36 +253,36 @@ fn GPIO_set_state(port: GPIO^; pin: word; state: word)
 end
 
 fn system_init()
-	%% RCC_APB2PCENR, enable clock for PD and AFIO
-	(0x4002_1018 as (word^))^ = 0b0010_0001;
-	%% RCC_APB1PCENR, enable clock for TIM2
-	(0x4002_101C as (word^))^ = 0b1;
+	%% Enable clock for PD and AFIO
+	?RCC_APB2CEN^ = 0b0010_0001;
+	%% Enable clock for TIM2
+	?RCC_APB1CEN^ = 0b1;
 
 	%% Set PD0~3 as Push-Pull output, PD4 as floating input.
 	?GPIOD^.BSH = 0b1_1111;
 	?GPIOD^.CFG_L = 0x4448_3333;
 
-	%% EXTI_FTENR, enable falling edge detecting for EXTI4
+	%% Enable falling edge detecting for EXTI4
 	?EXTI^.FTEN = 0b1_0000;
 	?EXTI^.RTEN = 0b0;
 	%% Enable EXTI4.
 	?EXTI^.INTEN = 0b1_0000;
 
-	%% AFIO_EXTICR2, Connect EXTI4 to PD4.
-	(0x4001_000C as (word^))^ = 0b0011;
+	%% Connect EXTI4 to PD4.
+	?AFIO_EXTICx[1] = 0b0011;
 
 	%% We use the internal 8MHz as system clock.
 	?TIM2^.ATRL = 8000;
 	%?TIM2^.PSC = 9; % 10ms
 	?TIM2^.PSC = 19; % 20ms
 	?TIM2^.DMAINTEN = 0b1;
-	%?TIM2^.CTL1 = 0b1000_0001;
-	%?TIM2^.CTL1 = 0b1000_1001;
-	?TIM2^.CTL1 = 0b0;
+	%?TIM2^.CTL@[0] = 0b1000_0001;
+	%?TIM2^.CTL@[0] = 0b1000_1001;
+	?TIM2^.CTL@[0] = 0b0;
 
-	%% PFIC_IENR1, enable the interrupt for EXTI4(id: 26).
-	(0xE000_E100 as (word^))^ = 1 bsl 26;
-	%% PFIC_IENR2, enable the interrupt for TIM2(id: 44). (44 - 32 -> 12)
-	(0xE000_E104 as (word^))^ = 1 bsl 12;
+	%% Enable the interrupt for EXTI4(id: 26).
+	?PFIC_IENx[0] = 1 bsl 26;
+	%% Enable the interrupt for TIM2(id: 44). (44 - 32 -> 12)
+	?PFIC_IENx[1] = 1 bsl 12;
 end
 
