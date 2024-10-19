@@ -34,7 +34,7 @@ fix_exprs_for_c(Stmts, Ctx) ->
 fix_expr_for_c(?OP1('@', Operand, Loc) = E, Ctx) ->
 	case e_type:type_of_node(Operand, Ctx) of
 		#e_array_type{} ->
-			?OP2('.', fix_expr_for_c(Operand, Ctx), #e_varref{name = value, loc = Loc});
+			?OP2('.', fix_expr_for_c(Operand, Ctx), ?VREF(value, Loc));
 		_ ->
 			E
 	end;
@@ -151,6 +151,18 @@ stmt_to_str(#e_if_stmt{'cond' = Cond, then = Then, 'else' = Else}, _) ->
 	io_lib:format("if (~s) {\n~s\n} else {\n~s}", [stmt_to_str(Cond, $\s), stmts_to_str(Then), stmts_to_str(Else)]);
 stmt_to_str(#e_while_stmt{'cond' = Cond, stmts = Stmts}, _) ->
 	io_lib:format("while (~s) {\n~s\n}\n", [stmt_to_str(Cond, $\s), stmts_to_str(Stmts)]);
+stmt_to_str(#e_return_stmt{expr = Expr}, EndChar) ->
+	io_lib:format("return ~s~c", [stmt_to_str(Expr, $\s), EndChar]);
+stmt_to_str(#e_goto_stmt{label = Label}, EndChar) ->
+	io_lib:format("goto ~s~c", [Label, EndChar]);
+stmt_to_str(#e_label{name = Name}, _) ->
+	io_lib:format("~s:", [Name]);
+stmt_to_str(#e_type_convert{expr = Expr, type = Type}, EndChar) ->
+	io_lib:format("((~s) ~s)~c", [type_to_c_str(Type, ""), stmt_to_str(Expr, $\s), EndChar]);
+stmt_to_str(?VREF(Name), EndChar) ->
+	io_lib:format("~s~c", [Name, EndChar]);
+stmt_to_str(?AREF(Arr, Index), EndChar) ->
+	io_lib:format("~s[~s]~c", [stmt_to_str(Arr, $\s), stmt_to_str(Index, $\s), EndChar]);
 stmt_to_str(?CALL(Fn, Args), EndChar) ->
 	ArgStr = lists:join(",", lists:map(fun(E) -> stmt_to_str(E, $\s) end, Args)),
 	io_lib:format("~s(~s)~c", [stmt_to_str(Fn, $\s), ArgStr, EndChar]);
@@ -158,21 +170,11 @@ stmt_to_str(?OP2(Tag, Op1, Op2), EndChar) ->
 	io_lib:format("(~s ~s ~s)~c", [stmt_to_str(Op1, $\s), translate_op(Tag), stmt_to_str(Op2, $\s), EndChar]);
 stmt_to_str(?OP1(Tag, Operand), EndChar) ->
 	io_lib:format("(~s ~s)~c", [translate_op(Tag), stmt_to_str(Operand, $\s), EndChar]);
-stmt_to_str(#e_return_stmt{expr = Expr}, EndChar) ->
-	io_lib:format("return ~s~c", [stmt_to_str(Expr, $\s), EndChar]);
-stmt_to_str(#e_goto_stmt{label = Label}, EndChar) ->
-	io_lib:format("goto ~s~c", [Label, EndChar]);
-stmt_to_str(#e_label{name = Name}, _) ->
-	io_lib:format("~s:", [Name]);
-stmt_to_str(#e_varref{name = Name}, EndChar) ->
-	io_lib:format("~s~c", [Name, EndChar]);
-stmt_to_str(#e_type_convert{expr = Expr, type = Type}, EndChar) ->
-	io_lib:format("((~s) ~s)~c", [type_to_c_str(Type, ""), stmt_to_str(Expr, $\s), EndChar]);
 stmt_to_str(?I(Value), EndChar) ->
 	io_lib:format("~w~c", [Value, EndChar]);
 stmt_to_str(?F(Value), EndChar) ->
 	io_lib:format("~w~c", [Value, EndChar]);
-stmt_to_str(#e_string{value = S}, EndChar) ->
+stmt_to_str(?S(S), EndChar) ->
 	io_lib:format("\"~s\"~c", [e_util:fix_special_chars(S), EndChar]).
 
 -spec translate_op(atom()) -> string() | atom().

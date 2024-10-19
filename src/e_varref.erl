@@ -21,7 +21,7 @@ varref_to_offset_in_stmts_inner(Stmts, VarsList, Ctx) ->
 	e_util:eliminate_pointer(Stmts1).
 
 -spec varref_to_offset(e_expr(), [#e_vars{}], e_compile_context:context()) -> e_expr().
-varref_to_offset(#e_varref{} = Varref, VarsList, Ctx) ->
+varref_to_offset(?VREF(_) = Varref, VarsList, Ctx) ->
 	case find_name_in_vars_and_fn_map(Varref, VarsList, Ctx) of
 		{ok, {Tag, VarOffset}} ->
 			varref_to_op(Varref, Tag, VarOffset);
@@ -38,8 +38,8 @@ varref_to_offset(Any, _, _) ->
 	Any.
 
 -spec varref_to_op(#e_varref{}, atom(), e_var_offset()) -> #e_op{}.
-varref_to_op(#e_varref{loc = Loc} = Varref, Tag, {Offset, Size}) ->
-	?OP2('^', ?OP2('+', Varref#e_varref{name = Tag}, ?I(Offset, Loc), Loc), ?I(Size, Loc), Loc).
+varref_to_op(?VREF(_, Loc) = Varref, Tag, {Offset, Size}) ->
+	?OP2('^', ?OP2('+', Varref?VREF(Tag), ?I(Offset, Loc), Loc), ?I(Size, Loc), Loc).
 
 -spec find_name_in_vars_and_fn_map(#e_varref{}, [#e_vars{}], e_compile_context:context()) -> {ok, {atom(), e_var_offset()}} | {ok, atom()}.
 find_name_in_vars_and_fn_map(Varref, VarsList, #{fn_map := FnTypeMap}) ->
@@ -50,7 +50,7 @@ find_name_in_vars_and_fn_map(Varref, VarsList, #{fn_map := FnTypeMap}) ->
 			find_name_in_fn_map(Varref, FnTypeMap)
 	end.
 
-find_name_in_vars(#e_varref{name = Name} = Varref, [#e_vars{offset_map = Map, tag = Tag} | RestVars]) ->
+find_name_in_vars(?VREF(Name) = Varref, [#e_vars{offset_map = Map, tag = Tag} | RestVars]) ->
 	case maps:find(Name, Map) of
 		{ok, OffsetAndSize} ->
 			{ok, {tag_trans(Tag), OffsetAndSize}};
@@ -60,7 +60,7 @@ find_name_in_vars(#e_varref{name = Name} = Varref, [#e_vars{offset_map = Map, ta
 find_name_in_vars(_, []) ->
 	notfound.
 
-find_name_in_fn_map(#e_varref{name = Name, loc = Loc}, FnTypeMap) ->
+find_name_in_fn_map(?VREF(Name, Loc), FnTypeMap) ->
 	case maps:find(Name, FnTypeMap) of
 		{ok, _} ->
 			{ok, Name};

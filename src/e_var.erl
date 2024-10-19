@@ -50,7 +50,7 @@ fix_struct_init(Any) ->
 	Any.
 
 -spec struct_init_to_map([e_expr()], #{atom() => e_expr()}) -> #{atom() => e_expr()}.
-struct_init_to_map([?OP2('=', #e_varref{name = Field}, Val) | Rest], ExprMap) ->
+struct_init_to_map([?OP2('=', ?VREF(Field), Val) | Rest], ExprMap) ->
 	struct_init_to_map(Rest, ExprMap#{Field => fix_struct_init(Val)});
 struct_init_to_map([], ExprMap) ->
 	ExprMap.
@@ -108,7 +108,7 @@ fetch_vars([], AST, #{vars := Vars0, names := Names, initcode := InitCode, tag :
 
 -spec append_to_ast([e_stmt()], atom(), e_expr(), location()) -> e_ast().
 append_to_ast(AST, VarName, InitialValue, Loc) when InitialValue =/= none ->
-	[?OP2('=', #e_varref{name = VarName, loc = Loc}, InitialValue, Loc) | AST];
+	[?OP2('=', ?VREF(VarName, Loc), InitialValue, Loc) | AST];
 append_to_ast(AST, _, _, _) ->
 	AST.
 

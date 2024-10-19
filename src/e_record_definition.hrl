@@ -215,11 +215,15 @@
 -define(CALL(Fn, ARGS), #e_op{tag = {call, Fn}, data = ARGS}).
 -define(AREF(P, Index, Loc), #e_op{tag = {aref, P}, data = [Index], loc = Loc}).
 -define(AREF(P, Index), #e_op{tag = {aref, P}, data = [Index]}).
+-define(VREF(Name, Loc), #e_varref{name = Name, loc = Loc}).
+-define(VREF(Name), #e_varref{name = Name}).
 
 -define(I(V, Loc), #e_integer{value = V, loc = Loc}).
 -define(I(V), #e_integer{value = V}).
 -define(F(V, Loc), #e_float{value = V, loc = Loc}).
 -define(F(V), #e_float{value = V}).
+-define(S(V, Loc), #e_string{value = V, loc = Loc}).
+-define(S(V), #e_string{value = V}).
 
 -define(IS_ARITH(Tag),
 	(

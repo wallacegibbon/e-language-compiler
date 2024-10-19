@@ -265,7 +265,7 @@ expr_to_ir(?OP1('-', ?I(N) = Num), Ctx) when ?IS_SMALL_IMMEDI(-N) ->
 expr_to_ir(?OP1('-', Expr), Ctx) ->
 	{IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
 	{[IRs, {sub, R, {x, 0}, R}], R, Ctx1};
-expr_to_ir(#e_string{value = String, loc = Loc}, #{free_regs := [R | RestRegs], string_collector := Pid} = Ctx) ->
+expr_to_ir(?S(String, Loc), #{free_regs := [R | RestRegs], string_collector := Pid} = Ctx) ->
 	Label = generate_tag(g, s, Loc),
 	Pid ! {put, Label, String, length(String)},
 	{[{la, R, Label}], R, Ctx#{free_regs := RestRegs}};
@@ -273,11 +273,11 @@ expr_to_ir(?I(0), Ctx) ->
 	{[], {x, 0}, Ctx};
 expr_to_ir(?I(N), #{free_regs := [R | RestRegs]} = Ctx) ->
 	{e_riscv_ir:smart_li(R, N), R, Ctx#{free_regs := RestRegs}};
-expr_to_ir(#e_varref{name = fp}, Ctx) ->
+expr_to_ir(?VREF(fp), Ctx) ->
 	{[], {x, 8}, Ctx};
-expr_to_ir(#e_varref{name = gp}, Ctx) ->
+expr_to_ir(?VREF(gp), Ctx) ->
 	{[], {x, 3}, Ctx};
-expr_to_ir(#e_varref{name = Name}, #{free_regs := [R | RestRegs]} = Ctx) ->
+expr_to_ir(?VREF(Name), #{free_regs := [R | RestRegs]} = Ctx) ->
 	{[{la, R, Name}], R, Ctx#{free_regs := RestRegs}};
 expr_to_ir(Any, _) ->
 	e_util:ethrow(element(2, Any), "IR1: unsupported expr \"~w\"", [Any]).

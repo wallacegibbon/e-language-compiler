@@ -66,10 +66,17 @@ stmt_to_str(#e_goto_stmt{label = Label}) ->
 	io_lib:format("goto ~s", [Label]);
 stmt_to_str(#e_label{name = Name}) ->
 	io_lib:format("@@~s", [Name]);
-stmt_to_str(#e_varref{name = Name}) ->
-	atom_to_list(Name);
 stmt_to_str(#e_vardef{name = Name}) ->
 	io_lib:format("variable definition for ~s", [Name]);
+stmt_to_str(#e_array_init_expr{elements = Elements}) ->
+	ElementStr = string:join(lists:map(fun(?I(V)) -> integer_to_list(V) end, Elements), ","),
+	io_lib:format("{~s}", [ElementStr]);
+stmt_to_str(#e_struct_init_expr{name = Name}) ->
+	io_lib:format("{...} (struct ~s init expr)", [Name]);
+stmt_to_str(#e_type_convert{expr = Expr, type = _Type}) ->
+	io_lib:format("(~s as (~s))", [stmt_to_str(Expr), type_to_str_unimplemented]);
+stmt_to_str(?VREF(Name)) ->
+	atom_to_list(Name);
 stmt_to_str(?CALL(Callee, Args)) ->
 	io_lib:format("(~s)(~s)", [stmt_to_str(Callee), string:join(lists:map(fun stmt_to_str/1, Args), ",")]);
 stmt_to_str(?OP2('^', Op1, _Size)) ->
@@ -83,19 +90,12 @@ stmt_to_str(?OP1('bnot', Op)) ->
 	io_lib:format("bnot(~s)", [stmt_to_str(Op)]);
 stmt_to_str(?OP1(Tag, Op)) ->
 	io_lib:format("(~s ~s)", [stmt_to_str(Op), Tag]);
-stmt_to_str(#e_array_init_expr{elements = Elements}) ->
-	ElementStr = string:join(lists:map(fun(?I(V)) -> integer_to_list(V) end, Elements), ","),
-	io_lib:format("{~s}", [ElementStr]);
-stmt_to_str(#e_struct_init_expr{name = Name}) ->
-	io_lib:format("{...} (struct ~s init expr)", [Name]);
 stmt_to_str(?I(Val)) ->
 	io_lib:format("~w", [Val]);
 stmt_to_str(?F(Val)) ->
 	io_lib:format("~w", [Val]);
-stmt_to_str(#e_string{value = Val}) ->
+stmt_to_str(?S(Val)) ->
 	io_lib:format("\"~s\"", [fix_special_chars(Val)]);
-stmt_to_str(#e_type_convert{expr = Expr, type = _Type}) ->
-	io_lib:format("(~s as (~s))", [stmt_to_str(Expr), type_to_str_unimplemented]);
 stmt_to_str(Any) ->
 	Any.
 
@@ -279,7 +279,7 @@ void_type(Loc) ->
 
 -spec names_of_var_refs([#e_varref{}]) -> [atom()].
 names_of_var_refs(VarRefList) ->
-	lists:map(fun(#e_varref{name = Name}) -> Name end, VarRefList).
+	lists:map(fun(?VREF(Name)) -> Name end, VarRefList).
 
 -spec names_of_var_defs([#e_vardef{}]) -> [atom()].
 names_of_var_defs(VarDefList) ->

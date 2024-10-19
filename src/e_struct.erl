@@ -73,7 +73,7 @@ eliminate_dot_in_stmts(Stmts0, Ctx) ->
 
 %% `a.b` will be converted to `(a@ + OFFSET_OF_b)^`.
 -spec eliminate_dot(e_expr(), e_compile_context:context()) -> e_expr().
-eliminate_dot(?OP2('.', O, #e_varref{name = FieldName}, Loc), #{struct_map := StructMap} = Ctx) ->
+eliminate_dot(?OP2('.', O, ?VREF(FieldName), Loc), #{struct_map := StructMap} = Ctx) ->
 	#e_basic_type{class = struct, tag = Name, p_depth = 0} = e_type:type_of_node(O, Ctx),
 	{ok, #e_struct{fields = #e_vars{offset_map = FieldOffsetMap}}} = maps:find(Name, StructMap),
 	{ok, {Offset, Size}} = maps:find(FieldName, FieldOffsetMap),

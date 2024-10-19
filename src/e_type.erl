@@ -63,10 +63,10 @@ replace_typeof_in_vars(#e_vars{type_map = TypeMap} = Vars, Ctx) ->
 -spec replace_typeof(e_expr(), e_compile_context:context()) -> e_expr().
 replace_typeof(#e_type_convert{type = #e_typeof{expr = Expr}} = E, Ctx) ->
 	E#e_type_convert{type = type_of_node(Expr, Ctx)};
-replace_typeof(?CALL(Callee, Args) = E, Ctx) ->
-	E?CALL(replace_typeof(Callee, Ctx), lists:map(fun(V) -> replace_typeof(V, Ctx) end, Args));
 replace_typeof(?AREF(Arr, Index) = E, Ctx) ->
 	E?AREF(replace_typeof(Arr, Ctx), replace_typeof(Index, Ctx));
+replace_typeof(?CALL(Callee, Args) = E, Ctx) ->
+	E?CALL(replace_typeof(Callee, Ctx), lists:map(fun(V) -> replace_typeof(V, Ctx) end, Args));
 replace_typeof(#e_op{tag = {sizeof, Type}} = E, Ctx) ->
 	E#e_op{tag = {sizeof, replace_typeof_in_type(Type, Ctx)}};
 replace_typeof(#e_op{tag = {alignof, Type}} = E, Ctx) ->
@@ -94,13 +94,45 @@ type_of_nodes(Stmts, Ctx) ->
 	lists:map(fun(Expr) -> type_of_node(Expr, Ctx) end, Stmts).
 
 -spec type_of_node(e_stmt(), e_compile_context:context()) -> e_type().
+type_of_node(?VREF(Name, Loc), #{vars := #e_vars{type_map = TypeMap}, fn_map := FnTypeMap} = Ctx) ->
+	case e_util:map_find_multi(Name, [TypeMap, FnTypeMap]) of
+		{ok, Type} ->
+			%% The `loc` of the found type should be updated to the `loc` of the `e_varref`.
+			check_type(setelement(2, Type, Loc), Ctx);
+		notfound ->
+			e_util:ethrow(Loc, "variable ~s is undefined", [Name])
+	end;
+type_of_node(?AREF(ArrExpr, Index, Loc), Ctx) ->
+	ArrType = type_of_node(ArrExpr, Ctx),
+	IndexType = type_of_node(Index, Ctx),
+	case {ArrType, IndexType} of
+		{#e_basic_type{p_depth = N}, #e_basic_type{class = integer, p_depth = 0}} when N > 0 ->
+			inc_pointer_depth(ArrType, -1, Loc);
+		{#e_basic_type{p_depth = N}, _} when N > 0 ->
+			e_util:ethrow(Loc, "invalid index type: ~s", [type_to_str(IndexType)]);
+		_ ->
+			e_util:ethrow(Loc, "\"[]\" on wrong type: ~s", [type_to_str(ArrType)])
+	end;
+type_of_node(?CALL(FunExpr, Args, Loc), Ctx) ->
+	ArgTypes = type_of_nodes(Args, Ctx),
+	case type_of_node(FunExpr, Ctx) of
+		#e_fn_type{params = FnParamTypes, ret = FnRetType} ->
+			case compare_types(ArgTypes, FnParamTypes, Ctx) of
+				true ->
+					FnRetType;
+				false ->
+					e_util:ethrow(Loc, arguments_error_info(FnParamTypes, ArgTypes))
+			end;
+		T ->
+			e_util:ethrow(Loc, "invalid function type: ~s", [type_to_str(T)])
+	end;
 type_of_node(?OP2('=', ?OP2('.', _, _) = Op1, Op2, Loc), Ctx) ->
 	compare_expect_left(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
 type_of_node(?OP2('=', ?OP2('^', _, _) = Op1, Op2, Loc), Ctx) ->
 	compare_expect_left(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
 type_of_node(?OP2('=', ?AREF(_, _) = Op1, Op2, Loc), Ctx) ->
 	compare_expect_left(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
-type_of_node(?OP2('=', #e_varref{} = Op1, Op2, Loc), Ctx) ->
+type_of_node(?OP2('=', ?VREF(_) = Op1, Op2, Loc), Ctx) ->
 	compare_expect_left(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
 type_of_node(?OP2('=', Any, _, Loc), _) ->
 	e_util:ethrow(Loc, "invalid left value (~s)", [e_util:stmt_to_str(Any)]);
@@ -150,30 +182,6 @@ type_of_node(?OP2(Tag, Op1, Op2, Loc), Ctx) when Tag =:= '*'; Tag =:= '/' ->
 		false ->
 			e_util:ethrow(Loc, type_error_of(Tag, Op1Type, Op2Type))
 	end;
-type_of_node(?CALL(FunExpr, Args, Loc), Ctx) ->
-	ArgTypes = type_of_nodes(Args, Ctx),
-	case type_of_node(FunExpr, Ctx) of
-		#e_fn_type{params = FnParamTypes, ret = FnRetType} ->
-			case compare_types(ArgTypes, FnParamTypes, Ctx) of
-				true ->
-					FnRetType;
-				false ->
-					e_util:ethrow(Loc, arguments_error_info(FnParamTypes, ArgTypes))
-			end;
-		T ->
-			e_util:ethrow(Loc, "invalid function type: ~s", [type_to_str(T)])
-	end;
-type_of_node(?AREF(ArrExpr, Index, Loc), Ctx) ->
-	ArrType = type_of_node(ArrExpr, Ctx),
-	IndexType = type_of_node(Index, Ctx),
-	case {ArrType, IndexType} of
-		{#e_basic_type{p_depth = N}, #e_basic_type{class = integer, p_depth = 0}} when N > 0 ->
-			inc_pointer_depth(ArrType, -1, Loc);
-		{#e_basic_type{p_depth = N}, _} when N > 0 ->
-			e_util:ethrow(Loc, "invalid index type: ~s", [type_to_str(IndexType)]);
-		_ ->
-			e_util:ethrow(Loc, "\"[]\" on wrong type: ~s", [type_to_str(ArrType)])
-	end;
 %% Boolean operator accepts booleans and returns a boolean.
 type_of_node(?OP2(Tag, Op1, Op2, Loc), Ctx) when ?IS_LOGIC(Tag) ->
 	case {type_of_node(Op1, Ctx), type_of_node(Op2, Ctx)} of
@@ -204,10 +212,6 @@ type_of_node(?OP2(Tag, Op1, Op2, Loc), Ctx) ->
 	end;
 type_of_node(?OP1('@', Operand, Loc), Ctx) ->
 	inc_pointer_depth(type_of_node(Operand, Ctx), 1, Loc);
-type_of_node(#e_op{tag = {sizeof, _}, loc = Loc}, _) ->
-	#e_basic_type{class = integer, tag = word, loc = Loc};
-type_of_node(#e_op{tag = {alignof, _}, loc = Loc}, _) ->
-	#e_basic_type{class = integer, tag = word, loc = Loc};
 type_of_node(?OP1('not', Operand, Loc), Ctx) ->
 	case type_of_node(Operand, Ctx) of
 		#e_basic_type{class = boolean} ->
@@ -215,16 +219,12 @@ type_of_node(?OP1('not', Operand, Loc), Ctx) ->
 		_ ->
 			e_util:ethrow(Loc, "invalid operand type for 'not'")
 	end;
+type_of_node(#e_op{tag = {sizeof, _}, loc = Loc}, _) ->
+	#e_basic_type{class = integer, tag = word, loc = Loc};
+type_of_node(#e_op{tag = {alignof, _}, loc = Loc}, _) ->
+	#e_basic_type{class = integer, tag = word, loc = Loc};
 type_of_node(?OP1(_, Operand), Ctx) ->
 	type_of_node(Operand, Ctx);
-type_of_node(#e_varref{name = Name, loc = Loc}, #{vars := #e_vars{type_map = TypeMap}, fn_map := FnTypeMap} = Ctx) ->
-	case e_util:map_find_multi(Name, [TypeMap, FnTypeMap]) of
-		{ok, Type} ->
-			%% The `loc` of the found type should be updated to the `loc` of the `e_varref`.
-			check_type(setelement(2, Type, Loc), Ctx);
-		notfound ->
-			e_util:ethrow(Loc, "variable ~s is undefined", [Name])
-	end;
 type_of_node(#e_array_init_expr{elements = [?OP2('=', _, _, Loc) | _]}, _) ->
 	e_util:ethrow(Loc, "invalid syntax for array init expression");
 type_of_node(#e_array_init_expr{elements = Elements, loc = Loc}, Ctx) ->
@@ -246,11 +246,11 @@ type_of_node(#e_struct_init_expr{} = S, #{struct_map := StructMap} = Ctx) ->
 	end;
 type_of_node(#e_type_convert{expr = Expr, type = Type, loc = Loc}, Ctx) ->
 	convert_type(type_of_node(Expr, Ctx), Type, Loc);
-type_of_node(?F(_, Loc), _) ->
-	#e_basic_type{class = float, tag = float, loc = Loc};
 type_of_node(?I(_, Loc), _) ->
 	#e_basic_type{class = integer, tag = word, loc = Loc};
-type_of_node(#e_string{loc = Loc}, _) ->
+type_of_node(?F(_, Loc), _) ->
+	#e_basic_type{class = float, tag = float, loc = Loc};
+type_of_node(?S(_, Loc), _) ->
 	#e_basic_type{class = integer, p_depth = 1, tag = byte, loc = Loc};
 type_of_node(#e_if_stmt{'cond' = Cond, then = Then, 'else' = Else, loc = Loc}, Ctx) ->
 	case type_of_node(Cond, Ctx) of
@@ -368,7 +368,7 @@ are_same_type_ignore_pos(T1, T2) ->
 	setelement(2, T1, {"", 0, 0}) =:= setelement(2, T2, {"", 0, 0}).
 
 -spec type_of_struct_field(e_type(), #e_varref{}, #{atom() => #e_struct{}}, location()) -> e_type().
-type_of_struct_field(#e_basic_type{class = struct, tag = Name, p_depth = 0} = S, #e_varref{name = FieldName}, StructMap, Loc) ->
+type_of_struct_field(#e_basic_type{class = struct, tag = Name, p_depth = 0} = S, ?VREF(FieldName), StructMap, Loc) ->
 	#e_struct{fields = #e_vars{type_map = FieldTypeMap}} = e_util:get_struct_from_type(S, StructMap),
 	get_field_type(FieldName, FieldTypeMap, Name, Loc);
 type_of_struct_field(T, _, _, Loc) ->
