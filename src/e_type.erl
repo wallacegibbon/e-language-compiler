@@ -65,8 +65,8 @@ replace_typeof(#e_type_convert{type = #e_typeof{expr = Expr}} = E, Ctx) ->
 	E#e_type_convert{type = type_of_node(Expr, Ctx)};
 replace_typeof(?AREF(Arr, Index) = E, Ctx) ->
 	E?AREF(replace_typeof(Arr, Ctx), replace_typeof(Index, Ctx));
-replace_typeof(?CALL(Callee, Args) = E, Ctx) ->
-	E?CALL(replace_typeof(Callee, Ctx), lists:map(fun(V) -> replace_typeof(V, Ctx) end, Args));
+replace_typeof(?CALL(Fn, Args) = E, Ctx) ->
+	E?CALL(replace_typeof(Fn, Ctx), lists:map(fun(V) -> replace_typeof(V, Ctx) end, Args));
 replace_typeof(#e_op{tag = {sizeof, Type}} = E, Ctx) ->
 	E#e_op{tag = {sizeof, replace_typeof_in_type(Type, Ctx)}};
 replace_typeof(#e_op{tag = {alignof, Type}} = E, Ctx) ->
@@ -102,8 +102,8 @@ type_of_node(?VREF(Name, Loc), #{vars := #e_vars{type_map = TypeMap}, fn_map := 
 		notfound ->
 			e_util:ethrow(Loc, "variable ~s is undefined", [Name])
 	end;
-type_of_node(?AREF(ArrExpr, Index, Loc), Ctx) ->
-	ArrType = type_of_node(ArrExpr, Ctx),
+type_of_node(?AREF(Arr, Index, Loc), Ctx) ->
+	ArrType = type_of_node(Arr, Ctx),
 	IndexType = type_of_node(Index, Ctx),
 	case {ArrType, IndexType} of
 		{#e_basic_type{p_depth = N}, #e_basic_type{class = integer, p_depth = 0}} when N > 0 ->
@@ -113,9 +113,9 @@ type_of_node(?AREF(ArrExpr, Index, Loc), Ctx) ->
 		_ ->
 			e_util:ethrow(Loc, "\"[]\" on wrong type: ~s", [type_to_str(ArrType)])
 	end;
-type_of_node(?CALL(FunExpr, Args, Loc), Ctx) ->
+type_of_node(?CALL(Fn, Args, Loc), Ctx) ->
 	ArgTypes = type_of_nodes(Args, Ctx),
-	case type_of_node(FunExpr, Ctx) of
+	case type_of_node(Fn, Ctx) of
 		#e_fn_type{params = FnParamTypes, ret = FnRetType} ->
 			case compare_types(ArgTypes, FnParamTypes, Ctx) of
 				true ->

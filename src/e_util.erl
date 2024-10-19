@@ -36,8 +36,8 @@ merge_plus(?OP2('+', ?I(N1) = I, ?OP2('+', ?I(N2), O2)) = Orig) ->
 	merge_plus(Orig?OP2('+', I?I(N1 + N2), O2));
 merge_plus(?OP2('+', ?I(N1) = I, ?I(N2))) ->
 	I?I(N1 + N2);
-merge_plus(?CALL(Callee, Args) = Op) ->
-	Op?CALL(merge_plus(Callee), lists:map(fun merge_plus/1, Args));
+merge_plus(?CALL(Fn, Args) = Op) ->
+	Op?CALL(merge_plus(Fn), lists:map(fun merge_plus/1, Args));
 merge_plus(#e_op{data = Operands} = Op) ->
 	Op#e_op{data = lists:map(fun merge_plus/1, Operands)};
 merge_plus(Any) ->
@@ -48,8 +48,8 @@ merge_pointer(?OP2('^', ?OP1('@', E), _)) ->
 	merge_pointer(E);
 merge_pointer(?OP1('@', ?OP2('^', E, _))) ->
 	merge_pointer(E);
-merge_pointer(?CALL(Callee, Args) = Op) ->
-	Op?CALL(merge_pointer(Callee), lists:map(fun merge_pointer/1, Args));
+merge_pointer(?CALL(Fn, Args) = Op) ->
+	Op?CALL(merge_pointer(Fn), lists:map(fun merge_pointer/1, Args));
 merge_pointer(#e_op{data = Operands} = Op) ->
 	Op#e_op{data = lists:map(fun merge_pointer/1, Operands)};
 merge_pointer(Any) ->
@@ -77,8 +77,10 @@ stmt_to_str(#e_type_convert{expr = Expr, type = _Type}) ->
 	io_lib:format("(~s as (~s))", [stmt_to_str(Expr), type_to_str_unimplemented]);
 stmt_to_str(?VREF(Name)) ->
 	atom_to_list(Name);
-stmt_to_str(?CALL(Callee, Args)) ->
-	io_lib:format("(~s)(~s)", [stmt_to_str(Callee), string:join(lists:map(fun stmt_to_str/1, Args), ",")]);
+stmt_to_str(?AREF(Arr, Index)) ->
+	io_lib:format("(~s)[~s]", [stmt_to_str(Arr), stmt_to_str(Index)]);
+stmt_to_str(?CALL(Fn, Args)) ->
+	io_lib:format("(~s)(~s)", [stmt_to_str(Fn), string:join(lists:map(fun stmt_to_str/1, Args), ",")]);
 stmt_to_str(?OP2('^', Op1, _Size)) ->
 	%io_lib:format("(~s^ <size:~s>)", [stmt_to_str(Op1), stmt_to_str(_Size)]);
 	io_lib:format("((~s)^)", [stmt_to_str(Op1)]);

@@ -35,8 +35,8 @@ check_position(#e_struct_init_expr{loc = Loc}) ->
 	e_util:ethrow(Loc, "struct init expression is only allowed in assignments");
 check_position(#e_array_init_expr{loc = Loc}) ->
 	e_util:ethrow(Loc, "array init expression is only allowed in assignments");
-check_position(?CALL(Callee, Args)) ->
-	check_position(Callee),
+check_position(?CALL(Fn, Args)) ->
+	check_position(Fn),
 	lists:foreach(fun check_position/1, Args);
 check_position(#e_op{data = Data}) ->
 	lists:foreach(fun check_position/1, Data);

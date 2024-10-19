@@ -38,8 +38,8 @@ fix_expr_for_c(?OP1('@', Operand, Loc) = E, Ctx) ->
 		_ ->
 			E
 	end;
-fix_expr_for_c(?CALL(Callee, Args) = E, Ctx) ->
-	E?CALL(fix_expr_for_c(Callee, Ctx), lists:map(fun(D) -> fix_expr_for_c(D, Ctx) end, Args));
+fix_expr_for_c(?CALL(Fn, Args) = E, Ctx) ->
+	E?CALL(fix_expr_for_c(Fn, Ctx), lists:map(fun(D) -> fix_expr_for_c(D, Ctx) end, Args));
 fix_expr_for_c(#e_op{data = Operands} = E, Ctx) ->
 	E#e_op{data = lists:map(fun(D) -> fix_expr_for_c(D, Ctx) end, Operands)};
 fix_expr_for_c(#e_type_convert{expr = Expr} = C, Ctx) ->

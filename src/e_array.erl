@@ -23,8 +23,8 @@ transform_aref(?AREF(Arr, Index, Loc), Ctx) ->
 	ArrType = e_type:type_of_node(Arr, Ctx),
 	Sizeof = #e_op{tag = {sizeof, e_type:inc_pointer_depth(ArrType, -1, Loc)}, loc = Loc},
 	?OP2('^', ?OP2('+', Arr, ?OP2('*', Index, Sizeof, Loc), Loc), ?I(0));
-transform_aref(?CALL(Callee, Args) = Op, Ctx) ->
-	Op?CALL(transform_aref(Callee, Ctx), lists:map(fun(E) -> transform_aref(E, Ctx) end, Args));
+transform_aref(?CALL(Fn, Args) = Op, Ctx) ->
+	Op?CALL(transform_aref(Fn, Ctx), lists:map(fun(E) -> transform_aref(E, Ctx) end, Args));
 transform_aref(#e_op{data = Operands} = Op, Ctx) ->
 	Op#e_op{data = lists:map(fun(E) -> transform_aref(E, Ctx) end, Operands)};
 transform_aref(#e_type_convert{expr = Expr} = C, Ctx) ->
