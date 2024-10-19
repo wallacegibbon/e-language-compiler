@@ -11,7 +11,8 @@ fn fn2(): fn(): fn(word; word)
 	return fn1;
 end
 
-fn main(v: word)
+fn main()
+	v: word;
 	f: fn(): fn(): fn(word; word)
 	f = fn2;
 	return f()()(v + 1, v + 2);

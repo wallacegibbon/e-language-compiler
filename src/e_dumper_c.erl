@@ -1,6 +1,6 @@
 %% This module is not being used anymore. (Expired since 2024-08-13 17:34:00)
 %% In the early stage of the E language compiler, code got compiled to C language.
-%% As the compiler grows, we will compile E language code to machine code directly.
+%% As the compiler grows, we compile E language code to machine code directly.
 -module(e_dumper_c).
 -export([generate_code/3]).
 -include("e_record_definition.hrl").
@@ -16,7 +16,7 @@ generate_code({{InitCode, AST}, #e_vars{type_map = GlobalVarMap} = GlobalVars}, 
 	{StructStmts, []} = ast_to_str(StructAST, []),
 	{FnStmts, FnDeclars} = ast_to_str(FnAST, InitCode2),
 	VarStmts = var_map_to_str(GlobalVarMap),
-	Code = lists:join("\n\n", [common_c_code(), StructStmts, VarStmts, FnDeclars, FnStmts]),
+	Code = lists:join("\n\n", [StructStmts, VarStmts, FnDeclars, FnStmts]),
 	ok = file:write_file(OutputFile, Code).
 
 -spec fix_function_for_c(e_ast_elem(), e_compile_context:context()) -> e_ast_elem().
@@ -46,18 +46,6 @@ fix_expr_for_c(#e_type_convert{expr = Expr} = C, Ctx) ->
 	C#e_type_convert{expr = fix_expr_for_c(Expr, Ctx)};
 fix_expr_for_c(Any, _) ->
 	Any.
-
--spec common_c_code() -> string().
-common_c_code() ->
-	"#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <stdint.h>\n"
-	"typedef size_t usize;\ntypedef ssize_t isize;\n"
-	"typedef uintptr_t uptr;\ntypedef intptr_t iptr;\n"
-	"typedef unsigned char byte;\n"
-	"typedef uint8_t u8;\ntypedef int8_t i8;\n"
-	"typedef uint16_t u16;\ntypedef int16_t i16;\n"
-	"typedef uint32_t u32;\ntypedef int32_t i32;\n"
-	"typedef uint64_t u64;\ntypedef int64_t i64;\n"
-	"typedef double f64;\ntypedef float f32;\n\n".
 
 -spec ast_to_str(e_ast(), [e_stmt()]) -> {iolist(), iolist()}.
 ast_to_str(Statements, InitCode) ->
@@ -134,8 +122,13 @@ type_to_c_str(#e_fn_type{params = Params, ret = RetType}, VarName) ->
 
 type_tag_to_str(struct, Name) ->
 	io_lib:format("struct ~s", [Name]);
-type_tag_to_str(_, Name) ->
-	atom_to_list(Name).
+%% We only consider `ilp32` here since the this dumper is deprecated.
+type_tag_to_str(integer, word) ->
+	"int";
+type_tag_to_str(integer, byte) ->
+	"char";
+type_tag_to_str(_, Tag) ->
+	atom_to_list(Tag).
 
 %% convert expression to C string
 stmts_to_str(Stmts) ->
@@ -151,6 +144,8 @@ stmt_to_str(#e_if_stmt{'cond' = Cond, then = Then, 'else' = Else}, _) ->
 	io_lib:format("if (~s) {\n~s\n} else {\n~s}", [stmt_to_str(Cond, $\s), stmts_to_str(Then), stmts_to_str(Else)]);
 stmt_to_str(#e_while_stmt{'cond' = Cond, stmts = Stmts}, _) ->
 	io_lib:format("while (~s) {\n~s\n}\n", [stmt_to_str(Cond, $\s), stmts_to_str(Stmts)]);
+stmt_to_str(#e_return_stmt{expr = none}, EndChar) ->
+	"return" ++ [EndChar];
 stmt_to_str(#e_return_stmt{expr = Expr}, EndChar) ->
 	io_lib:format("return ~s~c", [stmt_to_str(Expr, $\s), EndChar]);
 stmt_to_str(#e_goto_stmt{label = Label}, EndChar) ->

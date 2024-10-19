@@ -187,7 +187,7 @@ end
 %% Make the app state global for easier debugging.
 global_state: AppState = AppState{};
 
-fn main(a1: word)
+fn main()
 	system_init();
 	AppState_init(global_state@);
 
