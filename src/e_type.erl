@@ -9,18 +9,17 @@
 -spec check_types_in_ast(e_ast(), e_compile_context:context()) -> ok.
 check_types_in_ast([#e_function{name = Name, param_names = [_ | _], interrupt = N, loc = Loc} | _], _) when is_integer(N) ->
 	e_util:ethrow(Loc, "interrupt function \"~s\" should not have parameter(s)", [Name]);
-check_types_in_ast([#e_function{type = FnType, loc = Loc} = Fn | Rest], #{vars := GlobalVars} = Ctx) ->
-	#e_function{vars = LocalVars, param_names = ParamNames, stmts = Stmts} = Fn,
-	#e_vars{type_map = TypeMap} = LocalVars,
+check_types_in_ast([#e_function{vars = LocalVars, param_names = ParamNames, stmts = Stmts, type = FnType, loc = Loc} | Rest], #{vars := GlobalVars} = Ctx) ->
 	Ctx1 = Ctx#{vars := e_util:merge_vars(GlobalVars, LocalVars, ignore_tag)},
+	#e_vars{type_map = TypeMap} = LocalVars,
 	maps:foreach(fun(_, T) -> check_type(T, Ctx1) end, TypeMap),
 	maps:foreach(fun(_, T) -> shrink_param_type(T) end, maps:with(ParamNames, TypeMap)),
 	shrink_ret_type(FnType#e_fn_type.ret),
 	check_ret_type(FnType#e_fn_type.ret, Stmts, Loc, top, Ctx1),
-	type_of_nodes(Stmts, Ctx1),
+	check_type_in_stmts(Stmts, Ctx1),
 	check_types_in_ast(Rest, Ctx);
-check_types_in_ast([#e_struct{name = Name} = S | Rest], Ctx) ->
-	#e_struct{fields = #e_vars{type_map = FieldTypeMap}, default_value_map = ValMap} = S,
+check_types_in_ast([#e_struct{name = Name, fields = Fields, default_value_map = ValMap} | Rest], Ctx) ->
+	#e_vars{type_map = FieldTypeMap} = Fields,
 	maps:foreach(fun(_, T) -> check_type(T, Ctx) end, FieldTypeMap),
 	%% check the default values for fields
 	check_types_in_struct_fields(FieldTypeMap, ValMap, Name, Ctx),
@@ -32,8 +31,7 @@ check_types_in_ast([], _) ->
 
 -spec check_type_in_stmts([e_stmt()], e_compile_context:context()) -> ok.
 check_type_in_stmts(Stmts, Ctx) ->
-	type_of_nodes(Stmts, Ctx),
-	ok.
+	check_type_of_nodes(Stmts, Ctx).
 
 %% The `typeof` keyword will make the compiler complex without many benifits. So we drop it.
 %% Implementing `typeof` is easy. But avoiding the recursive definition problem will make the code complex.
@@ -88,6 +86,10 @@ replace_typeof_in_type(#e_basic_type{} = Type, _) ->
 	Type;
 replace_typeof_in_type(#e_typeof{expr = Expr}, Ctx) ->
 	replace_typeof_in_type(type_of_node(Expr, Ctx), Ctx).
+
+-spec check_type_of_nodes([e_stmt()], e_compile_context:context()) -> ok.
+check_type_of_nodes(Stmts, Ctx) ->
+	lists:foreach(fun(Expr) -> type_of_node(Expr, Ctx) end, Stmts).
 
 -spec type_of_nodes([e_stmt()], e_compile_context:context()) -> [e_type()].
 type_of_nodes(Stmts, Ctx) ->
@@ -259,8 +261,8 @@ type_of_node(#e_if_stmt{'cond' = Cond, then = Then, 'else' = Else, loc = Loc}, C
 		_ ->
 			e_util:ethrow(Loc, "invalid boolean expression for if")
 	end,
-	type_of_nodes(Then, Ctx),
-	type_of_nodes(Else, Ctx),
+	check_type_of_nodes(Then, Ctx),
+	check_type_of_nodes(Else, Ctx),
 	e_util:void_type(Loc);
 type_of_node(#e_while_stmt{'cond' = Cond, stmts = Stmts, loc = Loc}, Ctx) ->
 	case type_of_node(Cond, Ctx) of
@@ -270,7 +272,7 @@ type_of_node(#e_while_stmt{'cond' = Cond, stmts = Stmts, loc = Loc}, Ctx) ->
 			e_util:ethrow(Loc, "invalid boolean expression for while")
 	end,
 	type_of_node(Cond, Ctx),
-	type_of_nodes(Stmts, Ctx),
+	check_type_of_nodes(Stmts, Ctx),
 	e_util:void_type(Loc);
 type_of_node(#e_return_stmt{expr = none, loc = Loc}, _) ->
 	e_util:void_type(Loc);
