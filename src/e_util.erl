@@ -248,13 +248,19 @@ b_type_immedi_test() ->
 
 -endif.
 
--spec dissociate_num(non_neg_integer(), non_neg_integer()) -> [non_neg_integer()].
-dissociate_num(N, CompareNum) when CompareNum > 0, N >= CompareNum ->
+-spec dissociate_num(non_neg_integer(), pos_integer()) -> [non_neg_integer()].
+dissociate_num(N, _) when N < 0 ->
+	throw("N should be non-negative integer");
+dissociate_num(_, CompareNum) when CompareNum =< 0 ->
+	throw("CompareNum should be positive integer");
+dissociate_num(_, CompareNum) when (CompareNum band (CompareNum - 1)) =/= 0 ->
+	throw("CompareNum should be power of 2");
+dissociate_num(0, _) ->
+	[];
+dissociate_num(N, CompareNum) when N >= CompareNum ->
 	[CompareNum | dissociate_num(N - CompareNum, CompareNum)];
 dissociate_num(N, CompareNum) when N < CompareNum ->
-	dissociate_num(N, CompareNum div 2);
-dissociate_num(0, _) ->
-	[].
+	dissociate_num(N, CompareNum div 2).
 
 -ifdef(EUNIT).
 
@@ -267,7 +273,10 @@ dissociate_num_test() ->
 	?assertEqual([4, 2, 1], dissociate_num(7, 4)),
 	?assertEqual([2, 2, 2, 1], dissociate_num(7, 2)),
 	?assertEqual([1, 1, 1, 1, 1, 1, 1], dissociate_num(7, 1)),
-	?assertException(error, function_clause, dissociate_num(7, 0)),
+	?assertException(throw, "CompareNum should be" ++ _, dissociate_num(7, 0)),
+	?assertException(throw, "CompareNum should be" ++ _, dissociate_num(7, -1)),
+	?assertException(throw, "N should be" ++ _, dissociate_num(-7, 4)),
+	?assertException(throw, "CompareNum should be" ++ _, dissociate_num(7, 9)),
 	ok.
 
 -endif.
