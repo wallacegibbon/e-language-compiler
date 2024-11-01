@@ -168,7 +168,7 @@ my_fn2: fn(byte^; word): fn(byte^; byte^): fn(word; word): byte^ = another_fn2;
 ```c
 void (*(*(*my_fn1)())())() = another_fn1;
 
-char * (*(*(*my_fn2)(char *, int))(char *, char *))(int, int) = another_fn2;
+char *(*(*(*my_fn2)(char *, int))(char *, char *))(int, int) = another_fn2;
 ```
 
 
@@ -188,8 +188,8 @@ end
 
 这里的`26`表示的是中断的ID，这个ID可以直接在芯片手册中查找到。
 
-用C语言的时候，用户往往需要写汇编代码和链接脚本来配合ISR，比较麻烦，E语言省去了这层麻烦。
-只需要芯片手册，就能轻松编写中断相关的代码，这是E语言对电子爱好者友好的特性之一。
+> 用C语言的时候，用户往往需要写汇编代码和链接脚本来配合ISR，比较麻烦。
+> E语言省去了这层麻烦。只需要芯片手册，就能轻松编写中断相关的代码，这是E语言对电子爱好者友好的特性之一。
 
 
 ## `void`类型

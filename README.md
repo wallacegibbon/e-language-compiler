@@ -82,7 +82,7 @@ printf("%x\n", a.value.buf[2]);
 //> 34
 ```
 
-In E language (and also in C language), we can use pointer manipulation to achieve this:
+In E language (and also in C language), we can use pointer manipulations to achieve this:
 
 ```text
 struct A
@@ -100,7 +100,7 @@ To keep things minimum, E language do not support `union`.
 
 ## Enum
 
-Enum is good, it brings better type checking to some extent. But on the other hand, everything will still work without `enum`.
+Enum is good, it brings better type checking. But on the other hand, everything still works without `enum`.
 
 To keep things minimum, E language do not support `enum`, either.
 
@@ -172,13 +172,13 @@ my_fn2: fn(byte^; word): fn(byte^; byte^): fn(word; word): byte^ = another_fn2;
 ```c
 void (*(*(*my_fn1)())())() = another_fn1;
 
-char * (*(*(*my_fn2)(char *, int))(char *, char *))(int, int) = another_fn2;
+char *(*(*(*my_fn2)(char *, int))(char *, char *))(int, int) = another_fn2;
 ```
 
 
 ## Interrupt
 
-For embedded systems, interrupt subroutine is important, to define an ISR:
+For embedded systems, interrupt subroutines are important. To define an ISR:
 
 ```text
 interrupt(26)
@@ -192,9 +192,9 @@ end
 
 The `26` indicates the interrupt ID which can be found in the chip documentation.
 
-When writting C code, users usually need to read/write assembly files and linkers files to make ISR work.
-We don't need those things in E language, we can write ISRs as long as we have the chip document.
-This is one of the features that make E language friendly to electronic hobbyists.
+> When writting C code, users usually need to read/write assembly files and linkers files to make ISR work.
+> We don't need to do those things in E language, we can write ISRs as long as we have the chip document.
+> This is one of the features that make E language friendly to electronic hobbyists.
 
 
 ## The `void` Type

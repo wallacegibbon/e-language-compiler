@@ -275,7 +275,7 @@ fn system_init()
 	%?TIM2^.CTL1 = 0b1000_1001;
 	?TIM2^.CTL1 = 0b0;
 
-	%% Enable the interrupt for EXTI4(id: 26).
+	%% Enable the interrupt for EXTI4(id: 20).
 	?PFIC_IENx[0] = 1 bsl 20;
 	%% Enable the interrupt for TIM2(id: 38). (38 - 32 -> 6)
 	?PFIC_IENx[1] = 1 bsl 6;
