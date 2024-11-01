@@ -259,7 +259,7 @@ dissociate_num(0, _) ->
 	[];
 dissociate_num(N, CompareNum) when N >= CompareNum ->
 	[CompareNum | dissociate_num(N - CompareNum, CompareNum)];
-dissociate_num(N, CompareNum) when N < CompareNum ->
+dissociate_num(N, CompareNum) ->
 	dissociate_num(N, CompareNum div 2).
 
 -ifdef(EUNIT).
