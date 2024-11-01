@@ -222,9 +222,9 @@ fn exit4_isr()
 	?EXTI^.INTF = 0b1_0000;
 
 	%% Restart the timer, Single pulse mode, Auto reload.
-	?TIM2^.CTL@[0] = 0;
+	?TIM2^.CTL1 = 0;
 	?TIM2^.CNT = 0;
-	?TIM2^.CTL@[0] = 0b1000_1001;
+	?TIM2^.CTL1 = 0b1000_1001;
 end
 
 interrupt(44)
@@ -276,9 +276,9 @@ fn system_init()
 	%?TIM2^.PSC = 9; % 10ms
 	?TIM2^.PSC = 19; % 20ms
 	?TIM2^.DMAINTEN = 0b1;
-	%?TIM2^.CTL@[0] = 0b1000_0001;
-	%?TIM2^.CTL@[0] = 0b1000_1001;
-	?TIM2^.CTL@[0] = 0b0;
+	%?TIM2^.CTL1 = 0b1000_0001;
+	%?TIM2^.CTL1 = 0b1000_1001;
+	?TIM2^.CTL1 = 0b0;
 
 	%% Enable the interrupt for EXTI4(id: 26).
 	?PFIC_IENx[0] = 1 bsl 26;

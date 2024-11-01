@@ -18,18 +18,23 @@ struct EXTI
 end
 
 struct ADTM
-	CTL			: {word, 2};		%% Control registers
+	CTL1			: word;			%% Control register 1
+	CTL2			: word;			%% Control register 2
 	SMCFG			: word;			%% Slave mode configuration register
 	DMAINTEN		: word;			%% DMA/interrupt enable register
 	INTF			: word;			%% Interrupt flag register
 	SWEVG			: word;			%% Event generation register
-	CHCTL			: {word, 2};		%% Compare/Capture control registers
+	CHCTL1			: word;			%% Compare/Capture control register 1
+	CHCTL2			: word;			%% Compare/Capture control register 2
 	CCEN			: word;			%% compare/capture enable register
 	CNT			: word;			%% Counter
 	PSC			: word;			%% Prescaler
 	ATRL			: word;			%% Auto-reload register
 	RPTC			: word;			%% Repeat count register
-	CHCV			: {word, 4};		%% Compare/Capture registers
+	CHCV1			: word;			%% Compare/Capture register 1
+	CHCV2			: word;			%% Compare/Capture register 2
+	CHCV3			: word;			%% Compare/Capture register 3
+	CHCV4			: word;			%% Compare/Capture register 4
 	BDT			: word;			%% Break and deadband register
 	DMACFG			: word;			%% DMA configuration register
 	DMAAD			: word;			%% DMA address register in continuous mode
@@ -37,20 +42,36 @@ struct ADTM
 end
 
 struct GPTM
-	CTL			: {word, 2};		%% Control registers
+	CTL1			: word;			%% Control register 1
+	CTL2			: word;			%% Control register 2
 	SMCFG			: word;			%% Slave mode configuration register
 	DMAINTEN		: word;			%% DMA/interrupt enable register
 	INTF			: word;			%% Interrupt flag register
 	SWEVG			: word;			%% Event generation register
-	CHCTL			: {word, 2};		%% Compare/Capture control registers
+	CHCTL1			: word;			%% Compare/Capture control register 1
+	CHCTL2			: word;			%% Compare/Capture control register 2
 	CCEN			: word;			%% compare/capture enable register
 	CNT			: word;			%% Counter
 	PSC			: word;			%% Prescaler
 	ATRL			: word;			%% Auto-reload register
-	CHCV			: {word, 4};		%% Compare/Capture registers
+	CHCV1			: word;			%% Compare/Capture register 1
+	CHCV2			: word;			%% Compare/Capture register 2
+	CHCV3			: word;			%% Compare/Capture register 3
+	CHCV4			: word;			%% Compare/Capture register 4
 	DMACFG			: word;			%% DMA configuration register
 	DMAAD			: word;			%% DMA address register in continuous mode
 	AUX			: word;			%% Dual-edge capture register
+end
+
+struct USART
+	STATUS			: word;			%% Status register
+	DATA			: word;			%% Data register
+	BR			: word;			%% Baudrate register
+	CTL1			: word;			%% Control register 1
+	CTL2			: word;			%% Control register 2
+	CTL3			: word;			%% Control register 3
+	GP			: word;			%% Guard time and prescaler
+	CTL4			: word;			%% Control register 4
 end
 
 #define PWR_CTL			(0x4000_7000 as (word^))%% Power control register
@@ -96,10 +117,21 @@ end
 #define	GPIOC			(0x4001_1000 as (GPIO^))
 #define	GPIOD			(0x4001_1400 as (GPIO^))
 #define	GPIOE			(0x4001_1800 as (GPIO^))
+
 #define EXTI			(0x4001_0400 as (EXTI^))
+
 #define TIM1			(0x4001_2C00 as (ADTM^))
 #define TIM2			(0x4000_0000 as (GPTM^))
 #define TIM3			(0x4000_0400 as (GPTM^))
 #define TIM4			(0x4000_0800 as (GPTM^))
 #define TIM5			(0x4000_0C00 as (GPTM^))
+
+#define USART1			(0x4001_3800 as (USART^))
+#define USART2			(0x4000_4400 as (USART^))
+#define USART3			(0x4000_4800 as (USART^))
+#define USART4			(0x4000_4C00 as (USART^))
+#define USART5			(0x4000_5000 as (USART^))
+#define USART6			(0x4000_1800 as (USART^))
+#define USART7			(0x4000_1C00 as (USART^))
+#define USART8			(0x4000_2000 as (USART^))
 
