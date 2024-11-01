@@ -129,13 +129,13 @@ type_of_node(?CALL(Fn, Args, Loc), Ctx) ->
 			e_util:ethrow(Loc, "invalid function type: ~s", [type_to_str(T)])
 	end;
 type_of_node(?OP2('=', ?OP2('.', _, _) = Op1, Op2, Loc), Ctx) ->
-	compare_expect_left(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
+	compare_assign_types(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
 type_of_node(?OP2('=', ?OP2('^', _, _) = Op1, Op2, Loc), Ctx) ->
-	compare_expect_left(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
+	compare_assign_types(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
 type_of_node(?OP2('=', ?AREF(_, _) = Op1, Op2, Loc), Ctx) ->
-	compare_expect_left(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
+	compare_assign_types(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
 type_of_node(?OP2('=', ?VREF(_) = Op1, Op2, Loc), Ctx) ->
-	compare_expect_left(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
+	compare_assign_types(type_of_node(Op1, Ctx), type_of_node(Op2, Ctx), Loc, Ctx);
 type_of_node(?OP2('=', Any, _, Loc), _) ->
 	e_util:ethrow(Loc, "invalid left value (~s)", [e_util:stmt_to_str(Any)]);
 type_of_node(?OP2('.', Op1, Op2, Loc), #{struct_map := StructMap} = Ctx) ->
@@ -309,8 +309,8 @@ type_compatible(#e_basic_type{p_depth = N1}, #e_basic_type{p_depth = N2}) when N
 type_compatible(_, _) ->
 	false.
 
--spec compare_expect_left(e_type(), e_type(), location(), e_compile_context:context()) -> e_type().
-compare_expect_left(Type1, Type2, Loc, Ctx) ->
+-spec compare_assign_types(e_type(), e_type(), location(), e_compile_context:context()) -> e_type().
+compare_assign_types(Type1, Type2, Loc, Ctx) ->
 	case compare_type(Type1, Type2, Ctx) of
 		true ->
 			Type1;
