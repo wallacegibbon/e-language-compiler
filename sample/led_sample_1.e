@@ -65,18 +65,6 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Application code
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-fn toggle_light(light: LightInterface^^; r: word^)
-	light^^.toggle(light, r);
-end
-
-fn on_light(light: LightInterface^^)
-	light^^.on(light);
-end
-
-fn off_light(light: LightInterface^^)
-	light^^.off(light);
-end
-
 struct AppState
 	lights			: {LightInterface^^, 4};
 	leds			: {LED, 4}; %% The inner data
@@ -134,7 +122,7 @@ fn AppState_all_off(self: AppState^)
 	light: LightInterface^^;
 	i: word;
 	while AppIter_next(iter@, light@, i@) == 0 do
-		off_light(light);
+		light^^.off(light);
 	end
 end
 
@@ -145,7 +133,7 @@ fn AppState_all_bright(self: AppState^)
 	light: LightInterface^^;
 	i: word;
 	while AppIter_next(iter@, light@, i@) == 0 do
-		on_light(light);
+		light^^.on(light);
 	end
 end
 
@@ -166,19 +154,33 @@ fn AppState_adjust_speed(self: AppState^)
 end
 
 fn AppState_toggle_pair1(self: AppState^)
+	light: LightInterface^^;
 	tmp: word;
-	toggle_light(self^.lights@[0], tmp@);
-	toggle_light(self^.lights@[1], tmp@);
-	off_light(self^.lights@[2]);
-	off_light(self^.lights@[3]);
+
+	light = self^.lights@[0];
+	light^^.toggle(light, tmp@);
+	light = self^.lights@[1];
+	light^^.toggle(light, tmp@);
+
+	light = self^.lights@[2];
+	light^^.off(light);
+	light = self^.lights@[3];
+	light^^.off(light);
 end
 
 fn AppState_toggle_pair2(self: AppState^)
+	light: LightInterface^^;
 	tmp: word;
-	toggle_light(self^.lights@[2], tmp@);
-	toggle_light(self^.lights@[3], tmp@);
-	off_light(self^.lights@[0]);
-	off_light(self^.lights@[1]);
+
+	light = self^.lights@[2];
+	light^^.toggle(light, tmp@);
+	light = self^.lights@[3];
+	light^^.toggle(light, tmp@);
+
+	light = self^.lights@[0];
+	light^^.off(light);
+	light = self^.lights@[1];
+	light^^.off(light);
 end
 
 fn AppState_loop_once(self: AppState^)
