@@ -51,8 +51,8 @@ fix_expr_for_c(Any, _) ->
 ast_to_str(Statements, InitCode) ->
 	ast_to_str(Statements, InitCode, [], []).
 
-ast_to_str([#e_function{name = Name} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
-	#e_function{param_names = ParamNames, type = FnType, vars = #e_vars{type_map = VarTypes}, stmts = Stmts} = Hd,
+ast_to_str([#e_function{name = Name, param_names = ParamNames, type = FnType, vars = Vars, stmts = Stmts} | Rest], InitCode, StmtStrs, FnDeclars) ->
+	#e_vars{type_map = VarTypes} = Vars,
 	PureParams = map_to_kv_list(ParamNames, maps:with(ParamNames, VarTypes)),
 	PureVars = maps:without(ParamNames, VarTypes),
 	Declars = function_to_str(Name, params_to_str(PureParams), FnType#e_fn_type.ret),
@@ -63,8 +63,8 @@ ast_to_str([#e_function{name = Name} = Hd | Rest], InitCode, StmtStrs, FnDeclars
 		end,
 	S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declars, var_map_to_str(PureVars), stmts_to_str(Stmts2)]),
 	ast_to_str(Rest, InitCode, [S | StmtStrs], [Declars ++ ";\n" | FnDeclars]);
-ast_to_str([#e_struct{} = Hd | Rest], InitCode, StmtStrs, FnDeclars) ->
-	#e_struct{name = Name, fields = #e_vars{names = FieldNames, type_map = FieldTypes}} = Hd,
+ast_to_str([#e_struct{name = Name, fields = Fields} | Rest], InitCode, StmtStrs, FnDeclars) ->
+	#e_vars{names = FieldNames, type_map = FieldTypes} = Fields,
 	FieldList = map_to_kv_list(FieldNames, FieldTypes),
 	S = io_lib:format("struct ~s {~n~s~n};~n~n", [Name, var_list_to_str(FieldList)]),
 	ast_to_str(Rest, InitCode, [S | StmtStrs], FnDeclars);

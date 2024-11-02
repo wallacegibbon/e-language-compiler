@@ -41,8 +41,7 @@ replace_typeof_in_ast([#e_function{vars = LocalVars, stmts = Stmts, type = FnTyp
 	Ctx1 = Ctx#{vars := e_util:merge_vars(GlobalVars, LocalVars, ignore_tag)},
 	Fn1 = Fn#e_function{vars = replace_typeof_in_vars(LocalVars, Ctx1), type = replace_typeof_in_type(FnType, Ctx1), stmts = replace_typeof_in_stmts(Stmts, Ctx1)},
 	[Fn1 | replace_typeof_in_ast(Rest, Ctx)];
-replace_typeof_in_ast([#e_struct{} = S | Rest], Ctx) ->
-	#e_struct{fields = Fields, default_value_map = DefaultValueMap} = S,
+replace_typeof_in_ast([#e_struct{fields = Fields, default_value_map = DefaultValueMap} = S | Rest], Ctx) ->
 	S1 = S#e_struct{fields = replace_typeof_in_vars(Fields, Ctx), default_value_map = maps:map(fun(_, V) -> replace_typeof(V, Ctx) end, DefaultValueMap)},
 	[S1 | replace_typeof_in_ast(Rest, Ctx)];
 replace_typeof_in_ast([Any | Rest], Ctx) ->
@@ -237,8 +236,7 @@ type_of_node(#e_array_init_expr{elements = Elements, loc = Loc}, Ctx) ->
 		false ->
 			e_util:ethrow(Loc, "array init type conflict: {~s}", [join_types_to_str(ElementTypes)])
 	end;
-type_of_node(#e_struct_init_expr{} = S, #{struct_map := StructMap} = Ctx) ->
-	#e_struct_init_expr{name = Name, field_value_map = ValMap, loc = Loc} = S,
+type_of_node(#e_struct_init_expr{name = Name, field_value_map = ValMap, loc = Loc}, #{struct_map := StructMap} = Ctx) ->
 	case maps:find(Name, StructMap) of
 		{ok, #e_struct{fields = #e_vars{type_map = FieldTypeMap}}} ->
 			check_types_in_struct_fields(FieldTypeMap, ValMap, Name, Ctx),

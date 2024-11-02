@@ -64,21 +64,21 @@ struct_init_to_map([], ExprMap) ->
 %% `size`, `align` and `offset_map` fields are to be updated by functions in `e_size.erl`.
 
 -spec fetch_vars(e_ast_raw(), e_ast_raw(), fetch_vars_state()) -> {#e_vars{}, e_ast(), e_ast()}.
-fetch_vars([#e_vardef{} = Hd | Rest], AST, #{vars := #e_vars{type_map = TypeMap} = Vars, names := Names, initcode := InitCode, mode := initcode} = Ctx) ->
-	#e_vardef{name = Name, type = Type, loc = Loc, init_value = InitialValue} = Hd,
+fetch_vars([#e_vardef{name = Name, type = Type, loc = Loc, init_value = InitialValue} | Rest], AST, #{mode := initcode} = Ctx) ->
+	#{vars := #e_vars{type_map = TypeMap} = Vars, names := Names, initcode := InitCode} = Ctx,
 	check_name_conflict(Name, Vars, Loc),
 	Vars1 = Vars#e_vars{type_map = TypeMap#{Name => Type}},
 	InitCode1 = append_to_ast(InitCode, Name, InitialValue, Loc),
 	Ctx1 = Ctx#{vars := Vars1, names := [Name | Names], initcode := InitCode1},
 	fetch_vars(Rest, AST, Ctx1);
-fetch_vars([#e_vardef{} = Hd | Rest], AST, #{vars := #e_vars{type_map = TypeMap} = Vars, names := Names} = Ctx) ->
-	#e_vardef{name = Name, type = Type, loc = Loc, init_value = InitialValue} = Hd,
+fetch_vars([#e_vardef{name = Name, type = Type, loc = Loc, init_value = InitialValue} | Rest], AST, Ctx) ->
+	#{vars := #e_vars{type_map = TypeMap} = Vars, names := Names} = Ctx,
 	check_name_conflict(Name, Vars, Loc),
 	Vars1 = Vars#e_vars{type_map = TypeMap#{Name => Type}},
 	Ctx1 = Ctx#{vars := Vars1, names := [Name | Names]},
 	fetch_vars(Rest, append_to_ast(AST, Name, InitialValue, Loc), Ctx1);
-fetch_vars([#e_function_raw{name = Name, loc = Loc} = Hd | Rest], AST, #{vars := GlobalVars} = Ctx) ->
-	#e_function_raw{ret_type = Ret, params = Params, stmts = Stmts, interrupt = Interrupt} = Hd,
+fetch_vars([#e_function_raw{name = Name, ret_type = Ret, params = Params, stmts = Stmts, interrupt = Interrupt, loc = Loc} | Rest], AST, Ctx) ->
+	#{vars := GlobalVars} = Ctx,
 	Ctx1 = fetch_vars_state_new(),
 	{ParamVars, [], ParamInitCode} = fetch_vars(Params, [], Ctx1#{tag := local}),
 	e_util:assert(ParamInitCode =:= [], {Loc, "function params can not have default value"}),
