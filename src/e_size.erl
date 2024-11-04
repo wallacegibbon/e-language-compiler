@@ -119,8 +119,6 @@ size_of(Any, _) ->
 -spec align_of(e_type(), e_compile_context:context()) -> non_neg_integer().
 align_of(#e_array_type{elem_type = T}, Ctx) ->
 	align_of(T, Ctx);
-align_of(#e_basic_type{p_depth = N}, #{wordsize := WordSize}) when N > 0 ->
-	WordSize;
 align_of(#e_basic_type{class = struct, p_depth = 0} = S, #{struct_map := StructMap} = Ctx) ->
 	align_of_struct(e_util:get_struct_from_type(S, StructMap), Ctx);
 align_of(Type, Ctx) ->
