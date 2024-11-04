@@ -398,26 +398,27 @@ compare_types(_, _, _) ->
 
 -spec compare_type(e_type(), e_type(), e_compile_context:context()) -> boolean().
 compare_type(T1, T2, Ctx) ->
-	compare_type_simple(T1, T2, Ctx) orelse compare_type_simple(T2, T1, Ctx).
+	compare_type_1(T1, T2, Ctx) orelse compare_type_1(T2, T1, Ctx).
 
--spec compare_type_simple(e_type(), e_type(), e_compile_context:context()) -> boolean().
-compare_type_simple(#e_fn_type{params = P1, ret = R1}, #e_fn_type{params = P2, ret = R2}, Ctx) ->
-	compare_types(P1, P2, Ctx) and compare_type_simple(R1, R2, Ctx);
-compare_type_simple(#e_array_type{elem_type = E1, length = L1}, #e_array_type{elem_type = E2, length = L2}, Ctx) ->
-	compare_type_simple(E1, E2, Ctx) and (L1 =:= L2);
-compare_type_simple(#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{class = integer, p_depth = 0}, _) ->
+-spec compare_type_1(e_type(), e_type(), e_compile_context:context()) -> boolean().
+compare_type_1(#e_fn_type{params = P1, ret = R1}, #e_fn_type{params = P2, ret = R2}, Ctx) ->
+	compare_types(P1, P2, Ctx) andalso compare_type_1(R1, R2, Ctx);
+compare_type_1(#e_array_type{elem_type = E1, length = L1}, #e_array_type{elem_type = E2, length = L2}, Ctx) ->
+	(L1 =:= L2) andalso compare_type_1(E1, E2, Ctx);
+compare_type_1(#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{class = integer, p_depth = 0}, _) ->
 	true;
-compare_type_simple(#e_basic_type{class = C, tag = T, p_depth = P}, #e_basic_type{class = C, tag = T, p_depth = P}, _) ->
+compare_type_1(#e_basic_type{class = C, tag = T, p_depth = P}, #e_basic_type{class = C, tag = T, p_depth = P}, _) ->
 	true;
-compare_type_simple(#e_basic_type{class = struct, tag = Tag, p_depth = N, loc = Loc}, T2, #{struct_map := StructMap} = Ctx) when N > 0 ->
+compare_type_1(#e_basic_type{class = struct, tag = Tag, p_depth = N, loc = Loc}, T2, Ctx) when N > 0 ->
+	#{struct_map := StructMap} = Ctx,
 	{ok, #e_struct{fields = #e_vars{names = [First | _], type_map = TypeMap}}} = maps:find(Tag, StructMap),
 	case maps:find(First, TypeMap) of
 		{ok, #e_basic_type{class = struct} = T1Sub} ->
-			compare_type_simple(inc_pointer_depth(T1Sub, N, Loc), T2, Ctx);
+			compare_type_1(inc_pointer_depth(T1Sub, N, Loc), T2, Ctx);
 		_ ->
 			false
 	end;
-compare_type_simple(_, _, _) ->
+compare_type_1(_, _, _) ->
 	false.
 
 
