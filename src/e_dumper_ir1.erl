@@ -74,7 +74,8 @@ init_code(SP, GP, #{entry_function := Entry} = Options) ->
 -spec interrupt_init_irs(machine_reg(), e_compile_option:option()) -> flatten_irs().
 interrupt_init_irs(T, #{ivec_pos := Pos, ivec_size := Size}) when Size > 0 ->
 	%% Initialize interrupt vector address by writting `mtvec`(CSR 0x305).
-	SetInterruptVector = [e_riscv_ir:smart_li(T, Pos), {ori, T, T, 3}, {csrrw, {x, 0}, T, 16#305}],
+	%% CAUTION: In RV Spec, mtvec[1] is reserved. But QingKe need mtvec[1] to be 1 to be compatible with the standard.
+	SetInterruptVector = [e_riscv_ir:smart_li(T, Pos), {ori, T, T, 2#11}, {csrrw, {x, 0}, T, 16#305}],
 	%% Initialize MIE and MPIE in `mstatus`(CSR 0x300).
 	InitInterrupt = [e_riscv_ir:smart_li(T, 16#88), {csrrw, {x, 0}, T, 16#300}],
 	lists:flatten([InitInterrupt | SetInterruptVector]);
