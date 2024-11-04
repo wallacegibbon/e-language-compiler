@@ -291,7 +291,7 @@ ec -i ./sample/ch32v.e ./sample/led_sample_2.e -o /tmp/a --v-pos 0 --v-size 156 
 e_compiler:compile_to_machine1(["./sample/ch32v.e", "./sample/led_sample_1.e"], "/tmp/a", #{...}).
 ```
 
-要编译编译器，可以查看<./BUILD.md>。
+要编译编译器，可以查看[./BUILD.md](./BUILD.md)。
 
 
 # 编辑器支持

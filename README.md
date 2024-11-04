@@ -297,7 +297,7 @@ If you are an Erlang user, you can also call the compiler from erlang shell:
 e_compiler:compile_to_machine1(["./sample/ch32v.e", "./sample/led_sample_1.e"], "/tmp/a", #{...}).
 ```
 
-To build the compiler, read <./BUILD.md>.
+To build the compiler, read [./BUILD.md](./BUILD.md).
 
 
 # Editor Support
