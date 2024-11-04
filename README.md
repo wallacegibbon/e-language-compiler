@@ -207,9 +207,9 @@ In C language, there is a type called `void` which is used for 2 purpose:
 
 In E language, there is no `void` type exposed to users.
 
-For function definitions, we do not use `void`. When we define functions without parameters or return value, we just left them out.
-
 For pointers, we use `any` instead. `any^` in E language is same as `void*` in C language.
+
+For function definitions, we do not use `void` for parameter or return type. When we define functions without parameters or return value, we just left them out.
 
 > In C language, we can not just left out parameters for historical reasons: no parameter and void have different meanings. We always need a `void` to make our code robust.
 
@@ -227,14 +227,14 @@ People always write wrong code like this:
 
 In E language, there are only 6 boolean expression: `>`, `>=`, `<`, `<=`, `!=`, `==`.
 
-So the following code will refused by the compiler:
+So the following code will be refused by the compiler:
 ```text
 	if a = b then
 		%...
 	end
 ```
 
-Compile error:
+Error message:
 ```text
 ./sample/led_sample_1.e:115:9: invalid boolean expression for if
 ```
@@ -263,14 +263,14 @@ A macro preprocessor is supported. Defining macro in E language is almost the sa
 
 But parameters are not supported.
 
-Referencing a macro is different. We need a `?` mark before the macro name. (Just like how macro works in Erlang)
+Referencing a macro is different from C language (but same as Erlang). We need a `?` mark before the macro name.
 
 ```text
 ?GPIOD^.BSH = 0b1_1101;
 ```
 
-In C language, we can't tell whether a symbol is a macro or variable or function, which make code hard to understand.
-By introducing the `?` mark, we can always know it's a macro.
+> In C language, we can't tell whether a symbol is a macro or variable or function, which make code hard to understand.
+> By introducing the `?` mark, we can always know it's a macro.
 
 
 # The Compiler
@@ -296,6 +296,8 @@ If you are an Erlang user, you can also call the compiler from erlang shell:
 ```erlang
 e_compiler:compile_to_machine1(["./sample/ch32v.e", "./sample/led_sample_1.e"], "/tmp/a", #{...}).
 ```
+
+To build the compiler, read <./BUILD.md>.
 
 
 # Editor Support
