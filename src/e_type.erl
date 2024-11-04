@@ -13,8 +13,8 @@ check_types_in_ast([#e_function{vars = LocalVars, param_names = ParamNames, stmt
 	Ctx1 = Ctx#{vars := e_util:merge_vars(GlobalVars, LocalVars, ignore_tag)},
 	#e_vars{type_map = TypeMap} = LocalVars,
 	maps:foreach(fun(_, T) -> check_type(T, Ctx1) end, TypeMap),
-	maps:foreach(fun(_, T) -> shrink_param_type(T) end, maps:with(ParamNames, TypeMap)),
-	shrink_ret_type(FnType#e_fn_type.ret),
+	maps:foreach(fun(_, T) -> restrict_param_type(T) end, maps:with(ParamNames, TypeMap)),
+	restrict_ret_type(FnType#e_fn_type.ret),
 	check_ret_type(FnType#e_fn_type.ret, Stmts, Loc, top, Ctx1),
 	check_type_in_stmts(Stmts, Ctx1),
 	check_types_in_ast(Rest, Ctx);
@@ -532,22 +532,22 @@ check_type(#e_fn_type{params = Params, ret = RetType} = Type, Ctx) ->
 check_type(#e_typeof{expr = Expr}, Ctx) ->
 	check_type(type_of_node(Expr, Ctx), Ctx).
 
--spec shrink_param_type(e_type()) -> boolean().
-shrink_param_type(#e_basic_type{p_depth = N}) when N > 0 ->
-	true;
-shrink_param_type(#e_basic_type{class = C}) when C =:= integer; C =:= float ->
-	true;
-shrink_param_type(T) ->
+-spec restrict_param_type(e_type()) -> ok.
+restrict_param_type(#e_basic_type{p_depth = N}) when N > 0 ->
+	ok;
+restrict_param_type(#e_basic_type{class = C}) when C =:= integer; C =:= float ->
+	ok;
+restrict_param_type(T) ->
 	e_util:ethrow(element(2, T), "invalid parameter type here").
 
--spec shrink_ret_type(e_type()) ->boolean().
-shrink_ret_type(#e_basic_type{p_depth = N}) when N > 0 ->
-	true;
-shrink_ret_type(#e_basic_type{class = C}) when C =:= integer; C =:= float; C =:= void ->
-	true;
-shrink_ret_type(#e_fn_type{}) ->
-	true;
-shrink_ret_type(T) ->
+-spec restrict_ret_type(e_type()) -> ok.
+restrict_ret_type(#e_basic_type{p_depth = N}) when N > 0 ->
+	ok;
+restrict_ret_type(#e_basic_type{class = C}) when C =:= integer; C =:= float; C =:= void ->
+	ok;
+restrict_ret_type(#e_fn_type{}) ->
+	ok;
+restrict_ret_type(T) ->
 	e_util:ethrow(element(2, T), "invalid returning type here").
 
 -spec check_ret_type(e_type(), [e_stmt()], location(), top | inner, e_compile_context:context()) -> ok.
