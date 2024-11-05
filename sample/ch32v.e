@@ -26,7 +26,7 @@ struct ADTM
 	SWEVG			: word;			%% Event generation register
 	CHCTL1			: word;			%% Compare/Capture control register 1
 	CHCTL2			: word;			%% Compare/Capture control register 2
-	CCEN			: word;			%% compare/capture enable register
+	CCEN			: word;			%% Compare/capture enable register
 	CNT			: word;			%% Counter
 	PSC			: word;			%% Prescaler
 	ATRL			: word;			%% Auto-reload register
@@ -50,7 +50,7 @@ struct GPTM
 	SWEVG			: word;			%% Event generation register
 	CHCTL1			: word;			%% Compare/Capture control register 1
 	CHCTL2			: word;			%% Compare/Capture control register 2
-	CCEN			: word;			%% compare/capture enable register
+	CCEN			: word;			%% Compare/capture enable register
 	CNT			: word;			%% Counter
 	PSC			: word;			%% Prescaler
 	ATRL			: word;			%% Auto-reload register
@@ -96,6 +96,22 @@ struct ADC
 	IDATA4			: word;			%% Injected data register 4
 	RDATA			: word;			%% Regular data register
 	AUX			: word;			%% Sample time register
+end
+
+struct DAC
+	CTL			: word;			%% Control register
+	SWT			: word;			%% Software trigger register
+	R12BDH1			: word;			%% Channel1 right-aligned 12-bit data hold register
+	L12BDH1			: word;			%% Channel1 left-aligned 12-bit data hold register
+	R8BDH1			: word;			%% Channel1 right-aligned 8-bit data hold register
+	R12BDH2			: word;			%% Channel2 right-aligned 12-bit data hold register
+	L12BDH2			: word;			%% Channel2 left-aligned 12-bit data hold register
+	R8BDH2			: word;			%% Channel2 right-aligned 8-bit data hold register
+	RD12BDH			: word;			%% Dual channel right-aligned 12-bit data hold register
+	LD12BDH			: word;			%% Dual channel left-aligned 12-bit data hold register
+	RD8BDH			: word;			%% Dual channel right-aligned 8-bit data hold register
+	DA1			: word;			%% Channel1 data output register
+	DA2			: word;			%% Channel2 data output register
 end
 
 #define PWR_CTL			(0x4000_7000 as (word^))%% Power control register
@@ -161,4 +177,6 @@ end
 
 #define ADC1			(0x4001_2400 as (ADC^))
 #define ADC2			(0x4001_2800 as (ADC^))
+
+#define DAC			(0x4000_7400 as (DAC^))
 
