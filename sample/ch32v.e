@@ -74,6 +74,30 @@ struct USART
 	CTL4			: word;			%% Control register 4
 end
 
+struct ADC
+	STATUS			: word;			%% Status register
+	CTL1			: word;			%% Control register 1
+	CTL2			: word;			%% Control register 2
+	SAMPT1			: word;			%% Sample time configuration register 1
+	SAMPT2			: word;			%% Sample time configuration register 2
+	IOF1			: word;			%% Injected channel data offset register 1
+	IOF2			: word;			%% Injected channel data offset register 2
+	IOF3			: word;			%% Injected channel data offset register 3
+	IOF4			: word;			%% Injected channel data offset register 4
+	WDHT			: word;			%% Watchdog high threshold register
+	WDLT			: word;			%% Watchdog low threshold register
+	RSQ1			: word;			%% Regular channel sequence register 1
+	RSQ2			: word;			%% Regular channel sequence register 2
+	RSQ3			: word;			%% Regular channel sequence register 3
+	ISQ			: word;			%% Injected channel sequence register
+	IDATA1			: word;			%% Injected data register 1
+	IDATA2			: word;			%% Injected data register 2
+	IDATA3			: word;			%% Injected data register 3
+	IDATA4			: word;			%% Injected data register 4
+	RDATA			: word;			%% Regular data register
+	AUX			: word;			%% Sample time register
+end
+
 #define PWR_CTL			(0x4000_7000 as (word^))%% Power control register
 #define PWR_CS			(0x4000_7004 as (word^))%% Power control/status register
 
@@ -134,4 +158,7 @@ end
 #define USART6			(0x4000_1800 as (USART^))
 #define USART7			(0x4000_1C00 as (USART^))
 #define USART8			(0x4000_2000 as (USART^))
+
+#define ADC1			(0x4001_2400 as (ADC^))
+#define ADC2			(0x4001_2800 as (ADC^))
 
