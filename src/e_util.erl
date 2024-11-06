@@ -173,10 +173,8 @@ fill_unit_opti(Num, Unit) ->
 fall_unit(Num, Unit) ->
 	Num div Unit * Unit.
 
-%% The immediate value of `LUI` and `AUIPC` is a signed value.
-%% When `Low` is extended to be a negative number, the `High` should be increased by 1 to balance it.
-%% The mechanism is simple:
-%% `+1` then `+(-1)` keeps the number unchanged. Negative signed extending can be treated as `-1`.
+%% When `Low` is negative, it will be sign extended by hardware. `High` should be increased by 1 to balance it.
+%% The mechanism is simple: `+1` then `+(-1)` keeps the number unchanged.
 u_type_immedi(N) ->
 	case {N bsr 12, N band 16#FFF} of
 		{High, Low} when Low > 2047 ->
@@ -223,7 +221,9 @@ sign_to_num(1) -> -1.
 fix_signed_num_test() ->
 	?assertEqual( 7, fix_signed_num(7, 4)),
 	?assertEqual(-8, fix_signed_num(8, 4)),
-	?assertEqual(-7, fix_signed_num(9, 4)).
+	?assertEqual(-7, fix_signed_num(9, 4)),
+	?assertEqual(16#344, fix_signed_num(16#344, 12)),
+	?assertEqual(-16#323, fix_signed_num(16#CDD, 12)).
 
 u_type_immedi_test() ->
 	?assertEqual({16#11223, fix_signed_num(16#344, 12)}, u_type_immedi(16#11223344)),
