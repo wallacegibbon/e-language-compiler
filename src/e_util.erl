@@ -178,12 +178,10 @@ fall_unit(Num, Unit) ->
 %% The mechanism is simple:
 %% `+1` then `+(-1)` keeps the number unchanged. Negative signed extending can be treated as `-1`.
 u_type_immedi(N) ->
-	High = N bsr 12,
-	Low = N band 16#FFF,
-	case Low > 2047 of
-		true ->
+	case {N bsr 12, N band 16#FFF} of
+		{High, Low} when Low > 2047 ->
 			{(High + 1) band 16#000FFFFF, fix_signed_num(Low, 12)};
-		false ->
+		{High, Low} ->
 			{High band 16#000FFFFF, fix_signed_num(Low, 12)}
 	end.
 
@@ -323,12 +321,13 @@ get_struct_from_name(Name, StructMap, Loc) ->
 
 %% `merge_vars` will NOT merge all fields of e_vars. Only name, type_map and offset_map are merged.
 
--define(E_VARS(Names, TypeMap, OffsetMap), #e_vars{names = Names, type_map = TypeMap, offset_map = OffsetMap}).
+-define(VARS(Names, TypeMap, OffsetMap), #e_vars{names = Names, type_map = TypeMap, offset_map = OffsetMap}).
+
 -spec merge_vars(#e_vars{}, #e_vars{}, check_tag | ignore_tag) -> #e_vars{}.
 merge_vars(#e_vars{tag = Tag1}, #e_vars{tag = Tag2}, check_tag) when Tag1 =/= Tag2 ->
 	ethrow(0, "only vars with the same tag can be merged. (~s, ~s)", [Tag1, Tag2]);
-merge_vars(?E_VARS(N1, M1, O1) = V, ?E_VARS(N2, M2, O2), _) ->
-	V#e_vars{names = lists:append(N1, N2), type_map = maps:merge(M1, M2), offset_map = maps:merge(O1, O2)}.
+merge_vars(?VARS(N1, M1, O1) = V, ?VARS(N2, M2, O2), _) ->
+	V?VARS(lists:append(N1, N2), maps:merge(M1, M2), maps:merge(O1, O2)).
 
 
 -spec map_find_multi(any(), [#{any() => any()}]) -> {ok, _} | notfound.
