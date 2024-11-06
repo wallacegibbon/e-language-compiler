@@ -174,7 +174,7 @@ fall_unit(Num, Unit) ->
 	Num div Unit * Unit.
 
 %% The immediate value of `LUI` and `AUIPC` is a signed value.
-%% When N is negative, the high part should be increased by 1 to balance it.
+%% When `Low` is extended to be a negative number, the `High` should be increased by 1 to balance it.
 %% The mechanism is simple:
 %% `+1` then `+(-1)` keeps the number unchanged. Negative signed extending can be treated as `-1`.
 u_type_immedi(N) ->
