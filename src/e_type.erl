@@ -7,7 +7,7 @@
 -endif.
 
 -spec check_types_in_ast(e_ast(), e_compile_context:context()) -> ok.
-check_types_in_ast([#e_function{name = Name, param_names = [_ | _], interrupt = N, loc = Loc} | _], _) when is_integer(N) ->
+check_types_in_ast([#e_function{name = Name, param_names = [_ | _], attribute = #{interrupt := _}, loc = Loc} | _], _) ->
 	e_util:ethrow(Loc, "interrupt function \"~s\" should not have parameter(s)", [Name]);
 check_types_in_ast([#e_function{vars = LocalVars, param_names = ParamNames, stmts = Stmts, type = FnType, loc = Loc} | Rest], #{vars := GlobalVars} = Ctx) ->
 	Ctx1 = Ctx#{vars := e_util:merge_vars(GlobalVars, LocalVars, ignore_tag)},

@@ -7,6 +7,9 @@
 -type location() :: {Filename :: string(), Row :: non_neg_integer(), Column :: non_neg_integer()}.
 -type token() :: {atom(), location(), _} | {atom(), location()}.
 
+-type e_var_attribute() :: #{atom() => any()}.
+-type e_fn_attribute() :: #{atom() => any()}.
+
 %% There are 3 kinds of data types in E language: `basic type`, `array type` and `function type`.
 -record(e_basic_type,
 	{
@@ -52,7 +55,8 @@
 	loc = {"", 0, 0} :: location(),
 	name :: atom(),
 	type :: e_type(),
-	init_value = none :: none | e_expr()
+	init_value = none :: none | e_expr(),
+	attribute = #{} :: e_var_attribute()
 	}).
 
 -record(e_varref,
@@ -90,7 +94,7 @@
 	param_names = [] :: [atom()],
 	type :: #e_fn_type{},
 	stmts = [] :: [e_stmt()],
-	interrupt = none :: none | non_neg_integer()
+	attribute = #{} :: e_fn_attribute()
 	}).
 
 -record(e_struct,
@@ -196,7 +200,7 @@
 	params = [] :: [e_stmt()],
 	ret_type :: e_type(),
 	stmts = [] :: [e_stmt()],
-	interrupt = none :: none | non_neg_integer()
+	attribute = #{} :: e_fn_attribute()
 	}).
 
 -type e_expr() :: #e_op{} | #e_integer{} | #e_float{} | #e_string{} | #e_varref{} | #e_struct_init_expr{} | #e_array_init_expr{}.

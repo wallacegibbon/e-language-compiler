@@ -1,4 +1,4 @@
-flag: word = 0;
+flag: word attribute(blah1("hello"), blah2(3)) = 0;
 
 fn fn1()
 	v: word = 1;
@@ -11,22 +11,19 @@ fn fn1()
 	flag -= v;
 end
 
-fn isr1() interrupt(1)
+fn isr1() attribute(interrupt(1))
 	flag += 1;
 end
 
-fn isr2() interrupt(2)
+fn isr2() attribute(interrupt(2))
 	flag += 2;
 end
 
-fn isr3() interrupt(3)
+fn isr3() attribute(interrupt(3))
 	flag += 3;
 end
 
-fn fn3(
-	a: word;
-	b: word;
-): word
+fn fn3(a: word; b: word): word
 	c: word = 3;
 	if c bsl 3 != 0 then
 		a += 1;

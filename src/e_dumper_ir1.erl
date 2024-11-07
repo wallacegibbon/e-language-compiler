@@ -45,7 +45,7 @@ generate_code({{InitCode, AST}, Vars}, OutputFile, Options) ->
 	e_util:file_write(OutputFile ++ ".code.asm", fun(IO) -> write_asm(IRs, IO) end),
 	ok.
 
-collect_interrupt_map([#e_function{name = Name, interrupt = N, loc = Loc} | Rest], Result) when is_integer(N) ->
+collect_interrupt_map([#e_function{name = Name, attribute = #{interrupt := N}, loc = Loc} | Rest], Result) ->
 	case lists:keyfind(N, 1, Result) of
 		{N, Prev} ->
 			e_util:ethrow(Loc, "interrupt number ~w is taken by <~s>", [N, Prev]);
@@ -118,15 +118,15 @@ ast_to_ir([_ | Rest], Ctx) ->
 ast_to_ir([], _) ->
 	[].
 
-interrupt_related_code(#e_function{interrupt = none}, _, _) ->
-	{[], []};
-interrupt_related_code(_, Regs, Ctx) ->
-	reg_save_restore(Regs, Ctx).
+interrupt_related_code(#e_function{attribute = #{interrupt := _}}, Regs, Ctx) ->
+	reg_save_restore(Regs, Ctx);
+interrupt_related_code(_, _, _) ->
+	{[], []}.
 
-ret_instruction_of(#e_function{interrupt = none}) ->
-	[{jalr, {x, 0}, {x, 1}}];
+ret_instruction_of(#e_function{attribute = #{interrupt := _}}) ->
+	[{mret}];
 ret_instruction_of(_) ->
-	[{mret}].
+	[{jalr, {x, 0}, {x, 1}}].
 
 -spec stmt_to_ir(e_stmt(), context()) -> irs().
 stmt_to_ir(#e_if_stmt{'cond' = Cond, then = Then0, 'else' = Else0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->

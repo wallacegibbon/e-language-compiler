@@ -16,7 +16,7 @@ syn match e_struct_field	/\.[A-Za-z0-9_]\+/
 syn match e_macro_def		/#define\s\+[A-Za-z0-9_]\+\s\+/
 syn match e_macro_ref		/?[A-Za-z0-9_]\+/
 
-syn keyword e_keyword		fn struct end if then else elif while do goto sizeof alignof return interrupt
+syn keyword e_keyword		fn struct end if then else elif while do goto sizeof alignof return attribute
 syn keyword e_operator		band bor bxor bnot and or not rem bsl bsr
 syn match e_operator		"==\|!=\|>=\|<=\|>\|<\|@\|\^\|+\|-\|*\|/\|=\|\[\|\]\|{\|}"
 syn keyword e_type		byte word float any void

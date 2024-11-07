@@ -1,6 +1,7 @@
 Nonterminals
 
-e_root_stmts e_root_stmt e_struct_def e_function_head_0 e_function_head_1 e_function_def e_vardefs e_vardef e_args
+e_root_stmts e_root_stmt e_struct_def e_vardefs e_vardef e_vardef_head e_function_def e_function_head_0 e_function_head_1 e_args
+e_attributes e_attribute e_attribute_lst
 e_function_stmts e_function_stmt e_if_stmt e_else_stmt e_while_stmt e_return_stmt e_label
 e_expr e_call_expr e_array_ref_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr e_assign_expr e_not_expr e_bnot_expr
 e_typeof_type e_type_annos e_type_anno e_calc1 e_calc2 e_bitwise e_cmp e_bool_op e_op2_with_assignment
@@ -16,7 +17,7 @@ Terminals
 
 %% keywords
 struct 'end' 'fn' 'rem' 'and' 'or' 'not' 'band' 'bor' 'bnot' 'bxor' 'bsl' 'bsr'
-while do 'if' then elif 'else' return sizeof alignof goto as interrupt
+while do 'if' then elif 'else' return sizeof alignof goto as attribute
 
 %% reserved keywords
 'cond' 'case' for break continue typeof new void_type
@@ -31,9 +32,9 @@ Rootsymbol e_root_stmts.
 e_root_stmts -> e_root_stmt e_root_stmts : ['$1' | '$2'].
 e_root_stmts -> e_root_stmt : ['$1'].
 
+e_root_stmt -> e_vardef ';' : '$1'.
 e_root_stmt -> e_struct_def : '$1'.
 e_root_stmt -> e_function_def : '$1'.
-e_root_stmt -> e_vardef ';' : '$1'.
 
 %% type annotation inside function type
 e_type_annos -> e_type_anno ';' e_type_annos : ['$1' | '$3'].
@@ -89,9 +90,14 @@ e_vardefs -> e_vardef ';' e_vardefs : ['$1' | '$3'].
 e_vardefs -> e_vardef ';' : ['$1'].
 e_vardefs -> e_vardef : ['$1'].
 
-e_vardef -> identifier ':' e_type_anno '=' e_expr :
-	#e_vardef{name = token_value('$1'), type = '$3', init_value = '$5', loc = token_loc('$1')}.
-e_vardef -> identifier ':' e_type_anno :
+e_vardef -> e_vardef_head '=' e_expr :
+	'$1'#e_vardef{init_value = '$3'}.
+e_vardef -> e_vardef_head :
+	'$1'.
+
+e_vardef_head -> identifier ':' e_type_anno e_attributes :
+	#e_vardef{name = token_value('$1'), type = '$3', attribute = '$4', loc = token_loc('$1')}.
+e_vardef_head -> identifier ':' e_type_anno :
 	#e_vardef{name = token_value('$1'), type = '$3', loc = token_loc('$1')}.
 
 %% struct definition
@@ -108,8 +114,8 @@ e_function_head_0 -> 'fn' identifier '(' ')' ':' e_type_anno :
 e_function_head_0 -> 'fn' identifier '(' ')' :
 	#e_function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_loc('$4')), loc = token_loc('$2')}.
 
-e_function_head_1 -> e_function_head_0 interrupt '(' integer ')' :
-	'$1'#e_function_raw{interrupt = token_value('$4')}.
+e_function_head_1 -> e_function_head_0 e_attributes :
+	'$1'#e_function_raw{attribute = '$2'}.
 e_function_head_1 -> e_function_head_0 :
 	'$1'.
 
@@ -117,6 +123,23 @@ e_function_def -> e_function_head_1 e_function_stmts 'end' :
 	'$1'#e_function_raw{stmts = '$2'}.
 e_function_def -> e_function_head_1 'end' :
 	'$1'.
+
+e_attributes -> attribute '(' e_attribute_lst ')' :
+	maps:from_list('$3').
+
+e_attribute_lst -> e_attribute ',' e_attribute_lst :
+	['$1' | '$3'].
+e_attribute_lst -> e_attribute ',' :
+	['$1'].
+e_attribute_lst -> e_attribute :
+	['$1'].
+
+e_attribute -> identifier '(' string ')' :
+	{token_value('$1'), token_value('$3')}.
+e_attribute -> identifier '(' integer ')' :
+	{token_value('$1'), token_value('$3')}.
+e_attribute -> identifier :
+	{token_value('$1'), true}.
 
 %% while
 e_while_stmt -> while e_expr do e_function_stmts 'end' :

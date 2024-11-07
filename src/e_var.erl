@@ -77,7 +77,7 @@ fetch_vars([#e_vardef{name = Name, type = Type, loc = Loc, init_value = InitialV
 	Vars1 = Vars#e_vars{type_map = TypeMap#{Name => Type}},
 	Ctx1 = Ctx#{vars := Vars1, names := [Name | Names]},
 	fetch_vars(Rest, append_to_ast(AST, Name, InitialValue, Loc), Ctx1);
-fetch_vars([#e_function_raw{name = Name, ret_type = Ret, params = Params, stmts = Stmts, interrupt = Interrupt, loc = Loc} | Rest], AST, Ctx) ->
+fetch_vars([#e_function_raw{name = Name, ret_type = Ret, params = Params, stmts = Stmts, attribute = Attr, loc = Loc} | Rest], AST, Ctx) ->
 	#{vars := GlobalVars} = Ctx,
 	Ctx1 = fetch_vars_state_new(),
 	{ParamVars, [], ParamInitCode} = fetch_vars(Params, [], Ctx1#{tag := local}),
@@ -88,7 +88,7 @@ fetch_vars([#e_function_raw{name = Name, ret_type = Ret, params = Params, stmts 
 	FnType = #e_fn_type{params = get_values_by_defs(Params, ParamVars), ret = Ret, loc = Loc},
 	ParamNames = e_util:names_of_var_defs(Params),
 	check_label_conflict(NewStmts, #{}),
-	Fn = #e_function{name = Name, vars = LocalVars, param_names = ParamNames, type = FnType, stmts = NewStmts, loc = Loc, interrupt = Interrupt},
+	Fn = #e_function{name = Name, vars = LocalVars, param_names = ParamNames, type = FnType, stmts = NewStmts, loc = Loc, attribute = Attr},
 	fetch_vars(Rest, [Fn | AST], Ctx);
 fetch_vars([#e_struct_raw{name = Name, fields = RawFields, loc = Loc} | Rest], AST, Ctx) ->
 	%% struct can have default value

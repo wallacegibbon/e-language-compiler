@@ -218,7 +218,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ISRs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-fn exit4_isr() interrupt(26)
+fn exit4_isr() attribute(interrupt(26), fakeattr)
 	%% Clear interrupt flag.
 	?EXTI^.INTF = 0b1_0000;
 
@@ -228,7 +228,7 @@ fn exit4_isr() interrupt(26)
 	?TIM2^.CTL1 = 0b1000_1001;
 end
 
-fn TIM2_isr() interrupt(44)
+fn TIM2_isr() attribute(interrupt(44))
 	%% Clear interrupt flag
 	?TIM2^.INTF = 0b0;
 	?TIM2^.CNT = 0;
