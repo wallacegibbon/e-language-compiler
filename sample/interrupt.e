@@ -11,18 +11,15 @@ fn fn1()
 	flag -= v;
 end
 
-interrupt(1)
-fn isr1()
+fn isr1() interrupt(1)
 	flag += 1;
 end
 
-interrupt(2)
-fn isr2()
+fn isr2() interrupt(2)
 	flag += 2;
 end
 
-interrupt(3)
-fn isr3()
+fn isr3() interrupt(3)
 	flag += 3;
 end
 

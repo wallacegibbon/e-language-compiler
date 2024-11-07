@@ -1,6 +1,6 @@
 Nonterminals
 
-e_root_stmts e_root_stmt e_struct_def e_function_def e_vardefs e_vardef e_args
+e_root_stmts e_root_stmt e_struct_def e_function_head_0 e_function_head_1 e_function_def e_vardefs e_vardef e_args
 e_function_stmts e_function_stmt e_if_stmt e_else_stmt e_while_stmt e_return_stmt e_label
 e_expr e_call_expr e_array_ref_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr e_assign_expr e_not_expr e_bnot_expr
 e_typeof_type e_type_annos e_type_anno e_calc1 e_calc2 e_bitwise e_cmp e_bool_op e_op2_with_assignment
@@ -99,29 +99,24 @@ e_struct_def -> struct identifier e_vardefs 'end' :
 	#e_struct_raw{name = token_value('$2'), fields = '$3', loc = token_loc('$2')}.
 
 %% function definition
-e_function_def -> interrupt '(' integer ')' e_function_def :
-	'$5'#e_function_raw{interrupt = token_value('$3')}.
+e_function_head_0 -> 'fn' identifier '(' e_vardefs ')' ':' e_type_anno :
+	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = '$7', loc = token_loc('$2')}.
+e_function_head_0 -> 'fn' identifier '(' e_vardefs ')' :
+	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = e_util:void_type(token_loc('$5')), loc = token_loc('$2')}.
+e_function_head_0 -> 'fn' identifier '(' ')' ':' e_type_anno :
+	#e_function_raw{name = token_value('$2'), params = [], ret_type = '$6', loc = token_loc('$2')}.
+e_function_head_0 -> 'fn' identifier '(' ')' :
+	#e_function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_loc('$4')), loc = token_loc('$2')}.
 
-e_function_def -> 'fn' identifier '(' e_vardefs ')' ':' e_type_anno e_function_stmts 'end' :
-	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = '$7', stmts = '$8', loc = token_loc('$2')}.
-e_function_def -> 'fn' identifier '(' e_vardefs ')' e_function_stmts 'end' :
-	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = e_util:void_type(token_loc('$5')), stmts = '$6', loc = token_loc('$2')}.
+e_function_head_1 -> e_function_head_0 interrupt '(' integer ')' :
+	'$1'#e_function_raw{interrupt = token_value('$4')}.
+e_function_head_1 -> e_function_head_0 :
+	'$1'.
 
-e_function_def -> 'fn' identifier '(' ')' ':' e_type_anno e_function_stmts 'end' :
-	#e_function_raw{name = token_value('$2'), params = [], ret_type = '$6', stmts = '$7', loc = token_loc('$2')}.
-e_function_def -> 'fn' identifier '(' ')' e_function_stmts 'end' :
-	#e_function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_loc('$4')), stmts = '$5', loc = token_loc('$2')}.
-
-%% function definition with empty body
-e_function_def -> 'fn' identifier '(' e_vardefs ')' ':' e_type_anno 'end' :
-	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = '$7', stmts = [], loc = token_loc('$2')}.
-e_function_def -> 'fn' identifier '(' e_vardefs ')' 'end' :
-	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = e_util:void_type(token_loc('$5')), stmts = [], loc = token_loc('$2')}.
-
-e_function_def -> 'fn' identifier '(' ')' ':' e_type_anno 'end' :
-	#e_function_raw{name = token_value('$2'), params = [], ret_type = '$6', stmts = [], loc = token_loc('$2')}.
-e_function_def -> 'fn' identifier '(' ')' 'end' :
-	#e_function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_loc('$4')), stmts = [], loc = token_loc('$2')}.
+e_function_def -> e_function_head_1 e_function_stmts 'end' :
+	'$1'#e_function_raw{stmts = '$2'}.
+e_function_def -> e_function_head_1 'end' :
+	'$1'.
 
 %% while
 e_while_stmt -> while e_expr do e_function_stmts 'end' :

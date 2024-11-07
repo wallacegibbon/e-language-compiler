@@ -218,8 +218,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ISRs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-interrupt(26)
-fn exit4_isr()
+fn exit4_isr() interrupt(26)
 	%% Clear interrupt flag.
 	?EXTI^.INTF = 0b1_0000;
 
@@ -229,8 +228,7 @@ fn exit4_isr()
 	?TIM2^.CTL1 = 0b1000_1001;
 end
 
-interrupt(44)
-fn TIM2_isr()
+fn TIM2_isr() interrupt(44)
 	%% Clear interrupt flag
 	?TIM2^.INTF = 0b0;
 	?TIM2^.CNT = 0;

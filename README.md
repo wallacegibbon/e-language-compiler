@@ -181,8 +181,7 @@ char *(*(*(*my_fn2)(char *, int))(char *, char *))(int, int) = another_fn2;
 For embedded systems, interrupt subroutines are important. To define an ISR:
 
 ```text
-interrupt(26)
-fn exti_isr()
+fn exti_isr() interrupt(26)
 	%% Clear interrupt flag.
 	exti4^.INTF = 0b10000;
 
