@@ -9,14 +9,16 @@
 -spec check_types_in_ast(e_ast(), e_compile_context:context()) -> ok.
 check_types_in_ast([#e_function{name = Name, param_names = [_ | _], attribute = #{interrupt := _}, loc = Loc} | _], _) ->
 	e_util:ethrow(Loc, "interrupt function \"~s\" should not have parameter(s)", [Name]);
-check_types_in_ast([#e_function{vars = LocalVars, param_names = ParamNames, stmts = Stmts, type = FnType, loc = Loc} | Rest], #{vars := GlobalVars} = Ctx) ->
-	Ctx1 = Ctx#{vars := e_util:merge_vars(GlobalVars, LocalVars, ignore_tag)},
-	#e_vars{type_map = TypeMap} = LocalVars,
-	maps:foreach(fun(_, T) -> check_type(T, Ctx1) end, TypeMap),
-	maps:foreach(fun(_, T) -> restrict_param_type(T) end, maps:with(ParamNames, TypeMap)),
-	restrict_ret_type(FnType#e_fn_type.ret),
-	check_ret_type(FnType#e_fn_type.ret, Stmts, Loc, top, Ctx1),
-	check_type_in_stmts(Stmts, Ctx1),
+check_types_in_ast([#e_function{name = Name, type = Type, attribute = #{interrupt := _}, loc = Loc} = Fn | Rest], Ctx) ->
+	case Type of
+		#e_fn_type{ret = #e_basic_type{class = void, tag = void, p_depth = 0}} ->
+			check_types_in_fn(Fn, Ctx),
+			check_types_in_ast(Rest, Ctx);
+		_ ->
+			e_util:ethrow(Loc, "interrupt function \"~s\" should not have return value", [Name])
+	end;
+check_types_in_ast([#e_function{} = Fn | Rest], Ctx) ->
+	check_types_in_fn(Fn, Ctx),
 	check_types_in_ast(Rest, Ctx);
 check_types_in_ast([#e_struct{name = Name, fields = Fields, default_value_map = ValMap} | Rest], Ctx) ->
 	#e_vars{type_map = FieldTypeMap} = Fields,
@@ -28,6 +30,15 @@ check_types_in_ast([_ | Rest], Ctx) ->
 	check_types_in_ast(Rest, Ctx);
 check_types_in_ast([], _) ->
 	ok.
+
+check_types_in_fn(#e_function{vars = LocalVars, param_names = ParamNames, stmts = Stmts, type = FnType, loc = Loc}, #{vars := GlobalVars} = Ctx) ->
+	Ctx1 = Ctx#{vars := e_util:merge_vars(GlobalVars, LocalVars, ignore_tag)},
+	#e_vars{type_map = TypeMap} = LocalVars,
+	maps:foreach(fun(_, T) -> check_type(T, Ctx1) end, TypeMap),
+	maps:foreach(fun(_, T) -> restrict_param_type(T) end, maps:with(ParamNames, TypeMap)),
+	restrict_ret_type(FnType#e_fn_type.ret),
+	check_ret_type(FnType#e_fn_type.ret, Stmts, Loc, top, Ctx1),
+	check_type_in_stmts(Stmts, Ctx1).
 
 -spec check_type_in_stmts([e_stmt()], e_compile_context:context()) -> ok.
 check_type_in_stmts(Stmts, Ctx) ->
@@ -422,8 +433,8 @@ compare_type_1(_, _, _) ->
 	false.
 
 
--type number_check_result() :: {true, e_type()} | false.
--type number_check_fn() :: fun((e_type(), e_type()) -> number_check_result()).
+-type number_check_result()	:: {true, e_type()} | false.
+-type number_check_fn()		:: fun((e_type(), e_type()) -> number_check_result()).
 
 -spec number_check_chain(e_type(), e_type(), [number_check_fn()]) -> number_check_result().
 number_check_chain(T1, T2, [Fn | RestFns]) ->

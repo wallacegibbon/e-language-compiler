@@ -5,8 +5,8 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--type macro_map() :: #{atom() => [token()]}.
--type context() :: #{macro_map := macro_map(), macro_path := [atom()]}.
+-type macro_map()		:: #{atom() => [token()]}.
+-type context()			:: #{macro_map := macro_map(), macro_path := [atom()]}.
 
 -spec preprocess([token()]) -> [token()].
 preprocess(OrigTokens) ->
