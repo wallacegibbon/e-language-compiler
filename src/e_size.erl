@@ -74,9 +74,9 @@ align_of_struct(#e_struct{fields = #e_vars{type_map = TypeMap}}, Ctx) ->
 
 -type size_align_data() ::
 	#{
-	size			:= non_neg_integer(),
-	align			:= non_neg_integer(),
-	offset_map		:= #{atom() := e_var_offset()}
+	size				:= non_neg_integer(),
+	align				:= non_neg_integer(),
+	offset_map			:= #{atom() := e_var_offset()}
 	}.
 
 -spec size_and_offsets_of_vars(#e_vars{}, e_compile_context:context()) -> size_align_data().

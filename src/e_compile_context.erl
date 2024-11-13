@@ -4,9 +4,9 @@
 
 -type context() ::
 	#{
-	fn_map			:= #{atom() => #e_fn_type{}},
-	struct_map		:= #{atom() => #e_struct{}},
-	vars			:= #e_vars{},
-	wordsize		:= non_neg_integer()
+	fn_map				:= #{atom() => #e_fn_type{}},
+	struct_map			:= #{atom() => #e_struct{}},
+	vars				:= #e_vars{},
+	wordsize			:= non_neg_integer()
 	}.
 

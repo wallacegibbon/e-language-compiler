@@ -4,15 +4,15 @@
 
 -type option() ::
 	#{
-	code_pos		=> non_neg_integer(),
-	data_pos		=> non_neg_integer(),
-	data_size		=> non_neg_integer(),
-	ivec_pos		=> non_neg_integer(),
-	ivec_size		=> non_neg_integer(),
-	ivec_init_jump		=> boolean(),
-	prefer_shift		=> boolean(),
-	entry_function		=> atom(),
-	wordsize		=> pos_integer()
+	code_pos			=> non_neg_integer(),
+	data_pos			=> non_neg_integer(),
+	data_size			=> non_neg_integer(),
+	ivec_pos			=> non_neg_integer(),
+	ivec_size			=> non_neg_integer(),
+	ivec_init_jump			=> boolean(),
+	prefer_shift			=> boolean(),
+	entry_function			=> atom(),
+	wordsize			=> pos_integer()
 	}.
 
 -spec check(option()) -> option().
@@ -38,14 +38,14 @@ default() ->
 -spec option_for_ch32v307() -> option().
 option_for_ch32v307() ->
 	#{
-	code_pos		=> 0,
-	data_pos		=> 16#20000000,
-	data_size		=> 256,
-	ivec_pos		=> 0,
-	ivec_size		=> 0,
-	ivec_init_jump		=> false,
-	prefer_shift		=> false,
-	entry_function		=> main,
-	wordsize		=> 4
+	code_pos			=> 0,
+	data_pos			=> 16#20000000,
+	data_size			=> 256,
+	ivec_pos			=> 0,
+	ivec_size			=> 0,
+	ivec_init_jump			=> false,
+	prefer_shift			=> false,
+	entry_function			=> main,
+	wordsize			=> 4
 	}.
 

@@ -433,8 +433,8 @@ compare_type_1(_, _, _) ->
 	false.
 
 
--type number_check_result()	:: {true, e_type()} | false.
--type number_check_fn()		:: fun((e_type(), e_type()) -> number_check_result()).
+-type number_check_result()		:: {true, e_type()} | false.
+-type number_check_fn()			:: fun((e_type(), e_type()) -> number_check_result()).
 
 -spec number_check_chain(e_type(), e_type(), [number_check_fn()]) -> number_check_result().
 number_check_chain(T1, T2, [Fn | RestFns]) ->

@@ -4,11 +4,11 @@
 
 -type fetch_vars_state() ::
 	#{
-	vars			:= #e_vars{},
-	names			:= [atom()],
-	initcode		:= e_ast(),
-	mode			:= normal | initcode,
-	tag			:= e_var_type()
+	vars				:= #e_vars{},
+	names				:= [atom()],
+	initcode			:= e_ast(),
+	mode				:= normal | initcode,
+	tag				:= e_var_type()
 	}.
 
 fetch_vars_state_new() ->

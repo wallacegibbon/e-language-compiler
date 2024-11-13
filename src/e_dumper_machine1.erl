@@ -4,10 +4,10 @@
 
 -type scan_context() ::
 	#{
-	label_map		:= #{atom() => non_neg_integer()},
-	offset_map		:= #{non_neg_integer() => [atom()]},
-	start_address		:= non_neg_integer(),
-	wordsize		:= non_neg_integer()
+	label_map			:= #{atom() => non_neg_integer()},
+	offset_map			:= #{non_neg_integer() => [atom()]},
+	start_address			:= non_neg_integer(),
+	wordsize			:= non_neg_integer()
 	}.
 
 -spec generate_code(flatten_irs(), flatten_irs(), string(), e_compile_option:option()) -> ok.

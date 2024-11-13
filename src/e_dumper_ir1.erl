@@ -6,15 +6,15 @@
 
 -type context() ::
 	#{
-	tmp_regs		:= [machine_reg()],
-	free_regs		:= [machine_reg()],	%% A subset of `tmp_regs`. (And initialized as `tmp_regs`)
-	string_collector	:= pid(),		%% A separate process to collect string literals.
-	cond_label		:= {atom(), atom()},	%% For generating logic operator (and, or, not) related code.
-	scope_tag		:= atom(),
-	epilogue_tag		:= atom(),
-	ret_offset		:= neg_integer(),
-	prefer_shift		:= boolean(),
-	wordsize		:= pos_integer()
+	tmp_regs			:= [machine_reg()],
+	free_regs			:= [machine_reg()],	%% A subset of `tmp_regs`.
+	string_collector		:= pid(),		%% A separate process to collect string literals.
+	cond_label			:= {atom(), atom()},	%% For logic operation (and, or, not) generating.
+	scope_tag			:= atom(),
+	epilogue_tag			:= atom(),
+	ret_offset			:= neg_integer(),
+	prefer_shift			:= boolean(),
+	wordsize			:= pos_integer()
 	}.
 
 -spec generate_code(e_ast_compiler:ast_compile_result(), string(), e_compile_option:option()) -> ok.
