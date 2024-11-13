@@ -4,43 +4,43 @@
 #define RELEASE 1
 
 struct S1
-	a: byte;
+	a				: byte;
 end
 
 struct S2
-	a: byte;
+	a				: byte;
 end
 
 struct S3
-	a: word;
+	a				: word;
 end
 
 struct S4
-	a: byte;
-	b: byte;
-	c: byte;
+	a				: byte;
+	b				: byte;
+	c				: byte;
 end
 
 struct S5
-	a: byte;
-	b: byte;
-	c: word;
-	%s: Sprite;
+	a				: byte;
+	b				: byte;
+	c				: word;
+	%s				: Sprite;
 end
 
 struct Sprite
-	id: byte = 0;
-	tag: byte = 3;
-	pos: Pos;
-	tail: byte;
+	id				: byte = 0;
+	tag				: byte = 3;
+	pos				: Pos;
+	tail				: byte;
 end
 
 struct Pos
-	%x: word = "hello";
-	x: word = 100;
-	y: word = 101;
-	h: word = 1000;
-	s: S5;
+	%x				: word = "hello";
+	x				: word = 100;
+	y				: word = 101;
+	h				: word = 1000;
+	s				: S5;
 end
 
 g1: Sprite = Sprite{id = 1, pos = Pos{x = 2, y = 3}};

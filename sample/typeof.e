@@ -1,11 +1,11 @@
 struct A
-	a: byte^;
-	x: typeof(instance_b);
+	a				: byte^;
+	x				: typeof(instance_b);
 end
 
 struct B
-	blah: typeof(global_tag) = "a";
-	x: typeof(instance_a@);
+	blah				: typeof(global_tag) = "a";
+	x				: typeof(instance_a@);
 end
 
 instance_a: A;

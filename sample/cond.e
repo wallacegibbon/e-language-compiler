@@ -1,6 +1,6 @@
 struct MyObj
-	name: byte^;
-	id: word;
+	name				: byte^;
+	id				: word;
 end
 
 fn cond_test1(): word

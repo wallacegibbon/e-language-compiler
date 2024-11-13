@@ -1,9 +1,9 @@
 struct MyI
-	x			: word;
+	x				: word;
 end
 
 struct MyO
-	i			: MyI;
+	i				: MyI;
 end
 
 fn app(o: MyI^): word

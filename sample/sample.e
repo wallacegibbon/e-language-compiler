@@ -1,35 +1,35 @@
 struct Blah
-	id: byte^;
-	a: Administrator^;
-	%b: Administrator;
+	id				: byte^;
+	a				: Administrator^;
+	%b				: Administrator;
 end
 
 struct Blah1
-	id: byte^;
-	val: word;
-	blob: word = sizeof(Blah);
+	id				: byte^;
+	val				: word;
+	blob				: word = sizeof(Blah);
 end
 
 struct User
-	id: word = 10 * 20 + 3 * 4 + 22;
-	%desc: {byte, 10} = {"hello"};
-	desc: {byte, 10} = {1, 2, 3, 4, 5, 6, 7, 8, 9, 22};
-	count: word;
-	blah: Blah;
-	b2: {Blah, 3};
-	a: any^;
+	id				: word = 10 * 20 + 3 * 4 + 22;
+	%desc				: {byte, 10} = {"hello"};
+	desc				: {byte, 10} = {1, 2, 3, 4, 5, 6, 7, 8, 9, 22};
+	count				: word;
+	blah				: Blah;
+	b2				: {Blah, 3};
+	a				: any^;
 end
 
 struct List
-	next: List^;
-	val: any^;
-	ok: User = User{id = 1, count = 22};
-	%invalid: List;
+	next				: List^;
+	val				: any^;
+	ok				: User = User{id = 1, count = 22};
+	%invalid				: List;
 end
 
 struct Administrator
-	users: {User, 12};
-	level: word;
+	users				: {User, 12};
+	level				: word;
 end
 
 % global variable

@@ -1,6 +1,6 @@
 struct Blah
-	id			: word;
-	name			: byte^;
+	id				: word;
+	name				: byte^;
 end
 
 fn main()

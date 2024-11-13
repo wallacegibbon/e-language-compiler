@@ -1,23 +1,23 @@
 struct Light
-	on		: fn(Light^^): word;
-	off		: fn(Light^^): word;
-	toggle		: fn(Light^^): word;
+	on				: fn(Light^^): word;
+	off				: fn(Light^^): word;
+	toggle				: fn(Light^^): word;
 end
 
 struct IIC_LED
-	interface	: Light^;
-	port		: word;
-	address		: byte;
+	interface			: Light^;
+	port				: word;
+	address				: byte;
 end
 
 struct FakeLight
-	%interface	: Light^;
-	id		: word;
+	%interface			: Light^;
+	id				: word;
 end
 
 iic_led_interface: Light = Light{
-	%toggle = IIC_LED_toggle as (fn(Light^^): word),
-	toggle = IIC_LED_toggle,
+	%toggle				= IIC_LED_toggle as (fn(Light^^): word),
+	toggle				= IIC_LED_toggle,
 };
 
 fn IIC_LED_init(self: IIC_LED^; address: byte)
