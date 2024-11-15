@@ -9,14 +9,11 @@
 -spec check_types_in_ast(e_ast(), e_compile_context:context()) -> ok.
 check_types_in_ast([#e_function{name = Name, param_names = [_ | _], attribute = #{interrupt := _}, loc = Loc} | _], _) ->
 	e_util:ethrow(Loc, "interrupt function \"~s\" should not have parameter(s)", [Name]);
-check_types_in_ast([#e_function{name = Name, type = Type, attribute = #{interrupt := _}, loc = Loc} = Fn | Rest], Ctx) ->
-	case Type of
-		#e_fn_type{ret = #e_basic_type{class = void, tag = void, p_depth = 0}} ->
-			check_types_in_fn(Fn, Ctx),
-			check_types_in_ast(Rest, Ctx);
-		_ ->
-			e_util:ethrow(Loc, "interrupt function \"~s\" should not have return value", [Name])
-	end;
+check_types_in_ast([#e_function{type = #e_fn_type{ret = ?VOID()}, attribute = #{interrupt := _}} = Fn | Rest], Ctx) ->
+	check_types_in_fn(Fn, Ctx),
+	check_types_in_ast(Rest, Ctx);
+check_types_in_ast([#e_function{name = Name, attribute = #{interrupt := _}, loc = Loc} | _], _) ->
+	e_util:ethrow(Loc, "interrupt function \"~s\" should not have return value", [Name]);
 check_types_in_ast([#e_function{} = Fn | Rest], Ctx) ->
 	check_types_in_fn(Fn, Ctx),
 	check_types_in_ast(Rest, Ctx);
@@ -272,7 +269,7 @@ type_of_node(#e_if_stmt{'cond' = Cond, then = Then, 'else' = Else, loc = Loc}, C
 	end,
 	check_type_of_nodes(Then, Ctx),
 	check_type_of_nodes(Else, Ctx),
-	e_util:void_type(Loc);
+	?VOID(Loc);
 type_of_node(#e_while_stmt{'cond' = Cond, stmts = Stmts, loc = Loc}, Ctx) ->
 	case type_of_node(Cond, Ctx) of
 		#e_basic_type{class = boolean} ->
@@ -282,16 +279,16 @@ type_of_node(#e_while_stmt{'cond' = Cond, stmts = Stmts, loc = Loc}, Ctx) ->
 	end,
 	type_of_node(Cond, Ctx),
 	check_type_of_nodes(Stmts, Ctx),
-	e_util:void_type(Loc);
+	?VOID(Loc);
 type_of_node(#e_return_stmt{expr = none, loc = Loc}, _) ->
-	e_util:void_type(Loc);
+	?VOID(Loc);
 type_of_node(#e_return_stmt{expr = Expr}, Ctx) ->
 	%% Return type will be checked outside since we need to deal with the situation when `return` is missing.
 	type_of_node(Expr, Ctx);
 type_of_node(#e_goto_stmt{loc = Loc}, _) ->
-	e_util:void_type(Loc);
+	?VOID(Loc);
 type_of_node(#e_label{loc = Loc}, _) ->
-	e_util:void_type(Loc);
+	?VOID(Loc);
 type_of_node(Any, _) ->
 	e_util:ethrow(element(2, Any), "invalid statement: ~s~n", [e_util:stmt_to_str(Any)]).
 

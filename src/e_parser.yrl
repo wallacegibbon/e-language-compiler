@@ -43,15 +43,15 @@ e_type_annos -> e_type_anno : ['$1'].
 e_type_anno -> 'fn' '(' e_vardefs ')' ':' e_type_anno :
 	#e_fn_type{params = types_from_vardefs('$3'), ret = '$6', loc = token_loc('$1')}.
 e_type_anno -> 'fn' '(' e_vardefs ')' :
-	#e_fn_type{params = types_from_vardefs('$3'), ret = e_util:void_type(token_loc('$4')), loc = token_loc('$1')}.
+	#e_fn_type{params = types_from_vardefs('$3'), ret = ?VOID(token_loc('$4')), loc = token_loc('$1')}.
 e_type_anno -> 'fn' '(' e_type_annos ')' ':' e_type_anno :
 	#e_fn_type{params = '$3', ret = '$6', loc = token_loc('$1')}.
 e_type_anno -> 'fn' '(' e_type_annos ')' :
-	#e_fn_type{params = '$3', ret = e_util:void_type(token_loc('$4')), loc = token_loc('$1')}.
+	#e_fn_type{params = '$3', ret = ?VOID(token_loc('$4')), loc = token_loc('$1')}.
 e_type_anno -> 'fn' '(' ')' ':' e_type_anno :
 	#e_fn_type{params = [], ret = '$5', loc = token_loc('$1')}.
 e_type_anno -> 'fn' '(' ')' :
-	#e_fn_type{params = [], ret = e_util:void_type(token_loc('$3')), loc = token_loc('$1')}.
+	#e_fn_type{params = [], ret = ?VOID(token_loc('$3')), loc = token_loc('$1')}.
 e_type_anno -> '{' e_type_anno ',' e_expr '}' :
 	#e_array_type{elem_type = '$2', length = token_value('$4'), loc = token_loc('$1')}.
 e_type_anno -> int_type e_pointer_depth :
@@ -108,11 +108,11 @@ e_struct_def -> struct identifier e_vardefs 'end' :
 e_function_head_0 -> 'fn' identifier '(' e_vardefs ')' ':' e_type_anno :
 	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = '$7', loc = token_loc('$2')}.
 e_function_head_0 -> 'fn' identifier '(' e_vardefs ')' :
-	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = e_util:void_type(token_loc('$5')), loc = token_loc('$2')}.
+	#e_function_raw{name = token_value('$2'), params = '$4', ret_type = ?VOID(token_loc('$5')), loc = token_loc('$2')}.
 e_function_head_0 -> 'fn' identifier '(' ')' ':' e_type_anno :
 	#e_function_raw{name = token_value('$2'), params = [], ret_type = '$6', loc = token_loc('$2')}.
 e_function_head_0 -> 'fn' identifier '(' ')' :
-	#e_function_raw{name = token_value('$2'), params = [], ret_type = e_util:void_type(token_loc('$4')), loc = token_loc('$2')}.
+	#e_function_raw{name = token_value('$2'), params = [], ret_type = ?VOID(token_loc('$4')), loc = token_loc('$2')}.
 
 e_function_head_1 -> e_function_head_0 e_attributes :
 	'$1'#e_function_raw{attribute = '$2'}.

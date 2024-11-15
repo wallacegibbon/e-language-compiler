@@ -230,6 +230,9 @@
 -define(S(V, Loc)			, #e_string{value = V, loc = Loc}).
 -define(S(V)				, #e_string{value = V}).
 
+-define(VOID(Loc)			, #e_basic_type{class = void, tag = void, p_depth = 0, loc = Loc}).
+-define(VOID()				, #e_basic_type{class = void, tag = void, p_depth = 0}).
+
 -define(IS_ARITH(Tag),
 	(
 	Tag =:= '+' orelse Tag =:= '-' orelse Tag =:= '*' orelse Tag =:= '/' orelse Tag =:= 'rem' orelse
