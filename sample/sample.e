@@ -1,35 +1,35 @@
 struct Blah
-	id				: byte^;
-	a				: Administrator^;
-	%b				: Administrator;
+    id: byte^;
+    a: Administrator^;
+    %b: Administrator;
 end
 
 struct Blah1
-	id				: byte^;
-	val				: word;
-	blob				: word = sizeof(Blah);
+    id: byte^;
+    val: word;
+    blob: word = sizeof(Blah);
 end
 
 struct User
-	id				: word = 10 * 20 + 3 * 4 + 22;
-	%desc				: {byte, 10} = {"hello"};
-	desc				: {byte, 10} = {1, 2, 3, 4, 5, 6, 7, 8, 9, 22};
-	count				: word;
-	blah				: Blah;
-	b2				: {Blah, 3};
-	a				: any^;
+    id: word = 10 * 20 + 3 * 4 + 22;
+    %desc: {byte, 10} = {"hello"};
+    desc: {byte, 10} = {1, 2, 3, 4, 5, 6, 7, 8, 9, 22};
+    count: word;
+    blah: Blah;
+    b2: {Blah, 3};
+    a: any^;
 end
 
 struct List
-	next				: List^;
-	val				: any^;
-	ok				: User = User{id = 1, count = 22};
-	%invalid				: List;
+    next: List^;
+    val: any^;
+    ok: User = User{id = 1, count = 22};
+    %invalid: List;
 end
 
 struct Administrator
-	users				: {User, 12};
-	level				: word;
+    users: {User, 12};
+    level: word;
 end
 
 % global variable
@@ -46,122 +46,122 @@ blah1: word = sizeof(Blah1);
 u1: User = User{id = 8};
 
 fn main(argc: word; argv: byte^^): word
-	%invalid_u: User^ = User{id = 3}@;
-	%users: {User, 22} = {User{nameref = 1}, User{id = 1}};
-	%users: {User, 2} = {User{non = 1}, User{id = 1}};
-	users: {User, 2} = {User{id = 1, blah = Blah{id = "a"}}, User{id = 1}};
-	v0: byte = -1;
-	users@^.blah = Blah{id = "b"};
-	cnt: word = 22;
-	init_users(users@, 22);
+    %invalid_u: User^ = User{id = 3}@;
+    %users: {User, 22} = {User{nameref = 1}, User{id = 1}};
+    %users: {User, 2} = {User{non = 1}, User{id = 1}};
+    users: {User, 2} = {User{id = 1, blah = Blah{id = "a"}}, User{id = 1}};
+    v0: byte = -1;
+    users@^.blah = Blah{id = "b"};
+    cnt: word = 22;
+    init_users(users@, 22);
 
-	%finish: byte;
+    %finish: byte;
 
-	%goto a;
+    %goto a;
 
-	v1: word = 1;
-	v1 = v1 + 10;
+    v1: word = 1;
+    v1 = v1 + 10;
 
-	v1 as (Blah^)^.a;
+    v1 as (Blah^)^.a;
 
-	cnt = v1 + 2;
-	cnt = 22;
+    cnt = v1 + 2;
+    cnt = 22;
 
-	v2: byte = 2;
-	v2 = v2 + 1;
+    v2: byte = 2;
+    v2 = v2 + 1;
 
-	v3: word^ = v1@;
+    v3: word^ = v1@;
 
-	f: fn (word^; byte^) = myfn;
-	f(v1@, v2@);
+    f: fn (word^; byte^) = myfn;
+    f(v1@, v2@);
 
-	goto finish;
+    goto finish;
 
-	sizeof(User);
-	sizeof(Administrator);
-	sizeof(Blah);
-	sizeof(List);
+    sizeof(User);
+    sizeof(Administrator);
+    sizeof(Blah);
+    sizeof(List);
 
-	x: Blah1 = Blah1{id = "a"};
-	y: Blah1 = Blah1{id = "b"};
+    x: Blah1 = Blah1{id = "a"};
+    y: Blah1 = Blah1{id = "b"};
 
-	1 + x@;
-	%1 - x@;
+    1 + x@;
+    %1 - x@;
 
 @@finish
 
-	return 0;
+    return 0;
 end
 
 fn init_users(users: User^; size: word)
-	cnt: word = 30 + 52 * size / 2 + 100 / 10;
-	while cnt < size do
-		init_user(users + cnt, cnt, "test");
-	end
+    cnt: word = 30 + 52 * size / 2 + 100 / 10;
+    while cnt < size do
+        init_user(users + cnt, cnt, "test");
+    end
 end
 
 fn init_user(user: User^; id: word; desc: byte^)
-	if id < 1 then
-		user^.id = 1;
-		user^.id = user^.id + 1;
-	elif id == 5 then
-		user^.id = 0;
-	elif id == 10 then
-		user^.id = 20;
-	elif id == 20 then
-		user^.id = 10;
-	else
-		user^.id = id;
-	end
+    if id < 1 then
+        user^.id = 1;
+        user^.id = user^.id + 1;
+    elif id == 5 then
+        user^.id = 0;
+    elif id == 10 then
+        user^.id = 20;
+    elif id == 20 then
+        user^.id = 10;
+    else
+        user^.id = id;
+    end
 end
 
 fn myfn(v1: word^; v2: byte^)
-	v1^ += 1;
-	v2^ += 2;
+    v1^ += 1;
+    v2^ += 2;
 end
 
 %% Non-primitive & Non-pointer type is not allowed as parameter.
 %fn invalid_param(user: User; id: word)
-%	user.id = 1;
+%    user.id = 1;
 %end
 
 %% Non-primitive & Non-pointer type is not allowed as returning value.
 %fn invalid_ret(): User
-%	u: User = User{id = 1};
-%	return u;
+%    u: User = User{id = 1};
+%    return u;
 %end
 
 %% Only comparing op is allow in the condition part of the `if` statement.
 %fn invalid_if(a: word; b: byte): word
-%	if a then
-%		return 1;
-%	end
+%    if a then
+%        return 1;
+%    end
 %end
 
 %% Only comparing op is allow in the condition part of the `while` statement.
 %fn invalid_while(a: word; b: byte): word
-%	while a do
-%		a -= 1;
-%	end
-%	return 0;
+%    while a do
+%        a -= 1;
+%    end
+%    return 0;
 %end
 
 fn add(val: byte): byte
-	return val * 3 + 1;
+    return val * 3 + 1;
 end
 
 fn add_call(): word
-	if add(3) > 4 then
-		return 1;
-	end
-	return 2;
+    if add(3) > 4 then
+        return 1;
+    end
+    return 2;
 end
 
 fn f2(v: word): word
-	return v + 1;
+    return v + 1;
 end
 
 fn long_expr(): word
-	a: word = 10;
-	return a + a * f2(2 * f2(3 * f2(a)));
+    a: word = 10;
+    return a + a * f2(2 * f2(3 * f2(a)));
 end

@@ -38,8 +38,8 @@ In E language:
 arr: {word, 3} = {1, 2, 3};
 
 struct Blah
-	id: word;
-	name: byte^;
+    id: word;
+    name: byte^;
 end
 
 b: Blah = Blah{id = 1, name = "hello"};
@@ -52,8 +52,8 @@ In C language:
 int arr[3] = {1, 2, 3};
 
 struct Blah {
-	int id;
-	char *name;
+    int id;
+    char *name;
 };
 
 struct Blah b = {1, "hello"};
@@ -70,11 +70,11 @@ Here is an example about `union` in C language:
 
 ```c
 struct A {
-	char tag;
-	union {
-		long long num;
-		char buf[8];
-	} value;
+    char tag;
+    union {
+        long long num;
+        char buf[8];
+    } value;
 };
 
 struct A a = {.tag = 1, .value.num = 0x12345678 };
@@ -86,8 +86,8 @@ In E language (and also in C language), we can use pointer manipulations to achi
 
 ```text
 struct A
-	tag: byte;
-	value: word;
+    tag: byte;
+    value: word;
 end
 
 a: A = A{tag = 1, value = 0x12345678};
@@ -109,14 +109,14 @@ To keep things minimum, E language do not support `enum`, either.
 
 ```text
 fn main(argc: word, argv: byte^^): word
-	return 0;
+    return 0;
 end
 ```
 
 ```c
 int main(int argc, char **argv)
 {
-	return 0;
+    return 0;
 }
 ```
 
@@ -125,21 +125,21 @@ int main(int argc, char **argv)
 
 ```text
 if fn1(fn2(val1)) >= fn3(val2) then
-	fn4();
+    fn4();
 elif val3 > 100 then
-	fn5();
+    fn5();
 else
-	fn6();
+    fn6();
 end
 ```
 
 ```c
 if (fn1(fn2(val1)) >= fn3(val2)) {
-	fn4();
+    fn4();
 } else if (val3) {
-	fn5();
+    fn5();
 } else {
-	fn6();
+    fn6();
 }
 ```
 
@@ -149,13 +149,13 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 
 ```text
 while test() do
-	do_something();
+    do_something();
 end
 ```
 
 ```c
 while (test()) {
-	do_something();
+    do_something();
 }
 ```
 
@@ -182,10 +182,10 @@ For embedded systems, interrupt subroutines are important. To define an ISR:
 
 ```text
 fn exti_isr() attribute(interrupt(26))
-	%% Clear interrupt flag.
-	exti4^.INTF = 0b10000;
+    %% Clear interrupt flag.
+    exti4^.INTF = 0b10000;
 
-	%...
+    %...
 end
 ```
 
@@ -219,18 +219,18 @@ In C language, any expression can act as a boolean expression, which have result
 
 People always write wrong code like this:
 ```c
-	if (a = b) {
-		//...
-	}
+    if (a = b) {
+        //...
+    }
 ```
 
 In E language, there are only 6 boolean expression: `>`, `>=`, `<`, `<=`, `!=`, `==`.
 
 So the following code will be refused by the compiler:
 ```text
-	if a = b then
-		%...
-	end
+    if a = b then
+        %...
+    end
 ```
 
 Error message:
@@ -257,7 +257,7 @@ Bitwise and shift operations are important, but they are not as common as pointe
 A macro preprocessor is supported. Defining macro in E language is almost the same as in C language.
 
 ```text
-#define	GPIOD			(0x4001_1400 as (GPIO^))
+#define GPIOD (0x4001_1400 as (GPIO^))
 ```
 
 But parameters are not supported.

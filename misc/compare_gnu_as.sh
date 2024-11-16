@@ -2,8 +2,8 @@
 
 set -e
 if test $# -ne 1; then
-	echo Usage: $0 xxx.code >&2
-	exit 1
+    echo Usage: $0 xxx.code >&2
+    exit 1
 fi
 
 detail_file=$1.detail.txt
@@ -12,11 +12,11 @@ asm_file=$1.asm
 riscv64-unknown-elf-as $asm_file -o $asm_file.o
 riscv64-unknown-elf-ld $asm_file.o -o $asm_file.elf
 riscv64-unknown-elf-objdump -D $asm_file.elf \
-	| sed -z 's/\(.*\)Disassembly of section \.riscv\.attributes:.*/\1/' \
-	> $asm_file.dump
+    | sed -z 's/\(.*\)Disassembly of section \.riscv\.attributes:.*/\1/' \
+    > $asm_file.dump
 
 fetch_machine_code() {
-	sed -n 's/^\s*[0-9a-fA-F]*:\s*\([0-9a-f]\+\).*/\1/p' $1
+    sed -n 's/^\s*[0-9a-fA-F]*:\s*\([0-9a-f]\+\).*/\1/p' $1
 }
 
 ## Drop interrupt vector table in detail file

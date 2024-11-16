@@ -1,58 +1,58 @@
 testglobal: word = 10;
 
 fn main(argc: word; argv: byte^^): word
-	blah: {byte, 10};
-	tmp: byte^ = blah@;
-	tmp^ = 10;
+    blah: {byte, 10};
+    tmp: byte^ = blah@;
+    tmp^ = 10;
 
-	print(tmp);
+    print(tmp);
 
-	%myfn: fn (byte^) = inc;
-	%myfn(tmp);
+    %myfn: fn (byte^) = inc;
+    %myfn(tmp);
 
-	myfn1: fn (): fn (): fn (byte^) = get_incfn1;
-	myfn1()()(tmp);
+    myfn1: fn (): fn (): fn (byte^) = get_incfn1;
+    myfn1()()(tmp);
 
-	print(tmp);
+    print(tmp);
 
-	puts("before goto");
-	goto finish;
+    puts("before goto");
+    goto finish;
 
-	puts("after goto");
+    puts("after goto");
 
 @@finish
-	puts("after label");
+    puts("after label");
 
-	return (tmp + 11)^;
+    return (tmp + 11)^;
 end
 
 fn get_incfn1(): fn (): fn (byte^)
-	return get_incfn2;
+    return get_incfn2;
 end
 
 fn get_incfn2(): fn (byte^)
-	return inc;
+    return inc;
 end
 
 fn inc(val: byte^)
-	cnt: byte = 0;
-	while cnt < 10 do
-		(val + cnt)^ = cnt * 2;
-		cnt += 1;
-	end
+    cnt: byte = 0;
+    while cnt < 10 do
+        (val + cnt)^ = cnt * 2;
+        cnt += 1;
+    end
 end
 
 puts: fn (byte^): byte;
 printf: fn (byte^; word);
 
 fn print(val: byte^)
-	cnt: byte = 0;
+    cnt: byte = 0;
 
-	puts(">>>\t");
-	while cnt < 10 do
-		printf(" %02x", (val + cnt)^);
-		cnt += 1;
-	end
-	cnt = puts("");
+    puts(">>>\t");
+    while cnt < 10 do
+        printf(" %02x", (val + cnt)^);
+        cnt += 1;
+    end
+    cnt = puts("");
 end
 
