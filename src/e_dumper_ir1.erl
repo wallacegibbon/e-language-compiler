@@ -6,9 +6,9 @@
 
 -type context() :: #{
                      tmp_regs := [machine_reg()],
-                     free_regs := [machine_reg()],     %% A subset of `tmp_regs`.
-                     string_collector := pid(),               %% A separate process to collect string literals.
-                     cond_label := {atom(), atom()},    %% For logic operation (and, or, not) generating.
+                     free_regs := [machine_reg()], %% A subset of `tmp_regs`.
+                     string_collector := pid(), %% A separate process to collect string literals.
+                     cond_label := {atom(), atom()}, %% For logic operation (and, or, not) generating.
                      scope_tag := atom(),
                      epilogue_tag := atom(),
                      ret_offset := neg_integer(),

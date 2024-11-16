@@ -16,7 +16,7 @@
          loc = {"", 0, 0} :: location(),
          p_depth = 0 :: non_neg_integer(),
          class = void :: struct | integer | float | boolean | void | any,
-         tag :: atom()   %% byte|word|float|void|any|StructName.
+         tag :: atom() %% byte|word|float|void|any|StructName.
         }).
 
 -record(e_array_type,

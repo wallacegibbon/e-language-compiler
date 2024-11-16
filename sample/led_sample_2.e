@@ -9,17 +9,17 @@ unused_string2: byte^ = "this string is unused, either.";
 %% Application related struct definition
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 struct LightInterface
-    on				: fn(self: LightInterface^^);
-    off				: fn(self: LightInterface^^);
-    toggle			: fn(self: LightInterface^^; state: word^): word;
+    on : fn(self: LightInterface^^);
+    off : fn(self: LightInterface^^);
+    toggle : fn(self: LightInterface^^; state: word^): word;
 end
 
 struct LED
-    light_interface		: LightInterface^;
-    port			: GPIO^;
-    pin				: word;
-    current_state		: word;
-    toggle_count		: word;
+    light_interface : LightInterface^;
+    port : GPIO^;
+    pin : word;
+    current_state : word;
+    toggle_count : word;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -66,16 +66,16 @@ end
 %% Application code
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 struct AppState
-    lights			: {LightInterface^^, 2};
-    leds			: {LED, 2}; %% The inner data
-    light_nums			: word;
-    delay			: word;
-    selected			: word;
+    lights : {LightInterface^^, 2};
+    leds : {LED, 2}; %% The inner data
+    light_nums : word;
+    delay : word;
+    selected : word;
 end
 
 struct AppIter
-    app				: AppState^;
-    cursor			: word;
+    app : AppState^;
+    cursor : word;
 end
 
 fn AppIter_init(self: AppIter^; app: AppState^)
