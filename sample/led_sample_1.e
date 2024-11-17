@@ -26,9 +26,9 @@ end
 %% The global light interface object for LED
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 LED_light_interface: LightInterface = LightInterface{
-    on				= LED_on,
-    off				= LED_off,
-    toggle			= LED_toggle,
+    on = LED_on,
+    off = LED_off,
+    toggle = LED_toggle,
 };
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

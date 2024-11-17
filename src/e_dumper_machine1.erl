@@ -196,40 +196,40 @@ write_binary([{_, _, Loc} | _] = Data, N, IO) when Loc > N ->
 write_binary([], _, _) ->
     ok.
 
-f3code_of(beq)      -> 2#000;
-f3code_of(bne)      -> 2#001;
-f3code_of(blt)      -> 2#100;
-f3code_of(bge)      -> 2#101;
-f3code_of(lw)       -> 2#010;
-f3code_of(lb)       -> 2#000;
-f3code_of(sw)       -> 2#010;
-f3code_of(sb)       -> 2#000;
-f3code_of(addi)     -> 2#000;
-f3code_of(andi)     -> 2#111;
-f3code_of(ori)      -> 2#110;
-f3code_of(xori)     -> 2#100;
-f3code_of(slli)     -> 2#001;
-f3code_of(srai)     -> 2#101;
-f3code_of(add)      -> 2#000;
-f3code_of(sub)      -> 2#000;
-f3code_of('and')    -> 2#111;
-f3code_of('or')     -> 2#110;
-f3code_of('xor')    -> 2#100;
-f3code_of(sll)      -> 2#001;
-f3code_of(sra)      -> 2#101;
-f3code_of(mul)      -> 2#000;
-f3code_of(mulh)     -> 2#001;
-f3code_of('div')    -> 2#100;
-f3code_of('rem')    -> 2#110;
+f3code_of(    beq)  -> 2#000;
+f3code_of(    bne)  -> 2#001;
+f3code_of(    blt)  -> 2#100;
+f3code_of(    bge)  -> 2#101;
+f3code_of(     lw)  -> 2#010;
+f3code_of(     lb)  -> 2#000;
+f3code_of(     sw)  -> 2#010;
+f3code_of(     sb)  -> 2#000;
+f3code_of(   addi)  -> 2#000;
+f3code_of(   andi)  -> 2#111;
+f3code_of(    ori)  -> 2#110;
+f3code_of(   xori)  -> 2#100;
+f3code_of(   slli)  -> 2#001;
+f3code_of(   srai)  -> 2#101;
+f3code_of(    add)  -> 2#000;
+f3code_of(    sub)  -> 2#000;
+f3code_of(  'and')  -> 2#111;
+f3code_of(   'or')  -> 2#110;
+f3code_of(  'xor')  -> 2#100;
+f3code_of(    sll)  -> 2#001;
+f3code_of(    sra)  -> 2#101;
+f3code_of(    mul)  -> 2#000;
+f3code_of(   mulh)  -> 2#001;
+f3code_of(  'div')  -> 2#100;
+f3code_of(  'rem')  -> 2#110;
 f3code_of('csrrw')  -> 2#001;
 f3code_of('csrrs')  -> 2#010;
 f3code_of('csrrc')  -> 2#011.
 
-f7code_of(sub)      -> 2#0100000;
-f7code_of(sra)      -> 2#0100000;
-f7code_of(mul)      -> 2#0000001;
-f7code_of(mulh)     -> 2#0000001;
-f7code_of('div')    -> 2#0000001;
-f7code_of('rem')    -> 2#0000001;
-f7code_of(_)        -> 2#0000000.
+f7code_of(    sub)  -> 2#0100000;
+f7code_of(    sra)  -> 2#0100000;
+f7code_of(    mul)  -> 2#0000001;
+f7code_of(   mulh)  -> 2#0000001;
+f7code_of(  'div')  -> 2#0000001;
+f7code_of(  'rem')  -> 2#0000001;
+f7code_of(      _)  -> 2#0000000.
 

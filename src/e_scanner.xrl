@@ -59,14 +59,14 @@ fix_str([$\\, $t  | Rest])  -> [$\t | fix_str(Rest)];
 fix_str([$\\, $"  | Rest])  -> [$"  | fix_str(Rest)];
 fix_str([$\\, Any | Rest])  -> [Any | fix_str(Rest)];
 fix_str([C        | Rest])  -> [C   | fix_str(Rest)];
-fix_str([])                 -> [].
+fix_str([               ])  -> [].
 
 fix_char([$\\, $\\])    -> $\\;
-fix_char([$\\, $b])     -> $\b;
-fix_char([$\\, $f])     -> $\f;
-fix_char([$\\, $n])     -> $\n;
-fix_char([$\\, $r])     -> $\r;
-fix_char([$\\, $t])     -> $\t;
+fix_char([$\\,  $b])    -> $\b;
+fix_char([$\\,  $f])    -> $\f;
+fix_char([$\\,  $n])    -> $\n;
+fix_char([$\\,  $r])    -> $\r;
+fix_char([$\\,  $t])    -> $\t;
 fix_char([$\\, Any])    -> Any;
-fix_char([Any])         -> Any.
+fix_char([     Any])    -> Any.
 
