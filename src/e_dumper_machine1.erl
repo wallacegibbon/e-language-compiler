@@ -158,23 +158,25 @@ encode_instr({{code, N} = I, Loc}) when is_integer(N) ->
 encode_instr(Any) ->
     Any.
 
+-define(NSPACE(N), lists:duplicate(N, $\s)).
+
 write_detail([{{string, Content, Length}, _, Loc} | Rest], Loc, OffsetMap, IO) ->
-    io:format(IO, "~8.16.0b:\t\t\t\t\"~s\\0\"~n", [Loc, e_util:fix_special_chars(Content)]),
+    io:format(IO, "~8.16.0b:~s\"~s\\0\"~n", [Loc, ?NSPACE(31), e_util:fix_special_chars(Content)]),
     write_detail(Rest, Loc + Length + 1, OffsetMap, IO);
 write_detail([{{code, _}, Raw, Loc} | Rest], Loc, OffsetMap, IO) ->
-    io:format(IO, "~8.16.0b:\t~s~n", [Loc, fmt_code(Raw)]),
+    io:format(IO, "~8.16.0b:~s~s~n", [Loc, ?NSPACE(7), fmt_code(Raw)]),
     write_detail(Rest, Loc + byte_size(Raw), OffsetMap, IO);
 write_detail([{Instr, Raw, Loc} | Rest], Loc, OffsetMap, IO) ->
     case maps:find(Loc, OffsetMap) of
         {ok, Labels} ->
-            lists:foreach(fun(L) -> io:format(IO, "\t\t\t\t~s:~n", [L]) end, lists:reverse(Labels));
+            lists:foreach(fun(L) -> io:format(IO, "~s~s:~n", [?NSPACE(32), L]) end, lists:reverse(Labels));
         _ ->
             ok
     end,
-    io:format(IO, "~8.16.0b:\t~s\t\t~w~n", [Loc, fmt_code(Raw), Instr]),
+    io:format(IO, "~8.16.0b:~s~s~s~w~n", [Loc, ?NSPACE(7), fmt_code(Raw), ?NSPACE(16), Instr]),
     write_detail(Rest, Loc + byte_size(Raw), OffsetMap, IO);
 write_detail([{_, _, Loc} | _] = Data, N, OffsetMap, IO) when Loc > N ->
-    io:format(IO, "~8.16.0b:\t      00~n", [N]),
+    io:format(IO, "~8.16.0b:~s      00~n", [N, ?NSPACE(7)]),
     write_detail(Data, N + 1, OffsetMap, IO);
 write_detail([], _, _, _) ->
     ok.

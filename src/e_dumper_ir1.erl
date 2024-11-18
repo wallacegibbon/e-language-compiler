@@ -371,13 +371,13 @@ write_irs([IRs | Rest], IO) when is_list(IRs) ->
     write_irs(IRs, IO),
     write_irs(Rest, IO);
 write_irs([{comment, Content} | Rest], IO) ->
-    io:format(IO, "\t%% ~s~n", [Content]),
+    io:format(IO, "    %% ~s~n", [Content]),
     write_irs(Rest, IO);
 write_irs([{Tag, _} = IR | Rest], IO) when Tag =:= fn; Tag =:= label ->
     io:format(IO, "~w.~n", [IR]),
     write_irs(Rest, IO);
 write_irs([IR | Rest], IO) ->
-    io:format(IO, "\t~w.~n", [IR]),
+    io:format(IO, "    ~w.~n", [IR]),
     write_irs(Rest, IO);
 write_irs([], _) ->
     ok.
@@ -388,48 +388,48 @@ write_asm([IRs | Rest], IO) when is_list(IRs) ->
     write_asm(Rest, IO);
 %% Normal 3-operand instructions
 write_asm([{Tag, Op1, Op2, Op3} | Rest], IO) when Tag =:= csrrw; Tag =:= csrrs; Tag =:= csrrc ->
-    io:format(IO, "\t~s\t~s, ~s, ~s~n", [Tag | lists:map(fun op_tag_str/1, [Op1, Op3, Op2])]),
+    io:format(IO, "    ~s ~s, ~s, ~s~n", [Tag | lists:map(fun op_tag_str/1, [Op1, Op3, Op2])]),
     write_asm(Rest, IO);
 write_asm([{Tag, Op1, Op2, Op3} | Rest], IO) ->
-    io:format(IO, "\t~s\t~s, ~s, ~s~n", [Tag | lists:map(fun op_tag_str/1, [Op1, Op2, Op3])]),
+    io:format(IO, "    ~s ~s, ~s, ~s~n", [Tag | lists:map(fun op_tag_str/1, [Op1, Op2, Op3])]),
     write_asm(Rest, IO);
 %% Load and Store instructions
 write_asm([{Tag, Op1, {{x, _} = Op2, N}} | Rest], IO) ->
-    io:format(IO, "\t~s\t~s, ~w(~s)~n", [Tag, op_tag_str(Op1), N, op_tag_str(Op2)]),
+    io:format(IO, "    ~s ~s, ~w(~s)~n", [Tag, op_tag_str(Op1), N, op_tag_str(Op2)]),
     write_asm(Rest, IO);
 %% Labels
 write_asm([{Tag, Name} | Rest], IO) when Tag =:= fn; Tag =:= label ->
     io:format(IO, "~s:~n", [Name]),
     write_asm(Rest, IO);
 write_asm([{label, {align, 1}, Name} | Rest], IO) ->
-    io:format(IO, "~s:\t~n", [Name]),
+    io:format(IO, "~s:~n", [Name]),
     write_asm(Rest, IO);
 write_asm([{label, {align, N}, Name} | Rest], IO) ->
-    io:format(IO, "\t.balign ~w~n~s:~n", [N, Name]),
+    io:format(IO, "    .balign ~w~n~s:~n", [N, Name]),
     write_asm(Rest, IO);
 write_asm([{string, Content, _} | Rest], IO) ->
-    io:format(IO, "\t.string\t\"~ts\"~n", [e_util:fix_special_chars(Content)]),
+    io:format(IO, "    .string \"~ts\"~n", [e_util:fix_special_chars(Content)]),
     write_asm(Rest, IO);
 write_asm([{start_address, Address} | Rest], IO) ->
-    io:format(IO, "\t.org ~w~n", [Address]),
+    io:format(IO, "    .org ~w~n", [Address]),
     write_asm(Rest, IO);
 write_asm([{code, Label} | Rest], IO) when is_atom(Label) ->
-    io:format(IO, "\t.word ~s~n", [Label]),
+    io:format(IO, "    .word ~s~n", [Label]),
     write_asm(Rest, IO);
 write_asm([{code, Number} | Rest], IO) when is_integer(Number) ->
-    io:format(IO, "\t.word ~w~n", [Number]),
+    io:format(IO, "    .word ~w~n", [Number]),
     write_asm(Rest, IO);
 write_asm([{comment, Content} | Rest], IO) ->
-    io:format(IO, "\t## ~s~n", [Content]),
+    io:format(IO, "    ## ~s~n", [Content]),
     write_asm(Rest, IO);
 write_asm([{Tag, Op1, Op2} | Rest], IO) ->
-    io:format(IO, "\t~s\t~s, ~s~n", [Tag, op_tag_str(Op1), op_tag_str(Op2)]),
+    io:format(IO, "    ~s ~s, ~s~n", [Tag, op_tag_str(Op1), op_tag_str(Op2)]),
     write_asm(Rest, IO);
 write_asm([{Tag, Op1} | Rest], IO) ->
-    io:format(IO, "\t~s\t~s~n", [Tag, op_tag_str(Op1)]),
+    io:format(IO, "    ~s ~s~n", [Tag, op_tag_str(Op1)]),
     write_asm(Rest, IO);
 write_asm([{Tag} | Rest], IO) ->
-    io:format(IO, "\t~s~n", [Tag]),
+    io:format(IO, "    ~s~n", [Tag]),
     write_asm(Rest, IO);
 write_asm([], _) ->
     ok.
