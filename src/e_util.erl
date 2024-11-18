@@ -219,10 +219,10 @@ sign_to_num(1) -> -1.
 -ifdef(EUNIT).
 
 fix_signed_num_test() ->
-    ?assertEqual( 7, fix_signed_num(7, 4)),
+    ?assertEqual(+7, fix_signed_num(7, 4)),
     ?assertEqual(-8, fix_signed_num(8, 4)),
     ?assertEqual(-7, fix_signed_num(9, 4)),
-    ?assertEqual(16#344, fix_signed_num(16#344, 12)),
+    ?assertEqual(+16#344, fix_signed_num(16#344, 12)),
     ?assertEqual(-16#323, fix_signed_num(16#CDD, 12)).
 
 u_type_immedi_test() ->

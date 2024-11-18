@@ -443,18 +443,18 @@ op_tag_str(Label) when is_atom(Label) ->
     atom_to_list(Label).
 
 %% {x, 0} means that there is not branching to generate. (already generated in previous IRs)
-'br!_reg'({x, 0},     _)    -> [];
-'br!_reg'(     R, Label)    -> [{'br!', R, Label}].
+'br!_reg'({x, 0}, _    ) -> [];
+'br!_reg'(R     , Label) -> [{'br!', R, Label}].
 
- br_reg  ({x, 0},     _)    -> [];
- br_reg  (     R, Label)    -> [{'br', R, Label}].
+ br_reg  ({x, 0}, _    ) -> [];
+ br_reg  (R     , Label) -> [{'br', R, Label}].
 
-reverse_cmp_tag('==')   -> '!=';
-reverse_cmp_tag('!=')   -> '==';
-reverse_cmp_tag('>=')   -> '<';
-reverse_cmp_tag('<=')   -> '>';
-reverse_cmp_tag( '>')   -> '<=';
-reverse_cmp_tag( '<')   -> '>='.
+reverse_cmp_tag('==') -> '!=';
+reverse_cmp_tag('!=') -> '==';
+reverse_cmp_tag('>=') -> '<' ;
+reverse_cmp_tag('<=') -> '>' ;
+reverse_cmp_tag('>' ) -> '<=';
+reverse_cmp_tag('<' ) -> '>='.
 
 %% Unsigned data types are dropped by E language, so instructions like `lbu` are not used.
 st_tag(1) -> sb;

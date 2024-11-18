@@ -351,6 +351,6 @@ token_symbol({Sym, _}) -> Sym.
 
 token_loc(T) -> element(2, T).
 
-replace_tag({_, Loc, Val}, NewTag)  -> {NewTag, Loc, Val};
-replace_tag({_, Loc     }, NewTag)  -> {NewTag, Loc}.
+replace_tag({_, Loc, Val}, NewTag) -> {NewTag, Loc, Val};
+replace_tag({_, Loc     }, NewTag) -> {NewTag, Loc}.
 

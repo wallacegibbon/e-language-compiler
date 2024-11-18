@@ -21,32 +21,32 @@ smart_li(R, N) when ?IS_SMALL_IMMEDI(N) ->
 smart_li(R, N) ->
     li_big_num(R, e_util:u_type_immedi(N)).
 
-li_big_num(R, {   0, Low})  -> [{addi, R, {0, 0}, Low}];
-li_big_num(R, {High,   0})  -> [{lui, R, High}];
-li_big_num(R, {High, Low})  -> [{lui, R, High}, {addi, R, R, Low}].
+li_big_num(R, {0   , Low}) -> [{addi, R, {0, 0}, Low}];
+li_big_num(R, {High, 0  }) -> [{lui, R, High}];
+li_big_num(R, {High, Low}) -> [{lui, R, High}, {addi, R, R, Low}].
 
 mv(R1, R2) -> [{addi, R1, R2, 0}].
 
-to_op_normal(   '+')    ->  add;
-to_op_normal(   '-')    ->  sub;
-to_op_normal(   '*')    ->  mul;
-to_op_normal(   '/')    -> 'div';
-to_op_normal( 'rem')    -> 'rem';
-to_op_normal('band')    -> 'and';
-to_op_normal( 'bor')    -> 'or';
-to_op_normal('bxor')    -> 'xor';
-to_op_normal( 'bsl')    ->  sll;
-to_op_normal( 'bsr')    ->  sra.
+to_op_normal('+'   ) -> 'add';
+to_op_normal('-'   ) -> 'sub';
+to_op_normal('*'   ) -> 'mul';
+to_op_normal('/'   ) -> 'div';
+to_op_normal('rem' ) -> 'rem';
+to_op_normal('band') -> 'and';
+to_op_normal('bor' ) -> 'or' ;
+to_op_normal('bxor') -> 'xor';
+to_op_normal('bsl' ) -> 'sll';
+to_op_normal('bsr' ) -> 'sra'.
 
-to_op_immedi(   '+')    -> addi;
-to_op_immedi('band')    -> andi;
-to_op_immedi( 'bor')    -> ori;
-to_op_immedi('bxor')    -> xori;
-to_op_immedi( 'bsl')    -> slli;
-to_op_immedi( 'bsr')    -> srai.
+to_op_immedi('+'   ) -> addi;
+to_op_immedi('band') -> andi;
+to_op_immedi('bor' ) -> ori ;
+to_op_immedi('bxor') -> xori;
+to_op_immedi('bsl' ) -> slli;
+to_op_immedi('bsr' ) -> srai.
 
 to_cmp_op('==') -> beq;
 to_cmp_op('!=') -> bne;
 to_cmp_op('>=') -> bge;
-to_cmp_op( '<') -> blt.
+to_cmp_op('<' ) -> blt.
 
