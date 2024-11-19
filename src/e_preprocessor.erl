@@ -114,22 +114,15 @@ tokens_to_str(Tokens) ->
     lists:flatten(lists:join(" ", lists:map(fun token_to_str/1, Tokens))).
 
 -spec token_to_str(token()) -> string().
-token_to_str({integer, _, Number}) ->
-    integer_to_list(Number);
-token_to_str({float, _, Number}) ->
-    float_to_list(Number);
-token_to_str({string, _, String}) ->
-    String;
-token_to_str({identifier, _, Name}) ->
-    atom_to_list(Name);
-token_to_str({newline, _}) ->
-    $\n;
-token_to_str({AnyAtom, _}) ->
-    atom_to_list(AnyAtom).
+token_to_str({integer   , _, Number}) -> integer_to_list(Number);
+token_to_str({float     , _, Number}) -> float_to_list(Number);
+token_to_str({string    , _, String}) -> String;
+token_to_str({identifier, _, Name  }) -> atom_to_list(Name);
+token_to_str({newline   , _        }) -> $\n;
+token_to_str({AnyAtom   , _        }) -> atom_to_list(AnyAtom).
 
 tokens_to_str_test() ->
     Pos = {0, 0},
     ?assertEqual("* + \n \n", tokens_to_str([{'*', Pos}, {'+', Pos}, {newline, Pos}, {newline, Pos}])).
 
 -endif.
-

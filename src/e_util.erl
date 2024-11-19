@@ -82,7 +82,7 @@ stmt_to_str(?AREF(Arr, Index)) ->
 stmt_to_str(?CALL(Fn, Args)) ->
     io_lib:format("(~s)(~s)", [stmt_to_str(Fn), string:join(lists:map(fun stmt_to_str/1, Args), ",")]);
 stmt_to_str(?OP2('^', Op1, _Size)) ->
-    %io_lib:format("(~s^ <size:~s>)", [stmt_to_str(Op1), stmt_to_str(_Size)]);
+                                                %io_lib:format("(~s^ <size:~s>)", [stmt_to_str(Op1), stmt_to_str(_Size)]);
     io_lib:format("((~s)^)", [stmt_to_str(Op1)]);
 stmt_to_str(?OP2(Tag, Op1, Op2)) ->
     io_lib:format("(~s ~s ~s)", [stmt_to_str(Op1), Tag, stmt_to_str(Op2)]);
@@ -352,4 +352,3 @@ token_attach_filename(Filename, {Tag, {Row, Column}}) ->
     {Tag, {Filename, Row, Column}};
 token_attach_filename(Filename, {Tag, {Row, Column}, A}) ->
     {Tag, {Filename, Row, Column}, A}.
-

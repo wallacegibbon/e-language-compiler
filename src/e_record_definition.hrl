@@ -235,31 +235,30 @@
 
 -define(IS_ARITH(Tag),
         (
-         Tag =:= '+' orelse Tag =:= '-' orelse Tag =:= '*' orelse Tag =:= '/' orelse Tag =:= 'rem' orelse
-         Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor' orelse Tag =:= 'bnot' orelse
-         Tag =:= 'bsl' orelse Tag =:= 'bsr'
+          Tag =:= '+' orelse Tag =:= '-' orelse Tag =:= '*' orelse Tag =:= '/' orelse Tag =:= 'rem' orelse
+          Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor' orelse Tag =:= 'bnot' orelse
+          Tag =:= 'bsl' orelse Tag =:= 'bsr'
         )).
 
 -define(IS_IMMID_ARITH(Tag),
         (
-         Tag =:= '+' orelse Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor'
+          Tag =:= '+' orelse Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor'
         )).
 
 -define(IS_SHIFT(Tag),
         (
-         Tag =:= 'bsl' orelse Tag =:= 'bsr'
+          Tag =:= 'bsl' orelse Tag =:= 'bsr'
         )).
 
 -define(IS_LOGIC(Tag),
         (
-         Tag =:= 'and' orelse Tag =:= 'or' orelse Tag =:= 'not'
+          Tag =:= 'and' orelse Tag =:= 'or' orelse Tag =:= 'not'
         )).
 
 -define(IS_COMPARE(Tag),
         (
-         Tag =:= '>' orelse Tag =:= '<' orelse Tag =:= '==' orelse Tag =:= '!=' orelse
-         Tag =:= '>=' orelse Tag =:= '<='
+          Tag =:= '>' orelse Tag =:= '<' orelse Tag =:= '==' orelse Tag =:= '!=' orelse
+          Tag =:= '>=' orelse Tag =:= '<='
         )).
 
 -endif.
-

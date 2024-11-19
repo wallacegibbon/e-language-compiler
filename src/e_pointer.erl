@@ -28,4 +28,3 @@ fix_pointer_size(#e_type_convert{expr = Expr} = C, Ctx) ->
     C#e_type_convert{expr = fix_pointer_size(Expr, Ctx)};
 fix_pointer_size(Any, _) ->
     Any.
-

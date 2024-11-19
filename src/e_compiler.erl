@@ -86,4 +86,3 @@ scan_raw_content(RawContent) ->
 %% for escript generating
 main(_) ->
     io:format("call ec:main/1 instead~n").
-

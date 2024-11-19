@@ -70,4 +70,3 @@ find_name_in_fn_map(?VREF(Name, Loc), FnTypeMap) ->
 
 tag_trans(global) -> 'gp';
 tag_trans(local) -> 'fp'.
-

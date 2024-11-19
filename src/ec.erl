@@ -17,7 +17,6 @@ arguments() ->
     ].
 
 handler(#{input_file := InputFile, output_file := OutputFile} = Options) ->
-    %io:format("Command line options: ~p~n", [Options]),
     MergedOptions = e_compile_option:combine(maps:without([input_file, output_file], Options)),
     try
         e_compiler:compile_to_machine1(InputFile, OutputFile, MergedOptions)
@@ -96,4 +95,3 @@ help_of(Any) ->
 
 main(Args) ->
     argparse:run(Args, cli(), #{progname => ec}).
-

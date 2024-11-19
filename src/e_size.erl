@@ -156,4 +156,3 @@ find_0th([], []) ->
     ok;
 find_0th(_, _) ->
     throw("invalid args and vars").
-

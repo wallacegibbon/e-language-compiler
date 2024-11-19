@@ -444,8 +444,8 @@ op_tag_str(Label) when is_atom(Label) ->
 'br!_reg'({x, 0}, _    ) -> [];
 'br!_reg'(R     , Label) -> [{'br!', R, Label}].
 
- br_reg  ({x, 0}, _    ) -> [];
- br_reg  (R     , Label) -> [{'br', R, Label}].
+br_reg   ({x, 0}, _    ) -> [];
+br_reg   (R     , Label) -> [{'br', R, Label}].
 
 reverse_cmp_tag('==') -> '!=';
 reverse_cmp_tag('!=') -> '==';
@@ -459,4 +459,3 @@ st_tag(1) -> sb;
 st_tag(_) -> sw.
 ld_tag(1) -> lb;
 ld_tag(_) -> lw.
-

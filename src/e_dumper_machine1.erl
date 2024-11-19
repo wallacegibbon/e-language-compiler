@@ -60,7 +60,7 @@ check_label_conflict(Name, LabelMap) ->
 
 -define(IS_BR_INSTR(Tag),
         (
-         Tag =:= beq orelse Tag =:= bne orelse Tag =:= bge orelse Tag =:= blt orelse Tag =:= bgt orelse Tag =:= ble
+          Tag =:= beq orelse Tag =:= bne orelse Tag =:= bge orelse Tag =:= blt orelse Tag =:= bgt orelse Tag =:= ble
         )).
 
 replace_address([{{Br, R1, R2, Label}, Loc} | Rest], LabelMap) when ?IS_BR_INSTR(Br) ->
@@ -95,15 +95,15 @@ replace_address([], _) ->
 
 -define(IS_IMMEDI_CALC(Tag),
         (
-         Tag =:= addi orelse Tag =:= andi orelse Tag =:= ori orelse Tag =:= xori orelse
-         Tag =:= slli orelse Tag =:= srai
+          Tag =:= addi orelse Tag =:= andi orelse Tag =:= ori orelse Tag =:= xori orelse
+          Tag =:= slli orelse Tag =:= srai
         )).
 
 -define(IS_NORMAL_CALC(Tag),
         (
-         Tag =:= add orelse Tag =:= sub orelse Tag =:= 'and' orelse Tag =:= 'or' orelse Tag =:= 'xor' orelse
-         Tag =:= sll orelse Tag =:= sra orelse
-         Tag =:= mul orelse Tag =:= mulh orelse Tag =:= 'div' orelse Tag =:= 'rem'
+          Tag =:= add orelse Tag =:= sub orelse Tag =:= 'and' orelse Tag =:= 'or' orelse Tag =:= 'xor' orelse
+          Tag =:= sll orelse Tag =:= sra orelse
+          Tag =:= mul orelse Tag =:= mulh orelse Tag =:= 'div' orelse Tag =:= 'rem'
         )).
 
 encode_instr({{Br, {x, N1}, {x, N2}, Address} = I, Loc}) when Br =:= bge; Br =:= blt; Br =:= beq; Br =:= bne ->
@@ -234,4 +234,3 @@ f7code_of(mulh   ) -> 2#0000001;
 f7code_of('div'  ) -> 2#0000001;
 f7code_of('rem'  ) -> 2#0000001;
 f7code_of(_      ) -> 2#0000000.
-

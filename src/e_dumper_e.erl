@@ -20,4 +20,3 @@ ast_to_str([_ | Rest], InitCode) ->
     ast_to_str(Rest, InitCode);
 ast_to_str([], _) ->
     [].
-

@@ -49,4 +49,3 @@ to_cmp_op('==') -> beq;
 to_cmp_op('!=') -> bne;
 to_cmp_op('>=') -> bge;
 to_cmp_op('<' ) -> blt.
-

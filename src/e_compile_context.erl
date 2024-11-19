@@ -8,4 +8,3 @@
                      vars := #e_vars{},
                      wordsize := non_neg_integer()
                     }.
-

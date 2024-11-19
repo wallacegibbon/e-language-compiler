@@ -88,4 +88,3 @@ eliminate_dot(#e_type_convert{expr = Expr} = C, Ctx) ->
     C#e_type_convert{expr = eliminate_dot(Expr, Ctx)};
 eliminate_dot(Any, _) ->
     Any.
-

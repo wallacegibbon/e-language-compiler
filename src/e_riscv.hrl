@@ -10,12 +10,12 @@
 
 -define(IS_SPECIAL_REG(Tag),
         (
-         Tag =:= {x, 8} orelse Tag =:= {x, 3} orelse Tag =:= {x, 2} orelse Tag =:= {x, 1} orelse Tag =:= {x, 0}
+          Tag =:= {x, 8} orelse Tag =:= {x, 3} orelse Tag =:= {x, 2} orelse Tag =:= {x, 1} orelse Tag =:= {x, 0}
         )).
 
 -define(IS_SMALL_IMMEDI(N),
         (
-         N >= -2048 andalso N < 2048
+          N >= -2048 andalso N < 2048
         )).
 
 -endif.

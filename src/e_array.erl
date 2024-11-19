@@ -31,4 +31,3 @@ transform_aref(#e_type_convert{expr = Expr} = C, Ctx) ->
     C#e_type_convert{expr = transform_aref(Expr, Ctx)};
 transform_aref(Any, _) ->
     Any.
-

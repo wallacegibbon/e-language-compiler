@@ -184,4 +184,3 @@ translate_op('or') -> "||";
 translate_op('@') -> "&";
 translate_op('^') -> "*";
 translate_op(Any) -> Any.
-

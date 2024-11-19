@@ -47,4 +47,3 @@ option_for_ch32v307() ->
       entry_function => main,
       wordsize => 4
      }.
-

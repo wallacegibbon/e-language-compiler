@@ -84,4 +84,3 @@ array_init_to_ops(Target, [E | Rest], Cnt, Loc, NewCode, #{wordsize := WordSize}
     array_init_to_ops(Target, Rest, Cnt + 1, Loc, Ops ++ NewCode, Ctx);
 array_init_to_ops(_, [], _, _, NewCode, _) ->
     NewCode.
-

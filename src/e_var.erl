@@ -154,4 +154,3 @@ shift_offset(#e_vars{offset_map = OffsetMap, size = Size} = Vars, Num) ->
 -spec shift_offset_middle(#e_vars{}) -> #e_vars{}.
 shift_offset_middle(#e_vars{size = Size} = Vars) ->
     shift_offset(Vars, Size div 2).
-
