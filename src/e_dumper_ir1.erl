@@ -200,6 +200,10 @@ expr_to_ir(?CALL(Fn, Args), Ctx) ->
     RetLoad = [{comment, "load ret"}, {lw, R, {{x, 2}, -WordSize}}, {addi, {x, 2}, {x, 2}, -WordSize}],
     Call = [FnLoad, PreserveRet, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, R}, StackRestore, RetLoad],
     {[{comment, "call start"}, BeforeCall, Call, AfterCall, {comment, "call end"}], R, Ctx1};
+%% Optimization for `* 1` is important since it speed up the accessing of byte arrays.
+expr_to_ir(?OP2('*', Expr, ?I(1)), Ctx) ->
+    expr_to_ir(Expr, Ctx);
+%% Translate `*` to `bsl` and `+` when option `prefer_shift` is given.
 expr_to_ir(?OP2('*', Expr, ?I(N)), #{prefer_shift := true} = Ctx) when N > 1 ->
     {IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
     Nums = lists:map(fun(A) -> erlang:trunc(math:log2(A)) end, e_util:dissociate_num(N, 1 bsl 32)),
@@ -208,21 +212,15 @@ expr_to_ir(?OP2('*', Expr, ?I(N)), #{prefer_shift := true} = Ctx) when N > 1 ->
 %% RISC-V do not have immediate version `sub` instruction, convert `-` to `+` to make use of `addi` later.
 expr_to_ir(?OP2('-', Expr, ?I(N)) = OP, Ctx) ->
     expr_to_ir(OP?OP2('+', Expr, ?I(-N)), Ctx);
-%% Some immediate related optimizations
+%% More immediate related optimizations
 expr_to_ir(?OP2(Tag, Expr, ?I(0)), Ctx) when Tag =:= '+'; Tag =:= 'bor'; Tag =:= 'bxor'; ?IS_SHIFT(Tag) ->
-    expr_to_ir(Expr, Ctx);
-expr_to_ir(?OP2('*', _, ?I(0)), Ctx) ->
-    {[], {x, 0}, Ctx};
-expr_to_ir(?OP2('*', Expr, ?I(1)), Ctx) ->
     expr_to_ir(Expr, Ctx);
 expr_to_ir(?OP2('band', Expr, ?I(-1)), Ctx) ->
     expr_to_ir(Expr, Ctx);
 %% The immediate ranges for shifting instructions are different from other immediate ranges.
 expr_to_ir(?OP2(Tag, _, ?I(N), Loc), _) when ?IS_SHIFT(Tag), N < 0 ->
-    e_util:ethrow(Loc, "shift number can not be negative but `~w` was given.", [N]);
-expr_to_ir(?OP2(Tag, _, ?I(N), Loc), #{wordsize := 4}) when ?IS_SHIFT(Tag), N > 32 ->
-    e_util:ethrow(Loc, "shift number `~w` is out of range.", [N]);
-expr_to_ir(?OP2(Tag, _, ?I(N), Loc), #{wordsize := 8}) when ?IS_SHIFT(Tag), N > 64 ->
+    e_util:ethrow(Loc, "negative shift number.");
+expr_to_ir(?OP2(Tag, _, ?I(N), Loc), #{wordsize := WordSize}) when ?IS_SHIFT(Tag), N > WordSize * 8 ->
     e_util:ethrow(Loc, "shift number `~w` is out of range.", [N]);
 expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when ?IS_SHIFT(Tag) ->
     {IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
