@@ -31,4 +31,3 @@ diff $detail_file.1 $asm_file.dump.1 | grep '^[^>]'
 echo Done.
 
 rm $detail_file.* $asm_file.*
-

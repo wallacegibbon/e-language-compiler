@@ -2,14 +2,13 @@
 set -e
 
 case $(uname -o) in
-GNU/Linux|FreeBSD|Darwin) INSTALL_PATH=/usr/local/bin;;
-Msys                    ) INSTALL_PATH=$HOME/AppData/Local/programs/e-language-compiler;;
-*                       ) echo Unsupported platform >&2; exit 1;;
+Msys|Cygwin) INSTALL_PATH=$HOME/AppData/Local/programs/e-language-compiler;;
+*          ) INSTALL_PATH=/usr/local/bin;;
 esac
 
 case $(uname -o) in
-GNU/Linux|FreeBSD|Darwin) SUDO=sudo;;
-*                       ) SUDO="";;
+Msys|Cygwin) SUDO="";;
+*          ) SUDO=sudo;;
 esac
 
 echo Building the escript file...
@@ -20,4 +19,3 @@ echo Copying the \"ec\" command to $INSTALL_PATH...
 $SUDO cp _build/default/bin/ec $INSTALL_PATH
 
 echo Done.
-
