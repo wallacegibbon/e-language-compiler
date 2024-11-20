@@ -1,5 +1,5 @@
 -module(e_riscv_ir).
--export([tmp_regs/0, smart_addi/3, smart_li/2, mv/2, to_op_normal/1, to_op_immedi/1, to_cmp_op/1]).
+-export([tmp_regs/0, addi/3, li/2, mv/2, to_op_normal/1, to_op_immedi/1, to_cmp_op/1]).
 -include("e_riscv.hrl").
 
 %% We don't need many temporary registers with current allocation algorithm, 8 is more than enough.
@@ -8,24 +8,23 @@
 tmp_regs() ->
     [{x, 5}, {x, 6}, {x, 7}, {x, 10}, {x, 11}, {x, 12}, {x, 13}, {x, 14}].
 
--spec smart_addi(machine_reg(), integer(), machine_reg()) -> irs().
-smart_addi(_, 0, _) ->
-    [];
-smart_addi(R, N, _) when ?IS_SMALL_IMMEDI(N) ->
+-spec addi(machine_reg(), integer(), machine_reg()) -> irs().
+addi(R, N, _) when ?IS_SMALL_IMMEDI(N) ->
     [{addi, R, R, N}];
-smart_addi(R, N, T) ->
-    [smart_li(T, N), {add, R, R, T}].
+addi(R, N, T) ->
+    [li(T, N), {add, R, R, T}].
 
-smart_li(R, N) when ?IS_SMALL_IMMEDI(N) ->
+li(R, N) when ?IS_SMALL_IMMEDI(N) ->
     [{addi, R, {x, 0}, N}];
-smart_li(R, N) ->
-    li_big_num(R, e_util:u_type_immedi(N)).
+li(R, N) ->
+    li_u(R, e_util:u_type_immedi(N)).
 
-li_big_num(R, {0   , Low}) -> [{addi, R, {0, 0}, Low}];
-li_big_num(R, {High, 0  }) -> [{lui, R, High}];
-li_big_num(R, {High, Low}) -> [{lui, R, High}, {addi, R, R, Low}].
+li_u(R, {0, L}) -> [{addi, R, {x, 0}, L}];
+li_u(R, {H, 0}) -> [{lui, R, H}];
+li_u(R, {H, L}) -> [{lui, R, H}, {addi, R, R, L}].
 
-mv(R1, R2) -> [{addi, R1, R2, 0}].
+mv(R1, R2) ->
+    [{addi, R1, R2, 0}].
 
 to_op_normal('+'   ) -> 'add';
 to_op_normal('-'   ) -> 'sub';

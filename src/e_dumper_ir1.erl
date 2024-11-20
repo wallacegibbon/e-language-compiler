@@ -60,7 +60,7 @@ init_code(SP, GP, #{entry_function := Entry} = Options) ->
     EndJump = [{label, {align, 1}, '__end'}, {j, '__end'}],
     DefaultISR = [{label, {align, 1}, '__default_isr'}, {j, '__default_isr'}],
     %% Init `sp` and `gp`. This should be before InitVars.
-    InitSystemIRs1 = [{label, {align, 1}, '__init_system1'}, e_riscv_ir:smart_li({x, 2}, SP), e_riscv_ir:smart_li({x, 3}, GP)],
+    InitSystemIRs1 = [{label, {align, 1}, '__init_system1'}, e_riscv_ir:li({x, 2}, SP), e_riscv_ir:li({x, 3}, GP)],
     %% Set interrupt vector base address, enable interrupt.
     InitSystemIRs2 = [{label, {align, 1}, '__init_system2'}, interrupt_init_irs({x, 5}, Options)],
     Init1 = [{label, {align, 1}, '__init'}, InitSystemIRs1],
@@ -71,9 +71,9 @@ init_code(SP, GP, #{entry_function := Entry} = Options) ->
 interrupt_init_irs(T, #{ivec_pos := Pos, ivec_size := Size}) when Size > 0 ->
     %% Initialize interrupt vector address by writting `mtvec`(CSR 0x305).
     %% CAUTION: In RV Spec, mtvec[1] is reserved. But QingKe need mtvec[1] to be 1 to be compatible with the standard.
-    SetInterruptVector = [e_riscv_ir:smart_li(T, Pos), {ori, T, T, 2#11}, {csrrw, {x, 0}, T, 16#305}],
+    SetInterruptVector = [e_riscv_ir:li(T, Pos), {ori, T, T, 2#11}, {csrrw, {x, 0}, T, 16#305}],
     %% Initialize MIE and MPIE in `mstatus`(CSR 0x300).
-    InitInterrupt = [e_riscv_ir:smart_li(T, 16#88), {csrrw, {x, 0}, T, 16#300}],
+    InitInterrupt = [e_riscv_ir:li(T, 16#88), {csrrw, {x, 0}, T, 16#300}],
     lists:flatten([InitInterrupt | SetInterruptVector]);
 interrupt_init_irs(_, _) ->
     [].
@@ -98,9 +98,9 @@ ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{size = Size0, 
     FrameSize = Size2 + WordSize * 2,
     SaveFpRa = [{sw, {x, 8}, {{x, 2}, -WordSize * 2}}, {sw, {x, 1}, {{x, 2}, -WordSize}}],
     RestoreFpRa = [{lw, {x, 8}, {{x, 2}, -WordSize * 2}}, {lw, {x, 1}, {{x, 2}, -WordSize}}],
-    RegSave = [e_riscv_ir:smart_addi({x, 2}, FrameSize, T), SaveFpRa, e_riscv_ir:mv({x, 8}, {x, 2}), e_riscv_ir:smart_addi({x, 8}, -FrameSize, T)],
+    RegSave = [e_riscv_ir:addi({x, 2}, FrameSize, T), SaveFpRa, e_riscv_ir:mv({x, 8}, {x, 2}), e_riscv_ir:addi({x, 8}, -FrameSize, T)],
     {I1, I2} = interrupt_related_code(Fn, Regs, Ctx),
-    RegRestore = [RestoreFpRa, e_riscv_ir:smart_addi({x, 2}, -FrameSize, T)],
+    RegRestore = [RestoreFpRa, e_riscv_ir:addi({x, 2}, -FrameSize, T)],
     EpilogueTag = generate_tag(Name, epilogue),
     Prologue = [RegSave, I1, {comment, "prologue end"}],
     Epilogue = [{label, {align, 1}, EpilogueTag}, I2, RegRestore, ret_instruction_of(Fn)],
@@ -196,7 +196,7 @@ expr_to_ir(?CALL(Fn, Args), Ctx) ->
     PreserveRet = [{comment, "preserve space for ret"}, {addi, {x, 2}, {x, 2}, WordSize}],
     {ArgPrepare, N} = args_to_stack(Args, 0, [], Ctx1),
     #{free_regs := [T | _]} = Ctx1,
-    StackRestore = [{comment, "drop args"}, e_riscv_ir:smart_addi({x, 2}, -N, T)],
+    StackRestore = [{comment, "drop args"}, e_riscv_ir:addi({x, 2}, -N, T)],
     RetLoad = [{comment, "load ret"}, {lw, R, {{x, 2}, -WordSize}}, {addi, {x, 2}, {x, 2}, -WordSize}],
     Call = [FnLoad, PreserveRet, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, R}, StackRestore, RetLoad],
     {[{comment, "call start"}, BeforeCall, Call, AfterCall, {comment, "call end"}], R, Ctx1};
@@ -267,7 +267,7 @@ expr_to_ir(?S(String, Loc), #{free_regs := [R | RestRegs], string_collector := P
 expr_to_ir(?I(0), Ctx) ->
     {[], {x, 0}, Ctx};
 expr_to_ir(?I(N), #{free_regs := [R | RestRegs]} = Ctx) ->
-    {e_riscv_ir:smart_li(R, N), R, Ctx#{free_regs := RestRegs}};
+    {e_riscv_ir:li(R, N), R, Ctx#{free_regs := RestRegs}};
 expr_to_ir(?VREF(fp), Ctx) ->
     {[], {x, 8}, Ctx};
 expr_to_ir(?VREF(gp), Ctx) ->
@@ -348,8 +348,8 @@ recycle_tmpreg([], RegBank) ->
 -spec reg_save_restore([machine_reg()], context()) -> {irs(), irs()}.
 reg_save_restore(Regs, #{wordsize := WordSize, free_regs := [T | _]}) ->
     TotalSize = length(Regs) * WordSize,
-    StackGrow = [{comment, "grow stack"}, e_riscv_ir:smart_addi({x, 2}, TotalSize, T)],
-    StackShrink = [{comment, "shrink stack"}, e_riscv_ir:smart_addi({x, 2}, -TotalSize, T)],
+    StackGrow = [{comment, "grow stack"}, e_riscv_ir:addi({x, 2}, TotalSize, T)],
+    StackShrink = [{comment, "shrink stack"}, e_riscv_ir:addi({x, 2}, -TotalSize, T)],
     Save = e_util:list_map(fun(R, I) -> {sw, R, {{x, 2}, I * WordSize - TotalSize}} end, Regs),
     Restore = e_util:list_map(fun(R, I) -> {lw, R, {{x, 2}, I * WordSize - TotalSize}} end, Regs),
     Enter = [StackGrow, {comment, io_lib:format("regs to save: ~w", [Regs])}, Save],
