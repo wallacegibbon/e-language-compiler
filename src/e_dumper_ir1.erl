@@ -173,7 +173,7 @@ comment(Tag, Info, {Filename, Line, Col}) ->
     [{comment, io_lib:format("[~s@~s:~w:~w] ~s", [Tag, Filename, Line, Col, Info])}].
 
 -spec expr_to_ir(e_expr(), context()) -> {irs(), machine_reg(), context()}.
-expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', Expr, ?I(N)), ?I(V)), Right), Ctx) when ?IS_SMALL_IMMEDI(N) ->
+expr_to_ir(?OP2('=', ?OP2('^', ?OP2('+', Expr, ?I(N)), ?I(V)), Right), Ctx) when ?IS_IMM12(N) ->
     {RightIRs, R1, Ctx1} = expr_to_ir(Right, Ctx),
     {VarrefIRs, R2, Ctx2} = expr_to_ir(Expr, Ctx1),
     {[RightIRs, VarrefIRs, {st_tag(V), R1, {R2, N}}], R1, Ctx2};
@@ -181,7 +181,7 @@ expr_to_ir(?OP2('=', ?OP2('^', Expr, ?I(V)), Right), Ctx) ->
     {RightIRs, R1, Ctx1} = expr_to_ir(Right, Ctx),
     {LeftIRs, R2, Ctx2} = expr_to_ir(Expr, Ctx1),
     {[RightIRs, LeftIRs, {st_tag(V), R1, {R2, 0}}], R1, Ctx2};
-expr_to_ir(?OP2('^', ?OP2('+', Expr, ?I(N)), ?I(V)), Ctx) when ?IS_SMALL_IMMEDI(N) ->
+expr_to_ir(?OP2('^', ?OP2('+', Expr, ?I(N)), ?I(V)), Ctx) when ?IS_IMM12(N) ->
     {IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
     {[IRs, {ld_tag(V), T, {R, N}}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 expr_to_ir(?OP2('^', Expr, ?I(V)), Ctx) ->
@@ -225,7 +225,7 @@ expr_to_ir(?OP2(Tag, _, ?I(N), Loc), #{wordsize := WordSize}) when ?IS_SHIFT(Tag
 expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when ?IS_SHIFT(Tag) ->
     {IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
     {[IRs, {e_riscv_ir:to_op_immedi(Tag), T, R, N}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
-expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when ?IS_IMMID_ARITH(Tag), ?IS_SMALL_IMMEDI(N) ->
+expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when ?IS_IMMID_ARITH(Tag), ?IS_IMM12(N) ->
     {IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
     {[IRs, {e_riscv_ir:to_op_immedi(Tag), T, R, N}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
@@ -255,7 +255,7 @@ expr_to_ir(?OP1('not', Expr), #{cond_label := {L1, L2}} = Ctx) ->
 expr_to_ir(?OP1('bnot', Expr), Ctx) ->
     {IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
     {[IRs, {xori, T, R, -1}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
-expr_to_ir(?OP1('-', ?I(N) = Num), Ctx) when ?IS_SMALL_IMMEDI(-N) ->
+expr_to_ir(?OP1('-', ?I(N) = Num), Ctx) when ?IS_IMM12(-N) ->
     expr_to_ir(Num?I(-N), Ctx);
 expr_to_ir(?OP1('-', Expr), Ctx) ->
     {IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
@@ -307,7 +307,7 @@ fix_irs([{j, Label} = I | Rest]) ->
         false ->
             [I | fix_irs(Rest)]
     end;
-fix_irs([{addi, R1, R2, N1}, {addi, R1, R1, N2} | Rest]) when ?IS_SMALL_IMMEDI(N1 + N2) ->
+fix_irs([{addi, R1, R2, N1}, {addi, R1, R1, N2} | Rest]) when ?IS_IMM12(N1 + N2) ->
     fix_irs([{addi, R1, R2, N1 + N2} | Rest]);
 fix_irs([Any | Rest]) ->
     [Any | fix_irs(Rest)];

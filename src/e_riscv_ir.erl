@@ -8,23 +8,24 @@
 tmp_regs() ->
     [{x, 5}, {x, 6}, {x, 7}, {x, 10}, {x, 11}, {x, 12}, {x, 13}, {x, 14}].
 
+%% Add an immediate integer to a register.
+%% The third parameter is a temporary register which may not be used.
 -spec addi(machine_reg(), integer(), machine_reg()) -> irs().
-addi(R, N, _) when ?IS_SMALL_IMMEDI(N) ->
-    [{addi, R, R, N}];
-addi(R, N, T) ->
-    [li(T, N), {add, R, R, T}].
+addi(_, 0, _)                   -> [];
+addi(R, N, _) when ?IS_IMM12(N) -> [{addi, R, R, N}];
+addi(R, N, T)                   -> [li(T, N), {add, R, R, T}].
 
-li(R, N) when ?IS_SMALL_IMMEDI(N) ->
-    [{addi, R, {x, 0}, N}];
-li(R, N) ->
-    li_u(R, e_util:u_type_immedi(N)).
+%% Load an immediate integer into a register.
+li(R, N) when ?IS_IMM12(N) -> [{addi, R, {x, 0}, N}];
+li(R, N)                   -> li_u(R, e_util:u_type_immedi(N)).
 
+%% Load a pair of numbers (RV U type) into target register.
 li_u(R, {0, L}) -> [{addi, R, {x, 0}, L}];
 li_u(R, {H, 0}) -> [{lui, R, H}];
 li_u(R, {H, L}) -> [{lui, R, H}, {addi, R, R, L}].
 
-mv(R1, R2) ->
-    [{addi, R1, R2, 0}].
+%% `mv` can be implemented by `addi a,b,0` or `add a,b,x0`, we use `addi` here.
+mv(R1, R2) -> [{addi, R1, R2, 0}].
 
 to_op_normal('+'   ) -> 'add';
 to_op_normal('-'   ) -> 'sub';
