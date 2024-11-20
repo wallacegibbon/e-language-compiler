@@ -38,8 +38,8 @@ E语言：
 arr: {word, 3} = {1, 2, 3};
 
 struct Blah
-	id: word;
-	name: byte^;
+    id: word;
+    name: byte^;
 end
 
 b: Blah = Blah{id = 1, name = "hello"};
@@ -52,8 +52,8 @@ C语言：
 int32_t arr[3] = {1, 2, 3};
 
 struct Blah {
-	int id;
-	char *name;
+    int id;
+    char *name;
 };
 
 struct Blah b = {1, "hello"};
@@ -68,11 +68,11 @@ C语言中“联合体”主要的用途，是复用内存，这个在特定使�
 
 ```c
 struct A {
-	char tag;
-	union {
-		long long num;
-		char buf[8];
-	} value;
+    char tag;
+    union {
+        long long num;
+        char buf[8];
+    } value;
 };
 
 struct A a = {.tag = 1, .value.num = 0x12345678 };
@@ -84,8 +84,8 @@ printf("%x\n", a.value.buf[2]);
 
 ```text
 struct A
-	tag: byte;
-	value: word;
+    tag: byte;
+    value: word;
 end
 
 a: A = A{tag = 1, value = 0x12345678};
@@ -105,14 +105,14 @@ printf("%x\n", (a.value@ + 2) as (byte^)^);
 
 ```text
 fn main(argc: word; argv: byte^^): word
-	return 0;
+    return 0;
 end
 ```
 
 ```c
 int main(int argc, char **argv)
 {
-	return 0;
+    return 0;
 }
 ```
 
@@ -121,21 +121,21 @@ int main(int argc, char **argv)
 
 ```text
 if fn1(fn2(val1)) >= fn3(val2) then
-	fn4();
+    fn4();
 elif val3 > 100 then
-	fn5();
+    fn5();
 else
-	fn6();
+    fn6();
 end
 ```
 
 ```c
 if (fn1(fn2(val1)) >= fn3(val2)) {
-	fn4();
+    fn4();
 } else if (val3) {
-	fn5();
+    fn5();
 } else {
-	fn6();
+    fn6();
 }
 ```
 
@@ -144,13 +144,13 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 
 ```text
 while test() do
-	do_something();
+    do_something();
 end
 ```
 
 ```c
 while (test()) {
-	do_something();
+    do_something();
 }
 ```
 
@@ -177,10 +177,10 @@ char *(*(*(*my_fn2)(char *, int))(char *, char *))(int, int) = another_fn2;
 
 ```text
 fn exti_isr() attribute(interrupt(26))
-	%% Clear interrupt flag.
-	exti4^.INTF = 0b10000;
+    %% Clear interrupt flag.
+    exti4^.INTF = 0b10000;
 
-	%...
+    %...
 end
 ```
 
@@ -213,18 +213,18 @@ end
 
 人们很容易写出下面这样的错误代码：
 ```c
-	if (a = b) {
-		//...
-	}
+    if (a = b) {
+        //...
+    }
 ```
 
 在E语言中，只有6中布尔表达式：`>`, `>=`, `<`, `<=`, `!=`, `==`.
 
 所以下面的代码，会被编译器拒绝：
 ```text
-	if a = b then
-		%...
-	end
+    if a = b then
+        %...
+    end
 ```
 
 编译报错：
@@ -251,7 +251,7 @@ E语言定义了关键字 “band”，“bor”，“bnot”，“bxor”来进
 E语言支持类似C语言的词法级别的“宏”。定义的时候，基本和C语言用法一样：
 
 ```text
-#define	GPIOD			(0x4001_1400 as (GPIO^))
+#define GPIOD (0x4001_1400 as (GPIO^))
 ```
 
 带参数的宏目前不支持。
@@ -306,4 +306,3 @@ cp -r ./misc/elang.vim/ ~/.vim/pack/my/start/
 ```vim
 autocmd BufRead,BufNewFile *.e setlocal filetype=elang
 ```
-

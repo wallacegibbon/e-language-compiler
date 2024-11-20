@@ -312,4 +312,3 @@ Then add the following configurations to `~/.vimrc`:
 ```vim
 autocmd BufRead,BufNewFile *.e setlocal filetype=elang
 ```
-
