@@ -1,12 +1,14 @@
 #! /bin/sh
 set -e
 
-case $(uname -s) in
+OS_TYPE=$(uname -s)
+
+case $OS_TYPE in
 MINGW*|CYGWIN*) INSTALL_PATH=$HOME/AppData/Local/programs/e-language-compiler;;
 *             ) INSTALL_PATH=/usr/local/bin;;
 esac
 
-case $(uname -s) in
+case $OS_TYPE in
 MINGW*|CYGWIN*) SUDO="";;
 *             ) SUDO=sudo;;
 esac
