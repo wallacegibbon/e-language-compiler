@@ -204,16 +204,12 @@ b_type_immedi(N) ->
     {High, Low}.
 
 fix_signed_num(N, BitNum) ->
-    SignNum = sign_to_num((N bsr (BitNum - 1)) band 1),
-    case SignNum of
-        -1 ->
-            SignNum * (((bnot N) + 1) band (bnot (-1 bsl BitNum)));
+    case (N bsr (BitNum - 1)) band 1 of
         1 ->
+            -1 * (((bnot N) + 1) band (bnot (-1 bsl BitNum)));
+        0 ->
             N
     end.
-
-sign_to_num(0) ->  1;
-sign_to_num(1) -> -1.
 
 -ifdef(EUNIT).
 
