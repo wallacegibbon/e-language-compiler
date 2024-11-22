@@ -93,7 +93,7 @@ ivec_irs(R, Size, _, #{ivec_size := Size}) ->
 ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{size = Size0, shifted_size = Size1}} = Fn | Rest], Ctx) ->
     #{wordsize := WordSize, free_regs := [T | _] = Regs} = Ctx,
     %% When there are no local variables, there should still be one word for returning value.
-    Size2 = erlang:max(e_util:fill_unit_pessi(Size1, WordSize), WordSize),
+    Size2 = max(e_util:fill_unit_pessi(Size1, WordSize), WordSize),
     %% The extra `2` words are for `frame pointer`({x, 8}) and `returning address`({x, 1}).
     FrameSize = Size2 + WordSize * 2,
     SaveFpRa = [{sw, {x, 8}, {{x, 2}, -WordSize * 2}}, {sw, {x, 1}, {{x, 2}, -WordSize}}],
@@ -206,7 +206,7 @@ expr_to_ir(?OP2('*', Expr, ?I(1)), Ctx) ->
 %% Translate `*` to `bsl` and `+` when option `prefer_shift` is given.
 expr_to_ir(?OP2('*', Expr, ?I(N)), #{prefer_shift := true} = Ctx) when N > 1 ->
     {IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
-    Nums = lists:map(fun(A) -> erlang:trunc(math:log2(A)) end, e_util:dissociate_num(N, 1 bsl 32)),
+    Nums = lists:map(fun(A) -> trunc(math:log2(A)) end, e_util:dissociate_num(N, 1 bsl 32)),
     ShiftIRs = assemble_shifts(Nums, R, T, Ctx#{free_regs := RestRegs}),
     {[IRs, e_riscv_ir:mv(T, {x, 0}), ShiftIRs], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 %% RISC-V do not have immediate version `sub` instruction, convert `-` to `+` to make use of `addi` later.

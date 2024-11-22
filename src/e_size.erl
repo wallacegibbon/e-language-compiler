@@ -69,7 +69,7 @@ size_of_struct(#e_struct{fields = Fields}, Ctx) ->
 align_of_struct(#e_struct{fields = #e_vars{align = Align}}, _) when Align > 0 ->
     Align;
 align_of_struct(#e_struct{fields = #e_vars{type_map = TypeMap}}, Ctx) ->
-    maps:fold(fun(_, Type, Align) -> erlang:max(align_of(Type, Ctx), Align) end, 0, TypeMap).
+    maps:fold(fun(_, Type, Align) -> max(align_of(Type, Ctx), Align) end, 0, TypeMap).
 
 
 -type size_align_data() :: #{
@@ -89,7 +89,7 @@ size_and_offsets([{Name, Type} | Rest], #{size := CurrentOffset, align := MaxAli
     Offset = e_util:fill_unit_pessi(CurrentOffset, FieldAlign),
     FieldSize = size_of(Type, Ctx),
     OffsetMapNew = OffsetMap#{Name => {Offset, FieldSize}},
-    NextIn = #{size => Offset + FieldSize, align => erlang:max(MaxAlign, FieldAlign), offset_map => OffsetMapNew},
+    NextIn = #{size => Offset + FieldSize, align => max(MaxAlign, FieldAlign), offset_map => OffsetMapNew},
     size_and_offsets(Rest, NextIn, Ctx);
 size_and_offsets([], #{size := CurrentOffset, align := MaxAlign} = Result, _) ->
     Result#{size := e_util:fill_unit_pessi(CurrentOffset, MaxAlign)}.
