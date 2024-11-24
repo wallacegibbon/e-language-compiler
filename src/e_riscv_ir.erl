@@ -11,13 +11,13 @@ tmp_regs() ->
 %% Add an immediate integer to a register.
 %% The third parameter is a temporary register which may not be used.
 -spec addi(machine_reg(), integer(), machine_reg()) -> irs().
-addi(_, 0, _)                   -> [];
+addi(_, 0, _) -> [];
 addi(R, N, _) when ?IS_IMM12(N) -> [{addi, R, R, N}];
-addi(R, N, T)                   -> [li(T, N), {add, R, R, T}].
+addi(R, N, T) -> [li(T, N), {add, R, R, T}].
 
 %% Load an immediate integer into a register.
 li(R, N) when ?IS_IMM12(N) -> [{addi, R, {x, 0}, N}];
-li(R, N)                   -> li_u(R, e_util:u_type_immedi(N)).
+li(R, N) -> li_u(R, e_util:u_type_immedi(N)).
 
 %% Load a pair of numbers (RV U type) into target register.
 li_u(R, {0, L}) -> [{addi, R, {x, 0}, L}];
