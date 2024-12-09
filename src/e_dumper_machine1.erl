@@ -118,7 +118,7 @@ encode_instr({{S, {x, N1}, {{x, N2}, O}} = I, Loc}) when S =:= sw; S =:= sb ->
     Code = Immedi bor (N2 bsl 15) bor (N1 bsl 20) bor (f3code_of(S) bsl 12) bor 2#0100011,
     {I, <<Code:32/little>>, Loc};
 encode_instr({{L, {x, N1}, {{x, N2}, O}} = I, Loc}) when L =:= lw; L =:= lb ->
-    Code = (O bsl 20)  bor (N2 bsl 15) bor (f3code_of(L) bsl 12) bor (N1 bsl 7) bor 2#0000011,
+    Code = (O bsl 20) bor (N2 bsl 15) bor (f3code_of(L) bsl 12) bor (N1 bsl 7) bor 2#0000011,
     {I, <<Code:32/little>>, Loc};
 %% SRAI is special, it's like `I` and `R` at the same time. both `f7` and immediate exists.
 encode_instr({{srai, {x, N1}, {x, N2}, A} = I, Loc}) ->
