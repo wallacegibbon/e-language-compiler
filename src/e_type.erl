@@ -96,7 +96,8 @@ replace_typeof_in_type(#e_typeof{expr = Expr}, Ctx) ->
 
 -spec check_type_of_nodes([e_stmt()], e_compile_context:context()) -> ok.
 check_type_of_nodes(Stmts, Ctx) ->
-    lists:foreach(fun(Expr) -> type_of_node(Expr, Ctx) end, Stmts).
+    [type_of_node(S, Ctx) || S <- Stmts],
+    ok.
 
 -spec type_of_nodes([e_stmt()], e_compile_context:context()) -> [e_type()].
 type_of_nodes(Stmts, Ctx) ->
@@ -535,7 +536,7 @@ check_type(#e_array_type{elem_type = ElemType} = Type, Ctx) ->
     check_type(ElemType, Ctx),
     Type;
 check_type(#e_fn_type{params = Params, ret = RetType} = Type, Ctx) ->
-    lists:foreach(fun(T) -> check_type(T, Ctx) end, Params),
+    [check_type(T, Ctx) || T <- Params],
     check_type(RetType, Ctx),
     Type;
 check_type(#e_typeof{expr = Expr}, Ctx) ->

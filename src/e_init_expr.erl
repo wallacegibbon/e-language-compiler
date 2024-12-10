@@ -37,9 +37,9 @@ check_position(#e_array_init_expr{loc = Loc}) ->
     e_util:ethrow(Loc, "array init expression is only allowed in assignments");
 check_position(?CALL(Fn, Args)) ->
     check_position(Fn),
-    lists:foreach(fun check_position/1, Args);
+    [check_position(A) || A <- Args];
 check_position(#e_op{data = Data}) ->
-    lists:foreach(fun check_position/1, Data);
+    [check_position(A) || A <- Data];
 check_position(#e_type_convert{expr = Expr}) ->
     check_position(Expr);
 check_position(_) ->

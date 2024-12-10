@@ -169,7 +169,7 @@ write_detail([{{code, _}, Raw, Loc} | Rest], Loc, OffsetMap, IO) ->
 write_detail([{Instr, Raw, Loc} | Rest], Loc, OffsetMap, IO) ->
     case maps:find(Loc, OffsetMap) of
         {ok, Labels} ->
-            lists:foreach(fun(L) -> io:format(IO, "~s~s:~n", [?NSPACE(32), L]) end, lists:reverse(Labels));
+            [io:format(IO, "~s~s:~n", [?NSPACE(32), L]) || L <- lists:reverse(Labels)];
         _ ->
             ok
     end,
