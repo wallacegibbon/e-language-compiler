@@ -71,13 +71,13 @@ replace_typeof(#e_type_convert{type = #e_typeof{expr = Expr}} = E, Ctx) ->
 replace_typeof(?AREF(Arr, Index) = E, Ctx) ->
     E?AREF(replace_typeof(Arr, Ctx), replace_typeof(Index, Ctx));
 replace_typeof(?CALL(Fn, Args) = E, Ctx) ->
-    E?CALL(replace_typeof(Fn, Ctx), lists:map(fun(V) -> replace_typeof(V, Ctx) end, Args));
+    E?CALL(replace_typeof(Fn, Ctx), [replace_typeof(V, Ctx) || V <- Args]);
 replace_typeof(#e_op{tag = {sizeof, Type}} = E, Ctx) ->
     E#e_op{tag = {sizeof, replace_typeof_in_type(Type, Ctx)}};
 replace_typeof(#e_op{tag = {alignof, Type}} = E, Ctx) ->
     E#e_op{tag = {alignof, replace_typeof_in_type(Type, Ctx)}};
 replace_typeof(#e_op{data = Data} = E, Ctx) ->
-    E#e_op{data = lists:map(fun(V) -> replace_typeof(V, Ctx) end, Data)};
+    E#e_op{data = [replace_typeof(V, Ctx) || V <- Data]};
 replace_typeof(#e_type_convert{expr = Expr} = C, Ctx) ->
     C#e_type_convert{expr = replace_typeof(Expr, Ctx)};
 replace_typeof(Any, _) ->
@@ -88,7 +88,7 @@ replace_typeof(Any, _) ->
 replace_typeof_in_type(#e_array_type{elem_type = ElemType} = Type, Ctx) ->
     Type#e_array_type{elem_type = replace_typeof_in_type(ElemType, Ctx)};
 replace_typeof_in_type(#e_fn_type{params = Params, ret = Ret} = Type, Ctx) ->
-    Type#e_fn_type{params = lists:map(fun(T) -> replace_typeof_in_type(T, Ctx) end, Params), ret = replace_typeof_in_type(Ret, Ctx)};
+    Type#e_fn_type{params = [replace_typeof_in_type(T, Ctx) || T <- Params], ret = replace_typeof_in_type(Ret, Ctx)};
 replace_typeof_in_type(#e_basic_type{} = Type, _) ->
     Type;
 replace_typeof_in_type(#e_typeof{expr = Expr}, Ctx) ->
@@ -100,7 +100,7 @@ check_type_of_nodes(Stmts, Ctx) ->
 
 -spec type_of_nodes([e_stmt()], e_compile_context:context()) -> [e_type()].
 type_of_nodes(Stmts, Ctx) ->
-    lists:map(fun(Expr) -> type_of_node(Expr, Ctx) end, Stmts).
+    [type_of_node(S, Ctx) || S <- Stmts].
 
 -spec type_of_node(e_stmt(), e_compile_context:context()) -> e_type().
 type_of_node(?VREF(Name, Loc), #{vars := #e_vars{type_map = TypeMap}, fn_map := FnTypeMap} = Ctx) ->
@@ -594,7 +594,7 @@ check_ret_type(_, [], _, _, _) ->
 
 -spec join_types_to_str([e_type()]) -> string().
 join_types_to_str(Types) ->
-    lists:join(",", lists:map(fun type_to_str/1, Types)).
+    lists:join(",", [type_to_str(T) || T <- Types]).
 
 -spec type_to_str(e_type()) -> string().
 type_to_str(#e_typeof{expr = Expr}) ->

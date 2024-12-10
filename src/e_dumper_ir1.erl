@@ -28,12 +28,12 @@ generate_code({{InitCode, AST}, Vars}, OutputFile, Options) ->
     Pid = spawn_link(fun() -> string_collect_loop([]) end),
     Regs = e_riscv_ir:tmp_regs(),
     Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid, epilogue_tag => none, ret_offset => -WordSize, prefer_shift => PreferShift, cond_label => {none, none}},
-    InitVars0 = lists:map(fun(S) -> stmt_to_ir(S, Ctx#{scope_tag := '__init_vars'}) end, InitCode),
+    InitVars0 = [stmt_to_ir(S, Ctx#{scope_tag := '__init_vars'}) || S <- InitCode],
     InitVars = [{label, {align, 1}, '__init_vars'} | InitVars0],
     InterruptMap = collect_interrupt_map(AST, []),
     CodeIRs = ast_to_ir(AST, Ctx),
     StrList = string_collect_dump(Pid),
-    StrIRs = lists:map(fun({L, S, Len}) -> [{label, {align, 1}, L}, {string, S, Len}] end, StrList),
+    StrIRs = [[{label, {align, 1}, L}, {string, S, Len}] || {L, S, Len} <- StrList],
     IRs = lists:flatten([{start_address, CPos}, Init1, InitVars, Init2, CodeIRs, StrIRs]),
     IVecIRs = ivec_irs([], 0, InterruptMap, Options),
     e_util:file_write(OutputFile ++ ".code.ir1", fun(IO) -> write_irs(IRs, IO) end),
@@ -105,7 +105,7 @@ ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{size = Size0, 
     Prologue = [RegSave, I1, {comment, "prologue end"}],
     Epilogue = [{label, {align, 1}, EpilogueTag}, I2, RegRestore, ret_instruction_of(Fn)],
     Ctx1 = Ctx#{scope_tag := Name, epilogue_tag := EpilogueTag, ret_offset := Size1 - Size0 - WordSize},
-    Body = lists:map(fun(S) -> stmt_to_ir(S, Ctx1) end, Stmts),
+    Body = [stmt_to_ir(S, Ctx1) || S <- Stmts],
     %% The result should be flattened before calling `fix_irs/1`.
     FinalIRs = lists:flatten([{fn, Name}, Prologue, Body, Epilogue | ast_to_ir(Rest, Ctx)]),
     fix_irs(FinalIRs);
@@ -133,8 +133,8 @@ stmt_to_ir(#e_if_stmt{'cond' = Cond, then = Then0, 'else' = Else0, loc = Loc}, #
     %% The branch/jump must be following CondIRs since it relys on the result register of CondIRs.
     CondWithJmp = [CondIRs, {'br!', R_Bool, ElseLabel}],
     StartComment = comment('if', e_util:stmt_to_str(Cond), Loc),
-    Then1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Then0),
-    Else1 = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Else0),
+    Then1 = [stmt_to_ir(S, Ctx) || S <- Then0],
+    Else1 = [stmt_to_ir(S, Ctx) || S <- Else0],
     Then2 = [{label, {align, 1}, ThenLabel}, Then1, {j, EndLabel}],
     Else2 = [{label, {align, 1}, ElseLabel}, Else1, {label, {align, 1}, EndLabel}],
     [StartComment, CondWithJmp, Then2, Else2];
@@ -144,7 +144,7 @@ stmt_to_ir(#e_while_stmt{'cond' = Cond, stmts = Stmts0, loc = Loc}, #{scope_tag 
     EndLabel = generate_tag(ScopeTag, while_end, Loc),
     {CondIRs, R_Bool, _} = expr_to_ir(Cond, Ctx#{cond_label => {BodyLabel, EndLabel}}),
     StartComment = comment(while, e_util:stmt_to_str(Cond), Loc),
-    RawBody = lists:map(fun(S) -> stmt_to_ir(S, Ctx) end, Stmts0),
+    RawBody = [stmt_to_ir(S, Ctx) || S <- Stmts0],
     Body = [{label, {align, 1}, BodyLabel}, RawBody, {j, StartLabel}, {label, {align, 1}, EndLabel}],
     [StartComment, {label, {align, 1}, StartLabel}, CondIRs, {'br!', R_Bool, EndLabel}, Body];
 stmt_to_ir(#e_return_stmt{expr = none}, #{epilogue_tag := EpilogueTag}) ->
@@ -204,7 +204,7 @@ expr_to_ir(?OP2('*', Expr, ?I(1)), Ctx) ->
 %% Translate `*` to `bsl` and `+` when option `prefer_shift` is given.
 expr_to_ir(?OP2('*', Expr, ?I(N)), #{prefer_shift := true} = Ctx) when N > 1 ->
     {IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
-    Nums = lists:map(fun(A) -> trunc(math:log2(A)) end, e_util:dissociate_num(N, 1 bsl 32)),
+    Nums = [trunc(math:log2(A)) || A <- e_util:dissociate_num(N, 1 bsl 32)],
     ShiftIRs = assemble_shifts(Nums, R, T, Ctx#{free_regs := RestRegs}),
     {[IRs, e_riscv_ir:mv(T, {x, 0}), ShiftIRs], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 %% RISC-V do not have immediate version `sub` instruction, convert `-` to `+` to make use of `addi` later.
@@ -384,10 +384,10 @@ write_asm([IRs | Rest], IO) when is_list(IRs) ->
     write_asm(Rest, IO);
 %% Normal 3-operand instructions
 write_asm([{Tag, Op1, Op2, Op3} | Rest], IO) when Tag =:= csrrw; Tag =:= csrrs; Tag =:= csrrc ->
-    io:format(IO, "    ~s ~s, ~s, ~s~n", [Tag | lists:map(fun op_tag_str/1, [Op1, Op3, Op2])]),
+    io:format(IO, "    ~s ~s, ~s, ~s~n", [Tag | [op_tag_str(A) || A <- [Op1, Op3, Op2]]]),
     write_asm(Rest, IO);
 write_asm([{Tag, Op1, Op2, Op3} | Rest], IO) ->
-    io:format(IO, "    ~s ~s, ~s, ~s~n", [Tag | lists:map(fun op_tag_str/1, [Op1, Op2, Op3])]),
+    io:format(IO, "    ~s ~s, ~s, ~s~n", [Tag | [op_tag_str(A) || A <- [Op1, Op2, Op3]]]),
     write_asm(Rest, IO);
 %% Load and Store instructions
 write_asm([{Tag, Op1, {{x, _} = Op2, N}} | Rest], IO) ->

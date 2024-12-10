@@ -59,11 +59,11 @@ parse_address_num(Nums) ->
     parse_address_num(Nums, 10).
 
 parse_address_num(Nums, Base) ->
-    list_to_integer(lists:filter(fun(C) -> C =/= $_ end, Nums), Base).
+    list_to_integer([C || C <- Nums, C =/= $_], Base).
 
 cli() ->
     #{
-      arguments => lists:map(fun(#{name := Name} = M) -> M#{help => help_of(Name)} end, arguments()),
+      arguments => [M#{help => help_of(Name)} || #{name := Name} = M <- arguments()],
       handler => fun handler/1
      }.
 
@@ -89,9 +89,7 @@ help_of(prefer_shift) ->
 help_of(entry_function) ->
     "Entry function.";
 help_of(wordsize) ->
-    "Bit length of the target machine.";
-help_of(Any) ->
-    atom_to_list(Any).
+    "Bit length of the target machine.".
 
 main(Args) ->
     argparse:run(Args, cli(), #{progname => ec}).

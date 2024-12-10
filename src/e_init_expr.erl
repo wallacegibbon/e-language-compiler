@@ -49,7 +49,7 @@ replace_init_ops(?OP2('=', Op1, #e_struct_init_expr{name = Name, loc = Loc, fiel
     Struct = e_util:get_struct_from_name(Name, StructMap, Loc),
     #e_struct{fields = Fields, default_value_map = FieldDefaultMap} = Struct,
     #e_vars{names = FieldNames, type_map = FieldTypeMap} = Fields,
-    VarRefs = lists:map(fun(N) -> ?VREF(N, Loc) end, FieldNames),
+    VarRefs = [?VREF(N, Loc) || N <- FieldNames],
     FieldInitMap = maps:merge(FieldDefaultMap, FieldValues),
     struct_init_to_ops(Op1, VarRefs, FieldInitMap, FieldTypeMap, [], Ctx);
 replace_init_ops(?OP2('=', Op1, #e_array_init_expr{elements = Elements, loc = Loc}), Ctx) ->

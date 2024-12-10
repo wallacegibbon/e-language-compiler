@@ -15,10 +15,10 @@ generate_code(CodeIRs, IVecIRs, OutputFile, #{wordsize := WordSize}) ->
     %% User Code
     {CodeWithPos, CodeCtx} = scan_address(CodeIRs, 0, [], ScanContext),
     #{label_map := LabelMap, offset_map := OffsetMap, start_address := CodeStartAddress} = CodeCtx,
-    Code = lists:map(fun encode_instr/1, replace_address(CodeWithPos, LabelMap)),
+    Code = [encode_instr(A) || A <- replace_address(CodeWithPos, LabelMap)],
     %% Interrupt Vector
     {IVecWithPos, IVecCtx} = scan_address(IVecIRs, 0, [], ScanContext),
-    IVec = lists:map(fun encode_instr/1, replace_address(IVecWithPos, LabelMap)),
+    IVec = [encode_instr(A) || A <- replace_address(IVecWithPos, LabelMap)],
     #{start_address := IVecStartAddress} = IVecCtx,
     %% Write bin files
     e_util:file_write(OutputFile ++ ".code.bin", fun(IO) -> write_binary(Code, CodeStartAddress, IO) end),

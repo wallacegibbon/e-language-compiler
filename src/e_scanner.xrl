@@ -44,7 +44,7 @@ any : {token, {any_type, TokenLoc, any}}.
 Erlang code.
 
 str_to_int([$0, _ | Chars], Base) ->
-    list_to_integer(lists:filter(fun(V) -> V =/= $_ end, Chars), Base).
+    list_to_integer([V || V <- Chars, V =/= $_], Base).
 
 drop_quotes([_ | QuotedString]) ->
     lists:droplast(QuotedString).

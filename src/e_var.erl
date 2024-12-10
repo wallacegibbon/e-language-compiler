@@ -36,13 +36,13 @@ fix_struct_init_expr_in_stmts(List) ->
 fix_struct_init(#e_struct_init_raw_expr{name = Name, fields = Fields, loc = Loc}) ->
     #e_struct_init_expr{name = Name, field_value_map = struct_init_to_map(Fields, #{}), loc = Loc};
 fix_struct_init(#e_array_init_expr{elements = Elements} = A) ->
-    A#e_array_init_expr{elements = lists:map(fun fix_struct_init/1, Elements)};
+    A#e_array_init_expr{elements = [fix_struct_init(E) || E <- Elements]};
 fix_struct_init(#e_vardef{init_value = InitialValue} = V) ->
     V#e_vardef{init_value = fix_struct_init(InitialValue)};
 fix_struct_init(?CALL(Fn, Args) = O) ->
-    O?CALL(fix_struct_init(Fn), lists:map(fun fix_struct_init/1, Args));
+    O?CALL(fix_struct_init(Fn), [fix_struct_init(A) || A <- Args]);
 fix_struct_init(#e_op{data = Operands} = O) ->
-    O#e_op{data = lists:map(fun fix_struct_init/1, Operands)};
+    O#e_op{data = [fix_struct_init(A) || A <- Operands]};
 fix_struct_init(#e_type_convert{expr = Expr} = C) ->
     C#e_type_convert{expr = fix_struct_init(Expr)};
 fix_struct_init(Any) ->

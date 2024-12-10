@@ -12,7 +12,7 @@ check_struct_recursion_top(#e_struct{name = Name, loc = Loc} = Struct, StructMap
         check_struct_recursion(Struct, StructMap, [])
     catch
         {recur, Chain} ->
-            Str = string:join(lists:map(fun atom_to_list/1, Chain), "/"),
+            Str = string:join([atom_to_list(C) || C <- Chain], "/"),
             e_util:ethrow(Loc, "recursion in struct ~s: ~s", [Name, Str])
     end.
 
@@ -81,9 +81,9 @@ eliminate_dot(?OP2('.', O, ?VREF(FieldName), Loc), #{struct_map := StructMap} = 
     B = ?OP2('+', A, ?I(Offset, Loc), Loc),
     ?OP2('^', B, ?I(Size, Loc), Loc);
 eliminate_dot(?CALL(Fn, Args) = Op, Ctx) ->
-    Op?CALL(eliminate_dot(Fn, Ctx), lists:map(fun(E) -> eliminate_dot(E, Ctx) end, Args));
+    Op?CALL(eliminate_dot(Fn, Ctx), [eliminate_dot(E, Ctx) || E <- Args]);
 eliminate_dot(#e_op{data = Operands} = Op, Ctx) ->
-    Op#e_op{data = lists:map(fun(E) -> eliminate_dot(E, Ctx) end, Operands)};
+    Op#e_op{data = [eliminate_dot(E, Ctx) || E <- Operands]};
 eliminate_dot(#e_type_convert{expr = Expr} = C, Ctx) ->
     C#e_type_convert{expr = eliminate_dot(Expr, Ctx)};
 eliminate_dot(Any, _) ->

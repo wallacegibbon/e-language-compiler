@@ -41,7 +41,7 @@ compile_to_e(InputFiles, OutputFilename, Options) ->
 
 -spec parse_and_compile_files([string()], e_compile_option:option()) -> e_ast_compiler:ast_compile_result().
 parse_and_compile_files(Files, Options) ->
-    Tokens0 = lists:concat(lists:map(fun(Filename) -> scan_file(Filename) end, Files)),
+    Tokens0 = lists:concat([scan_file(Filename) || Filename <- Files]),
     Tokens1 = e_preprocessor:preprocess(Tokens0),
     e_ast_compiler:compile_from_raw_ast(parse_tokens(Tokens1), Options).
 
@@ -65,7 +65,7 @@ scan_file(Filename) ->
     case file:read_file(Filename) of
         {ok, RawContent} ->
             RawTokens = scan_raw_content(RawContent),
-            lists:map(fun(T) -> e_util:token_attach_filename(Filename, T) end, RawTokens);
+            [e_util:token_attach_filename(Filename, T) || T <- RawTokens];
         {error, enoent} ->
             throw(e_util:fmt("file ~s is not found", [Filename]));
         {error, Reason} ->

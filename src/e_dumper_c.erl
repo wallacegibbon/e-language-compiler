@@ -9,7 +9,7 @@
 generate_code({{InitCode, AST}, #e_vars{type_map = GlobalVarMap} = GlobalVars}, WordSize, OutputFile) ->
     {FnTypeMap, StructMap} = e_util:make_function_and_struct_map_from_ast(AST),
     Ctx = #{fn_map => FnTypeMap, struct_map => StructMap, vars => GlobalVars, wordsize => WordSize},
-    AST2 = lists:map(fun(A) -> fix_function_for_c(A, Ctx) end, AST),
+    AST2 = [fix_function_for_c(A, Ctx) || A <- AST],
     InitCode2 = fix_exprs_for_c(InitCode, Ctx),
     %% struct definition have to be before function declarations
     {StructAST, FnAST} = lists:partition(fun(A) -> element(1, A) =:= e_struct end, AST2),
@@ -39,9 +39,9 @@ fix_expr_for_c(?OP1('@', Operand, Loc) = E, Ctx) ->
             E
     end;
 fix_expr_for_c(?CALL(Fn, Args) = E, Ctx) ->
-    E?CALL(fix_expr_for_c(Fn, Ctx), lists:map(fun(D) -> fix_expr_for_c(D, Ctx) end, Args));
+    E?CALL(fix_expr_for_c(Fn, Ctx), [fix_expr_for_c(D, Ctx) || D <- Args]);
 fix_expr_for_c(#e_op{data = Operands} = E, Ctx) ->
-    E#e_op{data = lists:map(fun(D) -> fix_expr_for_c(D, Ctx) end, Operands)};
+    E#e_op{data = [fix_expr_for_c(D, Ctx) || D <- Operands]};
 fix_expr_for_c(#e_type_convert{expr = Expr} = C, Ctx) ->
     C#e_type_convert{expr = fix_expr_for_c(Expr, Ctx)};
 fix_expr_for_c(Any, _) ->
@@ -78,12 +78,10 @@ function_to_str(Name, ParamStr, RetType) ->
     type_to_c_str(RetType, io_lib:format("~s(~s)", [Name, ParamStr])).
 
 params_to_str(NameTypePairs) ->
-    L = lists:map(fun({N, T}) -> type_to_c_str(T, N) end, NameTypePairs),
-    lists:join(",", L).
+    lists:join(",", [type_to_c_str(T, N) || {N, T} <- NameTypePairs]).
 
 params_to_str_no_name(Types) ->
-    L = lists:map(fun(T) -> type_to_c_str(T, "") end, Types),
-    lists:join(",", L).
+    lists:join(",", [type_to_c_str(T, "") || T <- Types]).
 
 %% order is not necessary for vars
 var_map_to_str(VarsMap) when is_map(VarsMap) ->
@@ -108,7 +106,7 @@ return_type_to_str(#e_basic_type{p_depth = N} = T, NameParams) when N > 0 ->
     type_to_c_str(T#e_basic_type{p_depth = N - 1}, NameParams).
 
 %% convert type to C string
--spec type_to_c_str(e_type(), iolist()) -> iolist().
+-spec type_to_c_str(e_type(), iolist() | atom()) -> iolist().
 type_to_c_str(#e_array_type{length = Len, elem_type = Type}, VarName) ->
     io_lib:format("struct {~s value[~w];} ~s", [type_to_c_str(Type, ""), Len, VarName]);
 type_to_c_str(#e_basic_type{class = Class, tag = Tag, p_depth = Depth}, VarName) when Depth > 0 ->
@@ -158,7 +156,7 @@ stmt_to_str(?VREF(Name), EndChar) ->
 stmt_to_str(?AREF(Arr, Index), EndChar) ->
     io_lib:format("~s[~s]~c", [stmt_to_str(Arr, $\s), stmt_to_str(Index, $\s), EndChar]);
 stmt_to_str(?CALL(Fn, Args), EndChar) ->
-    ArgStr = lists:join(",", lists:map(fun(E) -> stmt_to_str(E, $\s) end, Args)),
+    ArgStr = lists:join(",", [stmt_to_str(E, $\s) || E <- Args]),
     io_lib:format("~s(~s)~c", [stmt_to_str(Fn, $\s), ArgStr, EndChar]);
 stmt_to_str(?OP2(Tag, Op1, Op2), EndChar) ->
     io_lib:format("(~s ~s ~s)~c", [stmt_to_str(Op1, $\s), translate_op(Tag), stmt_to_str(Op2, $\s), EndChar]);

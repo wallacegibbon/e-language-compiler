@@ -24,9 +24,9 @@ transform_aref(?AREF(Arr, Index, Loc), Ctx) ->
     Sizeof = #e_op{tag = {sizeof, e_type:inc_pointer_depth(ArrType, -1, Loc)}, loc = Loc},
     ?OP2('^', ?OP2('+', Arr, ?OP2('*', Index, Sizeof, Loc), Loc), ?I(0));
 transform_aref(?CALL(Fn, Args) = Op, Ctx) ->
-    Op?CALL(transform_aref(Fn, Ctx), lists:map(fun(E) -> transform_aref(E, Ctx) end, Args));
+    Op?CALL(transform_aref(Fn, Ctx), [transform_aref(E, Ctx) || E <- Args]);
 transform_aref(#e_op{data = Operands} = Op, Ctx) ->
-    Op#e_op{data = lists:map(fun(E) -> transform_aref(E, Ctx) end, Operands)};
+    Op#e_op{data = [transform_aref(E, Ctx) || E <- Operands]};
 transform_aref(#e_type_convert{expr = Expr} = C, Ctx) ->
     C#e_type_convert{expr = transform_aref(Expr, Ctx)};
 transform_aref(Any, _) ->

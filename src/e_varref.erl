@@ -29,9 +29,9 @@ varref_to_offset(?VREF(_) = Varref, VarsList, Ctx) ->
             Varref
     end;
 varref_to_offset(?CALL(Fn, Args) = Op, VarsList, Ctx) ->
-    Op?CALL(varref_to_offset(Fn, VarsList, Ctx), lists:map(fun(E) -> varref_to_offset(E, VarsList, Ctx) end, Args));
+    Op?CALL(varref_to_offset(Fn, VarsList, Ctx), [varref_to_offset(E, VarsList, Ctx) || E <- Args]);
 varref_to_offset(#e_op{data = Operands} = Op, VarsList, Ctx) ->
-    Op#e_op{data = lists:map(fun(E) -> varref_to_offset(E, VarsList, Ctx) end, Operands)};
+    Op#e_op{data = [varref_to_offset(E, VarsList, Ctx) || E <- Operands]};
 varref_to_offset(#e_type_convert{expr = Expr}, VarsList, Ctx) ->
     varref_to_offset(Expr, VarsList, Ctx);
 varref_to_offset(Any, _, _) ->

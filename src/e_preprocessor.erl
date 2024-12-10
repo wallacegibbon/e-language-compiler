@@ -32,7 +32,7 @@ collect_macro_map([], FilteredTokens, Map) ->
 replace_macro([{'?', Loc}, {identifier, _, Name} = I | Rest], Ret, #{macro_map := Map, macro_path := Path} = Ctx) ->
     case lists:member(Name, Path) of
         true ->
-            Str = string:join(lists:map(fun atom_to_list/1, lists:reverse(Path, [Name])), "->"),
+            Str = string:join([atom_to_list(A) || A <- lists:reverse(Path, [Name])], "->"),
             e_util:ethrow(Loc, "recursive macro expanding: ~s~n", [Str]);
         false ->
             Replaced = replace_macro(do_replace(I, Map), [], Ctx#{macro_path := [Name | Path]}),
@@ -66,13 +66,13 @@ do_replace({identifier, Loc, Name}, Map) ->
 
 -spec replace_line_number([token()], location()) -> [token()].
 replace_line_number(Tokens, Loc) ->
-    lists:map(fun(Token) -> setelement(2, Token, Loc) end, Tokens).
+    [setelement(2, Token, Loc) || Token <- Tokens].
 
 -ifdef(EUNIT).
 
 scan_string(Content) ->
     {ok, Tokens, _} = e_scanner:string(Content),
-    lists:map(fun(T) -> e_util:token_attach_filename("", T) end, Tokens).
+    [e_util:token_attach_filename("", T) || T <- Tokens].
 
 process_define_line_number_1_test() ->
     Tokens = scan_string("#define A 1\n?A"),
@@ -111,7 +111,7 @@ process_define_7_test() ->
     ?assertMatch([{integer, {_, 3, 2}, 1}, {integer, {_, 4, 2}, 1}], preprocess(Tokens)).
 
 tokens_to_str(Tokens) ->
-    lists:flatten(lists:join(" ", lists:map(fun token_to_str/1, Tokens))).
+    lists:flatten(lists:join(" ", [token_to_str(T) || T <- Tokens])).
 
 -spec token_to_str(token()) -> string().
 token_to_str({integer   , _, Number}) -> integer_to_list(Number);

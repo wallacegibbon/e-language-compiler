@@ -24,15 +24,15 @@ expand_kw(#e_op{tag = {sizeof, T}, loc = Loc}, Ctx) ->
 expand_kw(#e_op{tag = {alignof, T}, loc = Loc}, Ctx) ->
     ?I(align_of(T, Ctx), Loc);
 expand_kw(?CALL(Fn, Args) = E, Ctx) ->
-    E?CALL(expand_kw(Fn, Ctx), lists:map(fun(O) -> expand_kw(O, Ctx) end, Args));
+    E?CALL(expand_kw(Fn, Ctx), [expand_kw(O, Ctx) || O <- Args]);
 expand_kw(#e_op{data = Data} = E, Ctx) ->
-    E#e_op{data = lists:map(fun(O) -> expand_kw(O, Ctx) end, Data)};
+    E#e_op{data = [expand_kw(O, Ctx) || O <- Data]};
 expand_kw(#e_type_convert{expr = Expr} = C, Ctx) ->
     C#e_type_convert{expr = expand_kw(Expr, Ctx)};
 expand_kw(#e_struct_init_expr{field_value_map = ExprMap} = S, Ctx) ->
     S#e_struct_init_expr{field_value_map = expand_kw_in_map(ExprMap, Ctx)};
 expand_kw(#e_array_init_expr{elements = Elements} = A, Ctx) ->
-    A#e_array_init_expr{elements = lists:map(fun(E) -> expand_kw(E, Ctx) end, Elements)};
+    A#e_array_init_expr{elements = [expand_kw(E, Ctx) || E <- Elements]};
 expand_kw(Any, _) ->
     Any.
 

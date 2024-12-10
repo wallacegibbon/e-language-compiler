@@ -37,9 +37,9 @@ merge_plus(?OP2('+', ?I(N1) = I, ?OP2('+', ?I(N2), O2)) = Orig) ->
 merge_plus(?OP2('+', ?I(N1) = I, ?I(N2))) ->
     I?I(N1 + N2);
 merge_plus(?CALL(Fn, Args) = Op) ->
-    Op?CALL(merge_plus(Fn), lists:map(fun merge_plus/1, Args));
+    Op?CALL(merge_plus(Fn), [merge_plus(A) || A <- Args]);
 merge_plus(#e_op{data = Operands} = Op) ->
-    Op#e_op{data = lists:map(fun merge_plus/1, Operands)};
+    Op#e_op{data = [merge_plus(A) || A <- Operands]};
 merge_plus(Any) ->
     Any.
 
@@ -49,17 +49,17 @@ merge_pointer(?OP2('^', ?OP1('@', E), _)) ->
 merge_pointer(?OP1('@', ?OP2('^', E, _))) ->
     merge_pointer(E);
 merge_pointer(?CALL(Fn, Args) = Op) ->
-    Op?CALL(merge_pointer(Fn), lists:map(fun merge_pointer/1, Args));
+    Op?CALL(merge_pointer(Fn), [merge_pointer(A) || A <- Args]);
 merge_pointer(#e_op{data = Operands} = Op) ->
-    Op#e_op{data = lists:map(fun merge_pointer/1, Operands)};
+    Op#e_op{data = [merge_pointer(A) || A <- Operands]};
 merge_pointer(Any) ->
     Any.
 
 -spec stmt_to_str(e_stmt()) -> string().
 stmt_to_str(#e_if_stmt{'cond' = Cond, then = Then, 'else' = Else}) ->
-    io_lib:format("if ~s then ~s else ~s end", [stmt_to_str(Cond), lists:map(fun stmt_to_str/1, Then), lists:map(fun stmt_to_str/1, Else)]);
+    io_lib:format("if ~s then ~s else ~s end", [stmt_to_str(Cond), [stmt_to_str(S) || S <- Then], [stmt_to_str(S) || S <- Else]]);
 stmt_to_str(#e_while_stmt{'cond' = Cond, stmts = Stmts}) ->
-    io_lib:format("while ~s do ~s end", [stmt_to_str(Cond), lists:map(fun stmt_to_str/1, Stmts)]);
+    io_lib:format("while ~s do ~s end", [stmt_to_str(Cond), [stmt_to_str(S) || S <- Stmts]]);
 stmt_to_str(#e_return_stmt{expr = Expr}) ->
     io_lib:format("return (~s)", [stmt_to_str(Expr)]);
 stmt_to_str(#e_goto_stmt{label = Label}) ->
@@ -69,7 +69,7 @@ stmt_to_str(#e_label{name = Name}) ->
 stmt_to_str(#e_vardef{name = Name}) ->
     io_lib:format("variable definition for ~s", [Name]);
 stmt_to_str(#e_array_init_expr{elements = Elements}) ->
-    ElementStr = string:join(lists:map(fun(?I(V)) -> integer_to_list(V) end, Elements), ","),
+    ElementStr = string:join([integer_to_list(V) || ?I(V) <- Elements], ","),
     io_lib:format("{~s}", [ElementStr]);
 stmt_to_str(#e_struct_init_expr{name = Name}) ->
     io_lib:format("{...} (struct ~s init expr)", [Name]);
@@ -80,7 +80,7 @@ stmt_to_str(?VREF(Name)) ->
 stmt_to_str(?AREF(Arr, Index)) ->
     io_lib:format("(~s)[~s]", [stmt_to_str(Arr), stmt_to_str(Index)]);
 stmt_to_str(?CALL(Fn, Args)) ->
-    io_lib:format("(~s)(~s)", [stmt_to_str(Fn), string:join(lists:map(fun stmt_to_str/1, Args), ",")]);
+    io_lib:format("(~s)(~s)", [stmt_to_str(Fn), string:join([stmt_to_str(S) || S <- Args], ",")]);
 stmt_to_str(?OP2('^', Op1, _Size)) ->
     io_lib:format("((~s)^)", [stmt_to_str(Op1)]);
 stmt_to_str(?OP2(Tag, Op1, Op2)) ->
@@ -105,7 +105,7 @@ special_char_map() ->
 
 -spec fix_special_chars(string()) -> string().
 fix_special_chars(String) ->
-    lists:map(fun(C) -> maps:get(C, special_char_map(), C) end, String).
+    [maps:get(C, special_char_map(), C) || C <- String].
 
 -spec fmt(string(), [any()]) -> string().
 fmt(FmtStr, Args) ->
@@ -138,7 +138,7 @@ exit_info(Code, FmtStr, Args) ->
 
 -spec get_values_by_keys([atom()], #{atom() => any()}) -> [any()].
 get_values_by_keys(Fields, Map) ->
-    lists:map(fun(K) -> maps:get(K, Map) end, Fields).
+    [maps:get(K, Map) || K <- Fields].
 
 -spec get_kvpair_by_keys([atom()], #{atom() => any()}) -> [{atom(), any()}].
 get_kvpair_by_keys(Names, Map) ->
@@ -155,8 +155,8 @@ get_values_by_keys_test() ->
 make_function_and_struct_map_from_ast(AST) ->
     {Fns, Structs} = lists:partition(fun(A) -> element(1, A) =:= e_function end, AST),
     %% FnTypeMap stores function type only
-    FnTypeMap = maps:from_list(lists:map(fun(#e_function{name = Name} = Fn) -> {Name, Fn#e_function.type} end, Fns)),
-    StructMap = maps:from_list(lists:map(fun(#e_struct{name = Name} = S) -> {Name, S} end, Structs)),
+    FnTypeMap = maps:from_list([{Name, T} || #e_function{name = Name, type = T} <- Fns]),
+    StructMap = maps:from_list([{Name, S} || #e_struct{name = Name} = S <- Structs]),
     {FnTypeMap, StructMap}.
 
 %% address calculations
@@ -276,15 +276,15 @@ dissociate_num_test() ->
 
 -spec list_map(fun((E1, pos_integer()) -> E2), [E1]) -> [E2] when E1 :: any(), E2 :: any().
 list_map(Fn, List) ->
-    lists:map(fun({I, E}) -> Fn(E, I) end, lists:enumerate(0, List)).
+    [Fn(E, I) || {I, E} <- lists:enumerate(0, List)].
 
 -spec names_of_var_refs([#e_varref{}]) -> [atom()].
 names_of_var_refs(VarRefList) ->
-    lists:map(fun(?VREF(Name)) -> Name end, VarRefList).
+    [Name || ?VREF(Name) <- VarRefList].
 
 -spec names_of_var_defs([#e_vardef{}]) -> [atom()].
 names_of_var_defs(VarDefList) ->
-    lists:map(fun(#e_vardef{name = Name}) -> Name end, VarDefList).
+    [Name || #e_vardef{name = Name} <- VarDefList].
 
 -spec assert(boolean(), any()) -> ok.
 assert(true, _) ->

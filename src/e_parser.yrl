@@ -340,10 +340,10 @@ Erlang code.
 -include("e_record_definition.hrl").
 
 str_to_int_tokens({string, Loc, Str}) ->
-    lists:map(fun(Char) -> #e_integer{value = Char, loc = Loc} end, Str).
+    [#e_integer{value = Char, loc = Loc} || Char <- Str].
 
 types_from_vardefs(VarDefs) ->
-    lists:map(fun(#e_vardef{type = Type}) -> Type end, VarDefs).
+    [Type || #e_vardef{type = Type} <- VarDefs].
 
 token_value({_, _, Val}) -> Val.
 
