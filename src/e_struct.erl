@@ -17,8 +17,10 @@ check_struct_recursion_top(#e_struct{name = Name, loc = Loc} = Struct, StructMap
     end.
 
 -spec check_struct_recursion(#e_struct{}, #{atom() => #e_struct{}}, [atom()]) -> ok.
-check_struct_recursion(#e_struct{name = Name, fields = #e_vars{type_map = FieldTypeMap}}, StructMap, UsedStructs) ->
-    maps:foreach(fun(_, Type) -> check_type_recursion(Type, StructMap, [Name | UsedStructs]) end, FieldTypeMap).
+check_struct_recursion(#e_struct{name = Name, fields = #e_vars{type_map = FieldTypeMap}},
+                       StructMap, UsedStructs) ->
+    maps:foreach(fun(_, Type) -> check_type_recursion(Type, StructMap, [Name | UsedStructs]) end,
+                 FieldTypeMap).
 
 -spec check_type_recursion(e_type(), #{atom() => #e_struct{}}, [atom()]) -> ok.
 check_type_recursion(Type, StructMap, UsedStructs) ->
@@ -57,7 +59,8 @@ contain_struct(_, _) ->
     no.
 
 -spec eliminate_dot_in_ast(e_ast(), e_compile_context:context()) -> e_ast().
-eliminate_dot_in_ast([#e_function{vars = LocalVars, stmts = Stmts0} = Fn | Rest], #{vars := GlobalVars} = Ctx) ->
+eliminate_dot_in_ast([#e_function{vars = LocalVars, stmts = Stmts0} = Fn | Rest],
+                     #{vars := GlobalVars} = Ctx) ->
     Vars = e_util:merge_vars(GlobalVars, LocalVars, ignore_tag),
     Stmts1 = eliminate_dot_in_stmts(Stmts0, Ctx#{vars := Vars}),
     [Fn#e_function{stmts = Stmts1} | eliminate_dot_in_ast(Rest, Ctx)];

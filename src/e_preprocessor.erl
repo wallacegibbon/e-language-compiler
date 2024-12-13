@@ -13,7 +13,8 @@ preprocess(OrigTokens) ->
     {Map, FilteredTokens} = collect_macro_map(OrigTokens, [], #{}),
     replace_macro(FilteredTokens, [], #{macro_map => Map, macro_path => []}).
 
-collect_macro_map([{'#', _}, {identifier, _, define}, {identifier, Loc, Name} | Rest], FilteredTokens, Map) ->
+collect_macro_map([{'#', _}, {identifier, _, define}, {identifier, Loc, Name} | Rest], FilteredTokens,
+                  Map) ->
     case maps:find(Name, Map) of
         {ok, _} ->
             e_util:ethrow(Loc, "macro name conflict: \"~s\"", [Name]);
@@ -29,7 +30,8 @@ collect_macro_map([], FilteredTokens, Map) ->
     {Map, lists:reverse(FilteredTokens)}.
 
 -spec replace_macro([token()], [token()], context()) -> [token()].
-replace_macro([{'?', Loc}, {identifier, _, Name} = I | Rest], Ret, #{macro_map := Map, macro_path := Path} = Ctx) ->
+replace_macro([{'?', Loc}, {identifier, _, Name} = I | Rest], Ret,
+              #{macro_map := Map, macro_path := Path} = Ctx) ->
     case lists:member(Name, Path) of
         true ->
             Str = string:join([atom_to_list(A) || A <- lists:reverse(Path, [Name])], "->"),

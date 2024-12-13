@@ -18,16 +18,20 @@
 
 -spec generate_code(e_ast_compiler:ast_compile_result(), string(), e_compile_option:option()) -> ok.
 generate_code({{InitCode, AST}, Vars}, OutputFile, Options) ->
-    #{wordsize := WordSize, data_pos := DPos, data_size := DSize, code_pos := CPos, prefer_shift := PreferShift} = Options,
+    #{wordsize := WordSize, data_pos := DPos, data_size := DSize,
+      code_pos := CPos, prefer_shift := PreferShift} = Options,
     #e_vars{shifted_size = ShiftedSize, size = GlobalVarSize} = Vars,
     %% Let's assume we need at least 128 bytes for stack.
     MinDataSize = GlobalVarSize + 128,
-    e_util:assert(DSize >= MinDataSize, e_util:fmt("Data storage size (~w) is not enough. (~w needed)", [DSize, MinDataSize])),
+    e_util:assert(DSize >= MinDataSize,
+                  e_util:fmt("Data storage size (~w) is not enough. (~w needed)", [DSize, MinDataSize])),
     GP = DPos + DSize - ShiftedSize,
     {Init1, Init2} = init_code(DPos, GP, Options),
     Pid = spawn_link(fun() -> string_collect_loop([]) end),
     Regs = e_riscv_ir:tmp_regs(),
-    Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs, string_collector => Pid, epilogue_tag => none, ret_offset => -WordSize, prefer_shift => PreferShift, cond_label => {none, none}},
+    Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs,
+            string_collector => Pid, epilogue_tag => none,
+            ret_offset => -WordSize, prefer_shift => PreferShift, cond_label => {none, none}},
     InitVars0 = [stmt_to_ir(S, Ctx#{scope_tag := '__init_vars'}) || S <- InitCode],
     InitVars = [{label, {align, 1}, '__init_vars'} | InitVars0],
     InterruptMap = collect_interrupt_map(AST, []),
@@ -41,7 +45,8 @@ generate_code({{InitCode, AST}, Vars}, OutputFile, Options) ->
     e_util:file_write(OutputFile ++ ".code.asm", fun(IO) -> write_asm(IRs, IO) end),
     ok.
 
-collect_interrupt_map([#e_function{name = Name, attribute = #{interrupt := N}, loc = Loc} | Rest], Result) ->
+collect_interrupt_map([#e_function{name = Name, attribute = #{interrupt := N}, loc = Loc} | Rest],
+                      Result) ->
     case lists:keyfind(N, 1, Result) of
         {N, Prev} ->
             e_util:ethrow(Loc, "interrupt number ~w is taken by <~s>", [N, Prev]);
@@ -60,7 +65,8 @@ init_code(SP, GP, #{entry_function := Entry} = Options) ->
     EndJump = [{label, {align, 1}, '__end'}, {j, '__end'}],
     DefaultISR = [{label, {align, 1}, '__default_isr'}, {j, '__default_isr'}],
     %% Init `sp` and `gp`. This should be before InitVars.
-    InitSystemIRs1 = [{label, {align, 1}, '__init_system1'}, e_riscv_ir:li({x, 2}, SP), e_riscv_ir:li({x, 3}, GP)],
+    InitSystemIRs1 = [{label, {align, 1}, '__init_system1'},
+                      e_riscv_ir:li({x, 2}, SP), e_riscv_ir:li({x, 3}, GP)],
     %% Set interrupt vector base address, enable interrupt.
     InitSystemIRs2 = [{label, {align, 1}, '__init_system2'}, interrupt_init_irs({x, 5}, Options)],
     Init1 = [{label, {align, 1}, '__init'}, InitSystemIRs1],
@@ -70,7 +76,8 @@ init_code(SP, GP, #{entry_function := Entry} = Options) ->
 -spec interrupt_init_irs(machine_reg(), e_compile_option:option()) -> flatten_irs().
 interrupt_init_irs(T, #{ivec_pos := Pos, ivec_size := Size}) when Size > 0 ->
     %% Initialize interrupt vector address by writting `mtvec`(CSR 0x305).
-    %% CAUTION: In RV Spec, mtvec[1] is reserved. But QingKe need mtvec[1] to be 1 to be compatible with the standard.
+    %% !!CAUTION: In RV Spec, mtvec[1] is reserved.
+    %% But QingKe need mtvec[1] to be 1 to be compatible with the standard.
     SetInterruptVector = [e_riscv_ir:li(T, Pos), {ori, T, T, 2#11}, {csrrw, {x, 0}, T, 16#305}],
     %% Initialize MIE and MPIE in `mstatus`(CSR 0x300).
     InitInterrupt = [e_riscv_ir:li(T, 16#88), {csrrw, {x, 0}, T, 16#300}],
@@ -90,7 +97,9 @@ ivec_irs(R, Size, _, #{ivec_size := Size}) ->
     lists:reverse(R).
 
 -spec ast_to_ir(e_ast(), context()) -> irs().
-ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{size = Size0, shifted_size = Size1}} = Fn | Rest], Ctx) ->
+ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{size = Size0, shifted_size = Size1}} = Fn
+           | Rest],
+          Ctx) ->
     #{wordsize := WordSize, free_regs := [T | _] = Regs} = Ctx,
     %% When there are no local variables, there should still be one word for returning value.
     Size2 = max(e_util:fill_unit_pessi(Size1, WordSize), WordSize),
@@ -98,7 +107,8 @@ ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{size = Size0, 
     FrameSize = Size2 + WordSize * 2,
     SaveFpRa = [{sw, {x, 8}, {{x, 2}, -WordSize * 2}}, {sw, {x, 1}, {{x, 2}, -WordSize}}],
     RestoreFpRa = [{lw, {x, 8}, {{x, 2}, -WordSize * 2}}, {lw, {x, 1}, {{x, 2}, -WordSize}}],
-    RegSave = [e_riscv_ir:addi({x, 2}, FrameSize, T), SaveFpRa, e_riscv_ir:mv({x, 8}, {x, 2}), e_riscv_ir:addi({x, 8}, -FrameSize, T)],
+    RegSave = [e_riscv_ir:addi({x, 2}, FrameSize, T), SaveFpRa,
+               e_riscv_ir:mv({x, 8}, {x, 2}), e_riscv_ir:addi({x, 8}, -FrameSize, T)],
     {I1, I2} = interrupt_related_code(Fn, Regs, Ctx),
     RegRestore = [RestoreFpRa, e_riscv_ir:addi({x, 2}, -FrameSize, T)],
     EpilogueTag = generate_tag(Name, epilogue),
@@ -125,7 +135,8 @@ ret_instruction_of(_) ->
     [{jalr, {x, 0}, {x, 1}}].
 
 -spec stmt_to_ir(e_stmt(), context()) -> irs().
-stmt_to_ir(#e_if_stmt{'cond' = Cond, then = Then0, 'else' = Else0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
+stmt_to_ir(#e_if_stmt{'cond' = Cond, then = Then0, 'else' = Else0, loc = Loc},
+           #{scope_tag := ScopeTag} = Ctx) ->
     ThenLabel = generate_tag(ScopeTag, if_then, Loc),
     ElseLabel = generate_tag(ScopeTag, if_else, Loc),
     EndLabel = generate_tag(ScopeTag, if_end, Loc),
@@ -196,7 +207,8 @@ expr_to_ir(?CALL(Fn, Args), Ctx) ->
     #{free_regs := [T | _]} = Ctx1,
     StackRestore = [{comment, "drop args"}, e_riscv_ir:addi({x, 2}, -N, T)],
     RetLoad = [{comment, "load ret"}, {lw, R, {{x, 2}, -WordSize}}, {addi, {x, 2}, {x, 2}, -WordSize}],
-    Call = [FnLoad, PreserveRet, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, R}, StackRestore, RetLoad],
+    Call = [FnLoad, PreserveRet, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, R},
+            StackRestore, RetLoad],
     {[{comment, "call start"}, BeforeCall, Call, AfterCall, {comment, "call end"}], R, Ctx1};
 %% Optimization for `* 1` is important since it speed up the accessing of byte arrays.
 expr_to_ir(?OP2('*', Expr, ?I(1)), Ctx) ->
@@ -240,12 +252,16 @@ expr_to_ir(?OP2('and', Left, Right, Loc), #{scope_tag := ScopeTag, cond_label :=
     L_Middle = generate_tag(ScopeTag, and_middle, Loc),
     {IRs1, R1, _} = expr_to_ir(Left, Ctx#{cond_label := {L_Middle, L2}}),
     {IRs2, R2, _} = expr_to_ir(Right, Ctx#{cond_label := {L1, L2}}),
-    {[IRs1, br(R1, false, L2), {label, {align, 1}, L_Middle}, IRs2, br(R2, false, L2), {j, L1}], {x, 0}, Ctx};
+    {[IRs1, br(R1, false, L2), {label, {align, 1}, L_Middle},
+      IRs2, br(R2, false, L2), {j, L1}],
+     {x, 0}, Ctx};
 expr_to_ir(?OP2('or', Left, Right, Loc), #{scope_tag := ScopeTag, cond_label := {L1, L2}} = Ctx) ->
     L_Middle = generate_tag(ScopeTag, or_middle, Loc),
     {IRs1, R1, _} = expr_to_ir(Left, Ctx#{cond_label := {L1, L_Middle}}),
     {IRs2, R2, _} = expr_to_ir(Right, Ctx#{cond_label := {L1, L2}}),
-    {[IRs1, br(R1, true, L1), {label, {align, 1}, L_Middle}, IRs2, br(R2, true, L1), {j, L2}], {x, 0}, Ctx};
+    {[IRs1, br(R1, true, L1), {label, {align, 1}, L_Middle},
+      IRs2, br(R2, true, L1), {j, L2}],
+     {x, 0}, Ctx};
 expr_to_ir(?OP1('not', Expr), #{cond_label := {L1, L2}} = Ctx) ->
     {IRs, R, Ctx1} = expr_to_ir(Expr, Ctx#{cond_label := {L2, L1}}),
     {[IRs, br(R, false, L1), {j, L2}], {x, 0}, Ctx1};
@@ -295,7 +311,7 @@ fix_irs([{Tag, Rd, R1, R2}, {'br!', Rd, DestTag} | Rest]) ->
     fix_irs([{reverse_cmp_tag(Tag), Rd, R1, R2}, {br, Rd, DestTag} | Rest]);
 fix_irs([{Tag, Rd, R1, R2}, {br, Rd, DestTag} | Rest]) ->
     [{e_riscv_ir:to_cmp_op(Tag), R1, R2, DestTag} | fix_irs(Rest)];
-%% Continuous and duplicated jump instructions (to the same address) without any labels in between are useless.
+%% Duplicated jump instructions (to the same address) without any labels in between are useless.
 fix_irs([{j, Label} = I, {j, Label} | Rest]) ->
     fix_irs([I | Rest]);
 fix_irs([{j, Label} = I | Rest]) ->

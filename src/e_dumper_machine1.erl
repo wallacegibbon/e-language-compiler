@@ -21,11 +21,15 @@ generate_code(CodeIRs, IVecIRs, OutputFile, #{wordsize := WordSize}) ->
     IVec = [encode_instr(A) || A <- replace_address(IVecWithPos, LabelMap)],
     #{start_address := IVecStartAddress} = IVecCtx,
     %% Write bin files
-    e_util:file_write(OutputFile ++ ".code.bin", fun(IO) -> write_binary(Code, CodeStartAddress, IO) end),
-    e_util:file_write(OutputFile ++ ".ivec.bin", fun(IO) -> write_binary(IVec, IVecStartAddress, IO) end),
+    e_util:file_write(OutputFile ++ ".code.bin",
+                      fun(IO) -> write_binary(Code, CodeStartAddress, IO) end),
+    e_util:file_write(OutputFile ++ ".ivec.bin",
+                      fun(IO) -> write_binary(IVec, IVecStartAddress, IO) end),
     %% Write detail files
-    e_util:file_write(OutputFile ++ ".code.detail.txt", fun(IO) -> write_detail(Code, CodeStartAddress, OffsetMap, IO) end),
-    e_util:file_write(OutputFile ++ ".ivec.detail.txt", fun(IO) -> write_detail(IVec, IVecStartAddress, OffsetMap, IO) end),
+    e_util:file_write(OutputFile ++ ".code.detail.txt",
+                      fun(IO) -> write_detail(Code, CodeStartAddress, OffsetMap, IO) end),
+    e_util:file_write(OutputFile ++ ".ivec.detail.txt",
+                      fun(IO) -> write_detail(IVec, IVecStartAddress, OffsetMap, IO) end),
     ok.
 
 -spec scan_address([tuple()], non_neg_integer(), [tuple()], scan_context()) -> {[tuple()], scan_context()}.
@@ -33,7 +37,8 @@ scan_address([{start_address, N} | Rest], 0, Result, #{start_address := 0} = Ctx
     scan_address(Rest, N, Result, Ctx#{start_address := N});
 scan_address([{start_address, _} | _], N, _, _) when N > 0 ->
     throw({start_address_error, "the start_address command can not appear more than once"});
-scan_address([{label, {align, N}, Name} | Rest], Offset, Result, #{label_map := LabelMap, offset_map := OffsetMap} = Ctx) ->
+scan_address([{label, {align, N}, Name} | Rest], Offset, Result,
+             #{label_map := LabelMap, offset_map := OffsetMap} = Ctx) ->
     check_label_conflict(Name, LabelMap),
     FixedOffset = e_util:fill_unit_pessi(Offset, N),
     NewLabelMap = LabelMap#{Name => FixedOffset},
@@ -60,7 +65,8 @@ check_label_conflict(Name, LabelMap) ->
 
 -define(IS_BR_INSTR(Tag),
         (
-          Tag =:= beq orelse Tag =:= bne orelse Tag =:= bge orelse Tag =:= blt orelse Tag =:= bgt orelse Tag =:= ble
+          Tag =:= beq orelse Tag =:= bne orelse Tag =:= bge orelse
+          Tag =:= blt orelse Tag =:= bgt orelse Tag =:= ble
         )).
 
 replace_address([{{Br, R1, R2, Label}, Loc} | Rest], LabelMap) when ?IS_BR_INSTR(Br) ->
@@ -101,23 +107,26 @@ replace_address([], _) ->
 
 -define(IS_NORMAL_CALC(Tag),
         (
-          Tag =:= add orelse Tag =:= sub orelse Tag =:= 'and' orelse Tag =:= 'or' orelse Tag =:= 'xor' orelse
-          Tag =:= sll orelse Tag =:= sra orelse
+          Tag =:= add orelse Tag =:= sub orelse Tag =:= 'and' orelse Tag =:= 'or' orelse
+          Tag =:= 'xor' orelse Tag =:= sll orelse Tag =:= sra orelse
           Tag =:= mul orelse Tag =:= mulh orelse Tag =:= 'div' orelse Tag =:= 'rem'
         )).
 
-encode_instr({{Br, {x, N1}, {x, N2}, Address} = I, Loc}) when Br =:= bge; Br =:= blt; Br =:= beq; Br =:= bne ->
+encode_instr({{Br, {x, N1}, {x, N2}, Address} = I, Loc})
+  when Br =:= bge; Br =:= blt; Br =:= beq; Br =:= bne ->
     {High, Low} = e_util:b_type_immedi(Address),
     Immedi = (High bsl 25) bor (Low bsl 7),
     Code =  Immedi bor (N2 bsl 20) bor (N1 bsl 15) bor (f3code_of(Br) bsl 12) bor 2#1100011,
     {I, <<Code:32/little>>, Loc};
-encode_instr({{S, {x, N1}, {{x, N2}, O}} = I, Loc}) when S =:= sw; S =:= sb ->
+encode_instr({{S, {x, N1}, {{x, N2}, O}} = I, Loc})
+  when S =:= sw; S =:= sb ->
     {High, Low} = e_util:s_type_immedi(O),
     Immedi = (High bsl 25) bor (Low bsl 7),
     %% N2 is RS1, the pointer.
     Code = Immedi bor (N2 bsl 15) bor (N1 bsl 20) bor (f3code_of(S) bsl 12) bor 2#0100011,
     {I, <<Code:32/little>>, Loc};
-encode_instr({{L, {x, N1}, {{x, N2}, O}} = I, Loc}) when L =:= lw; L =:= lb ->
+encode_instr({{L, {x, N1}, {{x, N2}, O}} = I, Loc})
+  when L =:= lw; L =:= lb ->
     Code = (O bsl 20) bor (N2 bsl 15) bor (f3code_of(L) bsl 12) bor (N1 bsl 7) bor 2#0000011,
     {I, <<Code:32/little>>, Loc};
 %% SRAI is special, it's like `I` and `R` at the same time. both `f7` and immediate exists.
@@ -125,13 +134,16 @@ encode_instr({{srai, {x, N1}, {x, N2}, A} = I, Loc}) ->
     FixedA = A bor 2#010000000000,
     Code = (FixedA bsl 20) bor (N2 bsl 15) bor (f3code_of(srai) bsl 12) bor (N1 bsl 7) bor 2#0010011,
     {I, <<Code:32/little>>, Loc};
-encode_instr({{Tag, {x, N1}, {x, N2}, A} = I, Loc}) when ?IS_IMMEDI_CALC(Tag) ->
+encode_instr({{Tag, {x, N1}, {x, N2}, A} = I, Loc})
+  when ?IS_IMMEDI_CALC(Tag) ->
     Code = (A bsl 20) bor (N2 bsl 15) bor (f3code_of(Tag) bsl 12) bor (N1 bsl 7) bor 2#0010011,
     {I, <<Code:32/little>>, Loc};
-encode_instr({{Tag, {x, N1}, {x, N2}, CSR} = I, Loc}) when Tag =:= csrrw; Tag =:= csrrs; Tag =:= csrrc ->
+encode_instr({{Tag, {x, N1}, {x, N2}, CSR} = I, Loc})
+  when Tag =:= csrrw; Tag =:= csrrs; Tag =:= csrrc ->
     Code = (CSR bsl 20) bor (N2 bsl 15) bor (f3code_of(Tag) bsl 12) bor (N1 bsl 7) bor 2#1110011,
     {I, <<Code:32/little>>, Loc};
-encode_instr({{Tag, {x, N1}, {x, N2}, {x, N3}} = I, Loc}) when ?IS_NORMAL_CALC(Tag) ->
+encode_instr({{Tag, {x, N1}, {x, N2}, {x, N3}} = I, Loc})
+  when ?IS_NORMAL_CALC(Tag) ->
     Rs = (N3 bsl 20) bor (N2 bsl 15) bor (N1 bsl 7),
     Code = Rs bor (f7code_of(Tag) bsl 25) bor (f3code_of(Tag) bsl 12) bor 2#0110011,
     {I, <<Code:32/little>>, Loc};

@@ -57,26 +57,31 @@ struct_init_to_map([], ExprMap) ->
 %% In function expressions, the init code of `vardef`s can not be simply fetched out from the code,
 %% they should be replaced as assignment in the same place.
 
-%% CAUTION!: fetch_vars/3 generate IN-COMPLETE `#e_vars{}` values here. (For functions, structs and global variables)
+%% CAUTION!: fetch_vars/3 generate IN-COMPLETE `#e_vars{}` values here.
+%%  (For functions, structs and global variables)
 %%
 %% Only `names`, `type_map` and `tag` fields are updated.
 %% `size`, `align` and `offset_map` fields are to be updated by functions in `e_size.erl`.
 
 -spec fetch_vars(e_ast_raw(), e_ast_raw(), fetch_vars_state()) -> {#e_vars{}, e_ast(), e_ast()}.
-fetch_vars([#e_vardef{name = Name, type = Type, loc = Loc, init_value = InitialValue} | Rest], AST, #{mode := initcode} = Ctx) ->
+fetch_vars([#e_vardef{name = Name, type = Type, loc = Loc, init_value = InitialValue} | Rest],
+           AST, #{mode := initcode} = Ctx) ->
     #{vars := #e_vars{type_map = TypeMap} = Vars, names := Names, initcode := InitCode} = Ctx,
     check_name_conflict(Name, Vars, Loc),
     Vars1 = Vars#e_vars{type_map = TypeMap#{Name => Type}},
     InitCode1 = append_to_ast(InitCode, Name, InitialValue, Loc),
     Ctx1 = Ctx#{vars := Vars1, names := [Name | Names], initcode := InitCode1},
     fetch_vars(Rest, AST, Ctx1);
-fetch_vars([#e_vardef{name = Name, type = Type, loc = Loc, init_value = InitialValue} | Rest], AST, Ctx) ->
+fetch_vars([#e_vardef{name = Name, type = Type, loc = Loc, init_value = InitialValue} | Rest],
+           AST, Ctx) ->
     #{vars := #e_vars{type_map = TypeMap} = Vars, names := Names} = Ctx,
     check_name_conflict(Name, Vars, Loc),
     Vars1 = Vars#e_vars{type_map = TypeMap#{Name => Type}},
     Ctx1 = Ctx#{vars := Vars1, names := [Name | Names]},
     fetch_vars(Rest, append_to_ast(AST, Name, InitialValue, Loc), Ctx1);
-fetch_vars([#e_function_raw{name = Name, ret_type = Ret, params = Params, stmts = Stmts, attribute = Attr, loc = Loc} | Rest], AST, Ctx) ->
+fetch_vars([#e_function_raw{name = Name, ret_type = Ret, params = Params, stmts = Stmts,
+                            attribute = Attr, loc = Loc} | Rest],
+           AST, Ctx) ->
     #{vars := GlobalVars} = Ctx,
     Ctx1 = fetch_vars_state_new(),
     {ParamVars, [], ParamInitCode} = fetch_vars(Params, [], Ctx1#{tag := local}),
@@ -87,14 +92,16 @@ fetch_vars([#e_function_raw{name = Name, ret_type = Ret, params = Params, stmts 
     FnType = #e_fn_type{params = get_values_by_defs(Params, ParamVars), ret = Ret, loc = Loc},
     ParamNames = e_util:names_of_var_defs(Params),
     check_label_conflict(NewStmts, #{}),
-    Fn = #e_function{name = Name, vars = LocalVars, param_names = ParamNames, type = FnType, stmts = NewStmts, loc = Loc, attribute = Attr},
+    Fn = #e_function{name = Name, vars = LocalVars, param_names = ParamNames, type = FnType,
+                     stmts = NewStmts, loc = Loc, attribute = Attr},
     fetch_vars(Rest, [Fn | AST], Ctx);
 fetch_vars([#e_struct_raw{name = Name, fields = RawFields, loc = Loc} | Rest], AST, Ctx) ->
     %% struct can have default value
     Ctx1 = fetch_vars_state_new(),
     {Fields, [], StructInitCode} = fetch_vars(RawFields, [], Ctx1#{tag := none, mode := initcode}),
     %% Default value for struct can caused some bugs which I don't have time to fix.
-    e_util:assert(StructInitCode =:= [], {Loc, "default value for struct is not supported yet"}),
+    e_util:assert(StructInitCode =:= [],
+                  {Loc, "default value for struct is not supported yet"}),
     FieldInitMap = struct_init_to_map(StructInitCode, #{}),
     S = #e_struct{name = Name, fields = Fields, default_value_map = FieldInitMap, loc = Loc},
     fetch_vars(Rest, [S | AST], Ctx);

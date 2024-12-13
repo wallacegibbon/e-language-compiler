@@ -3,7 +3,8 @@
 -include("e_record_definition.hrl").
 
 -spec transform_aref_in_ast(e_ast(), e_compile_context:context()) -> e_ast().
-transform_aref_in_ast([#e_function{vars = LocalVars, stmts = Stmts0} = Fn | Rest], #{vars := GlobalVars} = Ctx) ->
+transform_aref_in_ast([#e_function{vars = LocalVars, stmts = Stmts0} = Fn | Rest],
+                      #{vars := GlobalVars} = Ctx) ->
     Vars = e_util:merge_vars(GlobalVars, LocalVars, ignore_tag),
     Stmts1 = transform_aref_in_stmts(Stmts0, Ctx#{vars := Vars}),
     [Fn#e_function{stmts = Stmts1} | transform_aref_in_ast(Rest, Ctx)];

@@ -44,7 +44,8 @@ fill_offsets_in_ast([#e_function{vars = Old, param_names = ParamNames} = Fn | Re
     Vars0 = fill_offsets_in_vars(Old, Ctx),
     Vars1 = shift_offset_params(Vars0, ParamNames),
     [Fn#e_function{vars = Vars1} | fill_offsets_in_ast(Rest, Ctx)];
-fill_offsets_in_ast([#e_struct{name = Name, fields = Old} = S | Rest], #{struct_map := StructMap} = Ctx) ->
+fill_offsets_in_ast([#e_struct{name = Name, fields = Old} = S | Rest],
+                    #{struct_map := StructMap} = Ctx) ->
     FilledS = S#e_struct{fields = fill_offsets_in_vars(Old, Ctx)},
     %% StructMap in Ctx got updated to avoid some duplicated calculations.
     [FilledS | fill_offsets_in_ast(Rest, Ctx#{struct_map := StructMap#{Name := FilledS}})];
@@ -83,18 +84,21 @@ size_and_offsets_of_vars(#e_vars{names = Names, type_map = TypeMap}, Ctx) ->
     TypeList = e_util:get_kvpair_by_keys(Names, TypeMap),
     size_and_offsets(TypeList, #{size => 0, align => 1, offset_map => #{}}, Ctx).
 
--spec size_and_offsets([{atom(), e_type()}], size_align_data(), e_compile_context:context()) -> size_align_data().
-size_and_offsets([{Name, Type} | Rest], #{size := CurrentOffset, align := MaxAlign, offset_map := OffsetMap}, Ctx) ->
+-spec size_and_offsets([{atom(), e_type()}], size_align_data(), e_compile_context:context()) ->
+          size_align_data().
+size_and_offsets([{Name, Type} | Rest],
+                 #{size := CurrentOffset, align := MaxAlign, offset_map := OffsetMap}, Ctx) ->
     FieldAlign = align_of(Type, Ctx),
     Offset = e_util:fill_unit_pessi(CurrentOffset, FieldAlign),
     FieldSize = size_of(Type, Ctx),
     OffsetMapNew = OffsetMap#{Name => {Offset, FieldSize}},
-    NextIn = #{size => Offset + FieldSize, align => max(MaxAlign, FieldAlign), offset_map => OffsetMapNew},
+    NextIn = #{size => Offset + FieldSize, align => max(MaxAlign, FieldAlign),
+               offset_map => OffsetMapNew},
     size_and_offsets(Rest, NextIn, Ctx);
 size_and_offsets([], #{size := CurrentOffset, align := MaxAlign} = Result, _) ->
     Result#{size := e_util:fill_unit_pessi(CurrentOffset, MaxAlign)}.
 
-%% Usually, for 32-bit MCU, only 32-bit float is supported. For 64-bit CPU, 64-bit float is supported, too.
+%% Usually, for 32-bit MCU, only 32-bit float is supported. For 64-bit CPU, 64-bit float is supported.
 %% So we can assume that size of float is same as sizeof word.
 
 -spec size_of(e_type(), e_compile_context:context()) -> non_neg_integer().
@@ -138,13 +142,22 @@ shift_offset_params(Vars, ParamNames) ->
 
 -ifdef(EUNIT).
 local_var_offset_test() ->
-    V0 = #e_vars{names = [a, b, c], offset_map = #{a => {0, 4}, b => {4, 4}, c => {8, 1}}, size = 12, shifted_size = 12},
+    V0 = #e_vars{names = [a, b, c],
+                 offset_map = #{a => {0, 4}, b => {4, 4}, c => {8, 1}},
+                 size = 12,
+                 shifted_size = 12},
     ?assertEqual(8, local_var_offset(V0, [a, b])).
 
 shift_offset_params_test() ->
-    V0 = #e_vars{names = [a, b, c], offset_map = #{a => {0, 4}, b => {4, 4}, c => {8, 1}}, size = 12, shifted_size = 12},
+    V0 = #e_vars{names = [a, b, c],
+                 offset_map = #{a => {0, 4}, b => {4, 4}, c => {8, 1}},
+                 size = 12,
+                 shifted_size = 12},
     V1 = shift_offset_params(V0, [a, b]),
-    ?assertMatch(#e_vars{offset_map = #{a := {-8, 4}, b := {-4, 4}}, size = 12, shifted_size = 4}, V1).
+    ?assertMatch(#e_vars{offset_map = #{a := {-8, 4}, b := {-4, 4}},
+                         size = 12,
+                         shifted_size = 4},
+                 V1).
 
 -endif.
 

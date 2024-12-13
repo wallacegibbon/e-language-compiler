@@ -45,7 +45,8 @@ check_position(#e_type_convert{expr = Expr}) ->
 check_position(_) ->
     ok.
 
-replace_init_ops(?OP2('=', Op1, #e_struct_init_expr{name = Name, loc = Loc, field_value_map = FieldValues}), #{struct_map := StructMap} = Ctx) ->
+replace_init_ops(?OP2('=', Op1, #e_struct_init_expr{name = Name, loc = Loc, field_value_map = FieldValues}),
+                 #{struct_map := StructMap} = Ctx) ->
     Struct = e_util:get_struct_from_name(Name, StructMap, Loc),
     #e_struct{fields = Fields, default_value_map = FieldDefaultMap} = Struct,
     #e_vars{names = FieldNames, type_map = FieldTypeMap} = Fields,

@@ -13,7 +13,8 @@
 %% This function is to avoid boilerplate code for statements. So you can concentrate on operators.
 -spec expr_map(fun((e_expr()) -> e_expr()), [e_stmt()]) -> [e_stmt()].
 expr_map(Fn, [#e_if_stmt{'cond' = Cond, then = Then, 'else' = Else} = If | Rest]) ->
-    [If#e_if_stmt{'cond' = Fn(Cond), then = expr_map(Fn, Then), 'else' = expr_map(Fn, Else)} | expr_map(Fn, Rest)];
+    [If#e_if_stmt{'cond' = Fn(Cond), then = expr_map(Fn, Then), 'else' = expr_map(Fn, Else)}
+     | expr_map(Fn, Rest)];
 expr_map(Fn, [#e_while_stmt{'cond' = Cond, stmts = Stmts} = While | Rest]) ->
     [While#e_while_stmt{'cond' = Fn(Cond), stmts = expr_map(Fn, Stmts)} | expr_map(Fn, Rest)];
 expr_map(Fn, [#e_return_stmt{expr = Expr} = Ret | Rest]) ->
@@ -57,7 +58,8 @@ merge_pointer(Any) ->
 
 -spec stmt_to_str(e_stmt()) -> string().
 stmt_to_str(#e_if_stmt{'cond' = Cond, then = Then, 'else' = Else}) ->
-    io_lib:format("if ~s then ~s else ~s end", [stmt_to_str(Cond), [stmt_to_str(S) || S <- Then], [stmt_to_str(S) || S <- Else]]);
+    io_lib:format("if ~s then ~s else ~s end",
+                  [stmt_to_str(Cond), [stmt_to_str(S) || S <- Then], [stmt_to_str(S) || S <- Else]]);
 stmt_to_str(#e_while_stmt{'cond' = Cond, stmts = Stmts}) ->
     io_lib:format("while ~s do ~s end", [stmt_to_str(Cond), [stmt_to_str(S) || S <- Stmts]]);
 stmt_to_str(#e_return_stmt{expr = Expr}) ->
@@ -151,9 +153,11 @@ get_values_by_keys_test() ->
 
 -endif.
 
--spec make_function_and_struct_map_from_ast(any()) -> {#{atom() => #e_fn_type{}}, #{atom() => #e_struct{}}}.
+-spec make_function_and_struct_map_from_ast(any()) ->
+          {#{atom() => #e_fn_type{}}, #{atom() => #e_struct{}}}.
 make_function_and_struct_map_from_ast(AST) ->
-    {Fns, Structs} = lists:partition(fun(A) -> element(1, A) =:= e_function end, AST),
+    {Fns, Structs} = lists:partition(fun(A) -> element(1, A) =:= e_function end,
+                                     AST),
     %% FnTypeMap stores function type only
     FnTypeMap = maps:from_list([{Name, T} || #e_function{name = Name, type = T} <- Fns]),
     StructMap = maps:from_list([{Name, S} || #e_struct{name = Name} = S <- Structs]),
@@ -172,7 +176,8 @@ fill_unit_opti(Num, Unit) ->
 fall_unit(Num, Unit) ->
     Num div Unit * Unit.
 
-%% When `Low` is negative, it will be sign extended by hardware. `High` should be increased by 1 to balance it.
+%% When `Low` is negative, it will be sign extended by hardware.
+%% `High` should be increased by 1 to balance it.
 %% The mechanism is simple: `+1` then `+(-1)` keeps the number unchanged.
 u_type_immedi(N) ->
     case {N bsr 12, N band 16#FFF} of
@@ -313,7 +318,8 @@ get_struct_from_name(Name, StructMap, Loc) ->
 
 %% `merge_vars` will NOT merge all fields of e_vars. Only name, type_map and offset_map are merged.
 
--define(VARS(Names, TypeMap, OffsetMap), #e_vars{names = Names, type_map = TypeMap, offset_map = OffsetMap}).
+-define(VARS(Names, TypeMap, OffsetMap),
+        #e_vars{names = Names, type_map = TypeMap, offset_map = OffsetMap}).
 
 -spec merge_vars(#e_vars{}, #e_vars{}, check_tag | ignore_tag) -> #e_vars{}.
 merge_vars(#e_vars{tag = Tag1}, #e_vars{tag = Tag2}, check_tag) when Tag1 =/= Tag2 ->

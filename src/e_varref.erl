@@ -3,7 +3,8 @@
 -include("./src/e_record_definition.hrl").
 
 -spec varref_to_offset_in_ast(e_ast(), e_compile_context:context()) -> e_ast().
-varref_to_offset_in_ast([#e_function{stmts = Stmts, vars = LocalVars} = Fn | Rest], #{vars := GlobalVars} = Ctx) ->
+varref_to_offset_in_ast([#e_function{stmts = Stmts, vars = LocalVars} = Fn | Rest],
+                        #{vars := GlobalVars} = Ctx) ->
     Stmts1 = varref_to_offset_in_stmts_inner(Stmts, [LocalVars, GlobalVars], Ctx),
     [Fn#e_function{stmts = Stmts1} | varref_to_offset_in_ast(Rest, Ctx)];
 varref_to_offset_in_ast([Any | Rest], Ctx) ->
@@ -41,7 +42,8 @@ varref_to_offset(Any, _, _) ->
 varref_to_op(?VREF(_, Loc) = Varref, Tag, {Offset, Size}) ->
     ?OP2('^', ?OP2('+', Varref?VREF(Tag), ?I(Offset, Loc), Loc), ?I(Size, Loc), Loc).
 
--spec find_name_in_vars_and_fn_map(#e_varref{}, [#e_vars{}], e_compile_context:context()) -> {ok, {atom(), e_var_offset()}} | {ok, atom()}.
+-spec find_name_in_vars_and_fn_map(#e_varref{}, [#e_vars{}], e_compile_context:context()) ->
+          {ok, {atom(), e_var_offset()}} | {ok, atom()}.
 find_name_in_vars_and_fn_map(Varref, VarsList, #{fn_map := FnTypeMap}) ->
     case find_name_in_vars(Varref, VarsList) of
         {ok, _} = R ->

@@ -3,7 +3,8 @@
 -include("./src/e_record_definition.hrl").
 
 -spec fix_pointer_size_in_ast(e_ast(), e_compile_context:context()) -> e_ast().
-fix_pointer_size_in_ast([#e_function{vars = LocalVars, stmts = Stmts} = Fn | Rest], #{vars := GlobalVars} = Ctx) ->
+fix_pointer_size_in_ast([#e_function{vars = LocalVars, stmts = Stmts} = Fn | Rest],
+                        #{vars := GlobalVars} = Ctx) ->
     Vars = e_util:merge_vars(GlobalVars, LocalVars, ignore_tag),
     Ctx1 = Ctx#{vars := Vars},
     [Fn#e_function{stmts = fix_pointer_size_in_stmts(Stmts, Ctx1)} | fix_pointer_size_in_ast(Rest, Ctx)];

@@ -20,7 +20,8 @@ check(#{ivec_pos := Vp}) when Vp rem 4 =/= 0 ->
 check(#{code_pos := Cp}) when Cp rem 4 =/= 0 ->
     throw(e_util:fmt("Compile option error: code start (~w) is not 4-byte aligned", [Cp]));
 check(#{ivec_pos := Vp, ivec_size := Vs, code_pos := Cp}) when Vp =< Cp, Vp + Vs > Cp ->
-    throw(e_util:fmt("Compile option error: interrupt vector table (~w-~w) overlapped code start (~w)", [Vp, Vp + Vs, Cp]));
+    throw(e_util:fmt("Compile option error: interrupt vector table (~w-~w) overlapped code start (~w)",
+                     [Vp, Vp + Vs, Cp]));
 check(#{ivec_init_jump := true, ivec_size := 0}) ->
     throw("Compile option error: init jump shouldn't exist when there is no interrupt vector");
 check(Options) ->

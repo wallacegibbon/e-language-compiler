@@ -51,7 +51,9 @@ fix_expr_for_c(Any, _) ->
 ast_to_str(Statements, InitCode) ->
     ast_to_str(Statements, InitCode, [], []).
 
-ast_to_str([#e_function{name = Name, param_names = ParamNames, type = FnType, vars = Vars, stmts = Stmts} | Rest], InitCode, StmtStrs, FnDeclars) ->
+ast_to_str([#e_function{name = Name, param_names = ParamNames, type = FnType, vars = Vars, stmts = Stmts}
+            | Rest],
+           InitCode, StmtStrs, FnDeclars) ->
     #e_vars{type_map = VarTypes} = Vars,
     PureParams = map_to_kv_list(ParamNames, maps:with(ParamNames, VarTypes)),
     PureVars = maps:without(ParamNames, VarTypes),
@@ -138,7 +140,8 @@ stmts_to_str([], ExprList) ->
 
 -spec stmt_to_str(e_expr(), char()) -> iolist().
 stmt_to_str(#e_if_stmt{'cond' = Cond, then = Then, 'else' = Else}, _) ->
-    io_lib:format("if (~s) {\n~s\n} else {\n~s}", [stmt_to_str(Cond, $\s), stmts_to_str(Then), stmts_to_str(Else)]);
+    io_lib:format("if (~s) {\n~s\n} else {\n~s}",
+                  [stmt_to_str(Cond, $\s), stmts_to_str(Then), stmts_to_str(Else)]);
 stmt_to_str(#e_while_stmt{'cond' = Cond, stmts = Stmts}, _) ->
     io_lib:format("while (~s) {\n~s\n}\n", [stmt_to_str(Cond, $\s), stmts_to_str(Stmts)]);
 stmt_to_str(#e_return_stmt{expr = none}, EndChar) ->
@@ -159,7 +162,8 @@ stmt_to_str(?CALL(Fn, Args), EndChar) ->
     ArgStr = lists:join(",", [stmt_to_str(E, $\s) || E <- Args]),
     io_lib:format("~s(~s)~c", [stmt_to_str(Fn, $\s), ArgStr, EndChar]);
 stmt_to_str(?OP2(Tag, Op1, Op2), EndChar) ->
-    io_lib:format("(~s ~s ~s)~c", [stmt_to_str(Op1, $\s), translate_op(Tag), stmt_to_str(Op2, $\s), EndChar]);
+    io_lib:format("(~s ~s ~s)~c",
+                  [stmt_to_str(Op1, $\s), translate_op(Tag), stmt_to_str(Op2, $\s), EndChar]);
 stmt_to_str(?OP1(Tag, Operand), EndChar) ->
     io_lib:format("(~s ~s)~c", [translate_op(Tag), stmt_to_str(Operand, $\s), EndChar]);
 stmt_to_str(?I(Value), EndChar) ->
@@ -171,14 +175,14 @@ stmt_to_str(?S(S), EndChar) ->
 
 -spec translate_op(atom()) -> string() | atom().
 translate_op(assign) -> "=";
-translate_op('rem') -> "%";
+translate_op('rem' ) -> "%";
 translate_op('bxor') -> "^";
-translate_op('bsr') -> ">>";
-translate_op('bsl') -> "<<";
+translate_op('bsr' ) -> ">>";
+translate_op('bsl' ) -> "<<";
 translate_op('band') -> "&";
-translate_op('bor') -> "|";
-translate_op('and') -> "&&";
-translate_op('or') -> "||";
-translate_op('@') -> "&";
-translate_op('^') -> "*";
-translate_op(Any) -> Any.
+translate_op('bor' ) -> "|";
+translate_op('and' ) -> "&&";
+translate_op('or'  ) -> "||";
+translate_op('@'   ) -> "&";
+translate_op('^'   ) -> "*";
+translate_op(Any   ) -> Any.

@@ -7,9 +7,12 @@
 -endif.
 
 -spec check_types_in_ast(e_ast(), e_compile_context:context()) -> ok.
-check_types_in_ast([#e_function{name = Name, param_names = [_ | _], attribute = #{interrupt := _}, loc = Loc} | _], _) ->
+check_types_in_ast([#e_function{name = Name, param_names = [_ | _], attribute = #{interrupt := _}, loc = Loc}
+                    | _],
+                   _) ->
     e_util:ethrow(Loc, "interrupt function \"~s\" should not have parameter(s)", [Name]);
-check_types_in_ast([#e_function{type = #e_fn_type{ret = ?VOID()}, attribute = #{interrupt := _}} = Fn | Rest], Ctx) ->
+check_types_in_ast([#e_function{type = #e_fn_type{ret = ?VOID()}, attribute = #{interrupt := _}} = Fn | Rest],
+                   Ctx) ->
     check_types_in_fn(Fn, Ctx),
     check_types_in_ast(Rest, Ctx);
 check_types_in_ast([#e_function{name = Name, attribute = #{interrupt := _}, loc = Loc} | _], _) ->
@@ -28,7 +31,9 @@ check_types_in_ast([_ | Rest], Ctx) ->
 check_types_in_ast([], _) ->
     ok.
 
-check_types_in_fn(#e_function{vars = LocalVars, param_names = ParamNames, stmts = Stmts, type = FnType, loc = Loc}, #{vars := GlobalVars} = Ctx) ->
+check_types_in_fn(#e_function{vars = LocalVars, param_names = ParamNames, stmts = Stmts,
+                              type = FnType, loc = Loc},
+                  #{vars := GlobalVars} = Ctx) ->
     Ctx1 = Ctx#{vars := e_util:merge_vars(GlobalVars, LocalVars, ignore_tag)},
     #e_vars{type_map = TypeMap} = LocalVars,
     maps:foreach(fun(_, T) -> check_type(T, Ctx1) end, TypeMap),
@@ -45,12 +50,17 @@ check_type_in_stmts(Stmts, Ctx) ->
 %% Implementing `typeof` is easy. But avoiding the recursive definition problem will make the code complex.
 %% (e.g. `fn a(): typeof(a)`, `b: {typeof(b), 10}`, etc.)
 -spec replace_typeof_in_ast(e_ast(), e_compile_context:context()) -> e_ast().
-replace_typeof_in_ast([#e_function{vars = LocalVars, stmts = Stmts, type = FnType} = Fn | Rest], #{vars := GlobalVars} = Ctx) ->
+replace_typeof_in_ast([#e_function{vars = LocalVars, stmts = Stmts, type = FnType} = Fn | Rest],
+                      #{vars := GlobalVars} = Ctx) ->
     Ctx1 = Ctx#{vars := e_util:merge_vars(GlobalVars, LocalVars, ignore_tag)},
-    Fn1 = Fn#e_function{vars = replace_typeof_in_vars(LocalVars, Ctx1), type = replace_typeof_in_type(FnType, Ctx1), stmts = replace_typeof_in_stmts(Stmts, Ctx1)},
+    Fn1 = Fn#e_function{vars = replace_typeof_in_vars(LocalVars, Ctx1),
+                        type = replace_typeof_in_type(FnType, Ctx1),
+                        stmts = replace_typeof_in_stmts(Stmts, Ctx1)},
     [Fn1 | replace_typeof_in_ast(Rest, Ctx)];
-replace_typeof_in_ast([#e_struct{fields = Fields, default_value_map = DefaultValueMap} = S | Rest], Ctx) ->
-    S1 = S#e_struct{fields = replace_typeof_in_vars(Fields, Ctx), default_value_map = maps:map(fun(_, V) -> replace_typeof(V, Ctx) end, DefaultValueMap)},
+replace_typeof_in_ast([#e_struct{fields = Fields, default_value_map = DefaultValueMap} = S | Rest],
+                      Ctx) ->
+    S1 = S#e_struct{fields = replace_typeof_in_vars(Fields, Ctx),
+                    default_value_map = maps:map(fun(_, V) -> replace_typeof(V, Ctx) end, DefaultValueMap)},
     [S1 | replace_typeof_in_ast(Rest, Ctx)];
 replace_typeof_in_ast([Any | Rest], Ctx) ->
     [Any | replace_typeof_in_ast(Rest, Ctx)];
@@ -83,12 +93,14 @@ replace_typeof(#e_type_convert{expr = Expr} = C, Ctx) ->
 replace_typeof(Any, _) ->
     Any.
 
-%% `typeof` can appear in another type like array `{typeof(a), 10}` or convert expressions like `a as typeof(b)`.
+%% `typeof` can appear in another type like array `{typeof(a), 10}` or
+%% convert expressions like `a as typeof(b)`.
 -spec replace_typeof_in_type(e_type(), e_compile_context:context()) -> e_type().
 replace_typeof_in_type(#e_array_type{elem_type = ElemType} = Type, Ctx) ->
     Type#e_array_type{elem_type = replace_typeof_in_type(ElemType, Ctx)};
 replace_typeof_in_type(#e_fn_type{params = Params, ret = Ret} = Type, Ctx) ->
-    Type#e_fn_type{params = [replace_typeof_in_type(T, Ctx) || T <- Params], ret = replace_typeof_in_type(Ret, Ctx)};
+    Type#e_fn_type{params = [replace_typeof_in_type(T, Ctx) || T <- Params],
+                   ret = replace_typeof_in_type(Ret, Ctx)};
 replace_typeof_in_type(#e_basic_type{} = Type, _) ->
     Type;
 replace_typeof_in_type(#e_typeof{expr = Expr}, Ctx) ->
@@ -245,7 +257,8 @@ type_of_node(#e_array_init_expr{elements = Elements, loc = Loc}, Ctx) ->
         false ->
             e_util:ethrow(Loc, "array init type conflict: {~s}", [join_types_to_str(ElementTypes)])
     end;
-type_of_node(#e_struct_init_expr{name = Name, field_value_map = ValMap, loc = Loc}, #{struct_map := StructMap} = Ctx) ->
+type_of_node(#e_struct_init_expr{name = Name, field_value_map = ValMap, loc = Loc},
+             #{struct_map := StructMap} = Ctx) ->
     case maps:find(Name, StructMap) of
         {ok, #e_struct{fields = #e_vars{type_map = FieldTypeMap}}} ->
             check_types_in_struct_fields(FieldTypeMap, ValMap, Name, Ctx),
@@ -284,7 +297,8 @@ type_of_node(#e_while_stmt{'cond' = Cond, stmts = Stmts, loc = Loc}, Ctx) ->
 type_of_node(#e_return_stmt{expr = none, loc = Loc}, _) ->
     ?VOID(Loc);
 type_of_node(#e_return_stmt{expr = Expr}, Ctx) ->
-    %% Return type will be checked outside since we need to deal with the situation when `return` is missing.
+    %% Return type will be checked outside since we need to deal with the situation
+    %% that `return` statement is missing.
     type_of_node(Expr, Ctx);
 type_of_node(#e_goto_stmt{loc = Loc}, _) ->
     ?VOID(Loc);
@@ -327,7 +341,8 @@ compare_assign_types(Type1, Type2, Loc, Ctx) ->
 
 -spec arguments_error_info([e_type()], [e_type()]) -> string().
 arguments_error_info(FnParamTypes, ArgsTypes) ->
-    e_util:fmt("args should be (~s), not (~s)", [join_types_to_str(FnParamTypes), join_types_to_str(ArgsTypes)]).
+    e_util:fmt("args should be (~s), not (~s)",
+               [join_types_to_str(FnParamTypes), join_types_to_str(ArgsTypes)]).
 
 -spec inc_pointer_depth(e_type(), integer(), location()) -> e_type().
 inc_pointer_depth(#e_basic_type{p_depth = P} = T, N, _) when P + N >= 0 ->
@@ -337,11 +352,14 @@ inc_pointer_depth(#e_array_type{elem_type = #e_basic_type{} = T}, N, Loc) ->
 inc_pointer_depth(T, N, Loc) ->
     e_util:ethrow(Loc, "increase pointer depth by ~w on type <~s> is invalid", [N, type_to_str(T)]).
 
--spec check_types_in_struct_fields(#{atom() => e_type()}, #{atom() := e_expr()}, atom(), e_compile_context:context()) -> ok.
+-spec check_types_in_struct_fields(#{atom() => e_type()}, #{atom() := e_expr()}, atom(),
+                                   e_compile_context:context()) -> ok.
 check_types_in_struct_fields(FieldTypeMap, ValMap, StructName, Ctx) ->
-    maps:foreach(fun(N, Val) -> check_struct_field(FieldTypeMap, N, Val, StructName, Ctx) end, ValMap).
+    maps:foreach(fun(N, Val) -> check_struct_field(FieldTypeMap, N, Val, StructName, Ctx) end,
+                 ValMap).
 
--spec check_struct_field(#{atom() => e_type()}, atom(), e_expr(), atom(), e_compile_context:context()) -> ok.
+-spec check_struct_field(#{atom() => e_type()}, atom(), e_expr(), atom(),
+                         e_compile_context:context()) -> ok.
 check_struct_field(FieldTypeMap, FieldName, Val, StructName, Ctx) ->
     Loc = element(2, Val),
     ExpectedType = get_field_type(FieldName, FieldTypeMap, StructName, Loc),
@@ -356,9 +374,11 @@ check_struct_field(FieldTypeMap, FieldName, Val, StructName, Ctx) ->
     end.
 
 -spec are_same_type([e_type()]) -> boolean().
-are_same_type([#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{class = integer, p_depth = 0} = T | Rest]) ->
+are_same_type([#e_basic_type{class = integer, p_depth = 0},
+               #e_basic_type{class = integer, p_depth = 0} = T | Rest]) ->
     are_same_type([T | Rest]);
-are_same_type([#e_basic_type{class = float, p_depth = 0}, #e_basic_type{class = float, p_depth = 0} = T | Rest]) ->
+are_same_type([#e_basic_type{class = float, p_depth = 0},
+               #e_basic_type{class = float, p_depth = 0} = T | Rest]) ->
     are_same_type([T | Rest]);
 are_same_type([T1, T2 | Rest]) ->
     case are_same_type_ignore_pos(T1, T2) of
@@ -377,7 +397,8 @@ are_same_type_ignore_pos(T1, T2) ->
     setelement(2, T1, {"", 0, 0}) =:= setelement(2, T2, {"", 0, 0}).
 
 -spec type_of_struct_field(e_type(), #e_varref{}, #{atom() => #e_struct{}}, location()) -> e_type().
-type_of_struct_field(#e_basic_type{class = struct, tag = Name, p_depth = 0} = S, ?VREF(FieldName), StructMap, Loc) ->
+type_of_struct_field(#e_basic_type{class = struct, tag = Name, p_depth = 0} = S,
+                     ?VREF(FieldName), StructMap, Loc) ->
     #e_struct{fields = #e_vars{type_map = FieldTypeMap}} = e_util:get_struct_from_type(S, StructMap),
     get_field_type(FieldName, FieldTypeMap, Name, Loc);
 type_of_struct_field(T, _, _, Loc) ->
@@ -412,15 +433,20 @@ compare_type(T1, T2, Ctx) ->
 -spec compare_type_1(e_type(), e_type(), e_compile_context:context()) -> boolean().
 compare_type_1(#e_fn_type{params = P1, ret = R1}, #e_fn_type{params = P2, ret = R2}, Ctx) ->
     compare_types(P1, P2, Ctx) andalso compare_type_1(R1, R2, Ctx);
-compare_type_1(#e_array_type{elem_type = E1, length = L1}, #e_array_type{elem_type = E2, length = L2}, Ctx) ->
+compare_type_1(#e_array_type{elem_type = E1, length = L1},
+               #e_array_type{elem_type = E2, length = L2}, Ctx) ->
     (L1 =:= L2) andalso compare_type_1(E1, E2, Ctx);
-compare_type_1(#e_basic_type{class = integer, p_depth = 0}, #e_basic_type{class = integer, p_depth = 0}, _) ->
+compare_type_1(#e_basic_type{class = integer, p_depth = 0},
+               #e_basic_type{class = integer, p_depth = 0}, _) ->
     true;
-compare_type_1(#e_basic_type{class = C, tag = T, p_depth = P}, #e_basic_type{class = C, tag = T, p_depth = P}, _) ->
+compare_type_1(#e_basic_type{class = C, tag = T, p_depth = P},
+               #e_basic_type{class = C, tag = T, p_depth = P}, _) ->
     true;
-compare_type_1(#e_basic_type{class = struct, tag = Tag, p_depth = N, loc = Loc}, T2, Ctx) when N > 0 ->
+compare_type_1(#e_basic_type{class = struct, tag = Tag, p_depth = N, loc = Loc},
+               T2, Ctx) when N > 0 ->
     #{struct_map := StructMap} = Ctx,
-    {ok, #e_struct{fields = #e_vars{names = [First | _], type_map = TypeMap}}} = maps:find(Tag, StructMap),
+    {ok, #e_struct{fields = Fields}} = maps:find(Tag, StructMap),
+    #e_vars{names = [First | _], type_map = TypeMap} = Fields,
     case maps:find(First, TypeMap) of
         {ok, #e_basic_type{class = struct} = T1Sub} ->
             compare_type_1(inc_pointer_depth(T1Sub, N, Loc), T2, Ctx);
@@ -455,15 +481,18 @@ are_pointer_and_integer_ignore_order(T1, T2) ->
     end.
 
 -spec are_pointer_and_integer(e_type(), e_type()) -> number_check_result().
-are_pointer_and_integer(#e_basic_type{p_depth = N} = Type, #e_basic_type{class = integer, p_depth = 0}) when N > 0 ->
+are_pointer_and_integer(#e_basic_type{p_depth = N} = Type,
+                        #e_basic_type{class = integer, p_depth = 0}) when N > 0 ->
     {true, Type};
-are_pointer_and_integer(#e_fn_type{} = Type, #e_basic_type{class = integer, p_depth = 0}) ->
+are_pointer_and_integer(#e_fn_type{} = Type,
+                        #e_basic_type{class = integer, p_depth = 0}) ->
     {true, Type};
 are_pointer_and_integer(_, _) ->
     false.
 
 -spec are_pointers_of_same_type(e_type(), e_type()) -> boolean().
-are_pointers_of_same_type(#e_basic_type{class = C, tag = T, p_depth = N}, #e_basic_type{class = C, tag = T, p_depth = N}) ->
+are_pointers_of_same_type(#e_basic_type{class = C, tag = T, p_depth = N},
+                          #e_basic_type{class = C, tag = T, p_depth = N}) ->
     true;
 are_pointers_of_same_type(#e_fn_type{}, #e_fn_type{}) ->
     true;
@@ -475,23 +504,28 @@ are_numbers_of_same_type(T1, T2) ->
     number_check_chain(T1, T2, [fun are_integers/2, fun are_floats/2]).
 
 -spec are_integers(e_type(), e_type()) -> number_check_result().
-are_integers(#e_basic_type{class = integer, p_depth = 0} = T1, #e_basic_type{class = integer, p_depth = 0} = T2) ->
+are_integers(#e_basic_type{class = integer, p_depth = 0} = T1,
+             #e_basic_type{class = integer, p_depth = 0} = T2) ->
     {true, bigger_type(T1, T2)};
 are_integers(_, _) ->
     false.
 
 -spec are_floats(e_type(), e_type()) -> number_check_result().
-are_floats(#e_basic_type{class = float, p_depth = 0} = T1, #e_basic_type{class = float, p_depth = 0} = T2) ->
+are_floats(#e_basic_type{class = float, p_depth = 0} = T1,
+           #e_basic_type{class = float, p_depth = 0} = T2) ->
     {true, bigger_type(T1, T2)};
 are_floats(_, _) ->
     false.
 
 -spec bigger_type(e_type(), e_type()) -> e_type().
-bigger_type(#e_basic_type{class = integer, tag = word} = T1, #e_basic_type{class = integer}) ->
+bigger_type(#e_basic_type{class = integer, tag = word} = T1,
+            #e_basic_type{class = integer}) ->
     T1;
-bigger_type(#e_basic_type{class = integer}, #e_basic_type{class = integer} = T2) ->
+bigger_type(#e_basic_type{class = integer},
+            #e_basic_type{class = integer} = T2) ->
     T2;
-bigger_type(#e_basic_type{class = float} = T, #e_basic_type{class = float}) ->
+bigger_type(#e_basic_type{class = float} = T,
+            #e_basic_type{class = float}) ->
     T.
 
 -ifdef(EUNIT).
@@ -504,17 +538,28 @@ bigger_type_test() ->
     ok.
 
 are_numbers_of_same_type_test() ->
-    ?assertMatch({true, ?IOBJ(word, 0)}, are_numbers_of_same_type(?IOBJ(word, 0), ?IOBJ(byte, 0))),
-    ?assertMatch(false, are_numbers_of_same_type(?IOBJ(i16, 0), ?FOBJ(0))),
+    ?assertMatch({true, ?IOBJ(word, 0)},
+                 are_numbers_of_same_type(?IOBJ(word, 0), ?IOBJ(byte, 0))),
+    ?assertMatch(false,
+                 are_numbers_of_same_type(?IOBJ(i16, 0), ?FOBJ(0))),
     ok.
 
 number_check_chain_test() ->
-    L1 = [fun are_numbers_of_same_type/2, fun are_pointers_of_same_type/2, fun are_pointer_and_integer/2],
-    ?assertMatch({true, ?IOBJ(word, 0)}, number_check_chain(?IOBJ(word, 0), ?IOBJ(byte, 0), L1)),
-    L2 = [fun are_numbers_of_same_type/2, fun are_pointers_of_same_type/2, fun are_pointer_and_integer/2],
-    ?assertMatch(false, number_check_chain(?IOBJ(word, 0), ?IOBJ(byte, 1), L2)),
-    L3 = [fun are_numbers_of_same_type/2, fun are_pointers_of_same_type/2, fun are_pointer_and_integer_ignore_order/2],
-    ?assertMatch({true, ?IOBJ(byte, 1)}, number_check_chain(?IOBJ(word, 0), ?IOBJ(byte, 1), L3)),
+    L1 = [fun are_numbers_of_same_type/2,
+          fun are_pointers_of_same_type/2,
+          fun are_pointer_and_integer/2],
+    ?assertMatch({true, ?IOBJ(word, 0)},
+                 number_check_chain(?IOBJ(word, 0), ?IOBJ(byte, 0), L1)),
+    L2 = [fun are_numbers_of_same_type/2,
+          fun are_pointers_of_same_type/2,
+          fun are_pointer_and_integer/2],
+    ?assertMatch(false,
+                 number_check_chain(?IOBJ(word, 0), ?IOBJ(byte, 1), L2)),
+    L3 = [fun are_numbers_of_same_type/2,
+          fun are_pointers_of_same_type/2,
+          fun are_pointer_and_integer_ignore_order/2],
+    ?assertMatch({true, ?IOBJ(byte, 1)},
+                 number_check_chain(?IOBJ(word, 0), ?IOBJ(byte, 1), L3)),
     ok.
 
 -endif.
@@ -567,7 +612,8 @@ check_ret_type(RetType, [#e_return_stmt{loc = Loc} = Expr], _, _, Ctx) ->
         true ->
             ok;
         false ->
-            e_util:ethrow(Loc, "return type declared: ~s, inferred ~s", [type_to_str(RetType), type_to_str(RetTrueType)])
+            e_util:ethrow(Loc, "return type declared: ~s, inferred ~s",
+                          [type_to_str(RetType), type_to_str(RetTrueType)])
     end;
 check_ret_type(RetType, [#e_return_stmt{loc = Loc} = Expr | Rest], _, Scope, Ctx) ->
     RetTrueType = type_of_node(Expr, Ctx),
@@ -575,7 +621,8 @@ check_ret_type(RetType, [#e_return_stmt{loc = Loc} = Expr | Rest], _, Scope, Ctx
         true ->
             check_ret_type(RetType, Rest, Loc, Scope, Ctx);
         false ->
-            e_util:ethrow(Loc, "return type declared: ~s, inferred ~s", [type_to_str(RetType), type_to_str(RetTrueType)])
+            e_util:ethrow(Loc, "return type declared: ~s, inferred ~s",
+                          [type_to_str(RetType), type_to_str(RetTrueType)])
     end;
 check_ret_type(RetType, [#e_if_stmt{then = Then, 'else' = Else} | Rest], Loc, Scope, Ctx) ->
     check_ret_type(RetType, Then, Loc, inner, Ctx),
