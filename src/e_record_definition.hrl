@@ -47,7 +47,7 @@
          name :: atom()
         }).
 
-%% Variable definition. Will be used on both variable definition and struct field definition.
+%% Used on both variable definitions and struct field definitions.
 -record(e_vardef,
         {
          loc = {"", 0, 0} :: location(),
@@ -66,9 +66,11 @@
 -type e_var_type() :: none | local | global.
 -type e_var_offset() :: {Offset :: non_neg_integer(), Size :: pos_integer()}.
 
-%% `e_vars` is used by functions, structs and global variables to hold variables (including parameters) and fields.
+%% `e_vars` is used by functions, structs and global variables
+%% to hold variables (including parameters) and fields.
 %% The alignment of e_vars is the alignment of the biggest element in this `e_vars`.
-%% The alignment should be higher than or equals `1`. `0` is the uninitialized value for alignments.
+%% The alignment should be higher than or equals `1`.
+%% `0` is the uninitialized value for alignments.
 -record(e_vars,
         {
          names = [] :: [atom()], %% Keeps the declare order of variables/fields.
@@ -126,7 +128,12 @@
          type :: e_type()
         }).
 
--type e_op_tag() :: '*' | '/' | '+' | '-' | '@' | '^' | 'rem' | 'and' | 'or' | 'band' | 'bor' | 'bxor' | 'bsl' | 'bsr' | '~' | '!' | '.' | '=' | '>' | '<' | '>=' | '<=' | '!=' | '==' | {call, e_expr()} | {aref, e_expr()} | {sizeof, e_type()} | {alignof, e_type()}.
+-type e_op_tag() :: '*' | '/' | '+' | '-' | '@' | '^' | 'rem' |
+                    'and' | 'or' | 'band' | 'bor' | 'bxor' | 'bsl' | 'bsr' |
+                    '~' | '!' | '.' | '=' |
+                    '>' | '<' | '>=' | '<=' | '!=' | '==' |
+                    {call, e_expr()} | {aref, e_expr()} |
+                    {sizeof, e_type()} | {alignof, e_type()}.
 
 -record(e_op,
         {
@@ -197,8 +204,11 @@
          attribute = #{} :: e_fn_attribute()
         }).
 
--type e_expr() :: #e_op{} | #e_integer{} | #e_float{} | #e_string{} | #e_varref{} | #e_struct_init_expr{} | #e_array_init_expr{} | #e_type_convert{}.
--type e_stmt() :: #e_if_stmt{} | #e_while_stmt{} | #e_return_stmt{} | #e_goto_stmt{} | #e_label{} | e_expr().
+-type e_expr() :: #e_op{} | #e_integer{} | #e_float{} | #e_string{} | #e_varref{} |
+                  #e_struct_init_expr{} | #e_array_init_expr{} | #e_type_convert{}.
+
+-type e_stmt() :: #e_if_stmt{} | #e_while_stmt{} | #e_return_stmt{} |
+                  #e_goto_stmt{} | #e_label{} | e_expr().
 
 -type e_ast_raw_elem() :: #e_function_raw{} | #e_struct_raw{} | #e_vardef{} | e_stmt().
 -type e_ast_elem() :: #e_function{} | #e_struct{} | #e_vardef{} | e_stmt().
@@ -235,9 +245,9 @@
 
 -define(IS_ARITH(Tag),
         (
-          Tag =:= '+' orelse Tag =:= '-' orelse Tag =:= '*' orelse Tag =:= '/' orelse Tag =:= 'rem' orelse
-          Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor' orelse Tag =:= 'bnot' orelse
-          Tag =:= 'bsl' orelse Tag =:= 'bsr'
+          Tag =:= '+' orelse Tag =:= '-' orelse Tag =:= '*' orelse Tag =:= '/' orelse
+          Tag =:= 'rem' orelse Tag =:= 'bsl' orelse Tag =:= 'bsr' orelse
+          Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor' orelse Tag =:= 'bnot'
         )).
 
 -define(IS_IMMID_ARITH(Tag),
@@ -257,8 +267,8 @@
 
 -define(IS_COMPARE(Tag),
         (
-          Tag =:= '>' orelse Tag =:= '<' orelse Tag =:= '==' orelse Tag =:= '!=' orelse
-          Tag =:= '>=' orelse Tag =:= '<='
+          Tag =:= '>' orelse Tag =:= '<' orelse Tag =:= '==' orelse
+          Tag =:= '!=' orelse Tag =:= '>=' orelse Tag =:= '<='
         )).
 
 -endif.

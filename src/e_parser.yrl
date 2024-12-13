@@ -1,12 +1,15 @@
 Nonterminals
 
-e_root_stmts e_root_stmt e_struct_def e_vardefs e_vardef e_vardef_head e_function_def e_function_head_0 e_function_head_1 e_args
+e_root_stmts e_root_stmt e_struct_def e_vardefs e_vardef e_vardef_head e_function_def
+e_function_head_0 e_function_head_1 e_args
 e_attributes e_attribute e_attribute_lst
 e_function_stmts e_function_stmt e_if_stmt e_else_stmt e_while_stmt e_return_stmt e_label
-e_expr e_call_expr e_array_ref_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr e_assign_expr e_not_expr e_bnot_expr
-e_typeof_type e_type_annos e_type_anno e_calc1 e_calc2 e_bitwise e_cmp e_bool_op e_op2_with_assignment
+e_expr e_call_expr e_array_ref_expr e_pre_minus_plus_expr e_sizeof_expr e_alignof_expr
+e_assign_expr e_not_expr e_bnot_expr
+e_typeof_type e_type_annos e_type_anno e_calc1 e_calc2 e_bitwise e_cmp e_bool_op
 e_pointer_depth e_atomic_literal_values e_reserved
-e_array_init_expr e_array_init_elements e_struct_init_expr e_struct_init_fields e_struct_init_assignment
+e_array_init_expr e_array_init_elements e_struct_init_expr e_struct_init_fields
+e_op2_with_assignment e_struct_init_assignment
 
 .
 
@@ -108,11 +111,13 @@ e_struct_def -> struct identifier e_vardefs 'end' :
 e_function_head_0 -> 'fn' identifier '(' e_vardefs ')' ':' e_type_anno :
     #e_function_raw{name = token_value('$2'), params = '$4', ret_type = '$7', loc = token_loc('$2')}.
 e_function_head_0 -> 'fn' identifier '(' e_vardefs ')' :
-    #e_function_raw{name = token_value('$2'), params = '$4', ret_type = ?VOID(token_loc('$5')), loc = token_loc('$2')}.
+    #e_function_raw{name = token_value('$2'), params = '$4', ret_type = ?VOID(token_loc('$5')),
+                    loc = token_loc('$2')}.
 e_function_head_0 -> 'fn' identifier '(' ')' ':' e_type_anno :
     #e_function_raw{name = token_value('$2'), params = [], ret_type = '$6', loc = token_loc('$2')}.
 e_function_head_0 -> 'fn' identifier '(' ')' :
-    #e_function_raw{name = token_value('$2'), params = [], ret_type = ?VOID(token_loc('$4')), loc = token_loc('$2')}.
+    #e_function_raw{name = token_value('$2'), params = [], ret_type = ?VOID(token_loc('$4')),
+                    loc = token_loc('$2')}.
 
 e_function_head_1 -> e_function_head_0 e_attributes :
     '$1'#e_function_raw{attribute = '$2'}.
@@ -192,13 +197,19 @@ e_struct_init_fields -> e_struct_init_assignment :
     ['$1'].
 
 e_struct_init_assignment -> identifier '=' e_expr :
-    #e_op{tag = '=', data = [#e_varref{name = token_value('$1'), loc = token_loc('$1')}, '$3'], loc = token_loc('$2')}.
+    #e_op{tag = '=',
+          data = [#e_varref{name = token_value('$1'), loc = token_loc('$1')}, '$3'],
+          loc = token_loc('$2')}.
 
 Nonassoc 1 e_assign_expr.
 e_assign_expr -> e_expr e_op2_with_assignment e_expr :
-    #e_op{tag = '=', data = ['$1', #e_op{tag = token_symbol('$2'), data = ['$1', '$3'], loc = token_loc('$2')}], loc = token_loc('$2')}.
+    #e_op{tag = '=',
+          data = ['$1', #e_op{tag = token_symbol('$2'), data = ['$1', '$3'], loc = token_loc('$2')}],
+          loc = token_loc('$2')}.
 e_assign_expr -> e_expr '=' e_expr :
-    #e_op{tag = '=', data = ['$1', '$3'], loc = token_loc('$2')}.
+    #e_op{tag = '=',
+          data = ['$1', '$3'],
+          loc = token_loc('$2')}.
 
 e_op2_with_assignment -> e_calc1 '=' : '$1'.
 e_op2_with_assignment -> e_calc2 '=' : '$1'.
@@ -252,10 +263,14 @@ e_array_ref_expr -> e_expr '[' e_expr ']' :
 e_expr -> e_reserved :
     return_error(token_loc('$1'), e_util:fmt("~s is reserved", [token_symbol('$1')])).
 e_expr -> e_expr '.' identifier :
-    #e_op{tag = token_symbol('$2'), data = ['$1', #e_varref{name = token_value('$3'), loc = token_loc('$3')}], loc = token_loc('$2')}.
+    #e_op{tag = token_symbol('$2'),
+          data = ['$1', #e_varref{name = token_value('$3'), loc = token_loc('$3')}],
+          loc = token_loc('$2')}.
 e_expr -> e_expr '^' :
     %% The memory size `0` is an invalid value, replace it later.
-    #e_op{tag = token_symbol('$2'), data = ['$1', #e_integer{value = 0, loc = token_loc('$2')}], loc = token_loc('$2')}.
+    #e_op{tag = token_symbol('$2'),
+          data = ['$1', #e_integer{value = 0, loc = token_loc('$2')}],
+          loc = token_loc('$2')}.
 e_expr -> e_expr '@' :
     #e_op{tag = token_symbol('$2'), data = ['$1'], loc = token_loc('$2')}.
 e_expr -> e_expr e_calc1 e_expr :

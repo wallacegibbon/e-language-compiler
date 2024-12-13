@@ -87,12 +87,14 @@ size_and_offsets_of_vars(#e_vars{names = Names, type_map = TypeMap}, Ctx) ->
 -spec size_and_offsets([{atom(), e_type()}], size_align_data(), e_compile_context:context()) ->
           size_align_data().
 size_and_offsets([{Name, Type} | Rest],
-                 #{size := CurrentOffset, align := MaxAlign, offset_map := OffsetMap}, Ctx) ->
+                 #{size := CurrentOffset, align := MaxAlign, offset_map := OffsetMap},
+                 Ctx) ->
     FieldAlign = align_of(Type, Ctx),
     Offset = e_util:fill_unit_pessi(CurrentOffset, FieldAlign),
     FieldSize = size_of(Type, Ctx),
     OffsetMapNew = OffsetMap#{Name => {Offset, FieldSize}},
-    NextIn = #{size => Offset + FieldSize, align => max(MaxAlign, FieldAlign),
+    NextIn = #{size => Offset + FieldSize,
+               align => max(MaxAlign, FieldAlign),
                offset_map => OffsetMapNew},
     size_and_offsets(Rest, NextIn, Ctx);
 size_and_offsets([], #{size := CurrentOffset, align := MaxAlign} = Result, _) ->

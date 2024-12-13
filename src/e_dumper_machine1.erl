@@ -32,7 +32,8 @@ generate_code(CodeIRs, IVecIRs, OutputFile, #{wordsize := WordSize}) ->
                       fun(IO) -> write_detail(IVec, IVecStartAddress, OffsetMap, IO) end),
     ok.
 
--spec scan_address([tuple()], non_neg_integer(), [tuple()], scan_context()) -> {[tuple()], scan_context()}.
+-spec scan_address([tuple()], non_neg_integer(), [tuple()], scan_context()) ->
+          {[tuple()], scan_context()}.
 scan_address([{start_address, N} | Rest], 0, Result, #{start_address := 0} = Ctx) ->
     scan_address(Rest, N, Result, Ctx#{start_address := N});
 scan_address([{start_address, _} | _], N, _, _) when N > 0 ->
@@ -43,7 +44,8 @@ scan_address([{label, {align, N}, Name} | Rest], Offset, Result,
     FixedOffset = e_util:fill_unit_pessi(Offset, N),
     NewLabelMap = LabelMap#{Name => FixedOffset},
     NewOffsetMap = maps:update_with(FixedOffset, fun(Ns) -> [Name | Ns] end, [Name], OffsetMap),
-    scan_address(Rest, FixedOffset, Result, Ctx#{label_map := NewLabelMap, offset_map := NewOffsetMap});
+    scan_address(Rest, FixedOffset, Result,
+                 Ctx#{label_map := NewLabelMap, offset_map := NewOffsetMap});
 scan_address([{fn, Name} | Rest], Offset, Result, #{wordsize := WordSize} = Ctx) ->
     scan_address([{label, {align, WordSize}, Name} | Rest], Offset, Result, Ctx);
 scan_address([{la, _, _} = Orig | Rest], Offset, Result, Ctx) ->

@@ -6,7 +6,9 @@
 -spec compile_to_ir1([string()], string(), e_compile_option:option()) -> ok.
 compile_to_ir1(InputFiles, OutputFilename, Options) when is_list(hd(InputFiles)) ->
     try
-        e_dumper_ir1:generate_code(parse_and_compile_files(InputFiles, Options), OutputFilename, Options)
+        e_dumper_ir1:generate_code(parse_and_compile_files(InputFiles, Options),
+                                   OutputFilename,
+                                   Options)
     catch
         {{Filename, Line, Col}, ErrorInfo} ->
             throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
@@ -24,7 +26,9 @@ compile_to_machine1(InputFiles, OutputFilename, Options) when is_list(hd(InputFi
 -spec compile_to_c([string()], string(), e_compile_option:option()) -> ok.
 compile_to_c(InputFiles, OutputFilename, #{wordsize := WordSize} = Options) ->
     try
-        e_dumper_c:generate_code(parse_and_compile_files(InputFiles, Options), WordSize, OutputFilename)
+        e_dumper_c:generate_code(parse_and_compile_files(InputFiles, Options),
+                                 WordSize,
+                                 OutputFilename)
     catch
         {{Filename, Line, Col}, ErrorInfo} ->
             throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
@@ -34,19 +38,22 @@ compile_to_c(InputFiles, OutputFilename, #{wordsize := WordSize} = Options) ->
 -spec compile_to_e([string()], string(), e_compile_option:option()) -> ok.
 compile_to_e(InputFiles, OutputFilename, Options) ->
     try
-        e_dumper_e:generate_code(parse_and_compile_files(InputFiles, Options), OutputFilename)
+        e_dumper_e:generate_code(parse_and_compile_files(InputFiles, Options),
+                                 OutputFilename)
     catch
         {{Filename, Line, Col}, ErrorInfo} ->
             throw(e_util:fmt("~s:~w:~w: ~s~n", [Filename, Line, Col, ErrorInfo]))
     end.
 
--spec parse_and_compile_files([string()], e_compile_option:option()) -> e_ast_compiler:ast_compile_result().
+-spec parse_and_compile_files([string()], e_compile_option:option()) ->
+          e_ast_compiler:ast_compile_result().
 parse_and_compile_files(Files, Options) ->
     Tokens0 = lists:concat([scan_file(Filename) || Filename <- Files]),
     Tokens1 = e_preprocessor:preprocess(Tokens0),
     e_ast_compiler:compile_from_raw_ast(parse_tokens(Tokens1), Options).
 
--spec parse_and_compile(string(), e_compile_option:option()) -> e_ast_compiler:ast_compile_result().
+-spec parse_and_compile(string(), e_compile_option:option()) ->
+          e_ast_compiler:ast_compile_result().
 parse_and_compile(Filename, Options) ->
     Tokens0 = scan_file(Filename),
     Tokens1 = e_preprocessor:preprocess(Tokens0),

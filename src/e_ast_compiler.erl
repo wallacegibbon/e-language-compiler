@@ -14,7 +14,8 @@ compile_from_raw_ast(AST, #{wordsize := WordSize, entry_function := Entry}) ->
     %% Once the AST got constructed, we check the recursive definition problem of struct.
     e_struct:check_struct_recursion_in_map(StructMap00),
 
-    Ctx00 = #{vars => GlobalVars00, fn_map => FnTypeMap00, struct_map => StructMap00, wordsize => WordSize},
+    Ctx00 = #{vars => GlobalVars00, fn_map => FnTypeMap00,
+              struct_map => StructMap00, wordsize => WordSize},
 
     %% type checking
     e_type:check_types_in_ast(AST00, Ctx00),

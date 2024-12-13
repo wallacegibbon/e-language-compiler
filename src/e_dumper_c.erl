@@ -51,8 +51,8 @@ fix_expr_for_c(Any, _) ->
 ast_to_str(Statements, InitCode) ->
     ast_to_str(Statements, InitCode, [], []).
 
-ast_to_str([#e_function{name = Name, param_names = ParamNames, type = FnType, vars = Vars, stmts = Stmts}
-            | Rest],
+ast_to_str([#e_function{name = Name, param_names = ParamNames, type = FnType,
+                        vars = Vars, stmts = Stmts} | Rest],
            InitCode, StmtStrs, FnDeclars) ->
     #e_vars{type_map = VarTypes} = Vars,
     PureParams = map_to_kv_list(ParamNames, maps:with(ParamNames, VarTypes)),
@@ -62,7 +62,8 @@ ast_to_str([#e_function{name = Name, param_names = ParamNames, type = FnType, va
                  true -> InitCode ++ Stmts;
                  false -> Stmts
              end,
-    S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n", [Declars, var_map_to_str(PureVars), stmts_to_str(Stmts2)]),
+    S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n",
+                      [Declars, var_map_to_str(PureVars), stmts_to_str(Stmts2)]),
     ast_to_str(Rest, InitCode, [S | StmtStrs], [Declars ++ ";\n" | FnDeclars]);
 ast_to_str([#e_struct{name = Name, fields = Fields} | Rest], InitCode, StmtStrs, FnDeclars) ->
     #e_vars{names = FieldNames, type_map = FieldTypes} = Fields,
@@ -153,7 +154,8 @@ stmt_to_str(#e_goto_stmt{label = Label}, EndChar) ->
 stmt_to_str(#e_label{name = Name}, _) ->
     io_lib:format("~s:", [Name]);
 stmt_to_str(#e_type_convert{expr = Expr, type = Type}, EndChar) ->
-    io_lib:format("((~s) ~s)~c", [type_to_c_str(Type, ""), stmt_to_str(Expr, $\s), EndChar]);
+    io_lib:format("((~s) ~s)~c",
+                  [type_to_c_str(Type, ""), stmt_to_str(Expr, $\s), EndChar]);
 stmt_to_str(?VREF(Name), EndChar) ->
     io_lib:format("~s~c", [Name, EndChar]);
 stmt_to_str(?AREF(Arr, Index), EndChar) ->
@@ -165,7 +167,8 @@ stmt_to_str(?OP2(Tag, Op1, Op2), EndChar) ->
     io_lib:format("(~s ~s ~s)~c",
                   [stmt_to_str(Op1, $\s), translate_op(Tag), stmt_to_str(Op2, $\s), EndChar]);
 stmt_to_str(?OP1(Tag, Operand), EndChar) ->
-    io_lib:format("(~s ~s)~c", [translate_op(Tag), stmt_to_str(Operand, $\s), EndChar]);
+    io_lib:format("(~s ~s)~c",
+                  [translate_op(Tag), stmt_to_str(Operand, $\s), EndChar]);
 stmt_to_str(?I(Value), EndChar) ->
     io_lib:format("~w~c", [Value, EndChar]);
 stmt_to_str(?F(Value), EndChar) ->

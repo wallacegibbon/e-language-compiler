@@ -7,11 +7,12 @@
 -endif.
 
 -spec check_types_in_ast(e_ast(), e_compile_context:context()) -> ok.
-check_types_in_ast([#e_function{name = Name, param_names = [_ | _], attribute = #{interrupt := _}, loc = Loc}
-                    | _],
+check_types_in_ast([#e_function{name = Name, param_names = [_ | _], attribute = #{interrupt := _},
+                                loc = Loc} | _],
                    _) ->
     e_util:ethrow(Loc, "interrupt function \"~s\" should not have parameter(s)", [Name]);
-check_types_in_ast([#e_function{type = #e_fn_type{ret = ?VOID()}, attribute = #{interrupt := _}} = Fn | Rest],
+check_types_in_ast([#e_function{type = #e_fn_type{ret = ?VOID()},
+                                attribute = #{interrupt := _}} = Fn | Rest],
                    Ctx) ->
     check_types_in_fn(Fn, Ctx),
     check_types_in_ast(Rest, Ctx);
@@ -20,7 +21,8 @@ check_types_in_ast([#e_function{name = Name, attribute = #{interrupt := _}, loc 
 check_types_in_ast([#e_function{} = Fn | Rest], Ctx) ->
     check_types_in_fn(Fn, Ctx),
     check_types_in_ast(Rest, Ctx);
-check_types_in_ast([#e_struct{name = Name, fields = Fields, default_value_map = ValMap} | Rest], Ctx) ->
+check_types_in_ast([#e_struct{name = Name, fields = Fields, default_value_map = ValMap} | Rest],
+                   Ctx) ->
     #e_vars{type_map = FieldTypeMap} = Fields,
     maps:foreach(fun(_, T) -> check_type(T, Ctx) end, FieldTypeMap),
     %% check the default values for fields
@@ -116,7 +118,8 @@ type_of_nodes(Stmts, Ctx) ->
     [type_of_node(S, Ctx) || S <- Stmts].
 
 -spec type_of_node(e_stmt(), e_compile_context:context()) -> e_type().
-type_of_node(?VREF(Name, Loc), #{vars := #e_vars{type_map = TypeMap}, fn_map := FnTypeMap} = Ctx) ->
+type_of_node(?VREF(Name, Loc),
+             #{vars := #e_vars{type_map = TypeMap}, fn_map := FnTypeMap} = Ctx) ->
     case e_util:map_find_multi(Name, [TypeMap, FnTypeMap]) of
         {ok, Type} ->
             %% The `loc` of the found type should be updated to the `loc` of the `e_varref`.
@@ -319,13 +322,17 @@ convert_type(Type1, Type2, Loc) ->
 %% Functions can be converted to any kind of pointers in current design.
 type_compatible(#e_fn_type{loc = Loc}, Type2) ->
     type_compatible(#e_basic_type{class = integer, p_depth = 1, loc = Loc}, Type2);
-type_compatible(#e_basic_type{class = integer}, #e_basic_type{p_depth = N}) when N > 0 ->
+type_compatible(#e_basic_type{class = integer},
+                #e_basic_type{p_depth = N}) when N > 0 ->
     true;
-type_compatible(#e_basic_type{class = integer}, #e_basic_type{class = integer}) ->
+type_compatible(#e_basic_type{class = integer},
+                #e_basic_type{class = integer}) ->
     true;
-type_compatible(#e_basic_type{class = float, p_depth = N}, #e_basic_type{class = float, p_depth = N}) ->
+type_compatible(#e_basic_type{class = float, p_depth = N},
+                #e_basic_type{class = float, p_depth = N}) ->
     true;
-type_compatible(#e_basic_type{p_depth = N1}, #e_basic_type{p_depth = N2}) when N1 > 0, N2 > 0 ->
+type_compatible(#e_basic_type{p_depth = N1},
+                #e_basic_type{p_depth = N2}) when N1 > 0, N2 > 0 ->
     true;
 type_compatible(_, _) ->
     false.
@@ -350,7 +357,8 @@ inc_pointer_depth(#e_basic_type{p_depth = P} = T, N, _) when P + N >= 0 ->
 inc_pointer_depth(#e_array_type{elem_type = #e_basic_type{} = T}, N, Loc) ->
     inc_pointer_depth(T, N, Loc);
 inc_pointer_depth(T, N, Loc) ->
-    e_util:ethrow(Loc, "increase pointer depth by ~w on type <~s> is invalid", [N, type_to_str(T)]).
+    e_util:ethrow(Loc, "increase pointer depth by ~w on type <~s> is invalid",
+                  [N, type_to_str(T)]).
 
 -spec check_types_in_struct_fields(#{atom() => e_type()}, #{atom() := e_expr()}, atom(),
                                    e_compile_context:context()) -> ok.

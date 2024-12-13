@@ -31,7 +31,8 @@ generate_code({{InitCode, AST}, Vars}, OutputFile, Options) ->
     Regs = e_riscv_ir:tmp_regs(),
     Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs,
             string_collector => Pid, epilogue_tag => none,
-            ret_offset => -WordSize, prefer_shift => PreferShift, cond_label => {none, none}},
+            ret_offset => -WordSize, prefer_shift => PreferShift,
+            cond_label => {none, none}},
     InitVars0 = [stmt_to_ir(S, Ctx#{scope_tag := '__init_vars'}) || S <- InitCode],
     InitVars = [{label, {align, 1}, '__init_vars'} | InitVars0],
     InterruptMap = collect_interrupt_map(AST, []),
@@ -40,9 +41,12 @@ generate_code({{InitCode, AST}, Vars}, OutputFile, Options) ->
     StrIRs = [[{label, {align, 1}, L}, {string, S, Len}] || {L, S, Len} <- StrList],
     IRs = lists:flatten([{start_address, CPos}, Init1, InitVars, Init2, CodeIRs, StrIRs]),
     IVecIRs = ivec_irs([], 0, InterruptMap, Options),
-    e_util:file_write(OutputFile ++ ".code.ir1", fun(IO) -> write_irs(IRs, IO) end),
-    e_util:file_write(OutputFile ++ ".ivec.ir1", fun(IO) -> write_irs(IVecIRs, IO) end),
-    e_util:file_write(OutputFile ++ ".code.asm", fun(IO) -> write_asm(IRs, IO) end),
+    e_util:file_write(OutputFile ++ ".code.ir1",
+                      fun(IO) -> write_irs(IRs, IO) end),
+    e_util:file_write(OutputFile ++ ".ivec.ir1",
+                      fun(IO) -> write_irs(IVecIRs, IO) end),
+    e_util:file_write(OutputFile ++ ".code.asm",
+                      fun(IO) -> write_asm(IRs, IO) end),
     ok.
 
 collect_interrupt_map([#e_function{name = Name, attribute = #{interrupt := N}, loc = Loc} | Rest],
@@ -97,8 +101,8 @@ ivec_irs(R, Size, _, #{ivec_size := Size}) ->
     lists:reverse(R).
 
 -spec ast_to_ir(e_ast(), context()) -> irs().
-ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{size = Size0, shifted_size = Size1}} = Fn
-           | Rest],
+ast_to_ir([#e_function{name = Name, stmts = Stmts,
+                       vars = #e_vars{size = Size0, shifted_size = Size1}} = Fn | Rest],
           Ctx) ->
     #{wordsize := WordSize, free_regs := [T | _] = Regs} = Ctx,
     %% When there are no local variables, there should still be one word for returning value.
@@ -114,7 +118,9 @@ ast_to_ir([#e_function{name = Name, stmts = Stmts, vars = #e_vars{size = Size0, 
     EpilogueTag = generate_tag(Name, epilogue),
     Prologue = [RegSave, I1, {comment, "prologue end"}],
     Epilogue = [{label, {align, 1}, EpilogueTag}, I2, RegRestore, ret_instruction_of(Fn)],
-    Ctx1 = Ctx#{scope_tag := Name, epilogue_tag := EpilogueTag, ret_offset := Size1 - Size0 - WordSize},
+    Ctx1 = Ctx#{scope_tag := Name,
+                epilogue_tag := EpilogueTag,
+                ret_offset := Size1 - Size0 - WordSize},
     Body = [stmt_to_ir(S, Ctx1) || S <- Stmts],
     %% The result should be flattened before calling `fix_irs/1`.
     FinalIRs = lists:flatten([{fn, Name}, Prologue, Body, Epilogue | ast_to_ir(Rest, Ctx)]),
@@ -149,7 +155,8 @@ stmt_to_ir(#e_if_stmt{'cond' = Cond, then = Then0, 'else' = Else0, loc = Loc},
     Then2 = [{label, {align, 1}, ThenLabel}, Then1, {j, EndLabel}],
     Else2 = [{label, {align, 1}, ElseLabel}, Else1, {label, {align, 1}, EndLabel}],
     [StartComment, CondWithJmp, Then2, Else2];
-stmt_to_ir(#e_while_stmt{'cond' = Cond, stmts = Stmts0, loc = Loc}, #{scope_tag := ScopeTag} = Ctx) ->
+stmt_to_ir(#e_while_stmt{'cond' = Cond, stmts = Stmts0, loc = Loc},
+           #{scope_tag := ScopeTag} = Ctx) ->
     StartLabel = generate_tag(ScopeTag, while_start, Loc),
     BodyLabel = generate_tag(ScopeTag, while_body, Loc),
     EndLabel = generate_tag(ScopeTag, while_end, Loc),
@@ -158,15 +165,19 @@ stmt_to_ir(#e_while_stmt{'cond' = Cond, stmts = Stmts0, loc = Loc}, #{scope_tag 
     RawBody = [stmt_to_ir(S, Ctx) || S <- Stmts0],
     Body = [{label, {align, 1}, BodyLabel}, RawBody, {j, StartLabel}, {label, {align, 1}, EndLabel}],
     [StartComment, {label, {align, 1}, StartLabel}, CondIRs, {'br!', R_Bool, EndLabel}, Body];
-stmt_to_ir(#e_return_stmt{expr = none}, #{epilogue_tag := EpilogueTag}) ->
+stmt_to_ir(#e_return_stmt{expr = none},
+           #{epilogue_tag := EpilogueTag}) ->
     [{comment, "return"}, {j, EpilogueTag}];
-stmt_to_ir(#e_return_stmt{expr = Expr}, #{epilogue_tag := EpilogueTag, ret_offset := Offset} = Ctx) ->
+stmt_to_ir(#e_return_stmt{expr = Expr},
+           #{epilogue_tag := EpilogueTag, ret_offset := Offset} = Ctx) ->
     {ExprIRs, R, _} = expr_to_ir(Expr, Ctx),
     %% We use stack to pass result
     [ExprIRs, {comment, "prepare return value"}, {sw, R, {{x, 8}, Offset}}, {j, EpilogueTag}];
-stmt_to_ir(#e_goto_stmt{label = Label}, #{scope_tag := ScopeTag}) ->
+stmt_to_ir(#e_goto_stmt{label = Label},
+           #{scope_tag := ScopeTag}) ->
     [{j, generate_tag(ScopeTag, Label)}];
-stmt_to_ir(#e_label{name = Label}, #{scope_tag := ScopeTag}) ->
+stmt_to_ir(#e_label{name = Label},
+           #{scope_tag := ScopeTag}) ->
     [{label, {align, 1}, generate_tag(ScopeTag, Label)}];
 stmt_to_ir(Stmt, Ctx) ->
     {Exprs, _, _} = expr_to_ir(Stmt, Ctx),
@@ -206,9 +217,10 @@ expr_to_ir(?CALL(Fn, Args), Ctx) ->
     {ArgPrepare, N} = args_to_stack(Args, 0, [], Ctx1),
     #{free_regs := [T | _]} = Ctx1,
     StackRestore = [{comment, "drop args"}, e_riscv_ir:addi({x, 2}, -N, T)],
-    RetLoad = [{comment, "load ret"}, {lw, R, {{x, 2}, -WordSize}}, {addi, {x, 2}, {x, 2}, -WordSize}],
-    Call = [FnLoad, PreserveRet, {comment, "args"}, ArgPrepare, {comment, "call"}, {jalr, {x, 1}, R},
-            StackRestore, RetLoad],
+    RetLoad = [{comment, "load ret"},
+               {lw, R, {{x, 2}, -WordSize}}, {addi, {x, 2}, {x, 2}, -WordSize}],
+    Call = [FnLoad, PreserveRet, {comment, "args"}, ArgPrepare,
+            {comment, "call"}, {jalr, {x, 1}, R}, StackRestore, RetLoad],
     {[{comment, "call start"}, BeforeCall, Call, AfterCall, {comment, "call end"}], R, Ctx1};
 %% Optimization for `* 1` is important since it speed up the accessing of byte arrays.
 expr_to_ir(?OP2('*', Expr, ?I(1)), Ctx) ->
@@ -218,8 +230,10 @@ expr_to_ir(?OP2('*', Expr, ?I(N)), #{prefer_shift := true} = Ctx) when N > 1 ->
     {IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
     Nums = [trunc(math:log2(A)) || A <- e_util:dissociate_num(N, 1 bsl 32)],
     ShiftIRs = assemble_shifts(Nums, R, T, Ctx#{free_regs := RestRegs}),
-    {[IRs, e_riscv_ir:mv(T, {x, 0}), ShiftIRs], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
-%% RISC-V do not have immediate version `sub` instruction, convert `-` to `+` to make use of `addi` later.
+    {[IRs, e_riscv_ir:mv(T, {x, 0}), ShiftIRs],
+     T,
+     Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
+%% RISC-V do not have `subi` instruction, convert `-` to `+` to make use of `addi` later.
 expr_to_ir(?OP2('-', Expr, ?I(N)) = OP, Ctx) ->
     expr_to_ir(OP?OP2('+', Expr, ?I(-N)), Ctx);
 %% More immediate related optimizations
@@ -234,37 +248,46 @@ expr_to_ir(?OP2(Tag, _, ?I(N), Loc), #{wordsize := WordSize}) when ?IS_SHIFT(Tag
     e_util:ethrow(Loc, "shift number `~w` is out of range.", [N]);
 expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when ?IS_SHIFT(Tag) ->
     {IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
-    {[IRs, {e_riscv_ir:to_op_immedi(Tag), T, R, N}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
+    {[IRs, {e_riscv_ir:to_op_immedi(Tag), T, R, N}],
+     T,
+     Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 expr_to_ir(?OP2(Tag, Expr, ?I(N)), Ctx) when ?IS_IMMID_ARITH(Tag), ?IS_IMM12(N) ->
     {IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
-    {[IRs, {e_riscv_ir:to_op_immedi(Tag), T, R, N}], T, Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
+    {[IRs, {e_riscv_ir:to_op_immedi(Tag), T, R, N}],
+     T,
+     Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_ARITH(Tag) ->
     op3_to_ir(e_riscv_ir:to_op_normal(Tag), Left, Right, Ctx);
-%% The tags for comparing operations are not translated here, it will be merged with the pseudo `br` or `br!`.
+%% The tags for comparing operations are not translated here,
+%% they will be merged with the pseudo `br` or `br!`.
 expr_to_ir(?OP2('<=', Left, Right) = Op, Ctx) ->
     expr_to_ir(Op?OP2('>=', Right, Left), Ctx);
 expr_to_ir(?OP2('>', Left, Right) = Op, Ctx) ->
     expr_to_ir(Op?OP2('<', Right, Left), Ctx);
 expr_to_ir(?OP2(Tag, Left, Right), Ctx) when ?IS_COMPARE(Tag) ->
     op3_to_ir(Tag, Left, Right, Ctx);
-%% `and` and `or` do not consume tmp registers, it returns the same context and {x, 0} as a sign.
-expr_to_ir(?OP2('and', Left, Right, Loc), #{scope_tag := ScopeTag, cond_label := {L1, L2}} = Ctx) ->
+%% `and` and `or` do not consume tmp registers,
+%% they returns the same context and {x, 0} as a sign.
+expr_to_ir(?OP2('and', Left, Right, Loc),
+           #{scope_tag := ScopeTag, cond_label := {L1, L2}} = Ctx) ->
     L_Middle = generate_tag(ScopeTag, and_middle, Loc),
     {IRs1, R1, _} = expr_to_ir(Left, Ctx#{cond_label := {L_Middle, L2}}),
     {IRs2, R2, _} = expr_to_ir(Right, Ctx#{cond_label := {L1, L2}}),
-    {[IRs1, br(R1, false, L2), {label, {align, 1}, L_Middle},
-      IRs2, br(R2, false, L2), {j, L1}],
-     {x, 0}, Ctx};
+    {[IRs1, br(R1, false, L2), {label, {align, 1}, L_Middle}, IRs2, br(R2, false, L2), {j, L1}],
+     {x, 0},
+     Ctx};
 expr_to_ir(?OP2('or', Left, Right, Loc), #{scope_tag := ScopeTag, cond_label := {L1, L2}} = Ctx) ->
     L_Middle = generate_tag(ScopeTag, or_middle, Loc),
     {IRs1, R1, _} = expr_to_ir(Left, Ctx#{cond_label := {L1, L_Middle}}),
     {IRs2, R2, _} = expr_to_ir(Right, Ctx#{cond_label := {L1, L2}}),
-    {[IRs1, br(R1, true, L1), {label, {align, 1}, L_Middle},
-      IRs2, br(R2, true, L1), {j, L2}],
-     {x, 0}, Ctx};
+    {[IRs1, br(R1, true, L1), {label, {align, 1}, L_Middle}, IRs2, br(R2, true, L1), {j, L2}],
+     {x, 0},
+     Ctx};
 expr_to_ir(?OP1('not', Expr), #{cond_label := {L1, L2}} = Ctx) ->
     {IRs, R, Ctx1} = expr_to_ir(Expr, Ctx#{cond_label := {L2, L1}}),
-    {[IRs, br(R, false, L1), {j, L2}], {x, 0}, Ctx1};
+    {[IRs, br(R, false, L1), {j, L2}],
+     {x, 0},
+     Ctx1};
 %% RISC-V do not have instruction for `bnot`, use `xor` to do that.
 expr_to_ir(?OP1('bnot', Expr), Ctx) ->
     {IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),

@@ -16,7 +16,9 @@ expand_in_stmts(Stmts, Ctx) ->
     expand(Stmts, [], Ctx).
 
 expand([#e_if_stmt{then = Then, 'else' = Else} = E | Rest], NewAST, Ctx) ->
-    expand(Rest, [E#e_if_stmt{then = expand(Then, [], Ctx), 'else' = expand(Else, [], Ctx)} | NewAST], Ctx);
+    expand(Rest, [E#e_if_stmt{then = expand(Then, [], Ctx),
+                              'else' = expand(Else, [], Ctx)} | NewAST],
+           Ctx);
 expand([#e_while_stmt{stmts = Stmts} = E | Rest], NewAST, Ctx) ->
     expand(Rest, [E#e_while_stmt{stmts = expand(Stmts, [], Ctx)} | NewAST], Ctx);
 expand([#e_op{} = Op | Rest], NewAST, Ctx) ->
@@ -45,7 +47,8 @@ check_position(#e_type_convert{expr = Expr}) ->
 check_position(_) ->
     ok.
 
-replace_init_ops(?OP2('=', Op1, #e_struct_init_expr{name = Name, loc = Loc, field_value_map = FieldValues}),
+replace_init_ops(?OP2('=', Op1, #e_struct_init_expr{name = Name, field_value_map = FieldValues,
+                                                    loc = Loc}),
                  #{struct_map := StructMap} = Ctx) ->
     Struct = e_util:get_struct_from_name(Name, StructMap, Loc),
     #e_struct{fields = Fields, default_value_map = FieldDefaultMap} = Struct,
@@ -58,7 +61,8 @@ replace_init_ops(?OP2('=', Op1, #e_array_init_expr{elements = Elements, loc = Lo
 replace_init_ops(Any, _) ->
     [Any].
 
-struct_init_to_ops(Target, [?VREF(Name, Loc) = Field | Rest], FieldInitMap, FieldTypeMap, NewCode, Ctx) ->
+struct_init_to_ops(Target, [?VREF(Name, Loc) = Field | Rest],
+                   FieldInitMap, FieldTypeMap, NewCode, Ctx) ->
     RValue = maps:get(Name, FieldInitMap, default_value_of(maps:get(Name, FieldTypeMap), Loc)),
     Ops = replace_init_ops(?OP2('=', ?OP2('.', Target, Field, Loc), RValue, Loc), Ctx),
     struct_init_to_ops(Target, Rest, FieldInitMap, FieldTypeMap, Ops ++ NewCode, Ctx);

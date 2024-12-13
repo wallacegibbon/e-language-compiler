@@ -10,7 +10,8 @@ generate_code({{InitCode, AST}, _}, OutputFile) ->
 ast_to_str([#e_function{name = main, stmts = Stmts} | Rest], InitCode) ->
     Body = string:join([e_util:stmt_to_str(A) || A <- Stmts], "\n    "),
     Init = string:join([e_util:stmt_to_str(A) || A <- InitCode], "\n    "),
-    CodeStr = io_lib:format("fn ~s~n%%init~n    ~s~n%%init end~n~n    ~s~n~n", [main, Init, Body]),
+    CodeStr = io_lib:format("fn ~s~n%%init~n    ~s~n%%init end~n~n    ~s~n~n",
+                            [main, Init, Body]),
     [CodeStr | ast_to_str(Rest, InitCode)];
 ast_to_str([#e_function{name = Name, stmts = Stmts} | Rest], InitCode) ->
     Code = string:join([e_util:stmt_to_str(A) || A <- Stmts], "\n    "),

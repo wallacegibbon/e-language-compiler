@@ -13,7 +13,8 @@ preprocess(OrigTokens) ->
     {Map, FilteredTokens} = collect_macro_map(OrigTokens, [], #{}),
     replace_macro(FilteredTokens, [], #{macro_map => Map, macro_path => []}).
 
-collect_macro_map([{'#', _}, {identifier, _, define}, {identifier, Loc, Name} | Rest], FilteredTokens,
+collect_macro_map([{'#', _}, {identifier, _, define}, {identifier, Loc, Name} | Rest],
+                  FilteredTokens,
                   Map) ->
     case maps:find(Name, Map) of
         {ok, _} ->
@@ -98,19 +99,23 @@ process_define_3_test() ->
 
 process_define_4_test() ->
     Tokens = scan_string("#define A ?B\n#define B ?C\n#define C ?A + 1\n?A"),
-    ?assertThrow({_, "recursive macro expanding: A" ++ _}, tokens_to_str(preprocess(Tokens))).
+    ?assertThrow({_, "recursive macro expanding: A" ++ _},
+                 tokens_to_str(preprocess(Tokens))).
 
 process_define_5_test() ->
     Tokens = scan_string("#define A ?B\n#define B ?C\n#define C ?A + 1\n?B"),
-    ?assertThrow({_, "recursive macro expanding: B" ++ _}, tokens_to_str(preprocess(Tokens))).
+    ?assertThrow({_, "recursive macro expanding: B" ++ _},
+                 tokens_to_str(preprocess(Tokens))).
 
 process_define_6_test() ->
     Tokens = scan_string("#define A ?B\n#define B ?C\n#define C ?A + 1\n?C"),
-    ?assertThrow({_, "recursive macro expanding: C" ++ _}, tokens_to_str(preprocess(Tokens))).
+    ?assertThrow({_, "recursive macro expanding: C" ++ _},
+                 tokens_to_str(preprocess(Tokens))).
 
 process_define_7_test() ->
     Tokens = scan_string("#define A 1\n#define B ?A\n?B\n?B"),
-    ?assertMatch([{integer, {_, 3, 2}, 1}, {integer, {_, 4, 2}, 1}], preprocess(Tokens)).
+    ?assertMatch([{integer, {_, 3, 2}, 1},
+                  {integer, {_, 4, 2}, 1}], preprocess(Tokens)).
 
 tokens_to_str(Tokens) ->
     lists:flatten(lists:join(" ", [token_to_str(T) || T <- Tokens])).
@@ -125,6 +130,8 @@ token_to_str({AnyAtom   , _        }) -> atom_to_list(AnyAtom).
 
 tokens_to_str_test() ->
     Pos = {0, 0},
-    ?assertEqual("* + \n \n", tokens_to_str([{'*', Pos}, {'+', Pos}, {newline, Pos}, {newline, Pos}])).
+    ?assertEqual("* + \n \n",
+                 tokens_to_str([{'*', Pos}, {'+', Pos},
+                                {newline, Pos}, {newline, Pos}])).
 
 -endif.
