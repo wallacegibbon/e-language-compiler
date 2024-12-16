@@ -37,7 +37,7 @@ expand_kw(Any, _) ->
     Any.
 
 expand_kw_in_map(Map, Ctx) ->
-    maps:map(fun(_, V1) -> expand_kw(V1, Ctx) end, Map).
+    #{K => expand_kw(V, Ctx) || K := V <- Map}.
 
 -spec fill_offsets_in_ast(e_ast(), e_compile_context:context()) -> e_ast().
 fill_offsets_in_ast([#e_function{vars = Old, param_names = ParamNames} = Fn | Rest], Ctx) ->

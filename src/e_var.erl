@@ -155,7 +155,7 @@ get_values_by_defs(DefList, #e_vars{type_map = Map}) ->
 
 -spec shift_offset(#e_vars{}, non_neg_integer()) -> #e_vars{}.
 shift_offset(#e_vars{offset_map = OffsetMap, size = Size} = Vars, Num) ->
-    OffsetMapNew = maps:map(fun(_, {O, S}) -> {O - Num, S} end, OffsetMap),
+    OffsetMapNew = #{K => {O - Num, S} || K := {O, S} <- OffsetMap},
     Vars#e_vars{offset_map = OffsetMapNew, shifted_size = Size - Num}.
 
 -spec shift_offset_middle(#e_vars{}) -> #e_vars{}.

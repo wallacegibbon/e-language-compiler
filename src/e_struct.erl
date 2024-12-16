@@ -4,7 +4,8 @@
 
 -spec check_struct_recursion_in_map(#{atom() => #e_struct{}}) -> ok.
 check_struct_recursion_in_map(StructMap) ->
-    maps:foreach(fun(_, S) -> check_struct_recursion_top(S, StructMap) end, StructMap).
+    [check_struct_recursion_top(S, StructMap) || _ := S <- StructMap],
+    ok.
 
 -spec check_struct_recursion_top(#e_struct{}, #{atom() => #e_struct{}}) -> ok.
 check_struct_recursion_top(#e_struct{name = Name, loc = Loc} = Struct, StructMap) ->
@@ -19,8 +20,9 @@ check_struct_recursion_top(#e_struct{name = Name, loc = Loc} = Struct, StructMap
 -spec check_struct_recursion(#e_struct{}, #{atom() => #e_struct{}}, [atom()]) -> ok.
 check_struct_recursion(#e_struct{name = Name, fields = #e_vars{type_map = FieldTypeMap}},
                        StructMap, UsedStructs) ->
-    maps:foreach(fun(_, Type) -> check_type_recursion(Type, StructMap, [Name | UsedStructs]) end,
-                 FieldTypeMap).
+    [check_type_recursion(Type, StructMap, [Name | UsedStructs])
+     || _ := Type <- FieldTypeMap],
+    ok.
 
 -spec check_type_recursion(e_type(), #{atom() => #e_struct{}}, [atom()]) -> ok.
 check_type_recursion(Type, StructMap, UsedStructs) ->

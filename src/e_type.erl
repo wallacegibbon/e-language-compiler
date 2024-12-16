@@ -24,7 +24,7 @@ check_types_in_ast([#e_function{} = Fn | Rest], Ctx) ->
 check_types_in_ast([#e_struct{name = Name, fields = Fields, default_value_map = ValMap} | Rest],
                    Ctx) ->
     #e_vars{type_map = FieldTypeMap} = Fields,
-    maps:foreach(fun(_, T) -> check_type(T, Ctx) end, FieldTypeMap),
+    [check_type(T, Ctx) || _ := T <- FieldTypeMap],
     %% check the default values for fields
     check_types_in_struct_fields(FieldTypeMap, ValMap, Name, Ctx),
     check_types_in_ast(Rest, Ctx);
@@ -38,8 +38,8 @@ check_types_in_fn(#e_function{vars = LocalVars, param_names = ParamNames, stmts 
                   #{vars := GlobalVars} = Ctx) ->
     Ctx1 = Ctx#{vars := e_util:merge_vars(GlobalVars, LocalVars, ignore_tag)},
     #e_vars{type_map = TypeMap} = LocalVars,
-    maps:foreach(fun(_, T) -> check_type(T, Ctx1) end, TypeMap),
-    maps:foreach(fun(_, T) -> restrict_param_type(T) end, maps:with(ParamNames, TypeMap)),
+    [check_type(T, Ctx1) || _ := T <- TypeMap],
+    [restrict_param_type(T) || _ := T <- maps:with(ParamNames, TypeMap)],
     restrict_ret_type(FnType#e_fn_type.ret),
     check_ret_type(FnType#e_fn_type.ret, Stmts, Loc, top, Ctx1),
     check_type_in_stmts(Stmts, Ctx1).
@@ -62,7 +62,7 @@ replace_typeof_in_ast([#e_function{vars = LocalVars, stmts = Stmts, type = FnTyp
 replace_typeof_in_ast([#e_struct{fields = Fields, default_value_map = DefaultValueMap} = S | Rest],
                       Ctx) ->
     S1 = S#e_struct{fields = replace_typeof_in_vars(Fields, Ctx),
-                    default_value_map = maps:map(fun(_, V) -> replace_typeof(V, Ctx) end, DefaultValueMap)},
+                    default_value_map = #{K => replace_typeof(V, Ctx) || K := V <- DefaultValueMap}},
     [S1 | replace_typeof_in_ast(Rest, Ctx)];
 replace_typeof_in_ast([Any | Rest], Ctx) ->
     [Any | replace_typeof_in_ast(Rest, Ctx)];
@@ -75,7 +75,7 @@ replace_typeof_in_stmts(Stmts, Ctx) ->
 
 -spec replace_typeof_in_vars(#e_vars{}, e_compile_context:context()) -> #e_vars{}.
 replace_typeof_in_vars(#e_vars{type_map = TypeMap} = Vars, Ctx) ->
-    Vars#e_vars{type_map = maps:map(fun(_, T) -> replace_typeof_in_type(T, Ctx) end, TypeMap)}.
+    Vars#e_vars{type_map = #{K => replace_typeof_in_type(T, Ctx) || K := T <- TypeMap}}.
 
 -spec replace_typeof(e_expr(), e_compile_context:context()) -> e_expr().
 replace_typeof(#e_type_convert{type = #e_typeof{expr = Expr}} = E, Ctx) ->
@@ -118,8 +118,7 @@ type_of_nodes(Stmts, Ctx) ->
     [type_of_node(S, Ctx) || S <- Stmts].
 
 -spec type_of_node(e_stmt(), e_compile_context:context()) -> e_type().
-type_of_node(?VREF(Name, Loc),
-             #{vars := #e_vars{type_map = TypeMap}, fn_map := FnTypeMap} = Ctx) ->
+type_of_node(?VREF(Name, Loc), #{vars := #e_vars{type_map = TypeMap}, fn_map := FnTypeMap} = Ctx) ->
     case e_util:map_find_multi(Name, [TypeMap, FnTypeMap]) of
         {ok, Type} ->
             %% The `loc` of the found type should be updated to the `loc` of the `e_varref`.
@@ -337,7 +336,8 @@ type_compatible(#e_basic_type{p_depth = N1},
 type_compatible(_, _) ->
     false.
 
--spec compare_assign_types(e_type(), e_type(), location(), e_compile_context:context()) -> e_type().
+-spec compare_assign_types(e_type(), e_type(), location(),
+                           e_compile_context:context()) -> e_type().
 compare_assign_types(Type1, Type2, Loc, Ctx) ->
     case compare_type(Type1, Type2, Ctx) of
         true ->
@@ -363,8 +363,9 @@ inc_pointer_depth(T, N, Loc) ->
 -spec check_types_in_struct_fields(#{atom() => e_type()}, #{atom() := e_expr()}, atom(),
                                    e_compile_context:context()) -> ok.
 check_types_in_struct_fields(FieldTypeMap, ValMap, StructName, Ctx) ->
-    maps:foreach(fun(N, Val) -> check_struct_field(FieldTypeMap, N, Val, StructName, Ctx) end,
-                 ValMap).
+    [check_struct_field(FieldTypeMap, N, Val, StructName, Ctx)
+     || N := Val <- ValMap],
+    ok.
 
 -spec check_struct_field(#{atom() => e_type()}, atom(), e_expr(), atom(),
                          e_compile_context:context()) -> ok.
@@ -404,10 +405,12 @@ are_same_type(_) ->
 are_same_type_ignore_pos(T1, T2) ->
     setelement(2, T1, {"", 0, 0}) =:= setelement(2, T2, {"", 0, 0}).
 
--spec type_of_struct_field(e_type(), #e_varref{}, #{atom() => #e_struct{}}, location()) -> e_type().
+-spec type_of_struct_field(e_type(), #e_varref{}, #{atom() => #e_struct{}},
+                           location()) -> e_type().
 type_of_struct_field(#e_basic_type{class = struct, tag = Name, p_depth = 0} = S,
                      ?VREF(FieldName), StructMap, Loc) ->
-    #e_struct{fields = #e_vars{type_map = FieldTypeMap}} = e_util:get_struct_from_type(S, StructMap),
+    #e_struct{fields = Fields} = e_util:get_struct_from_type(S, StructMap),
+    #e_vars{type_map = FieldTypeMap} = Fields,
     get_field_type(FieldName, FieldTypeMap, Name, Loc);
 type_of_struct_field(T, _, _, Loc) ->
     e_util:ethrow(Loc, "the left operand for \".\" is the wrong type: ~s", [type_to_str(T)]).
