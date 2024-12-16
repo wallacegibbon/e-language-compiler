@@ -124,9 +124,9 @@ ethrow(Loc, FmtStr, Args) ->
     try
         throw({Loc, fmt(FmtStr, Args)})
     catch
-        _:E:StackTrace ->
+        Class:Reason:StackTrace ->
             io:format("stack trace: ~p~n", [StackTrace]),
-            throw(E)
+            erlang:raise(Class, Reason, StackTrace)
     end.
 -else.
 ethrow(Loc, FmtStr, Args) ->
