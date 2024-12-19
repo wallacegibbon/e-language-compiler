@@ -159,8 +159,8 @@ make_function_and_struct_map_from_ast(AST) ->
     {Fns, Structs} = lists:partition(fun(A) -> element(1, A) =:= e_function end,
                                      AST),
     %% FnTypeMap stores function type only
-    FnTypeMap = maps:from_list([{Name, T} || #e_function{name = Name, type = T} <- Fns]),
-    StructMap = maps:from_list([{Name, S} || #e_struct{name = Name} = S <- Structs]),
+    FnTypeMap = #{Name => T || #e_function{name = Name, type = T} <- Fns},
+    StructMap = #{Name => S || #e_struct{name = Name} = S <- Structs},
     {FnTypeMap, StructMap}.
 
 %% address calculations
