@@ -334,15 +334,14 @@ fix_irs([{Tag, Rd, R1, R2}, {'br!', Rd, DestTag} | Rest]) ->
     fix_irs([{reverse_cmp_tag(Tag), Rd, R1, R2}, {br, Rd, DestTag} | Rest]);
 fix_irs([{Tag, Rd, R1, R2}, {br, Rd, DestTag} | Rest]) ->
     [{e_riscv_ir:to_cmp_op(Tag), R1, R2, DestTag} | fix_irs(Rest)];
-%% Duplicated jump instructions (to the same address) without any labels in between are useless.
-fix_irs([{j, Label} = I, {j, Label} | Rest]) ->
-    fix_irs([I | Rest]);
-fix_irs([{j, Label} = I | Rest]) ->
+fix_irs([{j, Label} = Jmp, {j, Label} | Rest]) ->
+    fix_irs([Jmp | Rest]);
+fix_irs([{j, Label} = Jmp | Rest]) ->
     case has_label_before_op(Label, Rest) of
         true ->
             fix_irs(Rest);
         false ->
-            [I | fix_irs(Rest)]
+            [Jmp | fix_irs(Rest)]
     end;
 fix_irs([{addi, R1, R2, N1}, {addi, R1, R1, N2} | Rest]) when ?IS_IMM12(N1 + N2) ->
     fix_irs([{addi, R1, R2, N1 + N2} | Rest]);
@@ -387,8 +386,8 @@ reg_save_restore(Regs, #{wordsize := WordSize, free_regs := [T | _]}) ->
     TotalSize = length(Regs) * WordSize,
     StackGrow = [{comment, "grow stack"}, e_riscv_ir:addi({x, 2}, TotalSize, T)],
     StackShrink = [{comment, "shrink stack"}, e_riscv_ir:addi({x, 2}, -TotalSize, T)],
-    Save = e_util:list_map(fun(R, I) -> {sw, R, {{x, 2}, I * WordSize - TotalSize}} end, Regs),
-    Restore = e_util:list_map(fun(R, I) -> {lw, R, {{x, 2}, I * WordSize - TotalSize}} end, Regs),
+    Save = [{sw, R, {{x, 2}, I * WordSize - TotalSize}} || {I, R} <- lists:enumerate(0, Regs)],
+    Restore = [{lw, R, {{x, 2}, I * WordSize - TotalSize}} || {I, R} <- lists:enumerate(0, Regs)],
     Enter = [StackGrow, {comment, io_lib:format("regs to save: ~w", [Regs])}, Save],
     Leave = [{comment, io_lib:format("regs to restore: ~w", [Regs])}, Restore, StackShrink],
     {Enter, Leave}.
