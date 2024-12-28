@@ -303,6 +303,8 @@ To build the compiler, read [./BUILD.md](./BUILD.md).
 
 A simple Vim plugin is inside this project. Install it by copying it to the certain directory:
 
+> This plugin only provide syntax highlighting yet.
+
 ```sh
 mkdir -p ~/.vim/pack/my/start/
 cp -r ./misc/elang.vim/ ~/.vim/pack/my/start/
