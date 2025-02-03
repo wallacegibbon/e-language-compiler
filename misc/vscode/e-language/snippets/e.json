@@ -1,0 +1,35 @@
+{
+  "Function": {
+    "prefix": "fn",
+    "body": ["fn ${1:function_name}(${2:params})  :  ${3:return_type}", "  ${4:body}", "end"],
+    "description": "Define a function"
+  },
+  "Struct": {
+    "prefix": "struct",
+    "body": ["struct ${1:struct_name}", "  ${2:fields}", "end"],
+    "description": "Define a struct"
+  },
+  "If Statement": {
+    "prefix": "if",
+    "body": [
+      "if ${1:condition} then",
+      "  ${2:body}",
+      "end"
+    ],
+    "description": "If statement"
+  },
+  "While Loop": {
+    "prefix": "while",
+    "body": [
+      "while ${1:condition} do",
+      "  ${2:body}",
+      "end"
+    ],
+    "description": "While loop"
+  },
+  "Innturrupt": {
+    "prefix": "interrupt",
+    "body": ["attribute(interrupt(${1:interrupt_vector}))"],
+    "description": "Innturrupt attribute"
+  }
+}
