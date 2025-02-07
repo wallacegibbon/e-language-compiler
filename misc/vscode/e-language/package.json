@@ -1,0 +1,29 @@
+{
+  "name": "e",
+  "displayName": "E language Highlight",
+  "description": "",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "e",
+      "aliases": ["E-Language", "e"],
+      "extensions": [".e"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "e",
+      "scopeName": "source.e",
+      "path": "./syntaxes/e.tmLanguage.json"
+    }],
+    "snippets": [{
+      "language": "e",
+      "path": "./snippets/e.json"
+    }]
+  }
+}
