@@ -291,7 +291,7 @@ follow the C style. (C use ~^~ as xor)
 Instead, E language choose the Erlang style for bit operations.
 
 E language defined keywords ~band~, ~bor~, ~bnot~, ~bxor~ for bitwise logic
-operations, which is just like ~&~, ~|~, ~~~, ~^~ in C language.
+operations, which is just like ~&~, ~|~, =~=, ~^~ in C language.
 
 And ~bsl~, ~bsr~ for shift operations, which is just like ~\<\<~, ~\>\>~ in C
 language.
@@ -373,7 +373,7 @@ To build the compiler, read [[file:BUILD.org][BUILD.org]].
   cp ./misc/emacs/elang-mode.el ~/.emacs.d/misc/
 #+END_SRC
 
-Then add the following configurations to ~~/.emacs~:
+Then add the following configurations to ~$HOME/.emacs~:
 #+BEGIN_SRC emacs-lisp
   (add-to-list 'load-path "~/.emacs.d/misc/")
   (require 'elang-mode)
@@ -387,7 +387,7 @@ Then add the following configurations to ~~/.emacs~:
   cp -r ./misc/vim ~/.vim/pack/my/start/elang
 #+END_SRC
 
-Then add the following configurations to ~~/.vimrc~:
+Then add the following configurations to ~$HOME/.vimrc~:
 #+BEGIN_SRC vim
   autocmd BufRead,BufNewFile *.e setlocal filetype=elang
 #+END_SRC
