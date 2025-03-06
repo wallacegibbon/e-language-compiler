@@ -1,0 +1,16 @@
+** Build
+
+The program is released as an [[https://www.erlang.org/doc/apps/erts/escript_cmd][escript]] file. We build it with [[http://rebar3.org/docs/getting-started/][rebar3]].
+
+#+BEGIN_SRC shell
+  rebar3 escriptize
+#+END_SRC
+
+You can find the generated file at ~_build/default/bin/ec~.
+
+To install it on Unix, you can simply copy it to some ~bin~ directory in your ~PATH~.
+
+e.g.
+#+BEGIN_SRC shell
+  sudo cp _build/default/bin/ec /usr/local/bin/
+#+END_SRC
