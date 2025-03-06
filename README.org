@@ -361,7 +361,7 @@ If you are an Erlang user, you can also call the compiler from erlang shell:
 				 #{...}).
 #+END_SRC
 
-To build the compiler, read [[file:BUILD.org][Build.org]].
+To build the compiler, read [[file:BUILD.org][BUILD.org]].
 
 
 * Editor Support
@@ -373,6 +373,7 @@ To build the compiler, read [[file:BUILD.org][Build.org]].
   cp ./misc/emacs/elang-mode.el ~/.emacs.d/misc/
 #+END_SRC
 
+Then add the following configurations to ~\~/.emacs~:
 #+BEGIN_SRC emacs-lisp
   (add-to-list 'load-path "~/.emacs.d/misc/")
   (require 'elang-mode)

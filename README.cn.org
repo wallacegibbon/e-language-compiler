@@ -333,7 +333,7 @@ CH32V003示例：
 				 #{...}).
 #+END_SRC
 
-要编译编译器，可以查看[./BUILD.cn.md](./BUILD.cn.md)。
+要编译编译器，可以查看[[file:BUILD.cn.org][BUILD.cn.org]]。
 
 
 * 编辑器支持
@@ -345,10 +345,12 @@ CH32V003示例：
   cp ./misc/emacs/elang-mode.el ~/.emacs.d/misc/
 #+END_SRC
 
+然后在“~/.emacs”里面，加入下面的内容：
 #+BEGIN_SRC emacs-lisp
   (add-to-list 'load-path "~/.emacs.d/misc/")
   (require 'elang-mode)
 #+END_SRC
+
 
 ** Vim
 
