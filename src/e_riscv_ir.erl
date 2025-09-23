@@ -6,7 +6,7 @@
 %% And by avoiding {x, 15~31}, our code can run on a RV32E machine who have only 16 registers.
 -spec tmp_regs() -> [machine_reg()].
 tmp_regs() ->
-    [{x, 5}, {x, 6}, {x, 7}, {x, 10}, {x, 11}, {x, 12}, {x, 13}, {x, 14}].
+  [{x, 5}, {x, 6}, {x, 7}, {x, 10}, {x, 11}, {x, 12}, {x, 13}, {x, 14}].
 
 %% Add an immediate integer to a register.
 %% The third parameter is a temporary register which may not be used.

@@ -1,117 +1,117 @@
 struct GPIO
-    CFG_L: word; %% Port configuration register low
-    CFG_H: word; %% Port configuration register high
-    IN: word; %% Port input data register
-    OUT: word; %% Port output data register
-    BSH: word; %% Port set/reset register
-    BC: word; %% Port reset register
-    LOCK: word; %% Port configuration lock register
+  CFG_L: word; %% Port configuration register low
+  CFG_H: word; %% Port configuration register high
+  IN: word; %% Port input data register
+  OUT: word; %% Port output data register
+  BSH: word; %% Port set/reset register
+  BC: word; %% Port reset register
+  LOCK: word; %% Port configuration lock register
 end
 
 struct EXTI
-    INTEN: word; %% Interrupt enable register
-    EVEN: word; %% Event enable register
-    RTEN: word; %% Rising edge trigger enable register
-    FTEN: word; %% Falling edge trigger enable register
-    SWIEV: word; %% Software interrupt event register
-    INTF: word; %% Interrupt flag register
+  INTEN: word; %% Interrupt enable register
+  EVEN: word; %% Event enable register
+  RTEN: word; %% Rising edge trigger enable register
+  FTEN: word; %% Falling edge trigger enable register
+  SWIEV: word; %% Software interrupt event register
+  INTF: word; %% Interrupt flag register
 end
 
 struct ADTM
-    CTL1: word; %% Control register 1
-    CTL2: word; %% Control register 2
-    SMCFG: word; %% Slave mode configuration register
-    DMAINTEN: word; %% DMA/interrupt enable register
-    INTF: word; %% Interrupt flag register
-    SWEVG: word; %% Event generation register
-    CHCTL1: word; %% Compare/Capture control register 1
-    CHCTL2: word; %% Compare/Capture control register 2
-    CCEN: word; %% Compare/capture enable register
-    CNT: word; %% Counter
-    PSC: word; %% Prescaler
-    ATRL: word; %% Auto-reload register
-    RPTC: word; %% Repeat count register
-    CHCV1: word; %% Compare/Capture register 1
-    CHCV2: word; %% Compare/Capture register 2
-    CHCV3: word; %% Compare/Capture register 3
-    CHCV4: word; %% Compare/Capture register 4
-    BDT: word; %% Break and deadband register
-    DMACFG: word; %% DMA configuration register
-    DMAAD: word; %% DMA address register in continuous mode
-    AUX: word; %% Dual-edge capture register
+  CTL1: word; %% Control register 1
+  CTL2: word; %% Control register 2
+  SMCFG: word; %% Slave mode configuration register
+  DMAINTEN: word; %% DMA/interrupt enable register
+  INTF: word; %% Interrupt flag register
+  SWEVG: word; %% Event generation register
+  CHCTL1: word; %% Compare/Capture control register 1
+  CHCTL2: word; %% Compare/Capture control register 2
+  CCEN: word; %% Compare/capture enable register
+  CNT: word; %% Counter
+  PSC: word; %% Prescaler
+  ATRL: word; %% Auto-reload register
+  RPTC: word; %% Repeat count register
+  CHCV1: word; %% Compare/Capture register 1
+  CHCV2: word; %% Compare/Capture register 2
+  CHCV3: word; %% Compare/Capture register 3
+  CHCV4: word; %% Compare/Capture register 4
+  BDT: word; %% Break and deadband register
+  DMACFG: word; %% DMA configuration register
+  DMAAD: word; %% DMA address register in continuous mode
+  AUX: word; %% Dual-edge capture register
 end
 
 struct GPTM
-    CTL1: word; %% Control register 1
-    CTL2: word; %% Control register 2
-    SMCFG: word; %% Slave mode configuration register
-    DMAINTEN: word; %% DMA/interrupt enable register
-    INTF: word; %% Interrupt flag register
-    SWEVG: word; %% Event generation register
-    CHCTL1: word; %% Compare/Capture control register 1
-    CHCTL2: word; %% Compare/Capture control register 2
-    CCEN: word; %% Compare/capture enable register
-    CNT: word; %% Counter
-    PSC: word; %% Prescaler
-    ATRL: word; %% Auto-reload register
-    CHCV1: word; %% Compare/Capture register 1
-    CHCV2: word; %% Compare/Capture register 2
-    CHCV3: word; %% Compare/Capture register 3
-    CHCV4: word; %% Compare/Capture register 4
-    DMACFG: word; %% DMA configuration register
-    DMAAD: word; %% DMA address register in continuous mode
-    AUX: word; %% Dual-edge capture register
+  CTL1: word; %% Control register 1
+  CTL2: word; %% Control register 2
+  SMCFG: word; %% Slave mode configuration register
+  DMAINTEN: word; %% DMA/interrupt enable register
+  INTF: word; %% Interrupt flag register
+  SWEVG: word; %% Event generation register
+  CHCTL1: word; %% Compare/Capture control register 1
+  CHCTL2: word; %% Compare/Capture control register 2
+  CCEN: word; %% Compare/capture enable register
+  CNT: word; %% Counter
+  PSC: word; %% Prescaler
+  ATRL: word; %% Auto-reload register
+  CHCV1: word; %% Compare/Capture register 1
+  CHCV2: word; %% Compare/Capture register 2
+  CHCV3: word; %% Compare/Capture register 3
+  CHCV4: word; %% Compare/Capture register 4
+  DMACFG: word; %% DMA configuration register
+  DMAAD: word; %% DMA address register in continuous mode
+  AUX: word; %% Dual-edge capture register
 end
 
 struct USART
-    STATUS: word; %% Status register
-    DATA: word; %% Data register
-    BR: word; %% Baudrate register
-    CTL1: word; %% Control register 1
-    CTL2: word; %% Control register 2
-    CTL3: word; %% Control register 3
-    GP: word; %% Guard time and prescaler
-    CTL4: word; %% Control register 4
+  STATUS: word; %% Status register
+  DATA: word; %% Data register
+  BR: word; %% Baudrate register
+  CTL1: word; %% Control register 1
+  CTL2: word; %% Control register 2
+  CTL3: word; %% Control register 3
+  GP: word; %% Guard time and prescaler
+  CTL4: word; %% Control register 4
 end
 
 struct ADC
-    STATUS: word; %% Status register
-    CTL1: word; %% Control register 1
-    CTL2: word; %% Control register 2
-    SAMPT1: word; %% Sample time configuration register 1
-    SAMPT2: word; %% Sample time configuration register 2
-    IOF1: word; %% Injected channel data offset register 1
-    IOF2: word; %% Injected channel data offset register 2
-    IOF3: word; %% Injected channel data offset register 3
-    IOF4: word; %% Injected channel data offset register 4
-    WDHT: word; %% Watchdog high threshold register
-    WDLT: word; %% Watchdog low threshold register
-    RSQ1: word; %% Regular channel sequence register 1
-    RSQ2: word; %% Regular channel sequence register 2
-    RSQ3: word; %% Regular channel sequence register 3
-    ISQ: word; %% Injected channel sequence register
-    IDATA1: word; %% Injected data register 1
-    IDATA2: word; %% Injected data register 2
-    IDATA3: word; %% Injected data register 3
-    IDATA4: word; %% Injected data register 4
-    RDATA: word; %% Regular data register
-    AUX: word; %% Sample time register
+  STATUS: word; %% Status register
+  CTL1: word; %% Control register 1
+  CTL2: word; %% Control register 2
+  SAMPT1: word; %% Sample time configuration register 1
+  SAMPT2: word; %% Sample time configuration register 2
+  IOF1: word; %% Injected channel data offset register 1
+  IOF2: word; %% Injected channel data offset register 2
+  IOF3: word; %% Injected channel data offset register 3
+  IOF4: word; %% Injected channel data offset register 4
+  WDHT: word; %% Watchdog high threshold register
+  WDLT: word; %% Watchdog low threshold register
+  RSQ1: word; %% Regular channel sequence register 1
+  RSQ2: word; %% Regular channel sequence register 2
+  RSQ3: word; %% Regular channel sequence register 3
+  ISQ: word; %% Injected channel sequence register
+  IDATA1: word; %% Injected data register 1
+  IDATA2: word; %% Injected data register 2
+  IDATA3: word; %% Injected data register 3
+  IDATA4: word; %% Injected data register 4
+  RDATA: word; %% Regular data register
+  AUX: word; %% Sample time register
 end
 
 struct DAC
-    CTL: word; %% Control register
-    SWT: word; %% Software trigger register
-    R12BDH1: word; %% Channel1 right-aligned 12-bit data hold register
-    L12BDH1: word; %% Channel1 left-aligned 12-bit data hold register
-    R8BDH1: word; %% Channel1 right-aligned 8-bit data hold register
-    R12BDH2: word; %% Channel2 right-aligned 12-bit data hold register
-    L12BDH2: word; %% Channel2 left-aligned 12-bit data hold register
-    R8BDH2: word; %% Channel2 right-aligned 8-bit data hold register
-    RD12BDH: word; %% Dual channel right-aligned 12-bit data hold register
-    LD12BDH: word; %% Dual channel left-aligned 12-bit data hold register
-    RD8BDH: word; %% Dual channel right-aligned 8-bit data hold register
-    DA1: word; %% Channel1 data output register
-    DA2: word; %% Channel2 data output register
+  CTL: word; %% Control register
+  SWT: word; %% Software trigger register
+  R12BDH1: word; %% Channel1 right-aligned 12-bit data hold register
+  L12BDH1: word; %% Channel1 left-aligned 12-bit data hold register
+  R8BDH1: word; %% Channel1 right-aligned 8-bit data hold register
+  R12BDH2: word; %% Channel2 right-aligned 12-bit data hold register
+  L12BDH2: word; %% Channel2 left-aligned 12-bit data hold register
+  R8BDH2: word; %% Channel2 right-aligned 8-bit data hold register
+  RD12BDH: word; %% Dual channel right-aligned 12-bit data hold register
+  LD12BDH: word; %% Dual channel left-aligned 12-bit data hold register
+  RD8BDH: word; %% Dual channel right-aligned 8-bit data hold register
+  DA1: word; %% Channel1 data output register
+  DA2: word; %% Channel2 data output register
 end
 
 #define PWR_CTL (0x4000_7000 as (word^)) %% Power control register

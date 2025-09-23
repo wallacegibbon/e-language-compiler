@@ -1,55 +1,55 @@
-* For CH32Vxxx MCU
+# For CH32Vxxx MCU
 
-** Load and Run
+## Load and Run
 
 We can using OpenOCD to load and debug the generated bin file.
 
 Download bin file to the target machine:
-#+BEGIN_SRC shell
+```sh
   openocd.exe -f wch-riscv.cfg \
 	      -c "program a.code.bin 0x00000000 program a.ivec.bin 0x0000FC00 verify reset exit"
-#+END_SRC
+```
 
 Start OpenOCD server:
-#+BEGIN_SRC shell
+```sh
   openocd.exe -f wch-riscv.cfg
-#+END_SRC
+```
 
 Then use `telnet` to connect to OpenOCD server to run load and debug commands:
-#+BEGIN_SRC shell
+```sh
   telnet localhost 4444
-#+END_SRC
+```
 
 Load binary file to target:
-#+BEGIN_SRC openocd
+```sh
   program path/to/a.code.bin 0x00000000 program a.ivec.bin 0x0000FC00 reset
-#+END_SRC
+```
 
 Step one instruction:
-#+BEGIN_SRC openocd
+```sh
   step
-#+END_SRC
+```
 
 Read the content of PC register:
-#+BEGIN_SRC openocd
+```sh
   reg pc
-#+END_SRC
+```
 
 Read memory (code):
-#+BEGIN_SRC openocd
+```sh
   read_memory 0x00000000 8 32
-#+END_SRC
+```
 
 The output of this command should be like:
-#+BEGIN_SRC
+```
   0x23 0xa0 0x1 0x0 0x97 0x2 0x0 0x0
-#+END_SRC
+```
 
-#+BEGIN_SRC openocd
+```sh
   read_memory 0x00000190 8 32
-#+END_SRC
+```
 
 The output of this command should be like:
-#+BEGIN_SRC
+```
   0x23 0x22 0x81 0x0 0x23 0x24 0x11 0x0
-#+END_SRC
+```
