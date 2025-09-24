@@ -128,12 +128,10 @@
          type :: e_type()
         }).
 
--type e_op_tag() :: '*' | '/' | '+' | '-' | '@' | '^' | 'rem' |
-                    'and' | 'or' | 'band' | 'bor' | 'bxor' | 'bsl' | 'bsr' |
-                    '~' | '!' | '.' | '=' |
-                    '>' | '<' | '>=' | '<=' | '!=' | '==' |
-                    {call, e_expr()} | {aref, e_expr()} |
-                    {sizeof, e_type()} | {alignof, e_type()}.
+-type e_op_tag() ::
+'*' | '/' | '+' | '-' | '@' | '^' | 'rem' | 'and' | 'or' | 'band' | 'bor' | 'bxor' | 'bsl' | 'bsr' |
+'~' | '!' | '.' | '=' | '>' | '<' | '>=' | '<=' | '!=' | '==' |
+{call, e_expr()} | {aref, e_expr()} | {sizeof, e_type()} | {alignof, e_type()}.
 
 -record(e_op,
         {
@@ -205,10 +203,10 @@
         }).
 
 -type e_expr() :: #e_op{} | #e_integer{} | #e_float{} | #e_string{} | #e_varref{} |
-                  #e_struct_init_expr{} | #e_array_init_expr{} | #e_type_convert{}.
+#e_struct_init_expr{} | #e_array_init_expr{} | #e_type_convert{}.
 
 -type e_stmt() :: #e_if_stmt{} | #e_while_stmt{} | #e_return_stmt{} |
-                  #e_goto_stmt{} | #e_label{} | e_expr().
+#e_goto_stmt{} | #e_label{} | e_expr().
 
 -type e_ast_raw_elem() :: #e_function_raw{} | #e_struct_raw{} | #e_vardef{} | e_stmt().
 -type e_ast_elem() :: #e_function{} | #e_struct{} | #e_vardef{} | e_stmt().
@@ -245,30 +243,30 @@
 
 -define(IS_ARITH(Tag),
         (
-          Tag =:= '+' orelse Tag =:= '-' orelse Tag =:= '*' orelse Tag =:= '/' orelse
-          Tag =:= 'rem' orelse Tag =:= 'bsl' orelse Tag =:= 'bsr' orelse
-          Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor' orelse Tag =:= 'bnot'
+         Tag =:= '+' orelse Tag =:= '-' orelse Tag =:= '*' orelse Tag =:= '/' orelse
+         Tag =:= 'rem' orelse Tag =:= 'bsl' orelse Tag =:= 'bsr' orelse
+         Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor' orelse Tag =:= 'bnot'
         )).
 
 -define(IS_IMMID_ARITH(Tag),
         (
-          Tag =:= '+' orelse Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor'
+         Tag =:= '+' orelse Tag =:= 'band' orelse Tag =:= 'bor' orelse Tag =:= 'bxor'
         )).
 
 -define(IS_SHIFT(Tag),
         (
-          Tag =:= 'bsl' orelse Tag =:= 'bsr'
+         Tag =:= 'bsl' orelse Tag =:= 'bsr'
         )).
 
 -define(IS_LOGIC(Tag),
         (
-          Tag =:= 'and' orelse Tag =:= 'or' orelse Tag =:= 'not'
+         Tag =:= 'and' orelse Tag =:= 'or' orelse Tag =:= 'not'
         )).
 
 -define(IS_COMPARE(Tag),
         (
-          Tag =:= '>' orelse Tag =:= '<' orelse Tag =:= '==' orelse
-          Tag =:= '!=' orelse Tag =:= '>=' orelse Tag =:= '<='
+         Tag =:= '>' orelse Tag =:= '<' orelse Tag =:= '==' orelse
+         Tag =:= '!=' orelse Tag =:= '>=' orelse Tag =:= '<='
         )).
 
 -endif.

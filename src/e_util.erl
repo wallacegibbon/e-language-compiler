@@ -176,8 +176,8 @@ fill_unit_opti(Num, Unit) ->
 fall_unit(Num, Unit) ->
   Num div Unit * Unit.
 
-%% When `Low` is negative, it will be sign extended by hardware.
-%% `High` should be increased by 1 to balance it.
+%% The lower 12 bits are usually used with instructions like `addi`, who will
+%% sign extend the number.  We need to add higher 20 bits by `1` to balance it.
 %% The mechanism is simple: `+1` then `+(-1)` keeps the number unchanged.
 u_type_immedi(N) ->
   case {N bsr 12, N band 16#FFF} of
