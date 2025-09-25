@@ -261,8 +261,8 @@ type_of_node(#e_array_init_expr{elements = Elements, loc = Loc}, Ctx) ->
   end;
 type_of_node(#e_struct_init_expr{name = Name, field_value_map = ValMap, loc = Loc},
              #{struct_map := StructMap} = Ctx) ->
-  case maps:find(Name, StructMap) of
-    {ok, #e_struct{fields = #e_vars{type_map = FieldTypeMap}}} ->
+  case StructMap of
+    #{Name := #e_struct{fields = #e_vars{type_map = FieldTypeMap}}} ->
       check_types_in_struct_fields(FieldTypeMap, ValMap, Name, Ctx),
       #e_basic_type{class = struct, tag = Name, loc = Loc};
     _ ->
@@ -417,10 +417,10 @@ type_of_struct_field(T, _, _, Loc) ->
 
 -spec get_field_type(atom(), #{atom() => e_type()}, atom(), location()) -> e_type().
 get_field_type(FieldName, FieldTypeMap, StructName, Loc) ->
-  case maps:find(FieldName, FieldTypeMap) of
-    {ok, Type} ->
+  case FieldTypeMap of
+    #{FieldName := Type} ->
       Type;
-    error ->
+    _ ->
       e_util:ethrow(Loc, "~s.~s does not exist", [StructName, FieldName])
   end.
 
@@ -456,10 +456,10 @@ compare_type_1(#e_basic_type{class = C, tag = T, p_depth = P},
 compare_type_1(#e_basic_type{class = struct, tag = Tag, p_depth = N, loc = Loc},
                T2, Ctx) when N > 0 ->
   #{struct_map := StructMap} = Ctx,
-  {ok, #e_struct{fields = Fields}} = maps:find(Tag, StructMap),
+  #{Tag := #e_struct{fields = Fields}} = StructMap,
   #e_vars{names = [First | _], type_map = TypeMap} = Fields,
-  case maps:find(First, TypeMap) of
-    {ok, #e_basic_type{class = struct} = T1Sub} ->
+  case TypeMap of
+    #{First := #e_basic_type{class = struct} = T1Sub} ->
       compare_type_1(inc_pointer_depth(T1Sub, N, Loc), T2, Ctx);
     _ ->
       false

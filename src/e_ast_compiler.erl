@@ -64,8 +64,8 @@ compile_from_raw_ast(AST, #{wordsize := WordSize, entry_function := Entry}) ->
   {{InitCode80, AST80}, GlobalVars}.
 
 ensure_function_exist(FnName, FnTypeMap) ->
-  case maps:find(FnName, FnTypeMap) of
-    {ok, _} ->
+  case FnTypeMap of
+    #{FnName := _} ->
       ok;
     _ ->
       e_util:ethrow({"", 0, 0}, "entry function \"~s\" is not defined", [FnName])

@@ -58,8 +58,8 @@ scan_address([], _, Result, Ctx) ->
   {lists:reverse(Result), Ctx}.
 
 check_label_conflict(Name, LabelMap) ->
-  case maps:find(Name, LabelMap) of
-    {ok, _} ->
+  case LabelMap of
+    #{Name := _} ->
       e_util:ethrow({"", 0, 0}, "Name conflict on label \"~s\"", [Name]);
     _ ->
       ok
@@ -72,7 +72,7 @@ check_label_conflict(Name, LabelMap) ->
         )).
 
 replace_address([{{Br, R1, R2, Label}, Loc} | Rest], LabelMap) when ?IS_BR_INSTR(Br) ->
-  {ok, Address} = maps:find(Label, LabelMap),
+  #{Label := Address} = LabelMap,
   RelativeOffset = Address - Loc,
   if
     RelativeOffset > 4095 orelse RelativeOffset < -4096 ->
@@ -81,7 +81,7 @@ replace_address([{{Br, R1, R2, Label}, Loc} | Rest], LabelMap) when ?IS_BR_INSTR
       [{{Br, R1, R2, RelativeOffset}, Loc} | replace_address(Rest, LabelMap)]
   end;
 replace_address([{{j, Label}, Loc} | Rest], LabelMap) ->
-  {ok, Address} = maps:find(Label, LabelMap),
+  #{Label := Address} = LabelMap,
   RelativeOffset = Address - Loc,
   if
     RelativeOffset > 16#7FFFF orelse RelativeOffset < -16#80000 ->
@@ -90,11 +90,11 @@ replace_address([{{j, Label}, Loc} | Rest], LabelMap) ->
       [{{j, RelativeOffset}, Loc} | replace_address(Rest, LabelMap)]
   end;
 replace_address([{{la, R, Label}, Loc} | Rest], LabelMap) ->
-  {ok, Address} = maps:find(Label, LabelMap),
+  #{Label := Address} = LabelMap,
   {High, Low} = e_util:u_type_immedi(Address - Loc),
   [{{auipc, R, High}, Loc}, {{addi, R, R, Low}, Loc + 4} | replace_address(Rest, LabelMap)];
 replace_address([{{code, Label}, Loc} | Rest], LabelMap) when is_atom(Label) ->
-  {ok, Address} = maps:find(Label, LabelMap),
+  #{Label := Address} = LabelMap,
   [{{code, Address}, Loc} | replace_address(Rest, LabelMap)];
 replace_address([Any | Rest], LabelMap) ->
   [Any | replace_address(Rest, LabelMap)];
@@ -181,8 +181,8 @@ write_detail([{{code, _}, Raw, Loc} | Rest], Loc, OffsetMap, IO) ->
   io:format(IO, "~8.16.0b:~s~s~n", [Loc, ?NSPACE(7), fmt_code(Raw)]),
   write_detail(Rest, Loc + byte_size(Raw), OffsetMap, IO);
 write_detail([{Instr, Raw, Loc} | Rest], Loc, OffsetMap, IO) ->
-  case maps:find(Loc, OffsetMap) of
-    {ok, Labels} ->
+  case OffsetMap of
+    #{Loc := Labels} ->
       [io:format(IO, "~s~s:~n", [?NSPACE(32), L]) || L <- lists:reverse(Labels)];
     _ ->
       ok

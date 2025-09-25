@@ -58,10 +58,7 @@ ast_to_str([#e_function{name = Name, param_names = ParamNames, type = FnType,
   PureParams = map_to_kv_list(ParamNames, maps:with(ParamNames, VarTypes)),
   PureVars = maps:without(ParamNames, VarTypes),
   Declars = function_to_str(Name, params_to_str(PureParams), FnType#e_fn_type.ret),
-  Stmts2 = case Name =:= main of
-             true -> InitCode ++ Stmts;
-             false -> Stmts
-           end,
+  Stmts2 = case Name of main -> InitCode ++ Stmts; _ -> Stmts end,
   S = io_lib:format("~s~n{~n~s~n~n~s~n}~n~n",
                     [Declars, var_map_to_str(PureVars), stmts_to_str(Stmts2)]),
   ast_to_str(Rest, InitCode, [S | StmtStrs], [Declars ++ ";\n" | FnDeclars]);

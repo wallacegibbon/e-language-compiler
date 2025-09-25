@@ -1,6 +1,6 @@
 -module(e_varref).
 -export([varref_to_offset_in_ast/2, varref_to_offset_in_stmts/2]).
--include("./src/e_record_definition.hrl").
+-include("e_record_definition.hrl").
 
 -spec varref_to_offset_in_ast(e_ast(), e_compile_context:context()) -> e_ast().
 varref_to_offset_in_ast([#e_function{stmts = Stmts, vars = LocalVars} = Fn | Rest],
@@ -53,20 +53,20 @@ find_name_in_vars_and_fn_map(Varref, VarsList, #{fn_map := FnTypeMap}) ->
   end.
 
 find_name_in_vars(?VREF(Name) = Varref, [#e_vars{offset_map = Map, tag = Tag} | RestVars]) ->
-  case maps:find(Name, Map) of
-    {ok, OffsetAndSize} ->
+  case Map of
+    #{Name := OffsetAndSize} ->
       {ok, {tag_trans(Tag), OffsetAndSize}};
-    error ->
+    _ ->
       find_name_in_vars(Varref, RestVars)
   end;
 find_name_in_vars(_, []) ->
   notfound.
 
 find_name_in_fn_map(?VREF(Name, Loc), FnTypeMap) ->
-  case maps:find(Name, FnTypeMap) of
-    {ok, _} ->
+  case FnTypeMap of
+    #{Name := _} ->
       {ok, Name};
-    error ->
+    _ ->
       e_util:ethrow(Loc, "\"~s\" is not defined", [Name])
   end.
 

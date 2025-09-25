@@ -295,19 +295,19 @@ assert(false, Info) ->
 
 -spec get_struct_from_type(#e_basic_type{}, #{atom() => #e_struct{}}) -> #e_struct{}.
 get_struct_from_type(#e_basic_type{class = struct, tag = Name, loc = Loc}, StructMap) ->
-  case maps:find(Name, StructMap) of
-    {ok, S} ->
+  case StructMap of
+    #{Name := S} ->
       S;
-    error ->
+    _ ->
       ethrow(Loc, "type \"~s\" is not found", [Name])
   end.
 
 -spec get_struct_from_name(atom(), #{atom() => #e_struct{}}, location()) -> #e_struct{}.
 get_struct_from_name(Name, StructMap, Loc) ->
-  case maps:find(Name, StructMap) of
-    {ok, S} ->
+  case StructMap of
+    #{Name := S} ->
       S;
-    error ->
+    _ ->
       ethrow(Loc, "type \"~s\" is not found", [Name])
   end.
 
@@ -324,12 +324,12 @@ merge_vars(?VARS(N1, M1, O1) = V, ?VARS(N2, M2, O2), _) ->
   V?VARS(lists:append(N1, N2), maps:merge(M1, M2), maps:merge(O1, O2)).
 
 
--spec map_find_multi(any(), [#{any() => any()}]) -> {ok, _} | notfound.
+-spec map_find_multi(K, [#{K => V}]) -> {ok, V} | notfound when K :: any(), V :: any().
 map_find_multi(Key, [Map| RestMaps]) ->
-  case maps:find(Key, Map) of
-    {ok, _} = R ->
-      R;
-    error ->
+  case Map of
+    #{Key := R} ->
+      {ok, R};
+    _ ->
       map_find_multi(Key, RestMaps)
   end;
 map_find_multi(_, []) ->

@@ -16,8 +16,8 @@ preprocess(OrigTokens) ->
 collect_macro_map([{'#', _}, {identifier, _, define}, {identifier, Loc, Name} | Rest],
                   FilteredTokens,
                   Map) ->
-  case maps:find(Name, Map) of
-    {ok, _} ->
+  case Map of
+    #{Name := _} ->
       e_util:ethrow(Loc, "macro name conflict: \"~s\"", [Name]);
     _ ->
       {Tokens, RestTokens} = get_expr_till_eol(Rest, []),
@@ -60,8 +60,8 @@ get_expr_till_eol([], Tokens) ->
 
 -spec do_replace({identifier, location(), atom()}, macro_map()) -> [token()].
 do_replace({identifier, Loc, Name}, Map) ->
-  case maps:find(Name, Map) of
-    {ok, Value} ->
+  case Map of
+    #{Name := Value} ->
       replace_line_number(Value, Loc);
     _ ->
       e_util:ethrow(Loc, "undefined macro ~s", [Name])

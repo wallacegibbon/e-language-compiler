@@ -49,8 +49,8 @@ contain_unused_struct(FieldType, StructMap, UsedStructs) ->
 
 -spec contain_struct(e_type(), #{atom() => #e_struct{}}) -> {yes, #e_struct{}} | no.
 contain_struct(#e_basic_type{class = struct, p_depth = 0, tag = Name, loc = Loc}, StructMap) ->
-  case maps:find(Name, StructMap) of
-    {ok, Struct} ->
+  case StructMap of
+    #{Name := Struct} ->
       {yes, Struct};
     _ ->
       e_util:ethrow(Loc, "undefined struct \"~s\"", [Name])
@@ -80,8 +80,8 @@ eliminate_dot_in_stmts(Stmts0, Ctx) ->
 -spec eliminate_dot(e_expr(), e_compile_context:context()) -> e_expr().
 eliminate_dot(?OP2('.', O, ?VREF(FieldName), Loc), #{struct_map := StructMap} = Ctx) ->
   #e_basic_type{class = struct, tag = Name, p_depth = 0} = e_type:type_of_node(O, Ctx),
-  {ok, #e_struct{fields = #e_vars{offset_map = FieldOffsetMap}}} = maps:find(Name, StructMap),
-  {ok, {Offset, Size}} = maps:find(FieldName, FieldOffsetMap),
+  #{Name := #e_struct{fields = #e_vars{offset_map = FieldOffsetMap}}} = StructMap,
+  #{FieldName := {Offset, Size}} = FieldOffsetMap,
   A = ?OP1('@', eliminate_dot(O, Ctx), Loc),
   B = ?OP2('+', A, ?I(Offset, Loc), Loc),
   ?OP2('^', B, ?I(Size, Loc), Loc);

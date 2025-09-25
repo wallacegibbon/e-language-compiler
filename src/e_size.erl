@@ -132,7 +132,7 @@ align_of(Type, Ctx) ->
 local_var_offset(#e_vars{names = Names, offset_map = OffsetMap, size = Size}, ParamNames) ->
   case find_0th(ParamNames, Names) of
     {ok, N} ->
-      {ok, {Offset, _}} = maps:find(N, OffsetMap),
+      #{N := {Offset, _}} = OffsetMap,
       Offset;
     _ ->
       Size

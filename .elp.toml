@@ -1,2 +1,5 @@
+[build_info]
+apps = [{name = "e_compiler", dir = ".", src_dirs = ["./src"]}]
+
 [eqwalizer]
 enable_all = false

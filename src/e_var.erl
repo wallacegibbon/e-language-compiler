@@ -129,8 +129,8 @@ check_variable_conflict(#e_vars{type_map = GlobalVarMap}, #e_vars{type_map = Loc
 
 -spec check_name_conflict(atom(), #e_vars{}, location()) -> ok.
 check_name_conflict(Name, #e_vars{type_map = VarMap}, Loc) ->
-  case maps:find(Name, VarMap) of
-    {ok, _} ->
+  case VarMap of
+    #{Name := _} ->
       e_util:ethrow(Loc, "name \"~s\" has already been used", [Name]);
     _ ->
       ok
@@ -138,10 +138,10 @@ check_name_conflict(Name, #e_vars{type_map = VarMap}, Loc) ->
 
 -spec check_label_conflict([e_stmt()], #{atom() => location()}) -> ok.
 check_label_conflict([#e_label{name = Name, loc = Loc} | Rest], Map) ->
-  case maps:find(Name, Map) of
-    {ok, {Line, Col}} ->
-      e_util:ethrow(Loc, "label \"~s\" conflict with line ~w:~w", [Name, {Line, Col}]);
-    error ->
+  case Map of
+    #{Name := Loc1} ->
+      e_util:ethrow(Loc, "label \"~s\" conflict with ~w", [Name, Loc1]);
+    _ ->
       check_label_conflict(Rest, Map#{Name => Loc})
   end;
 check_label_conflict([_ | Rest], Map) ->

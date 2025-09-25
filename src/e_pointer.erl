@@ -1,6 +1,6 @@
 -module(e_pointer).
 -export([fix_pointer_size_in_ast/2, fix_pointer_size_in_stmts/2]).
--include("./src/e_record_definition.hrl").
+-include("e_record_definition.hrl").
 
 -spec fix_pointer_size_in_ast(e_ast(), e_compile_context:context()) -> e_ast().
 fix_pointer_size_in_ast([#e_function{vars = LocalVars, stmts = Stmts} = Fn | Rest],
