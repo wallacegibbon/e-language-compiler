@@ -3,7 +3,7 @@
 -export_type([ast_compile_result/0]).
 -include("e_record_definition.hrl").
 
--type ast_compile_result() :: {{e_ast(), e_ast()}, #e_vars{}}.
+-type ast_compile_result() :: {{[e_stmt()], e_ast()}, #e_vars{}}.
 
 -spec compile_from_raw_ast(e_ast_raw(), e_compile_option:option()) -> ast_compile_result().
 compile_from_raw_ast(AST, #{wordsize := WordSize, entry_function := Entry}) ->

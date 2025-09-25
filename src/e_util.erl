@@ -93,14 +93,14 @@ stmt_to_str(?OP1('bnot', Op)) ->
   io_lib:format("bnot(~s)", [stmt_to_str(Op)]);
 stmt_to_str(?OP1(Tag, Op)) ->
   io_lib:format("(~s ~s)", [stmt_to_str(Op), Tag]);
+stmt_to_str(?S(Val)) ->
+  io_lib:format("\"~s\"", [fix_special_chars(Val)]);
 stmt_to_str(?I(Val)) ->
   io_lib:format("~w", [Val]);
 stmt_to_str(?F(Val)) ->
   io_lib:format("~w", [Val]);
-stmt_to_str(?S(Val)) ->
-  io_lib:format("\"~s\"", [fix_special_chars(Val)]);
-stmt_to_str(Any) ->
-  Any.
+stmt_to_str(Val) ->
+  io_lib:format("~w", [Val]).
 
 special_char_map() ->
   #{$\n => "\\n", $\r => "\\r", $\t => "\\t", $\f => "\\f", $\b => "\\b"}.

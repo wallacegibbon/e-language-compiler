@@ -129,7 +129,8 @@
         }).
 
 -type e_op_tag() ::
-'*' | '/' | '+' | '-' | '@' | '^' | 'rem' | 'and' | 'or' | 'band' | 'bor' | 'bxor' | 'bsl' | 'bsr' |
+'*' | '/' | '+' | '-' | '@' | '^' | 'rem' |
+'not' | 'and' | 'or' | 'bnot' | 'band' | 'bor' | 'bxor' | 'bsl' | 'bsr' |
 '~' | '!' | '.' | '=' | '>' | '<' | '>=' | '<=' | '!=' | '==' |
 {call, e_expr()} | {aref, e_expr()} | {sizeof, e_type()} | {alignof, e_type()}.
 
