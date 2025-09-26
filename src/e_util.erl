@@ -295,12 +295,7 @@ assert(false, Info) ->
 
 -spec get_struct_from_type(#e_basic_type{}, #{atom() => #e_struct{}}) -> #e_struct{}.
 get_struct_from_type(#e_basic_type{class = struct, tag = Name, loc = Loc}, StructMap) ->
-  case StructMap of
-    #{Name := S} ->
-      S;
-    _ ->
-      ethrow(Loc, "type \"~s\" is not found", [Name])
-  end.
+  get_struct_from_name(Name, StructMap, Loc).
 
 -spec get_struct_from_name(atom(), #{atom() => #e_struct{}}, location()) -> #e_struct{}.
 get_struct_from_name(Name, StructMap, Loc) ->
@@ -311,18 +306,15 @@ get_struct_from_name(Name, StructMap, Loc) ->
       ethrow(Loc, "type \"~s\" is not found", [Name])
   end.
 
-
-%% `merge_vars` will NOT merge all fields of e_vars. Only name, type_map and offset_map are merged.
-
 -define(VARS(Names, TypeMap, OffsetMap),
         #e_vars{names = Names, type_map = TypeMap, offset_map = OffsetMap}).
 
+%% `merge_vars` will NOT merge all fields of e_vars. Only name, type_map and offset_map are merged.
 -spec merge_vars(#e_vars{}, #e_vars{}, check_tag | ignore_tag) -> #e_vars{}.
 merge_vars(#e_vars{tag = Tag1}, #e_vars{tag = Tag2}, check_tag) when Tag1 =/= Tag2 ->
   ethrow(0, "only vars with the same tag can be merged. (~s, ~s)", [Tag1, Tag2]);
 merge_vars(?VARS(N1, M1, O1) = V, ?VARS(N2, M2, O2), _) ->
   V?VARS(lists:append(N1, N2), maps:merge(M1, M2), maps:merge(O1, O2)).
-
 
 -spec map_find_multi(K, [#{K => V}]) -> {ok, V} | notfound when K :: any(), V :: any().
 map_find_multi(Key, [Map| RestMaps]) ->
