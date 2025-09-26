@@ -156,11 +156,9 @@ get_values_by_keys_test() ->
 -spec make_function_and_struct_map_from_ast(any()) ->
   {#{atom() => #e_fn_type{}}, #{atom() => #e_struct{}}}.
 make_function_and_struct_map_from_ast(AST) ->
-  {Fns, Structs} = lists:partition(fun(A) -> element(1, A) =:= e_function end,
-                                   AST),
   %% FnTypeMap stores function type only
-  FnTypeMap = #{Name => T || #e_function{name = Name, type = T} <- Fns},
-  StructMap = #{Name => S || #e_struct{name = Name} = S <- Structs},
+  FnTypeMap = #{Name => T || #e_function{name = Name, type = T} <- AST},
+  StructMap = #{Name => S || #e_struct{name = Name} = S <- AST},
   {FnTypeMap, StructMap}.
 
 %% address calculations
