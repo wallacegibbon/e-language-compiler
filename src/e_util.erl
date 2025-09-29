@@ -3,7 +3,7 @@
 -export([names_of_var_defs/1, names_of_var_refs/1, get_struct_from_type/2, get_struct_from_name/3]).
 -export([fall_unit/2, fill_unit_opti/2, fill_unit_pessi/2, fix_special_chars/1]).
 -export([fmt/2, ethrow/3, ethrow/2, exit_info/3, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2]).
--export([u_type_immedi/1, j_type_immedi/1, s_type_immedi/1, b_type_immedi/1, dissociate_num/2]).
+-export([u_type_immedi/1, j_type_immedi/1, s_type_immedi/1, b_type_immedi/1, dissociate_num/2, sign_extend/2]).
 -export([map_find_multi/2, file_write/2, token_attach_filename/2]).
 -include("e_record_definition.hrl").
 -ifdef(EUNIT).
@@ -177,13 +177,19 @@ fall_unit(Num, Unit) ->
 %% The lower 12 bits are usually used with instructions like `addi`, who will
 %% sign extend the number.  We need to add higher 20 bits by `1` to balance it.
 %% The mechanism is simple: `+1` then `+(-1)` keeps the number unchanged.
+
+%u_type_immedi(N) ->
+%  case {N bsr 12, N band 16#FFF} of
+%    {High, Low} when Low > 2047 ->
+%      {(High + 1) band 16#000FFFFF, sign_extend(Low, 12)};
+%    {High, Low} ->
+%      {High band 16#000FFFFF, sign_extend(Low, 12)}
+%  end.
+
 u_type_immedi(N) ->
-  case {N bsr 12, N band 16#FFF} of
-    {High, Low} when Low > 2047 ->
-      {(High + 1) band 16#000FFFFF, fix_signed_num(Low, 12)};
-    {High, Low} ->
-      {High band 16#000FFFFF, fix_signed_num(Low, 12)}
-  end.
+  High = (N + 16#00000800) band 16#FFFFF000,
+  Low = N - High,
+  {High bsr 12, Low}.
 
 %% imm[20|10:1|11|19:12]
 j_type_immedi(N) ->
@@ -206,26 +212,31 @@ b_type_immedi(N) ->
   Low = N band 2#11110 bor ((N bsr 11) band 1),
   {High, Low}.
 
-fix_signed_num(N, BitNum) ->
-  case (N bsr (BitNum - 1)) band 1 of
-    1 ->
-      -1 * (((bnot N) + 1) band (bnot (-1 bsl BitNum)));
-    0 ->
-      N
-  end.
+%sign_extend(N, BitNum) ->
+%  case (N bsr (BitNum - 1)) band 1 of
+%    1 ->
+%      -1 * (((bnot N) + 1) band (bnot (-1 bsl BitNum)));
+%    0 ->
+%      N
+%  end.
+
+sign_extend(N, BitNum) ->
+  S = (N bsr (BitNum - 1)) band 1,
+  %% Numbers like 2^n are special.  -(2^n) fills the `1`s we need.
+  N - (S bsl BitNum).
 
 -ifdef(EUNIT).
 
-fix_signed_num_test() ->
-  ?assertEqual(+7, fix_signed_num(7, 4)),
-  ?assertEqual(-8, fix_signed_num(8, 4)),
-  ?assertEqual(-7, fix_signed_num(9, 4)),
-  ?assertEqual(+16#344, fix_signed_num(16#344, 12)),
-  ?assertEqual(-16#323, fix_signed_num(16#CDD, 12)).
+sign_extend_test() ->
+  ?assertEqual(+7, sign_extend(7, 4)),
+  ?assertEqual(-8, sign_extend(8, 4)),
+  ?assertEqual(-7, sign_extend(9, 4)),
+  ?assertEqual(+16#344, sign_extend(16#344, 12)),
+  ?assertEqual(-16#323, sign_extend(16#CDD, 12)).
 
 u_type_immedi_test() ->
-  ?assertEqual({16#11223, fix_signed_num(16#344, 12)}, u_type_immedi(16#11223344)),
-  ?assertEqual({16#AABBD, fix_signed_num(16#CDD, 12)}, u_type_immedi(16#AABBCCDD)).
+  ?assertEqual({16#11223, sign_extend(16#344, 12)}, u_type_immedi(16#11223344)),
+  ?assertEqual({16#AABBD, sign_extend(16#CDD, 12)}, u_type_immedi(16#AABBCCDD)).
 
 %% imm[20|10:1|11|19:12]
 j_type_immedi_1_test() ->
@@ -234,7 +245,7 @@ j_type_immedi_1_test() ->
 j_type_immedi_2_test() ->
   N1 = 2#1_01010101_0_1010101010_1,
   N2 = 2#1_1010101010_0_01010101,
-  ?assertEqual(fix_signed_num(N2, 20), fix_signed_num(j_type_immedi(N1), 20)).
+  ?assertEqual(sign_extend(N2, 20), sign_extend(j_type_immedi(N1), 20)).
 
 s_type_immedi_test() ->
   ?assertEqual({2#1100110, 2#11101}, s_type_immedi(16#AABBCCDD)).
