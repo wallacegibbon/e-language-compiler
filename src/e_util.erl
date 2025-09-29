@@ -10,7 +10,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
-%% This function is to avoid boilerplate code for statements. So you can concentrate on operators.
+%% This function eliminates boilerplate code for statements.
 -spec expr_map(fun((e_expr()) -> e_expr()), [e_stmt()]) -> [e_stmt()].
 expr_map(Fn, [#e_if_stmt{'cond' = Cond, then = Then, 'else' = Else} = If | Rest]) ->
   [If#e_if_stmt{'cond' = Fn(Cond), then = expr_map(Fn, Then),
@@ -29,10 +29,10 @@ eliminate_pointer(Stmts1) ->
   expr_map(fun merge_plus/1, expr_map(fun merge_pointer/1, Stmts1)).
 
 -spec merge_plus(e_expr()) -> e_expr().
-%% Handling expressions like `1 + 2 + 3 + ...`
+%% `1 + 2 + 3 + ...`
 merge_plus(?OP2('+', ?OP2('+', O1, ?I(N1) = I), ?I(N2)) = Orig) ->
   merge_plus(Orig?OP2('+', O1, I?I(N1 + N2)));
-%% Handling expressions like `... + (1 + (2 + 3))`
+%% `... + (1 + (2 + 3))`
 merge_plus(?OP2('+', ?I(N1) = I, ?OP2('+', ?I(N2), O2)) = Orig) ->
   merge_plus(Orig?OP2('+', I?I(N1 + N2), O2));
 merge_plus(?OP2('+', ?I(N1) = I, ?I(N2))) ->
