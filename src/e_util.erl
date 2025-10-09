@@ -326,7 +326,7 @@ merge_vars(?VARS(N1, M1, O1) = V, ?VARS(N2, M2, O2), _) ->
   V?VARS(lists:append(N1, N2), maps:merge(M1, M2), maps:merge(O1, O2)).
 
 -spec map_find_multi(K, [#{K => V}]) -> {ok, V} | notfound when K :: any(), V :: any().
-map_find_multi(Key, [Map| RestMaps]) ->
+map_find_multi(Key, [Map | RestMaps]) ->
   case Map of
     #{Key := R} ->
       {ok, R};
