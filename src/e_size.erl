@@ -90,7 +90,7 @@ size_and_offsets([{Name, Type} | Rest],
                  #{size := CurrentOffset, align := MaxAlign, offset_map := OffsetMap},
                  Ctx) ->
   FieldAlign = align_of(Type, Ctx),
-  Offset = e_util:fill_unit_pessi(CurrentOffset, FieldAlign),
+  Offset = e_util:align_to(CurrentOffset, FieldAlign),
   FieldSize = size_of(Type, Ctx),
   OffsetMapNew = OffsetMap#{Name => {Offset, FieldSize}},
   NextIn = #{size => Offset + FieldSize,
@@ -98,7 +98,7 @@ size_and_offsets([{Name, Type} | Rest],
              offset_map => OffsetMapNew},
   size_and_offsets(Rest, NextIn, Ctx);
 size_and_offsets([], #{size := CurrentOffset, align := MaxAlign} = Result, _) ->
-  Result#{size := e_util:fill_unit_pessi(CurrentOffset, MaxAlign)}.
+  Result#{size := e_util:align_to(CurrentOffset, MaxAlign)}.
 
 %% Usually, for 32-bit MCU, only 32-bit float is supported. For 64-bit CPU, 64-bit float is supported.
 %% So we can assume that size of float is same as sizeof word.

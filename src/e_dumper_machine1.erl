@@ -41,7 +41,7 @@ scan_address([{start_address, _} | _], N, _, _) when N > 0 ->
 scan_address([{label, {align, N}, Name} | Rest], Offset, Result,
              #{label_map := LabelMap, offset_map := OffsetMap} = Ctx) ->
   check_label_conflict(Name, LabelMap),
-  FixedOffset = e_util:fill_unit_pessi(Offset, N),
+  FixedOffset = e_util:align_to(Offset, N),
   NewLabelMap = LabelMap#{Name => FixedOffset},
   NewOffsetMap = maps:update_with(FixedOffset, fun(Ns) -> [Name | Ns] end, [Name], OffsetMap),
   scan_address(Rest, FixedOffset, Result,

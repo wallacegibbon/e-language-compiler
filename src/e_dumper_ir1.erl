@@ -106,7 +106,7 @@ ast_to_ir([#e_function{name = Name, stmts = Stmts,
           Ctx) ->
   #{wordsize := WordSize, free_regs := [T | _] = Regs} = Ctx,
   %% When there are no local variables, there should still be one word for returning value.
-  Size2 = max(e_util:fill_unit_pessi(Size1, WordSize), WordSize),
+  Size2 = max(e_util:align_to(Size1, WordSize), WordSize),
   %% The extra `2` words are for `frame pointer`({x, 8}) and `returning address`({x, 1}).
   FrameSize = Size2 + WordSize * 2,
   SaveFpRa = [{sw, {x, 8}, {{x, 2}, -WordSize * 2}}, {sw, {x, 1}, {{x, 2}, -WordSize}}],
