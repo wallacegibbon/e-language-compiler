@@ -350,12 +350,20 @@ Then add the following configurations to `$HOME/.emacs`:
 (require 'elang-mode)
 ```
 
-
 ## Vim
+
+Vim:
 
 ```sh
 mkdir -p ~/.vim/pack/my/start/
 cp -r ./misc/vim ~/.vim/pack/my/start/elang
+```
+
+NeoVim:
+
+```sh
+mkdir -p ~/.local/share/nvim/site/pack/my/start
+cp -r ./misc/vim ~/.local/share/nvim/site/pack/my/start/elang
 ```
 
 Then add the following configurations to `$HOME/.vimrc`:

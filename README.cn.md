@@ -326,12 +326,20 @@ cp ./misc/emacs/elang-mode.el ~/.emacs.d/misc/
 (require 'elang-mode)
 ```
 
-
 ## Vim
+
+Vim:
 
 ```sh
 mkdir -p ~/.vim/pack/my/start/
 cp -r ./misc/vim ~/.vim/pack/my/start/elang
+```
+
+NeoVim:
+
+```sh
+mkdir -p ~/.local/share/nvim/site/pack/my/start
+cp -r ./misc/vim ~/.local/share/nvim/site/pack/my/start/elang
 ```
 
 然后在“~/.vimrc”里面，加入下面的内容：
