@@ -355,15 +355,15 @@ Then add the following configurations to `$HOME/.emacs`:
 Vim:
 
 ```sh
-mkdir -p ~/.vim/pack/my/start/
-cp -r ./misc/vim ~/.vim/pack/my/start/elang
+mkdir -p ~/.vim/pack/wallace/start/
+cp -r ./misc/vim ~/.vim/pack/wallace/start/elang
 ```
 
 NeoVim:
 
 ```sh
-mkdir -p ~/.local/share/nvim/site/pack/my/start
-cp -r ./misc/vim ~/.local/share/nvim/site/pack/my/start/elang
+mkdir -p ~/.local/share/nvim/site/pack/wallace/start
+cp -r ./misc/vim ~/.local/share/nvim/site/pack/wallace/start/elang
 ```
 
 Then add the following configurations to `$HOME/.vimrc`:
