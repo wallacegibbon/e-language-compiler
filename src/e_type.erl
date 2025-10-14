@@ -181,7 +181,7 @@ type_of_node(?OP2('-', Op1, Op2, Loc), Ctx) ->
     true ->
       %% pointer - pointer --> integer.
       #e_basic_type{class = integer, tag = word, loc = Loc};
-    false->
+    false ->
       Checkers = [fun are_numbers_of_same_type/2, fun are_pointer_and_integer/2],
       case number_check_chain(Op1Type, Op2Type, Checkers) of
         {true, T} ->
