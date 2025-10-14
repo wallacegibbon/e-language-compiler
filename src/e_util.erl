@@ -169,15 +169,6 @@ align_to(Num, Unit) ->
 %% The lower 12 bits are usually used with instructions like `addi`, who will
 %% sign extend the number.  We need to add higher 20 bits by `1` to balance it.
 %% The mechanism is simple: `+1` then `+(-1)` keeps the number unchanged.
-
-%u_type_immedi(N) ->
-%  case {N bsr 12, N band 16#FFF} of
-%    {High, Low} when Low > 2047 ->
-%      {(High + 1) band 16#000FFFFF, sign_extend(Low, 12)};
-%    {High, Low} ->
-%      {High band 16#000FFFFF, sign_extend(Low, 12)}
-%  end.
-
 u_type_immedi(N) ->
     High = (N + 16#00000800) band 16#FFFFF000,
     Low = N - High,
@@ -203,14 +194,6 @@ b_type_immedi(N) ->
     High = (((N bsr 12) band 1) bsl 7) bor ((N bsr 5) band 2#111111),
     Low = N band 2#11110 bor ((N bsr 11) band 1),
     {High, Low}.
-
-%sign_extend(N, BitNum) ->
-%  case (N bsr (BitNum - 1)) band 1 of
-%    1 ->
-%      -1 * (((bnot N) + 1) band (bnot (-1 bsl BitNum)));
-%    0 ->
-%      N
-%  end.
 
 sign_extend(N, BitNum) ->
     S = (N bsr (BitNum - 1)) band 1,
