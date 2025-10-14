@@ -45,8 +45,8 @@ In E language:
 arr: {word, 3} = {1, 2, 3};
 
 struct Blah
-  id: word;
-  name: byte^;
+    id: word;
+    name: byte^;
 end
 
 b: Blah = Blah{id = 1, name = "hello"};
@@ -58,8 +58,8 @@ In C language:
 int arr[3] = {1, 2, 3};
 
 struct Blah {
-  int id;
-  char *name;
+    int id;
+    char *name;
 };
 
 struct Blah b = {1, "hello"};
@@ -77,12 +77,12 @@ Here is an example about `union` in C language:
 
 ```c
 struct A {
-  char tag;
-  union {
-    long long num;
-    char buf[8];
-  }
-  value;
+    char tag;
+    union {
+        ong long num;
+        har buf[8];
+    }
+    value;
 };
 
 struct A a = {.tag = 1, .value.num = 0x12345678 };
@@ -95,8 +95,8 @@ achieve this:
 
 ```elang
 struct A
-  tag: byte;
-  value: word;
+    tag: byte;
+    value: word;
 end
 
 a: A = A{tag = 1, value = 0x12345678};
@@ -119,13 +119,13 @@ To keep things minimum, E language do not support `enum`, either.
 
 ```elang
 fn main(argc: word, argv: byte^^): word
-  return 0;
+    return 0;
 end
 ```
 
 ```c
 int main(int argc, char **argv) {
-  return 0;
+    return 0;
 }
 ```
 
@@ -134,21 +134,21 @@ int main(int argc, char **argv) {
 
 ```elang
 if fn1(fn2(val1)) >= fn3(val2) then
-  fn4();
+    fn4();
 elif val3 > 100 then
-  fn5();
+    fn5();
 else
-  fn6();
+    fn6();
 end
 ```
 
 ```c
 if (fn1(fn2(val1)) >= fn3(val2)) {
-  fn4();
+    fn4();
 } else if (val3) {
-  fn5();
+    fn5();
 } else {
-  fn6();
+    fn6();
 }
 ```
 
@@ -158,13 +158,13 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 
 ```elang
 while test() do
-  do_something();
+    do_something();
 end
 ```
 
 ```c
 while (test()) {
-  do_something();
+    do_something();
 }
 ```
 
@@ -188,9 +188,9 @@ For embedded systems, interrupt subroutines are important. To define an ISR:
 
 ```elang
 fn exti_isr() attribute(interrupt(26))
-  %% Clear interrupt flag.
-  exti4^.INTF = 0b10000;
-  %...
+    %% Clear interrupt flag.
+    exti4^.INTF = 0b10000;
+    %...
 end
 ```
 
@@ -207,7 +207,7 @@ documentation.
 In C language, there is a type called `void` which is used for 2 purpose:
 
 - For function definition, `void` indicates the function do not have parameters
-  or return value.
+    or return value.
 - For pointers, `void*` stands for a pointer who can point to any type.
 
 > The logic of C language is: When we dereferncing `void*`, we will got a `void`
@@ -237,7 +237,7 @@ resulted in many many wrong code.
 People always write wrong code like this:
 ```c
 if (a = b) {
-  //...
+    //...
 }
 ```
 
@@ -247,7 +247,7 @@ In E language, there are only 6 boolean expression:
 So the following code will be refused by the compiler:
 ```elang
 if a = b then
-  %...
+    %...
 end
 ```
 
@@ -281,7 +281,7 @@ A macro preprocessor is supported. Defining macro in E language is almost the
 same as in C language.
 
 ```elang
-  #define GPIOD (0x4001_1400 as (GPIO^))
+#define GPIOD (0x4001_1400 as (GPIO^))
 ```
 
 But parameters are not supported.
@@ -290,7 +290,7 @@ Referencing a macro is different from C language (but same as Erlang). We need a
 `?` mark before the macro name.
 
 ```elang
-  ?GPIOD^.BSH = 0b1_1101;
+?GPIOD^.BSH = 0b1_1101;
 ```
 
 > In C language, we can't tell whether a symbol is a macro or variable or
@@ -308,19 +308,19 @@ To call the compiler, we can call the command line tool `ec`.
 Example for CH32V307:
 ```sh
 ec -i ./sample/ch32v.e ./sample/led_sample_1.e -o /tmp/a \
-  --v-pos 0 --v-size 416 \
-  --c-pos 416 \
-  --d-pos 0x2000_0000 --d-size 64K \
-  --v-init-jump
+--v-pos 0 --v-size 416 \
+--c-pos 416 \
+--d-pos 0x2000_0000 --d-size 64K \
+--v-init-jump
 ```
 
 Example for CH32V003:
 ```sh
 ec -i ./sample/ch32v.e ./sample/led_sample_2.e -o /tmp/a \
-  --v-pos 0 --v-size 156 \
-  --c-pos 156 \
-  --d-pos 0x2000_0000 --d-size 2K \
-  --v-init-jump --prefer-shift
+--v-pos 0 --v-size 156 \
+--c-pos 156 \
+--d-pos 0x2000_0000 --d-size 2K \
+--v-init-jump --prefer-shift
 ```
 
 We will get 2 bin files: `a.code.bin` (our code) and `a.ivec.bin` (interrupt
@@ -329,7 +329,7 @@ vector table).  Then write them into the right address.
 If you are an Erlang user, you can also call the compiler from erlang shell:
 ```erlang
 e_compiler:compile_to_machine1(["./sample/ch32v.e", "./sample/led_sample_1.e"],
-  "/tmp/a", #{...}).
+			       "/tmp/a", #{...}).
 ```
 
 To build the compiler, read [BUILD.md](./BUILD.md).

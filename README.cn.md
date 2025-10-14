@@ -48,8 +48,8 @@ E语言：
 arr: {word, 3} = {1, 2, 3};
 
 struct Blah
-  id: word;
-  name: byte^;
+    id: word;
+    name: byte^;
 end
 
 b: Blah = Blah{id = 1, name = "hello"};
@@ -62,8 +62,8 @@ C语言：
 int32_t arr[3] = {1, 2, 3};
 
 struct Blah {
-  int id;
-  char *name;
+    int id;
+    char *name;
 };
 
 struct Blah b = {1, "hello"};
@@ -79,12 +79,12 @@ C语言中“联合体”主要的用途，是复用内存，这个在特定使�
 
 ```c
 struct A {
-  char tag;
-  union {
-    long long num;
-    char buf[8];
-  }
-  value;
+    char tag;
+    union {
+        ong long num;
+        har buf[8];
+    }
+    value;
 };
 
 struct A a = {.tag = 1, .value.num = 0x12345678 };
@@ -96,8 +96,8 @@ printf("%x\n", a.value.buf[2]);
 
 ```elang
 struct A
-  tag: byte;
-  value: word;
+    tag: byte;
+    value: word;
 end
 
 a: A = A{tag = 1, value = 0x12345678};
@@ -118,14 +118,14 @@ printf("%x\n", (a.value@ + 2) as (byte^)^);
 
 ```elang
 fn main(argc: word; argv: byte^^): word
-  return 0;
+    return 0;
 end
 ```
 
 ```c
 int main(int argc, char **argv)
 {
-  return 0;
+    return 0;
 }
 ```
 
@@ -134,21 +134,21 @@ int main(int argc, char **argv)
 
 ```elang
 if fn1(fn2(val1)) >= fn3(val2) then
-  fn4();
+    fn4();
 elif val3 > 100 then
-  fn5();
+    fn5();
 else
-  fn6();
+    fn6();
 end
 ```
 
 ```c
 if (fn1(fn2(val1)) >= fn3(val2)) {
-  fn4();
+    fn4();
 } else if (val3) {
-  fn5();
+    fn5();
 } else {
-  fn6();
+    fn6();
 }
 ```
 
@@ -157,13 +157,13 @@ if (fn1(fn2(val1)) >= fn3(val2)) {
 
 ```elang
 while test() do
-  do_something();
+    do_something();
 end
 ```
 
 ```c
 while (test()) {
-  do_something();
+    do_something();
 }
 ```
 
@@ -187,9 +187,9 @@ char *(*(*(*my_fn2)(char *, int))(char *, char *))(int, int) = another_fn2;
 
 ```elang
 fn exti_isr() attribute(interrupt(26))
-  %% Clear interrupt flag.
-  exti4^.INTF = 0b10000;
-  %...
+    %% Clear interrupt flag.
+    exti4^.INTF = 0b10000;
+    %...
 end
 ```
 
@@ -223,7 +223,7 @@ end
 人们很容易写出下面这样的错误代码：
 ```c
 if (a = b) {
-  //...
+    //...
 }
 ```
 
@@ -232,7 +232,7 @@ if (a = b) {
 所以下面的代码，会被编译器拒绝：
 ```elang
 if a = b then
-  %...
+    %...
 end
 ```
 
@@ -284,19 +284,19 @@ E语言支持类似C语言的词法级别的“宏”。定义的时候，基本
 CH32V307示例：
 ```sh
 ec -i ./sample/ch32v.e ./sample/led_sample_1.e -o /tmp/a \
-  --v-pos 0 --v-size 416 \
-  --c-pos 416 \
-  --d-pos 0x2000_0000 --d-size 64K \
-  --v-init-jump
+--v-pos 0 --v-size 416 \
+--c-pos 416 \
+--d-pos 0x2000_0000 --d-size 64K \
+--v-init-jump
 ```
 
 CH32V003示例：
 ```sh
 ec -i ./sample/ch32v.e ./sample/led_sample_2.e -o /tmp/a \
-  --v-pos 0 --v-size 156 \
-  --c-pos 156 \
-  --d-pos 0x2000_0000 --d-size 2K \
-  --v-init-jump --prefer-shift
+--v-pos 0 --v-size 156 \
+--c-pos 156 \
+--d-pos 0x2000_0000 --d-size 2K \
+--v-init-jump --prefer-shift
 ```
 
 我们会得到两个bin文件： `a.code.bin` （代码）和 `a.ivec.bin` （中断向量表）。
@@ -305,7 +305,7 @@ ec -i ./sample/ch32v.e ./sample/led_sample_2.e -o /tmp/a \
 如果你是一名Erlang用户，你也可以从Erlang Shell里直接调用编译器进行编译：
 ```erlang
 e_compiler:compile_to_machine1(["./sample/ch32v.e", "./sample/led_sample_1.e"],
-  "/tmp/a", #{...}).
+			       "/tmp/a", #{...}).
 ```
 
 要编译编译器，可以查看[Build.cn.md](./BUILD.cn.md)。

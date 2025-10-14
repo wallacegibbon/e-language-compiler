@@ -54,10 +54,10 @@ any : {token, {any_type, TokenLoc, any}}.
 Erlang code.
 
 str_to_int([$0, _ | Chars], Base) ->
-  list_to_integer([V || V <- Chars, V =/= $_], Base).
+    list_to_integer([V || V <- Chars, V =/= $_], Base).
 
 drop_quotes([_ | QuotedString]) ->
-  lists:droplast(QuotedString).
+    lists:droplast(QuotedString).
 
 fix_str([$\\, $\\ | Rest]) -> [$\\ | fix_str(Rest)];
 fix_str([$\\, $/  | Rest]) -> [$/  | fix_str(Rest)];
