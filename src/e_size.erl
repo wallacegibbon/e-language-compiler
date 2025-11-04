@@ -86,19 +86,15 @@ size_and_offsets_of_vars(#e_vars{names = Names, type_map = TypeMap}, Ctx) ->
 
 -spec size_and_offsets([{atom(), e_type()}], size_align_data(), e_compile_context:context()) ->
     size_align_data().
-size_and_offsets([{Name, Type} | Rest],
-		 #{size := CurrentOffset, align := MaxAlign, offset_map := OffsetMap},
-		 Ctx) ->
+size_and_offsets([{Name, Type} | Rest], #{size := Offset0, align := Align, offset_map := Map0}, Ctx) ->
     FieldAlign = align_of(Type, Ctx),
-    Offset = e_util:align_to(CurrentOffset, FieldAlign),
+    Offset1 = e_util:align_to(Offset0, FieldAlign),
     FieldSize = size_of(Type, Ctx),
-    OffsetMapNew = OffsetMap#{Name => {Offset, FieldSize}},
-    NextIn = #{size => Offset + FieldSize,
-	       align => max(MaxAlign, FieldAlign),
-	       offset_map => OffsetMapNew},
+    Map1 = Map0#{Name => {Offset1, FieldSize}},
+    NextIn = #{size => Offset1 + FieldSize, align => max(Align, FieldAlign), offset_map => Map1},
     size_and_offsets(Rest, NextIn, Ctx);
-size_and_offsets([], #{size := CurrentOffset, align := MaxAlign} = Result, _) ->
-    Result#{size := e_util:align_to(CurrentOffset, MaxAlign)}.
+size_and_offsets([], #{size := Offset0, align := Align} = Result, _) ->
+    Result#{size := e_util:align_to(Offset0, Align)}.
 
 %% Usually, for 32-bit MCU, only 32-bit float is supported. For 64-bit CPU, 64-bit float is supported.
 %% So we can assume that size of float is same as sizeof word.
