@@ -3,7 +3,8 @@
 -export([names_of_var_defs/1, names_of_var_refs/1, get_struct_from_type/2, get_struct_from_name/3]).
 -export([align_to/2, fix_special_chars/1]).
 -export([fmt/2, ethrow/3, ethrow/2, exit_info/3, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2]).
--export([u_type_immedi/1, j_type_immedi/1, s_type_immedi/1, b_type_immedi/1, dissociate_num/2, sign_extend/2]).
+-export([u_type_immedi/1, j_type_immedi/1, s_type_immedi/1, b_type_immedi/1]).
+-export([dissociate_num/2, sign_extend/2, to_2n_sub/3]). %% TODO: do not export to_2n_sub/3
 -export([map_find_multi/2, file_write/2, token_attach_filename/2]).
 -include("e_record_definition.hrl").
 -ifdef(EUNIT).
@@ -230,6 +231,23 @@ b_type_immedi_test() ->
 
 -endif.
 
+%% TODO: Some special numbers like 7, 12, 15 can be represented as (2^N - 2^M),
+%% Repalce mul of these numbers to one sub + 2 shifts
+-spec to_2n_sub(bitstring(), non_neg_integer(), non_neg_integer()) ->
+    {sub, non_neg_integer(), non_neg_integer()} | failed.
+to_2n_sub(<<0:1, Rest/bits>>, 0, 0) ->
+    to_2n_sub(Rest, 0, 0);
+to_2n_sub(<<1:1, Rest/bits>>, Cnt1, 0) ->
+    to_2n_sub(Rest, Cnt1 + 1, 0);
+to_2n_sub(<<1:1, _/bits>>, _, _) ->
+    failed;
+to_2n_sub(<<0:1, Rest/bits>>, Cnt1, Cnt0) ->
+    to_2n_sub(Rest, Cnt1, Cnt0 + 1);
+to_2n_sub(<<>>, Cnt1, Cnt0) when Cnt1 > 0 ->
+    {sub, 1 bsl (Cnt1 + Cnt0), 1 bsl Cnt0};
+to_2n_sub(_, _, _) ->
+    failed.
+
 -spec dissociate_num(non_neg_integer(), pos_integer()) -> [non_neg_integer()].
 dissociate_num(N, _) when N < 0 ->
     throw("N should be non-negative integer");
@@ -242,9 +260,19 @@ dissociate_num(0, _) ->
 dissociate_num(N, CompareNum) when N >= CompareNum ->
     [CompareNum | dissociate_num(N - CompareNum, CompareNum)];
 dissociate_num(N, CompareNum) ->
-    dissociate_num(N, CompareNum div 2).
+    dissociate_num(N, CompareNum bsr 1).
 
 -ifdef(EUNIT).
+
+to_2n_sub_test() ->
+    ?assertEqual({sub, 8, 1}, to_2n_sub(<<7>>, 0, 0)),
+    ?assertEqual({sub, 16, 4}, to_2n_sub(<<12>>, 0, 0)),
+    ?assertEqual({sub, 16, 1}, to_2n_sub(<<15>>, 0, 0)),
+    ?assertEqual({sub, 32, 16}, to_2n_sub(<<16>>, 0, 0)),
+    ?assertEqual(failed, to_2n_sub(<<17>>, 0, 0)),
+    ?assertEqual(failed, to_2n_sub(<<0>>, 0, 0)),
+    ?assertEqual(failed, to_2n_sub(<<>>, 0, 0)),
+    ok.
 
 dissociate_num_test() ->
     ?assertEqual([16, 8, 1], dissociate_num(25, 128)),
