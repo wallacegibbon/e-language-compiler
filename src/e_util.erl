@@ -269,6 +269,8 @@ to_2n_sub_test() ->
     ?assertEqual({sub, 16, 4}, to_2n_sub(<<12>>, 0, 0)),
     ?assertEqual({sub, 16, 1}, to_2n_sub(<<15>>, 0, 0)),
     ?assertEqual({sub, 32, 16}, to_2n_sub(<<16>>, 0, 0)),
+    %% The default value for size is 8 for int, please specify it when value > 255.
+    ?assertEqual({sub, 512, 256}, to_2n_sub(<<256:16>>, 0, 0)),
     ?assertEqual(failed, to_2n_sub(<<17>>, 0, 0)),
     ?assertEqual(failed, to_2n_sub(<<0>>, 0, 0)),
     ?assertEqual(failed, to_2n_sub(<<>>, 0, 0)),
