@@ -223,15 +223,14 @@ expr_to_ir(?CALL(Fn, Args), Ctx) ->
 %% Optimization for `* 1` is important since it speed up the accessing of byte arrays.
 expr_to_ir(?OP2('*', Expr, ?I(1)), Ctx) ->
     expr_to_ir(Expr, Ctx);
-expr_to_ir(?OP2('*', Expr, ?I(N)), Ctx) when (N band (N - 1)) =:= 0 ->
+expr_to_ir(?OP2('*', Expr, ?I(N)), Ctx) when N > 0, (N band (N - 1)) =:= 0 ->
     {IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
     {[IRs, {slli, R, R, e_util:log2(N)}], R, Ctx1};
 %% Translate all `*` to `bsl` and `+` when option `prefer_shift` is given. (for platforms without mul support)
 expr_to_ir(?OP2('*', Expr, ?I(N)), #{prefer_shift := true} = Ctx) ->
-    {IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
-    Nums = [e_util:log2(A) || A <- e_util:dissociate_num(N, 1 bsl 32)],
-    ShiftIRs = assemble_shifts(Nums, R, T, Ctx#{free_regs := RestRegs}),
-    {[IRs, e_riscv_ir:mv(T, {x, 0}), ShiftIRs],
+    {IRs, R, #{free_regs := [T, T2 | RestRegs]}} = expr_to_ir(Expr, Ctx),
+    Nums = e_util:dissociate_log2(N, 1 bsl 32),
+    {[IRs, e_riscv_ir:mv(T, {x, 0}), [add_shift_n(Num, R, T, T2) || Num <- Nums]],
      T,
      Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 %% RISC-V do not have `subi` instruction, convert `-` to `+` to make use of `addi` later.
@@ -321,14 +320,12 @@ op3_to_ir(Tag, Left, Right, Ctx) ->
     {IRs2, R2, #{free_regs := [T | RestRegs]}} = expr_to_ir(Right, Ctx1),
     {[IRs1, IRs2, {Tag, T, R1, R2}], T, Ctx#{free_regs := recycle_tmpreg([R2, R1], RestRegs)}}.
 
-%% The result is stored back to T1.
--spec assemble_shifts([non_neg_integer()], machine_reg(), machine_reg(), context()) -> irs().
-assemble_shifts([0 | RestNums], R, T1, Ctx) ->
-    [{add, T1, T1, R} | assemble_shifts(RestNums, R, T1, Ctx)];
-assemble_shifts([N | RestNums], R, T1, #{free_regs := [T2 | _]} = Ctx) ->
-    [e_riscv_ir:mv(T2, R), {slli, T2, T2, N}, {add, T1, T1, T2} | assemble_shifts(RestNums, R, T1, Ctx)];
-assemble_shifts([], _, _, _) ->
-    [].
+add_shift_n(N, R, T, T2) when N < 0 ->
+    [e_riscv_ir:mv(T2, R), {slli, T2, T2, -N}, {sub, T, T, T2}];
+add_shift_n(N, R, T, T2) when N > 0 ->
+    [e_riscv_ir:mv(T2, R), {slli, T2, T2, N}, {add, T, T, T2}];
+add_shift_n(0, R, T, _) ->
+    [{add, T, T, R}].
 
 -spec fix_irs(irs()) -> irs().
 fix_irs([{Tag, Rd, R1, R2}, {'br!', Rd, DestTag} | Rest]) ->
