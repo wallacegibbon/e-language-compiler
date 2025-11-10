@@ -233,22 +233,21 @@ b_type_immedi_test() ->
 
 %% This is different from `math:log2/1`, we treat negative number different.
 -spec log2(pos_integer()) -> integer().
-log2(N) when N < 0 ->
-    -log2(-N);
 log2(N) when N > 0, (N band (N - 1)) =:= 0 ->
     log2_loop(N, 0);
 log2(_) ->
-    throw("Only (+/-)2^N is supported").
+    throw("Only 2^N is supported").
 
 log2_loop(1, Cnt) -> Cnt;
 log2_loop(N, Cnt) -> log2_loop(N bsr 1, Cnt + 1).
 
--spec dissociate_log2(non_neg_integer()) -> [integer()].
+-spec dissociate_log2(pos_integer()) -> [{add | sub, non_neg_integer()}].
 dissociate_log2(Num) when Num < 0 ->
     throw("N should be non-negative integer");
 dissociate_log2(Num) ->
     Nearest = find_nearest_2n(Num),
-    [log2(N) || N <- approach_2n(Num, Nearest, [Nearest])].
+    Fn = fun(N) when N > 0 -> {add, log2(N)}; (N) -> {sub, log2(-N)} end,
+    [Fn(N) || N <- approach_2n(Num, Nearest, [Nearest])].
 
 approach_2n(T, T, R) ->
     lists:reverse(R);
@@ -272,6 +271,13 @@ find_nearest_2n(Num, N1, N2) ->
     end.
 
 -ifdef(EUNIT).
+
+dissociate_log2_test() ->
+    ?assertEqual([{add, 5}, {sub, 3}, {add, 0}], dissociate_log2(25)),
+    ?assertEqual([{add, 3}, {sub, 0}], dissociate_log2(7)),
+    ?assertEqual([{add, 7}, {sub, 5}, {add, 1}, {add, 0}], dissociate_log2(99)),
+    ?assertEqual([{add, 7}, {sub, 2}, {sub, 0}], dissociate_log2(123)),
+    ok.
 
 approach_2n_test() ->
     ?assertEqual([32, -8, 1], approach_2n(25, 32, [32])),

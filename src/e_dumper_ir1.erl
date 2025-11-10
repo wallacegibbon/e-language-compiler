@@ -229,8 +229,8 @@ expr_to_ir(?OP2('*', Expr, ?I(N)), Ctx) when N > 0, (N band (N - 1)) =:= 0 ->
 %% Translate all `*` to `bsl` and `+` when option `prefer_shift` is given. (for platforms without mul support)
 expr_to_ir(?OP2('*', Expr, ?I(N)), #{prefer_shift := true} = Ctx) ->
     {IRs, R, #{free_regs := [T, T2 | RestRegs]}} = expr_to_ir(Expr, Ctx),
-    Nums = e_util:dissociate_log2(N),
-    {[IRs, e_riscv_ir:mv(T, {x, 0}), [add_shift_n(Num, R, T, T2) || Num <- Nums]],
+    Assocs = e_util:dissociate_log2(N),
+    {[IRs, e_riscv_ir:mv(T, {x, 0}), [shift_acc(A, R, T, T2) || A <- Assocs]],
      T,
      Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};
 %% RISC-V do not have `subi` instruction, convert `-` to `+` to make use of `addi` later.
@@ -320,12 +320,10 @@ op3_to_ir(Tag, Left, Right, Ctx) ->
     {IRs2, R2, #{free_regs := [T | RestRegs]}} = expr_to_ir(Right, Ctx1),
     {[IRs1, IRs2, {Tag, T, R1, R2}], T, Ctx#{free_regs := recycle_tmpreg([R2, R1], RestRegs)}}.
 
-add_shift_n(N, R, T, T2) when N < 0 ->
-    [e_riscv_ir:mv(T2, R), {slli, T2, T2, -N}, {sub, T, T, T2}];
-add_shift_n(N, R, T, T2) when N > 0 ->
-    [e_riscv_ir:mv(T2, R), {slli, T2, T2, N}, {add, T, T, T2}];
-add_shift_n(0, R, T, _) ->
-    [{add, T, T, R}].
+shift_acc({Op, 0}, R, T, _) ->
+    [{Op, T, T, R}];
+shift_acc({Op, N}, R, T, T2) ->
+    [e_riscv_ir:mv(T2, R), {slli, T2, T2, N}, {Op, T, T, T2}].
 
 -spec fix_irs(irs()) -> irs().
 fix_irs([{Tag, Rd, R1, R2}, {'br!', Rd, DestTag} | Rest]) ->
