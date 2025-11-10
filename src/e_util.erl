@@ -4,7 +4,7 @@
 -export([align_to/2, fix_special_chars/1]).
 -export([fmt/2, ethrow/3, ethrow/2, exit_info/3, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2]).
 -export([u_type_immedi/1, j_type_immedi/1, s_type_immedi/1, b_type_immedi/1]).
--export([dissociate_num/2, sign_extend/2, to_2n_sub/3]). %% TODO: do not export to_2n_sub/3
+-export([log2/1, dissociate_num/2, sign_extend/2, to_2n_sub/3]). %% TODO: do not export to_2n_sub/3
 -export([map_find_multi/2, file_write/2, token_attach_filename/2]).
 -include("e_record_definition.hrl").
 -ifdef(EUNIT).
@@ -230,6 +230,12 @@ b_type_immedi_test() ->
     ?assertEqual({2#0100110, 2#11101}, b_type_immedi(16#AABBCCDD)).
 
 -endif.
+
+log2(N) when N > 0, (N band (N - 1)) =:= 0 -> log2_loop(N, 0);
+log2(_) -> throw("Only 2^N is supported").
+
+log2_loop(1, Cnt) -> Cnt;
+log2_loop(N, Cnt) -> log2_loop(N bsr 1, Cnt + 1).
 
 %% TODO: Some special numbers like 7, 12, 15 can be represented as (2^N - 2^M),
 %% Repalce mul of these numbers to one sub + 2 shifts

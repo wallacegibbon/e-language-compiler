@@ -23,16 +23,15 @@ generate_code({{InitCode, AST}, Vars}, OutputFile, Options) ->
     #e_vars{shifted_size = ShiftedSize, size = GlobalVarSize} = Vars,
     %% Let's assume we need at least 128 bytes for stack.
     MinDataSize = GlobalVarSize + 128,
-    e_util:assert(DSize >= MinDataSize,
-		  e_util:fmt("Data storage size (~w) is not enough. (~w needed)", [DSize, MinDataSize])),
+    e_util:assert(DSize >= MinDataSize, e_util:fmt("Data storage size (~w) is not enough. (~w needed)",
+						   [DSize, MinDataSize])),
     GP = DPos + DSize - ShiftedSize,
     {Init1, Init2} = init_code(DPos, GP, Options),
     Pid = spawn_link(fun() -> string_collect_loop([]) end),
     Regs = e_riscv_ir:tmp_regs(),
     Ctx = #{wordsize => WordSize, scope_tag => top, tmp_regs => Regs, free_regs => Regs,
 	    string_collector => Pid, epilogue_tag => none,
-	    ret_offset => -WordSize, prefer_shift => PreferShift,
-	    cond_label => {none, none}},
+	    ret_offset => -WordSize, prefer_shift => PreferShift, cond_label => {none, none}},
     InitVars0 = [stmt_to_ir(S, Ctx#{scope_tag := '__init_vars'}) || S <- InitCode],
     InitVars = [{label, {align, 1}, '__init_vars'} | InitVars0],
     InterruptMap = collect_interrupt_map(AST, []),
@@ -217,18 +216,20 @@ expr_to_ir(?CALL(Fn, Args), Ctx) ->
     {ArgPrepare, N} = args_to_stack(Args, 0, [], Ctx1),
     #{free_regs := [T | _]} = Ctx1,
     StackRestore = [{comment, "drop args"}, e_riscv_ir:addi({x, 2}, -N, T)],
-    RetLoad = [{comment, "load ret"},
-	       {lw, R, {{x, 2}, -WordSize}}, {addi, {x, 2}, {x, 2}, -WordSize}],
+    RetLoad = [{comment, "load ret"}, {lw, R, {{x, 2}, -WordSize}}, {addi, {x, 2}, {x, 2}, -WordSize}],
     Call = [FnLoad, PreserveRet, {comment, "args"}, ArgPrepare,
 	    {comment, "call"}, {jalr, {x, 1}, R}, StackRestore, RetLoad],
     {[{comment, "call start"}, BeforeCall, Call, AfterCall, {comment, "call end"}], R, Ctx1};
 %% Optimization for `* 1` is important since it speed up the accessing of byte arrays.
 expr_to_ir(?OP2('*', Expr, ?I(1)), Ctx) ->
     expr_to_ir(Expr, Ctx);
-%% Translate `*` to `bsl` and `+` when option `prefer_shift` is given.
-expr_to_ir(?OP2('*', Expr, ?I(N)), #{prefer_shift := true} = Ctx) when N > 1 ->
+expr_to_ir(?OP2('*', Expr, ?I(N)), Ctx) when (N band (N - 1)) =:= 0 ->
+    {IRs, R, Ctx1} = expr_to_ir(Expr, Ctx),
+    {[IRs, {slli, R, R, e_util:log2(N)}], R, Ctx1};
+%% Translate all `*` to `bsl` and `+` when option `prefer_shift` is given. (for platforms without mul support)
+expr_to_ir(?OP2('*', Expr, ?I(N)), #{prefer_shift := true} = Ctx) ->
     {IRs, R, #{free_regs := [T | RestRegs]}} = expr_to_ir(Expr, Ctx),
-    Nums = [trunc(math:log2(A)) || A <- e_util:dissociate_num(N, 1 bsl 32)],
+    Nums = [e_util:log2(A) || A <- e_util:dissociate_num(N, 1 bsl 32)],
     ShiftIRs = assemble_shifts(Nums, R, T, Ctx#{free_regs := RestRegs}),
     {[IRs, e_riscv_ir:mv(T, {x, 0}), ShiftIRs],
      T,
