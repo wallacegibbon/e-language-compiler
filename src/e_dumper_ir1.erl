@@ -229,7 +229,7 @@ expr_to_ir(?OP2('*', Expr, ?I(N)), Ctx) when N > 0, (N band (N - 1)) =:= 0 ->
 %% Translate all `*` to `bsl` and `+` when option `prefer_shift` is given. (for platforms without mul support)
 expr_to_ir(?OP2('*', Expr, ?I(N)), #{prefer_shift := true} = Ctx) ->
     {IRs, R, #{free_regs := [T, T2 | RestRegs]}} = expr_to_ir(Expr, Ctx),
-    Nums = e_util:dissociate_log2(N, 1 bsl 32),
+    Nums = e_util:dissociate_log2(N),
     {[IRs, e_riscv_ir:mv(T, {x, 0}), [add_shift_n(Num, R, T, T2) || Num <- Nums]],
      T,
      Ctx#{free_regs := recycle_tmpreg([R], RestRegs)}};

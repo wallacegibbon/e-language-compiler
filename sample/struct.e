@@ -56,7 +56,7 @@ fn main(): word
     l1.pos.y = 222;
 
     if l1.pos.y / 2 != 0 then
-        oto alignof_anchor;
+        goto alignof_anchor;
     end
 
     l1.pos.y = g1.pos.y;

@@ -85,7 +85,7 @@ end
 
 fn AppIter_next(self: AppIter^; light: LightInterface^^^; index: word^): word
     if self^.cursor >= self^.app^.light_nums then
-        eturn 1;
+        return 1;
     end
     light^ = self^.app^.lights@[self^.cursor];
     index^ = self^.cursor;
@@ -102,8 +102,8 @@ fn AppState_init(self: AppState^)
     self^.selected = 1;
 
     while i < self^.light_nums do
-        elf^.lights@[i] = self^.leds@[i]@;
-         += 1;
+        self^.lights@[i] = self^.leds@[i]@;
+        i += 1;
     end
 
     iter: AppIter;
@@ -111,7 +111,7 @@ fn AppState_init(self: AppState^)
 
     light: LightInterface^^;
     while AppIter_next(iter@, light@, i@) == 0 do
-        ED_init(light, ?GPIOD, i);
+        LED_init(light, ?GPIOD, i);
     end
 end
 
@@ -122,7 +122,7 @@ fn AppState_all_off(self: AppState^)
     light: LightInterface^^;
     i: word;
     while AppIter_next(iter@, light@, i@) == 0 do
-        ight^^.off(light);
+        light^^.off(light);
     end
 end
 
@@ -133,23 +133,23 @@ fn AppState_all_bright(self: AppState^)
     light: LightInterface^^;
     i: word;
     while AppIter_next(iter@, light@, i@) == 0 do
-        ight^^.on(light);
+        light^^.on(light);
     end
 end
 
 fn AppState_switch_selected(self: AppState^)
     if self^.selected == 0 then
-        elf^.selected = 1;
+        self^.selected = 1;
     else
-        elf^.selected = 0;
+        self^.selected = 0;
     end
 end
 
 fn AppState_adjust_speed(self: AppState^)
     if self^.delay == 1 then
-        elf^.delay = 5;
+        self^.delay = 5;
     else
-        elf^.delay = 1;
+        self^.delay = 1;
     end
 end
 
@@ -185,9 +185,9 @@ end
 
 fn AppState_loop_once(self: AppState^)
     if self^.selected == 0 then
-        ppState_toggle_pair1(self);
+        AppState_toggle_pair1(self);
     else
-        ppState_toggle_pair2(self);
+        AppState_toggle_pair2(self);
     end
 end
 
@@ -199,19 +199,19 @@ fn main()
     AppState_init(global_state@);
 
     while 1 == 1 do
-        ppState_loop_once(global_state@);
-        elay(global_state.delay);
+        AppState_loop_once(global_state@);
+        delay(global_state.delay);
     end
 end
 
 fn delay(count: word)
     tmp: word;
     while count > 0 do
-        mp = 80000;
-        hile tmp > 0 do
-        tmp -= 1;
-        nd
-        ount -= 1;
+        tmp = 80000;
+        while tmp > 0 do
+            tmp -= 1;
+        end
+        count -= 1;
     end
 end
 
@@ -234,7 +234,7 @@ fn TIM2_isr() attribute(interrupt(44))
     ?TIM2^.CNT = 0;
 
     if (?GPIOD^.IN band 0b1_0000) != 0 then
-        eturn;
+        return;
     end
 
     AppState_switch_selected(global_state@);
@@ -246,9 +246,9 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 fn GPIO_set_state(port: GPIO^; pin: word; state: word)
     if state == 0 then
-        ort^.BC = 1 bsl pin;
+        port^.BC = 1 bsl pin;
     else
-        ort^.BSH = 1 bsl pin;
+        port^.BSH = 1 bsl pin;
     end
 end
 

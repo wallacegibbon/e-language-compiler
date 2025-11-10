@@ -4,7 +4,7 @@
 -export([align_to/2, fix_special_chars/1]).
 -export([fmt/2, ethrow/3, ethrow/2, exit_info/3, assert/2, get_values_by_keys/2, get_kvpair_by_keys/2]).
 -export([u_type_immedi/1, j_type_immedi/1, s_type_immedi/1, b_type_immedi/1]).
--export([log2/1, dissociate_log2/2, sign_extend/2]).
+-export([log2/1, dissociate_log2/1, sign_extend/2]).
 -export([map_find_multi/2, file_write/2, token_attach_filename/2]).
 -include("e_record_definition.hrl").
 -ifdef(EUNIT).
@@ -232,6 +232,7 @@ b_type_immedi_test() ->
 -endif.
 
 %% This is different from `math:log2/1`, we treat negative number different.
+-spec log2(pos_integer()) -> integer().
 log2(N) when N < 0 ->
     -log2(-N);
 log2(N) when N > 0, (N band (N - 1)) =:= 0 ->
@@ -242,31 +243,41 @@ log2(_) ->
 log2_loop(1, Cnt) -> Cnt;
 log2_loop(N, Cnt) -> log2_loop(N bsr 1, Cnt + 1).
 
--spec dissociate_log2(non_neg_integer(), non_neg_integer()) -> [integer()].
-dissociate_log2(Num, _) when Num < 0 ->
+-spec dissociate_log2(non_neg_integer()) -> [integer()].
+dissociate_log2(Num) when Num < 0 ->
     throw("N should be non-negative integer");
-dissociate_log2(Num, MaxBits) ->
-    [log2(N) || N <- dissociate_num(Num, 1 bsl MaxBits)].
+dissociate_log2(Num) ->
+    Nearest = find_nearest_2n(Num),
+    [log2(N) || N <- approach_2n(Num, Nearest, [Nearest])].
 
-%% TODO: rewrite this function: 10 = 8 + 2, 14 = 16 - 2, 99 = 128 - 32 + 2 + 1
-dissociate_num(0, _) ->
-    [];
-dissociate_num(N, CompareNum) when N >= CompareNum ->
-    [CompareNum | dissociate_num(N - CompareNum, CompareNum)];
-dissociate_num(N, CompareNum) ->
-    dissociate_num(N, CompareNum bsr 1).
+approach_2n(T, T, R) ->
+    lists:reverse(R);
+approach_2n(T, N, R) ->
+    X = find_nearest_2n(T - N),
+    approach_2n(T, N + X, [X | R]).
+
+find_nearest_2n(Num) when Num < 0 ->
+    -find_nearest_2n(-Num);
+find_nearest_2n(Num) ->
+    find_nearest_2n(Num, 1, 2).
+
+find_nearest_2n(Num, _, N2) when Num > N2 ->
+    find_nearest_2n(Num, N2, N2 bsl 1);
+find_nearest_2n(Num, N1, N2) ->
+    case Num - N1 > N2 - Num of
+	true ->
+	    N2;
+	false ->
+	    N1
+    end.
 
 -ifdef(EUNIT).
 
-dissociate_num_test() ->
-    ?assertEqual([16, 8, 1], dissociate_num(25, 128)),
-    ?assertEqual([16, 8, 1], dissociate_num(25, 32)),
-    ?assertEqual([16, 8, 1], dissociate_num(25, 16)),
-    ?assertEqual([8, 8, 8, 1], dissociate_num(25, 8)),
-    ?assertEqual([4, 4, 4, 4, 4, 4, 1], dissociate_num(25, 4)),
-    ?assertEqual([4, 2, 1], dissociate_num(7, 4)),
-    ?assertEqual([2, 2, 2, 1], dissociate_num(7, 2)),
-    ?assertEqual([1, 1, 1, 1, 1, 1, 1], dissociate_num(7, 1)),
+approach_2n_test() ->
+    ?assertEqual([32, -8, 1], approach_2n(25, 32, [32])),
+    ?assertEqual([8, -1], approach_2n(7, 8, [8])),
+    ?assertEqual([128, -32, 2, 1], approach_2n(99, 128, [128])),
+    ?assertEqual([128, -4, -1], approach_2n(123, 128, [128])),
     ok.
 
 -endif.

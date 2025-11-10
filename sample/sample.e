@@ -96,22 +96,22 @@ end
 fn init_users(users: User^; size: word)
     cnt: word = 30 + 52 * size / 2 + 100 / 10;
     while cnt < size do
-        nit_user(users + cnt, cnt, "test");
+        init_user(users + cnt, cnt, "test");
     end
 end
 
 fn init_user(user: User^; id: word; desc: byte^)
     if id < 1 then
-        ser^.id = 1;
-        ser^.id = user^.id + 1;
+        user^.id = 1;
+        user^.id = user^.id + 1;
     elif id == 5 then
-        ser^.id = 0;
+        user^.id = 0;
     elif id == 10 then
-        ser^.id = 20;
+        user^.id = 20;
     elif id == 20 then
-        ser^.id = 10;
+        user^.id = 10;
     else
-        ser^.id = id;
+        user^.id = id;
     end
 end
 
@@ -122,7 +122,7 @@ end
 
 %% Non-primitive & Non-pointer type is not allowed as parameter.
 %fn invalid_param(user: User; id: word)
-%        ser.id = 1;
+%        user.id = 1;
 %end
 
 %% Non-primitive & Non-pointer type is not allowed as returning value.
@@ -134,14 +134,14 @@ end
 %% Only comparing op is allow in the condition part of the `if` statement.
 %fn invalid_if(a: word; b: byte): word
 %    if a then
-%        eturn 1;
+%        return 1;
 %    end
 %end
 
 %% Only comparing op is allow in the condition part of the `while` statement.
 %fn invalid_while(a: word; b: byte): word
 %    while a do
-%         -= 1;
+%        a -= 1;
 %    end
 %    return 0;
 %end
@@ -152,7 +152,7 @@ end
 
 fn add_call(): word
     if add(3) > 4 then
-        eturn 1;
+        return 1;
     end
     return 2;
 end
