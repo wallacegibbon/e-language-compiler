@@ -21,7 +21,7 @@ handler(#{input_file := InputFile, output_file := OutputFile} = Options) ->
     try
 	e_compiler:compile_to_machine1(InputFile, OutputFile, MergedOptions)
     catch
-	throw:Error ->
+	Error ->
 	    e_util:exit_info(2, "**ERROR: ~s~n", [Error])
     end;
 handler(#{input_file := InputFile} = Options) ->
