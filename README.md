@@ -337,6 +337,22 @@ To build the compiler, read [BUILD.md](./BUILD.md).
 
 # Editor Support
 
+## Vim
+
+Vim:
+
+```sh
+mkdir -p ~/.vim/pack/wallacegibbon/start/
+cp -r ./misc/vim ~/.vim/pack/wallacegibbon/start/elang
+```
+
+NeoVim:
+
+```sh
+mkdir -p ~/.local/share/nvim/site/pack/wallacegibbon/start
+cp -r ./misc/vim ~/.local/share/nvim/site/pack/wallacegibbon/start/elang
+```
+
 ## Emacs
 
 ```sh
@@ -348,25 +364,4 @@ Then add the following configurations to `$HOME/.emacs`:
 ```emacslisp
 (add-to-list 'load-path "~/.emacs.d/misc/")
 (require 'elang-mode)
-```
-
-## Vim
-
-Vim:
-
-```sh
-mkdir -p ~/.vim/pack/wallace/start/
-cp -r ./misc/vim ~/.vim/pack/wallace/start/elang
-```
-
-NeoVim:
-
-```sh
-mkdir -p ~/.local/share/nvim/site/pack/wallace/start
-cp -r ./misc/vim ~/.local/share/nvim/site/pack/wallace/start/elang
-```
-
-Then add the following configurations to `$HOME/.vimrc`:
-```vim
-autocmd BufRead,BufNewFile *.e setlocal filetype=elang
 ```

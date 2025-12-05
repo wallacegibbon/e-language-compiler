@@ -313,6 +313,22 @@ e_compiler:compile_to_machine1(["./sample/ch32v.e", "./sample/led_sample_1.e"],
 
 # 编辑器支持
 
+## Vim
+
+Vim:
+
+```sh
+mkdir -p ~/.vim/pack/wallacegibbon/start/
+cp -r ./misc/vim ~/.vim/pack/wallacegibbon/start/elang
+```
+
+NeoVim:
+
+```sh
+mkdir -p ~/.local/share/nvim/site/pack/wallacegibbon/start
+cp -r ./misc/vim ~/.local/share/nvim/site/pack/wallacegibbon/start/elang
+```
+
 ## Emacs
 
 ```sh
@@ -324,25 +340,4 @@ cp ./misc/emacs/elang-mode.el ~/.emacs.d/misc/
 ```emacslisp
 (add-to-list 'load-path "~/.emacs.d/misc/")
 (require 'elang-mode)
-```
-
-## Vim
-
-Vim:
-
-```sh
-mkdir -p ~/.vim/pack/wallace/start/
-cp -r ./misc/vim ~/.vim/pack/wallace/start/elang
-```
-
-NeoVim:
-
-```sh
-mkdir -p ~/.local/share/nvim/site/pack/wallace/start
-cp -r ./misc/vim ~/.local/share/nvim/site/pack/wallace/start/elang
-```
-
-然后在“~/.vimrc”里面，加入下面的内容：
-```vim
-autocmd BufRead,BufNewFile *.e setlocal filetype=elang
 ```
