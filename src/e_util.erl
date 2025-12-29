@@ -241,7 +241,7 @@ log2(_) ->
 log2_loop(1, Cnt) -> Cnt;
 log2_loop(N, Cnt) -> log2_loop(N bsr 1, Cnt + 1).
 
--spec dissociate_log2(pos_integer()) -> [{add | sub, non_neg_integer()}].
+-spec dissociate_log2(integer()) -> [{add | sub, non_neg_integer()}].
 dissociate_log2(Num) when Num < 0 ->
     throw("N should be non-negative integer");
 dissociate_log2(Num) ->
@@ -260,15 +260,13 @@ find_nearest_2n(Num) when Num < 0 ->
 find_nearest_2n(Num) ->
     find_nearest_2n(Num, 1, 2).
 
+-spec find_nearest_2n(pos_integer(), pos_integer(), pos_integer()) -> pos_integer().
 find_nearest_2n(Num, _, N2) when Num > N2 ->
     find_nearest_2n(Num, N2, N2 bsl 1);
-find_nearest_2n(Num, N1, N2) ->
-    case Num - N1 > N2 - Num of
-	true ->
-	    N2;
-	false ->
-	    N1
-    end.
+find_nearest_2n(Num, N1, N2) when Num - N1 > N2 - Num ->
+    N2;
+find_nearest_2n(_, N1, _) ->
+    N1.
 
 -ifdef(EUNIT).
 
